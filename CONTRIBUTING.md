@@ -7,7 +7,7 @@ The codebase is intentionally simple:
 - [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script implementation
 - [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node unit tests
 - [`tools/cli.js`](./tools/cli.js): local smoke-test wrapper
-- [`tools/generate-support-matrix.sh`](./tools/generate-support-matrix.sh): support matrix generator
+- [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
 - [`hoodlefinance-api.md`](./hoodlefinance-api.md): detailed user-facing reference
 
 ## License
@@ -45,10 +45,12 @@ The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fe
 Generate the support matrix from live CLI probes:
 
 ```sh
-./tools/generate-support-matrix.sh
-./tools/generate-support-matrix.sh --details
-./tools/generate-support-matrix.sh --update-readme
+python3 tools/generate-support-matrix.py
+python3 tools/generate-support-matrix.py --details
+python3 tools/generate-support-matrix.py --update-readme
 ```
+
+The generator is intentionally user-facing: it reports exchange coverage for the features a normal user calls, not the backend-specific helper attributes. It also contains a small reliability override map for combinations that are known to be flaky in practice. Use that map for long-term stability issues; do not rely on a single successful run to promote a fragile combination to stable support.
 
 ## Contribution Expectations
 
@@ -85,4 +87,4 @@ That includes:
 
 If the user-facing behavior changed and the docs did not, the change is incomplete.
 
-If the change affects exchange coverage or source support, regenerate the README support matrix with `./tools/generate-support-matrix.sh --update-readme`.
+If the change affects exchange coverage or source support, regenerate the README support matrix with `python3 tools/generate-support-matrix.py --update-readme`.
