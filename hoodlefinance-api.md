@@ -355,8 +355,9 @@ ISIN:
 
 - Historical arguments are not implemented.
 - `marketcap` is intentionally not supported.
-- `isin` only works for exchanges with an implemented exchange-specific resolver. Right now, that means `PSE`.
+- `isin` only works for exchanges with an implemented exchange-specific resolver. Right now, that includes `ETR`, `LON`, `NASDAQ`, `NYSE`, and `PSE`.
 - `ibkr:isin` depends on IBKR public HTML pages, so it is more brittle than quote attributes.
+- `tradingview:isin` depends on TradingView public symbol pages and their bootstrap data, so it is also a scrape-based source.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - `changepct` returns a fraction such as `0.0123` for `1.23%`, so format the cell as Percent in Sheets.
 - `GBp` quotes are normalized to `GBP`: money values are divided by 100 and the reported currency is changed to `GBP`.
