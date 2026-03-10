@@ -63,6 +63,7 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
 
 const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
+const HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
 const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
 const HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_ = "hoodlefinance.suppressUpdateChecks";
@@ -484,7 +485,8 @@ function hoodlefinanceRunVersionCheck_(options) {
     if (interactive) {
       hoodlefinanceGetUi_().alert(
         "HOODLEFINANCE updates",
-        "Unable to determine the latest published version right now.",
+        "Unable to determine the latest published version right now." +
+          (latestInfo.error ? "\n\nDetails:\n" + latestInfo.error : ""),
         hoodlefinanceGetUi_().ButtonSet.OK
       );
     }
@@ -608,34 +610,61 @@ function hoodlefinanceCompareVersions_(left, right) {
 function hoodlefinanceFetchLatestVersionInfo_() {
   const cache = CacheService.getScriptCache();
   const cached = cache.get(HOODLEFINANCE_UPDATE_CACHE_KEY_);
+  const urls = [
+    HOODLEFINANCE_GITHUB_RAW_URL_,
+    HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_,
+  ];
+  const errors = [];
   let response;
   let version;
+  let i;
+  let url;
 
   if (cached) {
     return JSON.parse(cached);
   }
 
-  response = UrlFetchApp.fetch(HOODLEFINANCE_GITHUB_RAW_URL_, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      "Accept-Language": "en-US,en;q=0.9"
-    },
-    muteHttpExceptions: true,
-  });
+  for (i = 0; i < urls.length; i += 1) {
+    url = urls[i];
 
-  if (response.getResponseCode() !== 200) {
-    return { version: "" };
+    try {
+      response = UrlFetchApp.fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept-Language": "en-US,en;q=0.9"
+        },
+        muteHttpExceptions: true,
+      });
+    } catch (error) {
+      errors.push(url + " -> " + String(error && error.message ? error.message : error));
+      continue;
+    }
+
+    if (response.getResponseCode() !== 200) {
+      errors.push(url + " -> HTTP " + response.getResponseCode());
+      continue;
+    }
+
+    version = hoodlefinanceExtractVersionFromSource_(response.getContentText());
+
+    if (!version) {
+      errors.push(url + " -> version string not found");
+      continue;
+    }
+
+    cache.put(
+      HOODLEFINANCE_UPDATE_CACHE_KEY_,
+      JSON.stringify({ version: version }),
+      HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
+    );
+
+    return { version: version };
   }
 
-  version = hoodlefinanceExtractVersionFromSource_(response.getContentText());
-
-  cache.put(
-    HOODLEFINANCE_UPDATE_CACHE_KEY_,
-    JSON.stringify({ version: version }),
-    HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
-  );
-
-  return { version: version };
+  return {
+    error: errors.join("\n"),
+    version: "",
+  };
 }
 
 function hoodlefinanceExtractVersionFromSource_(sourceText) {

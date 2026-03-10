@@ -436,9 +436,10 @@ test("suppressed automatic checks do not fetch remote versions", () => {
 
 test("manual update checks show a dialog when a newer version exists", () => {
   const ctx = loadHoodlefinance();
+  const seenUrls = [];
 
   ctx.UrlFetchApp.fetch = function (url) {
-    assert.equal(url, "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js");
+    seenUrls.push(url);
     return {
       getResponseCode() {
         return 200;
@@ -453,8 +454,37 @@ test("manual update checks show a dialog when a newer version exists", () => {
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
     JSON.stringify({ latestVersion: "0.2.0", status: "outdated" })
   );
+  assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js"]);
   assert.equal(ctx.__uiState.dialogs.length, 1);
   assert.match(ctx.__uiState.dialogs[0].output.content, /Open raw source/);
+});
+
+test("manual update checks include fetch diagnostics when version lookup fails", () => {
+  const ctx = loadHoodlefinance();
+  const urls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    urls.push(url);
+    return {
+      getResponseCode() {
+        return 503;
+      },
+      getContentText() {
+        return "Service unavailable";
+      },
+    };
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
+    JSON.stringify({ status: "error" })
+  );
+  assert.deepEqual(urls, [
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js",
+    "https://github.com/omry/hoodlefinance/raw/main/hoodlefinance.js",
+  ]);
+  assert.equal(ctx.__uiState.alerts.length, 1);
+  assert.match(ctx.__uiState.alerts[0][1], /HTTP 503/);
 });
 
 test("suppression can be toggled from helper functions", () => {
