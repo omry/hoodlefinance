@@ -79,6 +79,7 @@ If any historical-data arguments are provided, the function throws an error.
 - `price`
 - `ibkr:isin`
 - `isin`
+- `lon:isin`
 - `name`
 - `currency`
 - `tradetime`
@@ -102,6 +103,7 @@ Examples:
 =HOODLEFINANCE("NASDAQ:GOOG", "price")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
+=HOODLEFINANCE("SJPA.L", "lon:isin")
 =HOODLEFINANCE("ISJP.L", "ibkr:isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("PSE:BDO", "pse:isin")
@@ -126,6 +128,7 @@ These are normalized to Yahoo symbols:
 
 ```gs
 =HOODLEFINANCE("LON:ISJP", "price")   // -> ISJP.L
+=HOODLEFINANCE("LON:SJPA", "isin")    // -> dispatches to lon:isin
 =HOODLEFINANCE("ETR:ZPRX", "price")   // -> ZPRX.DE
 =HOODLEFINANCE("NASDAQ:GOOG", "price") // -> GOOG
 ```
@@ -180,15 +183,31 @@ If `isin` deduces an exchange that does not have an implemented ISIN resolver ye
 
 Current implemented exchanges:
 
+- `LON` -> `lon:isin`
 - `PSE` -> `pse:isin`
 
 Examples:
 
 ```gs
+=HOODLEFINANCE("SJPA.L", "isin")
+=HOODLEFINANCE("LON:SJPA", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
 If the exchange is not specified explicitly, `isin` tries to deduce it from the ticker form, Yahoo suffix, or quote metadata. If no exchange-specific ISIN resolver is implemented for the deduced exchange, the function errors clearly.
+
+### `lon:isin`
+
+`lon:isin` uses the public London Stock Exchange instrument search results.
+
+It searches by the London code, parses the `UpdateOpener(...)` listing payload, and extracts the ISIN from that structured row.
+
+Examples:
+
+```gs
+=HOODLEFINANCE("SJPA.L", "lon:isin")
+=HOODLEFINANCE("LON:SJPA", "lon:isin")
+```
 
 ### `pse:isin`
 

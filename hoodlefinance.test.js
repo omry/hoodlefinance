@@ -121,6 +121,31 @@ const PSE_STOCK_BDO_HTML = `
 </table>
 `;
 
+const LON_SEARCH_SJPA_HTML = `
+<tbody>
+  <tr class="medium-font-weight slide-panel">
+    <td>SJPA</td>
+    <td class="clickable td-with-link"><a class="dash-link blue-text bold-font-weight" href="javascript: UpdateOpener('ISHARES III PLC ISHRS CORE MSCI JAPAN IMI ETF USD (ACC)', '						IE00B4L5YX21|ZZ|GBX|EUE2|B4L61L2|SJPA
+');" title="Select">ISHARES III PLC ISHRS CORE MSCI JAPAN IMI ETF USD (ACC)</a></td>
+  </tr>
+</tbody>
+`;
+
+const LON_SEARCH_CPXJ_HTML = `
+<tbody>
+  <tr class="medium-font-weight slide-panel">
+    <td>CPJ1</td>
+    <td class="clickable td-with-link"><a class="dash-link blue-text bold-font-weight" href="javascript: UpdateOpener('ISHARES VII PLC MSCI PACIFIC EX-JAPAN ETF GBP ACC', '						IE00B52MJY50|ZZ|GBX|EUE2|B580X30|CPJ1
+');" title="Select">ISHARES VII PLC MSCI PACIFIC EX-JAPAN ETF GBP ACC</a></td>
+  </tr>
+  <tr class="medium-font-weight slide-panel">
+    <td>CPXJ</td>
+    <td class="clickable td-with-link"><a class="dash-link blue-text bold-font-weight" href="javascript: UpdateOpener('ISHARES VII PLC MSCI PACIFIC EX-JAPAN ETF USD ACC', '						IE00B52MJY50|IE|USD|EUET|B4ZYLW3|CPXJ
+');" title="Select">ISHARES VII PLC MSCI PACIFIC EX-JAPAN ETF USD ACC</a></td>
+  </tr>
+</tbody>
+`;
+
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
 <td><a href="javascript:showDetails('90581046')">Details</a></td>
@@ -413,6 +438,98 @@ test("isin dispatches to the implemented exchange-specific source", () => {
   });
 });
 
+test("extracts exact LON listings from search results", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=CPXJ") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return LON_SEARCH_CPXJ_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceExtractLonListings_(LON_SEARCH_SJPA_HTML)),
+    JSON.stringify([
+      {
+        code: "SJPA",
+        countryCode: "ZZ",
+        currency: "GBX",
+        isin: "IE00B4L5YX21",
+        marketCode: "EUE2",
+        name: "ISHARES III PLC ISHRS CORE MSCI JAPAN IMI ETF USD (ACC)",
+        sedol: "B4L61L2",
+        symbol: "SJPA",
+      },
+    ])
+  );
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceResolveLonListing_("CPXJ")),
+    JSON.stringify({
+      code: "CPXJ",
+      countryCode: "IE",
+      currency: "USD",
+      isin: "IE00B52MJY50",
+      marketCode: "EUET",
+      name: "ISHARES VII PLC MSCI PACIFIC EX-JAPAN ETF USD ACC",
+      sedol: "B4ZYLW3",
+      symbol: "CPXJ",
+    })
+  );
+});
+
+test("lon:isin resolves from the public LSE search results", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return LON_SEARCH_SJPA_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "lon:isin", { tickerInput: "SJPA.L" }),
+    "IE00B4L5YX21"
+  );
+});
+
+test("isin dispatches to lon:isin for London tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveLonIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "IE00B4L5YX21";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L" }),
+    "IE00B4L5YX21"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "SJPA.L" },
+    context: { tickerInput: "SJPA.L" },
+  });
+});
+
 test("isin fails clearly when no exchange-specific source is implemented", () => {
   const ctx = loadHoodlefinance();
 
@@ -558,6 +675,17 @@ test("pse:isin rejects non-PSE tickers", () => {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "pse:isin", { tickerInput: "GOOG" });
     },
     /pse:isin is only implemented for PSE tickers\./
+  );
+});
+
+test("lon:isin rejects non-LON tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "lon:isin", { tickerInput: "GOOG" });
+    },
+    /lon:isin is only implemented for LON tickers\./
   );
 });
 

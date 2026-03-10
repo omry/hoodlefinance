@@ -24,6 +24,9 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   isin: function (quote, context) {
     return hoodlefinanceResolveDefaultIsin_(quote, context);
   },
+  "lon:isin": function (quote, context) {
+    return hoodlefinanceResolveLonIsin_(quote, context);
+  },
   name: function (quote) {
     return quote.longName || quote.shortName || quote.displayName || quote.symbol || "";
   },
@@ -114,6 +117,7 @@ const HOODLEFINANCE_PREFIXLESS_EXCHANGES_ = {
 
 const HOODLEFINANCE_IBKR_SEARCH_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=";
 const HOODLEFINANCE_IBKR_DETAIL_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=";
+const HOODLEFINANCE_LSE_SEARCH_URL_ = "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=";
 
 const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const HOODLEFINANCE_PSE_STOCK_DATA_URL_ = "https://edge.pse.com.ph/companyPage/stockData.do";
@@ -257,6 +261,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
 };
 
 const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
+  LON: "lon:isin",
   PSE: "pse:isin",
 };
 
@@ -274,6 +279,7 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  * - "low"
  * - "ibkr:isin"
  * - "isin"
+ * - "lon:isin"
  * - "open"
  * - "pse:isin"
  * - "close"
@@ -286,6 +292,7 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  *   =HOODLEFINANCE("NASDAQ:GOOG", "price")
  *   =HOODLEFINANCE("NYSE:IBM", "name")
  *   =HOODLEFINANCE("CURRENCY:USDEUR", "price")
+ *   =HOODLEFINANCE("LON:SJPA", "isin")
  *   =HOODLEFINANCE("ISIN:IE00B3XXRP09", "price")
  *   =HOODLEFINANCE("PSE:AAA", "price")
  *
@@ -554,6 +561,21 @@ function hoodlefinanceResolvePseListing_(symbol) {
   throw new Error('No PSE listing was found for "' + normalizedSymbol + '".');
 }
 
+function hoodlefinanceResolveLonListing_(code) {
+  const normalizedCode = String(code || "").trim().toUpperCase();
+  const html = hoodlefinanceFetchText_(HOODLEFINANCE_LSE_SEARCH_URL_ + encodeURIComponent(normalizedCode));
+  const listings = hoodlefinanceExtractLonListings_(html);
+  let i;
+
+  for (i = 0; i < listings.length; i += 1) {
+    if (listings[i].code === normalizedCode) {
+      return listings[i];
+    }
+  }
+
+  throw new Error('No LON listing was found for "' + normalizedCode + '".');
+}
+
 function hoodlefinanceExtractPseListings_(html) {
   const text = String(html || "");
   const pattern = /<tr>[\s\S]*?cmDetail\('(\d+)','(\d+)'\);return false;">([\s\S]*?)<\/a>[\s\S]*?<td class="alignC"><a[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
@@ -570,6 +592,53 @@ function hoodlefinanceExtractPseListings_(html) {
   }
 
   return listings;
+}
+
+function hoodlefinanceExtractLonListings_(html) {
+  const text = String(html || "");
+  const pattern = /<tr[^>]*>[\s\S]*?<td>\s*([^<]+?)\s*<\/td>[\s\S]*?UpdateOpener\(\s*'(?:[^'\\]|\\.)*'\s*,\s*'([\s\S]*?)'\s*\)\s*;?[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
+  const listings = [];
+  let match;
+
+  while ((match = pattern.exec(text))) {
+    const code = hoodlefinanceCleanHtmlText_(match[1]).toUpperCase();
+    const payload = hoodlefinanceExtractLonListingPayload_(match[2]);
+
+    if (!code || !payload.isin) {
+      continue;
+    }
+
+    listings.push({
+      code: code,
+      countryCode: payload.countryCode,
+      currency: payload.currency,
+      isin: payload.isin,
+      marketCode: payload.marketCode,
+      name: hoodlefinanceCleanHtmlText_(match[3]),
+      sedol: payload.sedol,
+      symbol: payload.symbol || code,
+    });
+  }
+
+  return listings;
+}
+
+function hoodlefinanceExtractLonListingPayload_(text) {
+  const normalizedText = String(text || "")
+    .replace(/\\r/g, " ")
+    .replace(/\\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = normalizedText ? normalizedText.split("|") : [];
+
+  return {
+    countryCode: parts[1] ? parts[1].trim().toUpperCase() : "",
+    currency: parts[2] ? parts[2].trim().toUpperCase() : "",
+    isin: parts[0] ? parts[0].trim().toUpperCase() : "",
+    marketCode: parts[3] ? parts[3].trim().toUpperCase() : "",
+    sedol: parts[4] ? parts[4].trim().toUpperCase() : "",
+    symbol: parts[5] ? parts[5].trim().toUpperCase() : "",
+  };
 }
 
 function hoodlefinanceExtractPseQuote_(html, listing) {
@@ -704,7 +773,7 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
   const attribute = exchange ? HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_[exchange] || "" : "";
 
   if (!exchange) {
-    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"pse:isin\" or \"ibkr:isin\".");
+    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"lon:isin\", \"pse:isin\", or \"ibkr:isin\".");
   }
 
   if (!attribute) {
@@ -728,8 +797,70 @@ function hoodlefinanceResolvePseIsin_(quote, context) {
   throw new Error("No PSE ISIN is available for this ticker.");
 }
 
+function hoodlefinanceResolveLonIsin_(quote, context) {
+  const exchange = hoodlefinanceInferIsinExchange_(quote, context);
+  const code = hoodlefinanceExtractLonCode_(quote, context);
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "hoodlefinance:lon:isin:" + code;
+  const cached = code ? cache.get(cacheKey) : "";
+  let listing;
+
+  if (exchange !== "LON") {
+    throw new Error("lon:isin is only implemented for LON tickers.");
+  }
+
+  if (!code) {
+    throw new Error("Could not determine the LON code for this ticker.");
+  }
+
+  if (cached) {
+    return cached;
+  }
+
+  listing = hoodlefinanceResolveLonListing_(code);
+
+  if (!listing.isin) {
+    throw new Error('No LON ISIN is available for "' + code + '".');
+  }
+
+  cache.put(cacheKey, listing.isin, 21600);
+  return listing.isin;
+}
+
 function hoodlefinanceExtractQuoteSymbol_(quote) {
   return quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+}
+
+function hoodlefinanceExtractLonCode_(quote, context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+  const candidates = [
+    tickerInput,
+    resolvedSymbol,
+  ];
+  let i;
+  let candidate;
+  let parts;
+  let match;
+
+  for (i = 0; i < candidates.length; i += 1) {
+    candidate = candidates[i];
+    if (!candidate) {
+      continue;
+    }
+
+    if (candidate.indexOf("LON:") === 0) {
+      parts = candidate.split(":");
+      return parts.slice(1).join(":").trim().toUpperCase();
+    }
+
+    match = candidate.match(/^([A-Z0-9]+)\.L$/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return "";
 }
 
 function hoodlefinanceInferIsinExchange_(quote, context) {
