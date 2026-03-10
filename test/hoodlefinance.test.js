@@ -232,7 +232,7 @@ Text: <input type="text" name="filter">
 `;
 
 function loadHoodlefinance() {
-  const source = fs.readFileSync(path.join(__dirname, "hoodlefinance.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
   const sandbox = {
     console,

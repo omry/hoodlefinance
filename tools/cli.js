@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
-const childProcess = require("node:child_process");
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+const childProcess = require("child_process");
 
 function loadHoodlefinance() {
-  const source = fs.readFileSync(path.join(__dirname, "hoodlefinance.js"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
   const sandbox = {
     console,
@@ -70,18 +70,42 @@ function loadHoodlefinance() {
   return sandbox;
 }
 
+function runLookup(ticker, attribute) {
+  const ctx = loadHoodlefinance();
+  const normalizedAttribute = attribute || "price";
+
+  try {
+    const result = ctx.HOODLEFINANCE(ticker, normalizedAttribute);
+    return {
+      ok: true,
+      value: result,
+    };
+  } catch (error) {
+    return {
+      error: error && error.message ? error.message : String(error),
+      ok: false,
+      value: null,
+    };
+  }
+}
+
 function main() {
   const ticker = process.argv[2];
   const attribute = process.argv[3] || "price";
-  const ctx = loadHoodlefinance();
-
   if (!ticker) {
     console.error("Usage: node cli.js <ticker> [attribute]");
     process.exit(1);
   }
 
+  const lookup = runLookup(ticker, attribute);
+
+  if (!lookup.ok) {
+    console.error(lookup.error);
+    process.exit(1);
+  }
+
   try {
-    const result = ctx.HOODLEFINANCE(ticker, attribute);
+    const result = lookup.value;
     if (result instanceof Date) {
       console.log(result.toISOString());
       return;
@@ -93,4 +117,11 @@ function main() {
   }
 }
 
-main();
+module.exports = {
+  loadHoodlefinance,
+  runLookup,
+};
+
+if (require.main === module) {
+  main();
+}

@@ -1,4 +1,4 @@
-# hoodlefinance
+# HOODLEFINANCE
 
 `HOODLEFINANCE` is a Google Apps Script custom function that provides a practical single-result alternative to `GOOGLEFINANCE` for many ETF-heavy and non-U.S. workflows.
 
@@ -19,7 +19,7 @@ It uses Yahoo Finance for quote data, direct PSE scraping for `PSE:` tickers, an
 Open this raw file, copy all, and paste it into Apps Script:
 
 ```text
-https://raw.githubusercontent.com/omry/hoodlefinance/master/hoodlefinance.js
+https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js
 ```
 
 Then test with:
@@ -32,7 +32,7 @@ Then test with:
 
 1. Open a Google Sheet.
 2. Go to `Extensions -> Apps Script`.
-3. Paste the contents of [`hoodlefinance.js`](https://raw.githubusercontent.com/omry/hoodlefinance/master/hoodlefinance.js) into `Code.gs`.
+3. Paste the contents of [`hoodlefinance.js`](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js) into `Code.gs`.
 4. Save the project.
 5. Reload the spreadsheet.
 
@@ -89,13 +89,41 @@ This means these work as plain `isin` lookups today:
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
+## Support Matrix
+
+This table is generated from live sample probes against the local CLI wrapper. Regenerate it with:
+
+```sh
+./tools/generate-support-matrix.sh
+./tools/generate-support-matrix.sh --details
+./tools/generate-support-matrix.sh --update-readme
+```
+
+<!-- SUPPORT_MATRIX:START -->
+Current generated matrix:
+
+| Exchange | Samples | Quote attrs | `isin` | Native `*:isin` | `tradingview:isin` | `ibkr:isin` |
+| --- | --- | --- | --- | --- | --- | --- |
+| PSE | `PSE:BDO, PSE:AAA` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| LON | `SJPA.L, CPXJ.L` | ✅ | ✅ | ✅ | ✅ | ❌ |
+| ETR | `ZPRV.DE, ZPRX.DE, 5MVL.DE` | ✅ | ✅ | ⚠️ | ✅ | ❌ |
+| NASDAQ | `GOOG, AAPL` | ✅ | ✅ | ❌ | ✅ | ❌ |
+| NYSE | `NYSE:IBM, NYSE:KO` | ✅ | ✅ | ❌ | ✅ | ❌ |
+| TYO | `7203.T` | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+Legend: `✅` all probes passed, `⚠️` mixed results, `❌` no probes passed or no implementation is configured.
+<!-- SUPPORT_MATRIX:END -->
+
+This matrix is sample-based, not exhaustive. It is intended to show current practical coverage, not a formal guarantee for every symbol on an exchange. Because it is generated from live probes, unstable sources can cause the matrix to fluctuate across runs, especially `ibkr:isin` when IBKR presents a captcha challenge.
+
 ## Local Development
 
 Local files:
 
 - [`hoodlefinance.js`](./hoodlefinance.js): Apps Script source
-- [`hoodlefinance.test.js`](./hoodlefinance.test.js): Node test suite
-- [`cli.js`](./cli.js): local CLI wrapper for smoke testing
+- [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node test suite
+- [`tools/cli.js`](./tools/cli.js): local CLI wrapper for smoke testing
+- [`tools/generate-support-matrix.sh`](./tools/generate-support-matrix.sh): generate a live support matrix from CLI probes
 - [`hoodlefinance-api.md`](./hoodlefinance-api.md): detailed API reference
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md): small developer guide for contributors
 
@@ -103,16 +131,17 @@ Run checks:
 
 ```sh
 node --check hoodlefinance.js
-node --test hoodlefinance.test.js
+node --test test/hoodlefinance.test.js
+./tools/generate-support-matrix.sh
 ```
 
 Run a quick lookup locally:
 
 ```sh
-node cli.js GOOG price
-node cli.js GOOG isin
-node cli.js ZPRX.DE isin
-node cli.js PSE:BDO isin
+node tools/cli.js GOOG price
+node tools/cli.js GOOG isin
+node tools/cli.js ZPRX.DE isin
+node tools/cli.js PSE:BDO isin
 ```
 
 ## Limits

@@ -5,8 +5,9 @@ This is a small Apps Script project with a Node-based local test harness.
 The codebase is intentionally simple:
 
 - [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script implementation
-- [`hoodlefinance.test.js`](./hoodlefinance.test.js): Node unit tests
-- [`cli.js`](./cli.js): local smoke-test wrapper
+- [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node unit tests
+- [`tools/cli.js`](./tools/cli.js): local smoke-test wrapper
+- [`tools/generate-support-matrix.sh`](./tools/generate-support-matrix.sh): support matrix generator
 - [`hoodlefinance-api.md`](./hoodlefinance-api.md): detailed user-facing reference
 
 ## License
@@ -20,26 +21,34 @@ If you are contributing changes, keep that in mind for any external code, copied
 Run the unit tests:
 
 ```sh
-node --test hoodlefinance.test.js
+node --test test/hoodlefinance.test.js
 ```
 
 Run syntax checks:
 
 ```sh
 node --check hoodlefinance.js
-node --check hoodlefinance.test.js
+node --check test/hoodlefinance.test.js
 ```
 
 Run the CLI for live smoke tests:
 
 ```sh
-node cli.js GOOG price
-node cli.js GOOG isin
-node cli.js ZPRX.DE isin
-node cli.js PSE:BDO isin
+node tools/cli.js GOOG price
+node tools/cli.js GOOG isin
+node tools/cli.js ZPRX.DE isin
+node tools/cli.js PSE:BDO isin
 ```
 
 The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through `curl`, so it is useful for checking live endpoints without pasting into Google Sheets.
+
+Generate the support matrix from live CLI probes:
+
+```sh
+./tools/generate-support-matrix.sh
+./tools/generate-support-matrix.sh --details
+./tools/generate-support-matrix.sh --update-readme
+```
 
 ## Contribution Expectations
 
@@ -51,7 +60,7 @@ Changes should usually include:
 
 If a change adds a new source or exchange path, include both:
 
-- fixture-based tests in `hoodlefinance.test.js`
+- fixture-based tests in `test/hoodlefinance.test.js`
 - at least one real-world smoke-test example you actually verified
 
 ## What to Be Careful About
@@ -61,6 +70,7 @@ If a change adds a new source or exchange path, include both:
 - Keep generic `isin` routing conservative. Only change defaults when coverage is strong enough to justify it.
 - If a source is useful but not yet strong enough as a default, add it as an explicit attribute first.
 - Preserve Apps Script compatibility. The main source file should stay usable when pasted directly into `Code.gs`.
+- Keep tests in `test/` and helper scripts in `tools/` so the repo layout stays predictable.
 
 ## Documentation Rule
 
@@ -74,3 +84,5 @@ That includes:
 - examples
 
 If the user-facing behavior changed and the docs did not, the change is incomplete.
+
+If the change affects exchange coverage or source support, regenerate the README support matrix with `./tools/generate-support-matrix.sh --update-readme`.
