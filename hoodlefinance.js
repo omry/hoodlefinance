@@ -15,9 +15,6 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   close: function (quote) {
     return hoodlefinanceNormalizeMoney_(quote, hoodlefinancePreviousClose_(quote));
   },
-  closeyest: function (quote) {
-    return hoodlefinanceNormalizeMoney_(quote, hoodlefinancePreviousClose_(quote));
-  },
   high: function (quote) {
     return hoodlefinanceNormalizeMoney_(quote, quote.regularMarketDayHigh);
   },
@@ -32,9 +29,6 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
   name: function (quote) {
     return quote.longName || quote.shortName || quote.displayName || quote.symbol || "";
-  },
-  open: function (quote) {
-    return hoodlefinanceNormalizeMoney_(quote, quote.regularMarketOpen);
   },
   price: function (quote) {
     return hoodlefinanceNormalizeMoney_(quote, hoodlefinancePickPrice_(quote));
@@ -303,11 +297,9 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  * - "ibkr:isin"
  * - "isin"
  * - "lon:isin"
- * - "open"
  * - "pse:isin"
  * - "tradingview:isin"
  * - "close"
- * - "closeyest"
  * - "changepct"
  * - "change"
  *

@@ -89,15 +89,15 @@ If any historical-data arguments are provided, the function throws an error.
 - `volume`
 - `high`
 - `low`
-- `open`
 - `pse:isin`
 - `tradingview:isin`
 - `close`
-- `closeyest`
 - `changepct`
 - `change`
 
 Attribute matching is case-insensitive.
+
+`close` means the close price for the most recent completed trading day.
 
 Examples:
 
