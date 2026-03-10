@@ -191,6 +191,12 @@ Currency tickers use the `CURRENCY:` prefix:
 
 This normalizes to Yahoo's `EURUSD=X`.
 
+If the base and quote currency are the same, `HOODLEFINANCE` short-circuits locally and returns `1` without calling Yahoo:
+
+```gs
+=HOODLEFINANCE("CURRENCY:USDUSD", "price")
+```
+
 ### PSE tickers
 
 Philippine listings can use the `PSE:` prefix:

@@ -1,3 +1,4 @@
+const HOODLEFINANCE_VERSION_ = "0.1.0";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
@@ -60,7 +61,6 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
 };
 
-const HOODLEFINANCE_VERSION_ = "0.1.0";
 const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
@@ -701,9 +701,14 @@ function hoodlefinanceEscapeHtml_(text) {
 
 function hoodlefinanceFetchQuote_(ticker) {
   const normalizedTicker = String(ticker).trim();
+  const sameCurrencyPair = hoodlefinanceExtractSameCurrencyPair_(normalizedTicker);
 
   if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
     return hoodlefinanceFetchPseQuote_(normalizedTicker);
+  }
+
+  if (sameCurrencyPair) {
+    return hoodlefinanceBuildSameCurrencyQuote_(sameCurrencyPair);
   }
 
   const yahooSymbol = hoodlefinanceNormalizeTicker_(normalizedTicker);
@@ -851,6 +856,42 @@ function hoodlefinanceParsePseSymbol_(ticker) {
   }
 
   return symbol;
+}
+
+function hoodlefinanceExtractSameCurrencyPair_(ticker) {
+  const value = String(ticker || "").trim().toUpperCase();
+  const parts = value.split(":");
+  const exchange = parts.length > 1 ? parts[0] : "";
+  const symbol = parts.length > 1 ? parts.slice(1).join(":").trim() : "";
+  const currencyPair = exchange === "CURRENCY" ? symbol.replace(/[^A-Z]/g, "") : "";
+  const baseCurrency = currencyPair.slice(0, 3);
+  const quoteCurrency = currencyPair.slice(3, 6);
+
+  if (currencyPair.length !== 6) {
+    return "";
+  }
+
+  return baseCurrency === quoteCurrency ? currencyPair : "";
+}
+
+function hoodlefinanceBuildSameCurrencyQuote_(currencyPair) {
+  const normalizedPair = String(currencyPair || "").trim().toUpperCase();
+  const quoteCurrency = normalizedPair.slice(3, 6);
+  const nowSeconds = Math.floor(new Date().getTime() / 1000);
+
+  return {
+    currency: quoteCurrency,
+    exchangeDataDelayedBy: 0,
+    financialCurrency: quoteCurrency,
+    previousClose: 1,
+    regularMarketDayHigh: 1,
+    regularMarketDayLow: 1,
+    regularMarketPreviousClose: 1,
+    regularMarketPrice: 1,
+    regularMarketTime: nowSeconds,
+    shortName: normalizedPair,
+    symbol: normalizedPair + "=X",
+  };
 }
 
 function hoodlefinanceExtractAttribute_(quote, attribute, context) {

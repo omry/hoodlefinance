@@ -372,6 +372,18 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:USDUSD"), "USDUSD=X");
+});
+
+test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Fetch should not run for same-currency FX pairs");
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("CURRENCY:USDUSD", "price"), 1);
+  assert.equal(ctx.HOODLEFINANCE("CURRENCY:USDUSD", "currency"), "USD");
 });
 
 test("exposes a script version custom function", () => {

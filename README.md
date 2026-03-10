@@ -76,6 +76,7 @@ The bound script also adds a `Hoodlefinance` menu in Sheets with:
 =HOODLEFINANCE("NASDAQ:GOOG")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
+=HOODLEFINANCE("CURRENCY:USDUSD", "price")
 =HOODLEFINANCE("ZPRX.DE", "isin")
 =HOODLEFINANCE("SJPA.L", "isin")
 =HOODLEFINANCE("9988.HK", "isin")

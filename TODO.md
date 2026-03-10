@@ -1,5 +1,3 @@
-- diagnose failing tickers and add support if possible
-- support currency conversions with same currency conversion ratio (always 1)
 - document that price information is likely delayed by an unspecified time due to different data sources
 - Improve the error message for this case so a 404 on clearly dead/delisted OTC tickers reads more like: No current Yahoo quote data was found for OTCMKTS:HGEN. The symbol may be delisted or cancelled.
 - add NEO support for symbols like ZTL.NE (current failure is wrong venue, not TSE)
