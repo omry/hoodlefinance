@@ -86,7 +86,7 @@ If any historical-data arguments are provided, the function throws an error.
 Current version:
 
 ```text
-0.1.0
+0.1.1
 ```
 
 Example:

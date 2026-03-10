@@ -4,7 +4,7 @@
 
 It uses Yahoo Finance for quote data and adds ISIN support that `GOOGLEFINANCE` does not provide.
 
-Current script version: `0.1.0`
+Current script version: `0.1.1`
 
 ## What It Does
 

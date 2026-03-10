@@ -389,7 +389,7 @@ test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.1.0");
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.1.1");
 });
 
 test("compares semantic-style versions correctly", () => {
