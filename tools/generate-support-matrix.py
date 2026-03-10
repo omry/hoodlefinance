@@ -39,6 +39,15 @@ EXCHANGES = [
         "samples": ["ZPRV.DE", "ZPRX.DE", "5MVL.DE"],
     },
     {
+        "code": "HKG",
+        "name": "Hong Kong Stock Exchange",
+        "samples": [
+            {"ticker": "9988.HK", "label": "9988.HK (Alibaba / BABA)"},
+            "1299.HK",
+            "1810.HK",
+        ],
+    },
+    {
         "code": "TYO",
         "name": "Tokyo Stock Exchange",
         "samples": ["7203.T", "6758.T", "9984.T"],
@@ -104,8 +113,20 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def format_samples(samples: list[str]) -> str:
-    return ", ".join(sample.strip() for sample in samples)
+def sample_ticker(sample: str | dict[str, str]) -> str:
+    if isinstance(sample, dict):
+        return str(sample["ticker"]).strip()
+    return sample.strip()
+
+
+def sample_label(sample: str | dict[str, str]) -> str:
+    if isinstance(sample, dict):
+        return str(sample.get("label") or sample["ticker"]).strip()
+    return sample.strip()
+
+
+def format_samples(samples: list[str | dict[str, str]]) -> str:
+    return ", ".join(sample_label(sample) for sample in samples)
 
 
 def format_exchange_cell(exchange: dict[str, object]) -> str:
@@ -114,7 +135,7 @@ def format_exchange_cell(exchange: dict[str, object]) -> str:
     return f'<code>{code}</code><br><sub>{name}</sub>'
 
 
-def format_samples_cell(samples: list[str]) -> str:
+def format_samples_cell(samples: list[str | dict[str, str]]) -> str:
     tooltip = html.escape(format_samples(samples), quote=True)
     return f'<span title="{tooltip}">ⓘ</span>'
 
@@ -197,7 +218,7 @@ def build_probe_plan() -> list[tuple[str, str, str, str]]:
             feature_key = str(feature["key"])
             for sample in exchange["samples"]:
                 for attribute in feature["attributes"]:
-                    plan.append((exchange_code, feature_key, sample, attribute))
+                    plan.append((exchange_code, feature_key, sample_ticker(sample), attribute))
 
     return plan
 
@@ -242,9 +263,10 @@ def evaluate_feature(
         reliability_notes.append(str(override["note"]))
 
     for sample in samples:
+        probe_ticker = sample_ticker(sample)
         for attribute in attributes:
             total += 1
-            result = probe_results[(exchange_code, feature_key, sample, attribute)]
+            result = probe_results[(exchange_code, feature_key, probe_ticker, attribute)]
             if result["ok"]:
                 ok_count += 1
             else:
@@ -252,11 +274,11 @@ def evaluate_feature(
                     {
                         "attribute": attribute,
                         "error": str(result["error"]),
-                        "ticker": sample,
+                        "ticker": sample_label(sample),
                     }
                 )
                 if details is not None:
-                    feature_failures.append(f'- `{sample}` + `{attribute}` -> {result["error"]}')
+                    feature_failures.append(f'- `{sample_label(sample)}` + `{attribute}` -> {result["error"]}')
 
     if feature_failures:
         details.append("")
@@ -335,7 +357,7 @@ def generate_matrix_body(show_details: bool) -> tuple[str, str]:
 
 def generate_output(show_details: bool) -> str:
     matrix_body, details_block = generate_matrix_body(show_details)
-    output = f"Current generated matrix:\n\n{matrix_body}"
+    output = matrix_body
     if show_details and details_block:
         output += "\n\n" + details_block
     return output

@@ -266,6 +266,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
 const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   AMEX: "AMEX",
   ETR: "XETR",
+  HKG: "HKEX",
   LON: "LSE",
   NASDAQ: "NASDAQ",
   NYSE: "NYSE",
@@ -275,6 +276,7 @@ const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
 
 const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
   ETR: "tradingview:isin",
+  HKG: "tradingview:isin",
   LON: "lon:isin",
   NASDAQ: "tradingview:isin",
   NYSE: "tradingview:isin",

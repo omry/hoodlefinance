@@ -10,7 +10,7 @@ It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and sour
 
 Main advantages:
 
-- Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L` and `ZPRX.DE`.
+- Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L`, `ZPRX.DE`, and `9988.HK`.
 - Adds `name` and `currency` support using the same quote path as `price`, which makes the output more consistent across symbols.
 - Adds exchange-specific `isin` support, which `GOOGLEFINANCE` does not provide. This is especially useful for broker portability and execution workflows.
 - Works better for many non-U.S. ETFs and UCITS listings that are awkward or inconsistent in `GOOGLEFINANCE`.
@@ -110,6 +110,7 @@ Examples:
 =HOODLEFINANCE("ZPRV.DE", "isin")
 =HOODLEFINANCE("SJPA.L", "lon:isin")
 =HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
+=HOODLEFINANCE("9988.HK", "tradingview:isin")
 =HOODLEFINANCE("GOOG", "tradingview:isin")
 =HOODLEFINANCE("ISJP.L", "ibkr:isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
@@ -137,6 +138,7 @@ These are normalized to Yahoo symbols:
 =HOODLEFINANCE("LON:ISJP", "price")   // -> ISJP.L
 =HOODLEFINANCE("LON:SJPA", "isin")    // -> dispatches to lon:isin
 =HOODLEFINANCE("ETR:ZPRX", "price")   // -> ZPRX.DE
+=HOODLEFINANCE("HKG:9988", "price")   // -> 9988.HK
 =HOODLEFINANCE("NASDAQ:GOOG", "price") // -> GOOG
 ```
 
@@ -192,6 +194,7 @@ If `isin` deduces an exchange that does not have an implemented ISIN resolver ye
 Current implemented exchanges:
 
 - `ETR` -> `tradingview:isin`
+- `HKG` -> `tradingview:isin`
 - `LON` -> `lon:isin`
 - `NASDAQ` -> `tradingview:isin`
 - `NYSE` -> `tradingview:isin`
@@ -204,6 +207,7 @@ Examples:
 =HOODLEFINANCE("ETR:ZPRV", "isin")
 =HOODLEFINANCE("SJPA.L", "isin")
 =HOODLEFINANCE("LON:SJPA", "isin")
+=HOODLEFINANCE("9988.HK", "isin")
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("NYSE:IBM", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
@@ -218,6 +222,7 @@ If the exchange is not specified explicitly, `isin` tries to deduce it from the 
 This source is useful for testing coverage beyond the currently wired default exchanges because TradingView appears to expose ISIN for several markets, including:
 
 - `ETR` / `XETR`
+- `HKG` / `HKEX`
 - `LON` / `LSE`
 - `NASDAQ`
 - `NYSE`
@@ -227,6 +232,7 @@ Examples:
 ```gs
 =HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
 =HOODLEFINANCE("SJPA.L", "tradingview:isin")
+=HOODLEFINANCE("9988.HK", "tradingview:isin")
 =HOODLEFINANCE("GOOG", "tradingview:isin")
 =HOODLEFINANCE("NYSE:IBM", "tradingview:isin")
 ```
