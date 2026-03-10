@@ -143,6 +143,7 @@ These are normalized to Yahoo symbols:
 =HOODLEFINANCE("LON:SJPA", "isin")    // -> dispatches to lon:isin
 =HOODLEFINANCE("ETR:ZPRX", "price")   // -> ZPRX.DE
 =HOODLEFINANCE("HKG:9988", "price")   // -> 9988.HK
+=HOODLEFINANCE("SGX:D05", "price")   // -> D05.SI
 =HOODLEFINANCE("TLV:POLI", "price")   // -> POLI.TA
 =HOODLEFINANCE("OTCMKTS:RYCEY", "price") // -> RYCEY
 =HOODLEFINANCE("NASDAQ:GOOG", "price") // -> GOOG
@@ -206,6 +207,7 @@ Current implemented exchanges:
 - `NYSE` -> `tradingview:isin`
 - `OTCMKTS` -> `tradingview:isin`
 - `PSE` -> `pse:isin`
+- `SGX` -> `tradingview:isin`
 - `TLV` -> `tradingview:isin`
 
 Examples:
@@ -216,6 +218,7 @@ Examples:
 =HOODLEFINANCE("SJPA.L", "isin")
 =HOODLEFINANCE("LON:SJPA", "isin")
 =HOODLEFINANCE("9988.HK", "isin")
+=HOODLEFINANCE("SGX:D05", "isin")
 =HOODLEFINANCE("POLI.TA", "isin")
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("NYSE:IBM", "isin")
@@ -237,6 +240,7 @@ This source is useful for testing coverage beyond the currently wired default ex
 - `NASDAQ`
 - `NYSE`
 - `OTCMKTS` / `OTC`
+- `SGX`
 - `TLV` / `TASE`
 
 Examples:
@@ -245,6 +249,7 @@ Examples:
 =HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
 =HOODLEFINANCE("SJPA.L", "tradingview:isin")
 =HOODLEFINANCE("9988.HK", "tradingview:isin")
+=HOODLEFINANCE("SGX:D05", "tradingview:isin")
 =HOODLEFINANCE("POLI.TA", "tradingview:isin")
 =HOODLEFINANCE("GOOG", "tradingview:isin")
 =HOODLEFINANCE("NYSE:IBM", "tradingview:isin")
@@ -375,7 +380,7 @@ ISIN:
 
 - Historical arguments are not implemented.
 - `marketcap` is intentionally not supported.
-- `isin` only works for exchanges with an implemented exchange-specific resolver. Right now, that includes `ETR`, `LON`, `NASDAQ`, `NYSE`, and `PSE`.
+- `isin` only works for exchanges with an implemented exchange-specific resolver. Right now, that includes `ETR`, `HKG`, `LON`, `NASDAQ`, `NYSE`, `OTCMKTS`, `PSE`, `SGX`, and `TLV`.
 - `ibkr:isin` depends on IBKR public HTML pages, so it is more brittle than quote attributes.
 - `tradingview:isin` depends on TradingView public symbol pages and their bootstrap data, so it is also a scrape-based source.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.

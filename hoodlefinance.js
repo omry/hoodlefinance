@@ -87,6 +87,7 @@ const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = {
   NZE: ".NZ",
   OSL: ".OL",
   PAR: ".PA",
+  SGX: ".SI",
   SHA: ".SS",
   SHE: ".SZ",
   SIX: ".SW",
@@ -166,6 +167,7 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   OSL: "OSE",
   OTCMKTS: "PINK",
   PAR: "SBF",
+  SGX: "",
   SHA: "",
   SHE: "",
   SIX: "EBS",
@@ -204,6 +206,7 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_ = {
   NZ: "NZSE",
   OL: "OSE",
   PA: "SBF",
+  SI: "",
   SA: "BOVESPA",
   SS: "",
   ST: "SFB",
@@ -241,6 +244,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
   NZ: "NZE",
   OL: "OSL",
   PA: "PAR",
+  SI: "SGX",
   SA: "BVMF",
   SS: "SHA",
   ST: "STO",
@@ -279,6 +283,7 @@ const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   NYSEAMERICAN: "AMEX",
   NYSEARCA: "AMEX",
   OTCMKTS: "OTC",
+  SGX: "SGX",
   TLV: "TASE",
 };
 
@@ -290,6 +295,7 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
   NYSE: "tradingview:isin",
   OTCMKTS: "tradingview:isin",
   PSE: "pse:isin",
+  SGX: "tradingview:isin",
   TLV: "tradingview:isin",
 };
 

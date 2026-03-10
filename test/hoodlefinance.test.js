@@ -209,6 +209,13 @@ window.initData.symbolInfo = {"resolved_symbol":"TASE:POLI","isin_displayed":"IL
 </script>
 `;
 
+const TRADINGVIEW_SGX_D05_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"SGX:D05","isin_displayed":"SG1L01001701","exchange":"SGX","short_name":"D05"};
+</script>
+`;
+
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
 <td><a href="javascript:showDetails('90581046')">Details</a></td>
@@ -288,6 +295,7 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
 
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("LON:ISJP"), "ISJP.L");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("ETR:ZPRX"), "ZPRX.DE");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("SGX:D05"), "D05.SI");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
@@ -315,6 +323,7 @@ test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
 
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({}, { tickerInput: "PSE:BDO" }), "PSE");
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ISJP.L" }, { tickerInput: "ISJP.L" }), "LON");
+  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "D05.SI" }, { tickerInput: "SGX:D05" }), "SGX");
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "POLI.TA" }, { tickerInput: "POLI.TA" }), "TLV");
   assert.equal(
     ctx.hoodlefinanceInferIsinExchange_({ symbol: "GOOG", exchangeName: "NMS" }, { tickerInput: "GOOG" }),
@@ -725,6 +734,25 @@ test("isin dispatches to tradingview:isin for TLV tickers", () => {
   });
 });
 
+test("isin dispatches to tradingview:isin for SGX tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "SG1L01001701";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "isin", { tickerInput: "SGX:D05" }),
+    "SG1L01001701"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "D05.SI" },
+    context: { tickerInput: "SGX:D05" },
+  });
+});
+
 test("isin fails clearly when no exchange-specific source is implemented", () => {
   const ctx = loadHoodlefinance();
 
@@ -743,6 +771,8 @@ test("extracts TradingView symbol metadata from the page bootstrap", () => {
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_XETR_ZPRX_HTML), "IE00BSPLC298");
   assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_OTC_RYCEY_HTML), "OTC:RYCEY");
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_OTC_RYCEY_HTML), "US7757812067");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_SGX_D05_HTML), "SGX:D05");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_SGX_D05_HTML), "SG1L01001701");
   assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_TASE_POLI_HTML), "TASE:POLI");
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_TASE_POLI_HTML), "IL0006625771");
 });
@@ -840,6 +870,30 @@ test("tradingview:isin resolves for OTCMKTS tickers", () => {
   assert.equal(
     ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "tradingview:isin", { tickerInput: "OTCMKTS:RYCEY" }),
     "US7757812067"
+  );
+});
+
+test("tradingview:isin resolves for SGX tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/SGX-D05/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_SGX_D05_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "tradingview:isin", { tickerInput: "SGX:D05" }),
+    "SG1L01001701"
   );
 });
 

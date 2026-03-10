@@ -62,7 +62,12 @@ EXCHANGES = [
         "name": "Philippine Stock Exchange",
         "samples": ["PSE:BDO", "PSE:AAA", "PSE:JFC"],
     },
-        {
+    {
+        "code": "SGX",
+        "name": "Singapore Exchange",
+        "samples": ["SGX:D05", "SGX:U11", "SGX:O39"],
+    },
+    {
         "code": "OTCMKTS",
         "name": "OTC Markets",
         "samples": ["OTCMKTS:RYCEY", "OTCMKTS:NSRGY", "OTCMKTS:TCEHY"],
