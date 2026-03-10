@@ -32,6 +32,7 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 - `ibkr:isin` depends on IBKR public HTML pages rather than a clean public API.
 - ISIN resolution is therefore more brittle than `price`, `name`, or `currency`.
 - IBKR may present a captcha challenge on its public search pages; when that happens, `ibkr:isin` lookups fail until the endpoint becomes accessible again.
+- `tradingview:isin` depends on TradingView public symbol pages and their page-bootstrap data, which may change without notice.
 - Generic `isin` only works for exchanges that have an implemented exchange-specific source.
 - `PSE:` support depends on public PSE EDGE HTML pages, so it is more brittle than the Yahoo quote path.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
@@ -90,6 +91,7 @@ If any historical-data arguments are provided, the function throws an error.
 - `low`
 - `open`
 - `pse:isin`
+- `tradingview:isin`
 - `close`
 - `closeyest`
 - `changepct`
@@ -107,6 +109,8 @@ Examples:
 =HOODLEFINANCE("ZPRV.DE", "ariva:isin")
 =HOODLEFINANCE("ZPRV.DE", "isin")
 =HOODLEFINANCE("SJPA.L", "lon:isin")
+=HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
+=HOODLEFINANCE("GOOG", "tradingview:isin")
 =HOODLEFINANCE("ISJP.L", "ibkr:isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("PSE:BDO", "pse:isin")
@@ -176,6 +180,7 @@ This resolution uses Yahoo search and is less robust than direct symbol lookup.
 
 - `isin`: generic ISIN lookup. It deduces the exchange from the ticker and dispatches to the exchange-specific implementation.
 - `<exchange>:isin`: explicit exchange/source-specific ISIN lookup, for example `ariva:isin`, `lon:isin`, or `pse:isin`.
+- `tradingview:isin`: explicit TradingView-backed lookup using the public symbol page.
 - `ibkr:isin`: explicit IBKR-backed lookup.
 
 If `isin` deduces an exchange that does not have an implemented ISIN resolver yet, the function throws a clear error.
@@ -186,8 +191,10 @@ If `isin` deduces an exchange that does not have an implemented ISIN resolver ye
 
 Current implemented exchanges:
 
-- `ETR` -> `ariva:isin`
+- `ETR` -> `tradingview:isin`
 - `LON` -> `lon:isin`
+- `NASDAQ` -> `tradingview:isin`
+- `NYSE` -> `tradingview:isin`
 - `PSE` -> `pse:isin`
 
 Examples:
@@ -197,10 +204,32 @@ Examples:
 =HOODLEFINANCE("ETR:ZPRV", "isin")
 =HOODLEFINANCE("SJPA.L", "isin")
 =HOODLEFINANCE("LON:SJPA", "isin")
+=HOODLEFINANCE("GOOG", "isin")
+=HOODLEFINANCE("NYSE:IBM", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
 If the exchange is not specified explicitly, `isin` tries to deduce it from the ticker form, Yahoo suffix, or quote metadata. If no exchange-specific ISIN resolver is implemented for the deduced exchange, the function errors clearly.
+
+### `tradingview:isin`
+
+`tradingview:isin` uses the public TradingView symbol page and extracts the `isin_displayed` field from the page bootstrap data.
+
+This source is useful for testing coverage beyond the currently wired default exchanges because TradingView appears to expose ISIN for several markets, including:
+
+- `ETR` / `XETR`
+- `LON` / `LSE`
+- `NASDAQ`
+- `NYSE`
+
+Examples:
+
+```gs
+=HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
+=HOODLEFINANCE("SJPA.L", "tradingview:isin")
+=HOODLEFINANCE("GOOG", "tradingview:isin")
+=HOODLEFINANCE("NYSE:IBM", "tradingview:isin")
+```
 
 ### `ariva:isin`
 
@@ -219,6 +248,8 @@ Examples:
 =HOODLEFINANCE("ZPRV.DE", "ariva:isin")
 =HOODLEFINANCE("ETR:ZPRV", "ariva:isin")
 ```
+
+`ariva:isin` remains useful as an explicit source, but generic `isin` for `ETR` now prefers `tradingview:isin` because it covers more of the `.DE` ETF universe in practice.
 
 ### `lon:isin`
 

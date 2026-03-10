@@ -42,6 +42,9 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "pse:isin": function (quote, context) {
     return hoodlefinanceResolvePseIsin_(quote, context);
   },
+  "tradingview:isin": function (quote, context) {
+    return hoodlefinanceResolveTradingviewIsin_(quote, context);
+  },
   tradetime: function (quote) {
     const timestamp = quote.regularMarketTime || quote.postMarketTime || quote.preMarketTime;
     if (timestamp == null) {
@@ -123,6 +126,7 @@ const HOODLEFINANCE_IBKR_DETAIL_URL_ = "https://contract.ibkr.info/v3.10/index.p
 const HOODLEFINANCE_ARIVA_BASE_URL_ = "https://www.ariva.de";
 const HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ = "https://www.ariva.de/search/livesearch.m?searchname=";
 const HOODLEFINANCE_LSE_SEARCH_URL_ = "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=";
+const HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ = "https://www.tradingview.com/symbols/";
 
 const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const HOODLEFINANCE_PSE_STOCK_DATA_URL_ = "https://edge.pse.com.ph/companyPage/stockData.do";
@@ -265,9 +269,21 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
   PNK: "OTCMKTS",
 };
 
+const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
+  AMEX: "AMEX",
+  ETR: "XETR",
+  LON: "LSE",
+  NASDAQ: "NASDAQ",
+  NYSE: "NYSE",
+  NYSEAMERICAN: "AMEX",
+  NYSEARCA: "AMEX",
+};
+
 const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
-  ETR: "ariva:isin",
+  ETR: "tradingview:isin",
   LON: "lon:isin",
+  NASDAQ: "tradingview:isin",
+  NYSE: "tradingview:isin",
   PSE: "pse:isin",
 };
 
@@ -289,6 +305,7 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  * - "lon:isin"
  * - "open"
  * - "pse:isin"
+ * - "tradingview:isin"
  * - "close"
  * - "closeyest"
  * - "changepct"
@@ -780,11 +797,11 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
   const attribute = exchange ? HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_[exchange] || "" : "";
 
   if (!exchange) {
-    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", or \"ibkr:isin\".");
+    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", \"tradingview:isin\", or \"ibkr:isin\".");
   }
 
   if (!attribute) {
-    throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", or \"ibkr:isin\".");
+    throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", \"tradingview:isin\", or \"ibkr:isin\".");
   }
 
   return hoodlefinanceExtractAttribute_(quote, attribute, context || {});
@@ -868,8 +885,89 @@ function hoodlefinanceResolveLonIsin_(quote, context) {
   return listing.isin;
 }
 
+function hoodlefinanceResolveTradingviewIsin_(quote, context) {
+  const yahooExchange = hoodlefinanceInferIsinExchange_(quote, context);
+  const tradingviewExchange = hoodlefinanceInferTradingviewExchange_(quote, context);
+  const code = hoodlefinanceExtractTradingviewCode_(quote, context);
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "hoodlefinance:tradingview:isin:" + tradingviewExchange + ":" + code;
+  const cached = tradingviewExchange && code ? cache.get(cacheKey) : "";
+  const expectedSymbol = tradingviewExchange && code ? tradingviewExchange + ":" + code : "";
+  let html;
+  let resolvedSymbol;
+  let isin;
+
+  if (!tradingviewExchange) {
+    if (yahooExchange) {
+      throw new Error('tradingview:isin is not implemented for exchange "' + yahooExchange + '".');
+    }
+    throw new Error("Could not determine the TradingView exchange for this ticker.");
+  }
+
+  if (!code) {
+    throw new Error("Could not determine the TradingView symbol code for this ticker.");
+  }
+
+  if (cached) {
+    return cached;
+  }
+
+  html = hoodlefinanceFetchText_(HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ + tradingviewExchange + "-" + code + "/");
+  resolvedSymbol = hoodlefinanceExtractTradingviewResolvedSymbol_(html);
+  isin = hoodlefinanceExtractTradingviewIsin_(html);
+
+  if (resolvedSymbol && resolvedSymbol !== expectedSymbol) {
+    throw new Error(
+      'TradingView resolved "' + expectedSymbol + '" to "' + resolvedSymbol + '" instead of an exact symbol match.'
+    );
+  }
+
+  if (!isin) {
+    throw new Error('No TradingView ISIN is available for "' + expectedSymbol + '".');
+  }
+
+  cache.put(cacheKey, isin, 21600);
+  return isin;
+}
+
 function hoodlefinanceExtractQuoteSymbol_(quote) {
   return quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+}
+
+function hoodlefinanceExtractTradingviewCode_(quote, context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+  const candidates = [
+    tickerInput,
+    resolvedSymbol,
+  ];
+  let i;
+  let candidate;
+  let parts;
+  let match;
+
+  for (i = 0; i < candidates.length; i += 1) {
+    candidate = candidates[i];
+    if (!candidate) {
+      continue;
+    }
+
+    if (candidate.indexOf(":") >= 0) {
+      parts = candidate.split(":");
+      if (parts.length > 1) {
+        return parts.slice(1).join(":").trim().toUpperCase();
+      }
+    }
+
+    match = candidate.match(/^([A-Z0-9]+)\.[A-Z0-9]+$/);
+    if (match) {
+      return match[1];
+    }
+
+    return candidate;
+  }
+
+  return "";
 }
 
 function hoodlefinanceExtractLonCode_(quote, context) {
@@ -902,6 +1000,11 @@ function hoodlefinanceExtractLonCode_(quote, context) {
   }
 
   return "";
+}
+
+function hoodlefinanceInferTradingviewExchange_(quote, context) {
+  const yahooExchange = hoodlefinanceInferIsinExchange_(quote, context);
+  return yahooExchange ? HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_[yahooExchange] || "" : "";
 }
 
 function hoodlefinanceExtractArivaCode_(quote, context) {
@@ -1055,6 +1158,16 @@ function hoodlefinanceExtractArivaIsin_(html) {
 
 function hoodlefinanceArivaHasXetra_(html) {
   return /\bXetra\b/i.test(String(html || ""));
+}
+
+function hoodlefinanceExtractTradingviewResolvedSymbol_(html) {
+  const match = String(html || "").match(/"resolved_symbol":"([^"]+)"/i);
+  return match ? match[1].toUpperCase() : "";
+}
+
+function hoodlefinanceExtractTradingviewIsin_(html) {
+  const match = String(html || "").match(/"isin_displayed":"([A-Z]{2}[A-Z0-9]{9}[0-9])"/i);
+  return match ? match[1].toUpperCase() : "";
 }
 
 function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {

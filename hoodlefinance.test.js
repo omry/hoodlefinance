@@ -174,6 +174,27 @@ const ARIVA_DETAIL_ZPRV_HTML = `
 </html>
 `;
 
+const TRADINGVIEW_XETR_ZPRX_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"XETR:ZPRX","isin_displayed":"IE00BSPLC298","exchange":"XETR","short_name":"ZPRX"};
+</script>
+`;
+
+const TRADINGVIEW_LSE_SJPA_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"LSE:SJPA","isin_displayed":"IE00B4L5YX21","exchange":"LSE","short_name":"SJPA"};
+</script>
+`;
+
+const TRADINGVIEW_NASDAQ_GOOG_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"NASDAQ:GOOG","isin_displayed":"US02079K1079","exchange":"NASDAQ","short_name":"GOOG"};
+</script>
+`;
+
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
 <td><a href="javascript:showDetails('90581046')">Details</a></td>
@@ -589,22 +610,22 @@ test("ariva:isin resolves from ARIVA search and detail pages", () => {
   );
 });
 
-test("isin dispatches to ariva:isin for ETR tickers", () => {
+test("isin dispatches to tradingview:isin for ETR tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
-  ctx.hoodlefinanceResolveArivaIsin_ = function (quote, context) {
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
     capturedArgs = { quote, context };
-    return "IE00BSPLC413";
+    return "IE00BSPLC298";
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE" }),
-    "IE00BSPLC413"
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE" }),
+    "IE00BSPLC298"
   );
   assert.deepEqual(capturedArgs, {
-    quote: { symbol: "ZPRV.DE" },
-    context: { tickerInput: "ZPRV.DE" },
+    quote: { symbol: "ZPRX.DE" },
+    context: { tickerInput: "ZPRX.DE" },
   });
 });
 
@@ -627,14 +648,134 @@ test("isin dispatches to lon:isin for London tickers", () => {
   });
 });
 
+test("isin dispatches to tradingview:isin for NASDAQ tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "US02079K1079";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG" }),
+    "US02079K1079"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "GOOG", exchangeName: "NMS" },
+    context: { tickerInput: "GOOG" },
+  });
+});
+
 test("isin fails clearly when no exchange-specific source is implemented", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG" });
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "VWRP.SW" }, "isin", { tickerInput: "VWRP.SW" });
     },
-    /No isin source is implemented for exchange "NASDAQ"\. Use an explicit source attribute such as "ariva:isin", "lon:isin", "pse:isin", or "ibkr:isin"\./
+    /No isin source is implemented for exchange "SIX"\. Use an explicit source attribute such as "ariva:isin", "lon:isin", "pse:isin", "tradingview:isin", or "ibkr:isin"\./
+  );
+});
+
+test("extracts TradingView symbol metadata from the page bootstrap", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_XETR_ZPRX_HTML), "XETR:ZPRX");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_XETR_ZPRX_HTML), "IE00BSPLC298");
+});
+
+test("tradingview:isin resolves for XETR tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/XETR-ZPRX/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_XETR_ZPRX_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "tradingview:isin", { tickerInput: "ZPRX.DE" }),
+    "IE00BSPLC298"
+  );
+});
+
+test("tradingview:isin resolves for LON tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/LSE-SJPA/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_LSE_SJPA_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "tradingview:isin", { tickerInput: "SJPA.L" }),
+    "IE00B4L5YX21"
+  );
+});
+
+test("tradingview:isin resolves for NASDAQ tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/NASDAQ-GOOG/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_NASDAQ_GOOG_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "tradingview:isin", { tickerInput: "GOOG" }),
+    "US02079K1079"
+  );
+});
+
+test("tradingview:isin rejects mismatched TradingView symbols", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function () {
+    return {
+      getResponseCode() {
+        return 200;
+      },
+      getContentText() {
+        return TRADINGVIEW_LSE_SJPA_HTML;
+      },
+    };
+  };
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "tradingview:isin", { tickerInput: "ZPRX.DE" });
+    },
+    /TradingView resolved "XETR:ZPRX" to "LSE:SJPA" instead of an exact symbol match\./
   );
 });
 
