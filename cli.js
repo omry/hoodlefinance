@@ -33,16 +33,32 @@ function loadHoodlefinance() {
     },
     UrlFetchApp: {
       fetch(url) {
-        const output = childProcess.execFileSync("curl", ["-Ls", url], {
-          encoding: "utf8",
-        });
+        const output = childProcess.execFileSync(
+          "curl",
+          [
+            "-Ls",
+            "-H",
+            "User-Agent: Mozilla/5.0",
+            "-H",
+            "Accept-Language: en-US,en;q=0.9",
+            "-w",
+            "\n__HOODLEFINANCE_STATUS__:%{http_code}\n",
+            url,
+          ],
+          {
+            encoding: "utf8",
+          }
+        );
+        const match = output.match(/\n__HOODLEFINANCE_STATUS__:(\d{3})\n$/);
+        const body = match ? output.slice(0, match.index) : output;
+        const statusCode = match ? Number(match[1]) : 0;
 
         return {
           getResponseCode() {
-            return 200;
+            return statusCode;
           },
           getContentText() {
-            return output;
+            return body;
           },
         };
       },

@@ -109,10 +109,8 @@ const HOODLEFINANCE_PREFIXLESS_EXCHANGES_ = {
   OTCMKTS: true,
 };
 
-const HOODLEFINANCE_IBKR_SEARCH_URLS_ = [
-  "https://www.interactivebrokers.com/cgi-pub/contractSearch/symbolsearch.pl?symbol=",
-  "https://www.interactivebrokers.com/cgi-bin/symbolSearch.pl?symbol=",
-];
+const HOODLEFINANCE_IBKR_SEARCH_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=";
+const HOODLEFINANCE_IBKR_DETAIL_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=";
 
 const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const HOODLEFINANCE_PSE_STOCK_DATA_URL_ = "https://edge.pse.com.ph/companyPage/stockData.do";
@@ -383,7 +381,11 @@ function hoodlefinanceNormalizeTicker_(ticker) {
     return symbol + HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange];
   }
 
-  return symbol;
+  if (hoodlefinanceNormalizeExplicitIbkrExchange_(exchange)) {
+    return symbol;
+  }
+
+  throw new Error('Unsupported exchange prefix "' + exchange + '" in ticker "' + ticker + '".');
 }
 
 function hoodlefinanceCoerceScalar_(value, label) {
@@ -644,10 +646,9 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
   const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:ibkr:isin:" + lookupSymbol + ":" + (preferredExchange || "");
   const cached = cache.get(cacheKey);
+  let searchUrls;
   let detailEntries;
   let i;
-  let j;
-  let detailHtml;
   let isin;
 
   if (!lookupSymbol) {
@@ -658,20 +659,46 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
     return cached;
   }
 
-  for (i = 0; i < HOODLEFINANCE_IBKR_SEARCH_URLS_.length; i += 1) {
-    detailEntries = hoodlefinanceExtractIbkrDetailUrls_(
-      hoodlefinanceFetchText_(HOODLEFINANCE_IBKR_SEARCH_URLS_[i] + encodeURIComponent(lookupSymbol))
-    );
+  searchUrls = hoodlefinanceBuildIbkrSearchUrls_(lookupSymbol, preferredExchange);
 
+  for (i = 0; i < searchUrls.length; i += 1) {
+    detailEntries = hoodlefinanceExtractIbkrDetailUrls_(hoodlefinanceFetchText_(searchUrls[i]));
     hoodlefinanceSortIbkrDetailEntries_(detailEntries, preferredExchange);
 
-    for (j = 0; j < detailEntries.length && j < 5; j += 1) {
-      detailHtml = hoodlefinanceFetchText_(detailEntries[j].url);
-      isin = hoodlefinanceExtractIsin_(detailHtml);
-      if (isin) {
-        cache.put(cacheKey, isin, 21600);
-        return isin;
-      }
+    isin = hoodlefinanceResolveIbkrIsinFromDetailEntries_(detailEntries);
+    if (isin) {
+      cache.put(cacheKey, isin, 21600);
+      return isin;
+    }
+  }
+
+  return "";
+}
+
+function hoodlefinanceBuildIbkrSearchUrls_(symbol, preferredExchange) {
+  const urls = [];
+  const encodedSymbol = encodeURIComponent(String(symbol || "").trim().toUpperCase());
+  const encodedExchange = encodeURIComponent(String(preferredExchange || "").trim().toUpperCase());
+
+  if (preferredExchange) {
+    urls.push(HOODLEFINANCE_IBKR_SEARCH_URL_ + encodedSymbol + "&exchange=" + encodedExchange);
+  }
+
+  urls.push(HOODLEFINANCE_IBKR_SEARCH_URL_ + encodedSymbol);
+
+  return urls;
+}
+
+function hoodlefinanceResolveIbkrIsinFromDetailEntries_(detailEntries) {
+  let i;
+  let detailHtml;
+  let isin;
+
+  for (i = 0; i < detailEntries.length && i < 8; i += 1) {
+    detailHtml = hoodlefinanceFetchText_(detailEntries[i].url);
+    isin = hoodlefinanceExtractIsin_(detailHtml);
+    if (isin) {
+      return isin;
     }
   }
 
@@ -679,20 +706,34 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
 }
 
 function hoodlefinanceExtractIbkrDetailUrls_(text) {
-  const matches = String(text || "").match(/(?:https:\/\/misc\.interactivebrokers\.com)?\/cstools\/contract_info\/(?:v3\.10\/)?index2?\.php\?action=Details(?:&amp;|&)conid=\d+(?:&amp;|&)site=\w+/gi);
+  const legacyMatches = String(text || "").match(/(?:https:\/\/misc\.interactivebrokers\.com)?\/cstools\/contract_info\/(?:v3\.10\/)?index2?\.php\?action=Details(?:&amp;|&)conid=\d+(?:&amp;|&)site=\w+/gi);
+  const modernPattern = /<tr[^>]*>[\s\S]*?<a href="javascript:showDetails\('(\d+)'\)">Details<\/a>[\s\S]*?<\/tr>/gi;
   const urls = [];
   const seen = {};
   let i;
+  let match;
+  let row;
   let normalizedUrl;
   let exchangeHint;
 
-  if (!matches) {
-    return urls;
+  if (legacyMatches) {
+    for (i = 0; i < legacyMatches.length; i += 1) {
+      normalizedUrl = hoodlefinanceNormalizeIbkrUrl_(legacyMatches[i]);
+      exchangeHint = hoodlefinanceExtractIbkrExchangeHint_(legacyMatches[i]);
+      if (!seen[normalizedUrl]) {
+        seen[normalizedUrl] = true;
+        urls.push({
+          exchangeHint: exchangeHint,
+          url: normalizedUrl,
+        });
+      }
+    }
   }
 
-  for (i = 0; i < matches.length; i += 1) {
-    normalizedUrl = hoodlefinanceNormalizeIbkrUrl_(matches[i]);
-    exchangeHint = hoodlefinanceExtractIbkrExchangeHint_(matches[i]);
+  while ((match = modernPattern.exec(String(text || "")))) {
+    row = match[0];
+    normalizedUrl = HOODLEFINANCE_IBKR_DETAIL_URL_ + match[1];
+    exchangeHint = hoodlefinanceExtractIbkrModernExchangeHint_(row);
     if (!seen[normalizedUrl]) {
       seen[normalizedUrl] = true;
       urls.push({
@@ -703,6 +744,15 @@ function hoodlefinanceExtractIbkrDetailUrls_(text) {
   }
 
   return urls;
+}
+
+function hoodlefinanceExtractIbkrModernExchangeHint_(rowHtml) {
+  const match = String(rowHtml || "").match(
+    /<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?>([\s\S]*?)<\/td>/i
+  );
+  const rawValue = match ? String(match[1]).replace(/^.*">/s, "") : "";
+
+  return rawValue ? hoodlefinanceCleanHtmlText_(rawValue).toUpperCase() : "";
 }
 
 function hoodlefinanceExtractIbkrExchangeHint_(text) {

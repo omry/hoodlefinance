@@ -121,6 +121,29 @@ const PSE_STOCK_BDO_HTML = `
 </table>
 `;
 
+const IBKR_MODERN_SEARCH_HTML = `
+<tr class="odd">
+<td><a href="javascript:showDetails('90581046')">Details</a></td>
+<td><div style="padding-left:10px;"><b>ISHARES MSCI JAPAN SMALL CAP</b></div></td>
+<td>Stock</td>
+<td onmouseover="Tip('Conid: 90581046')" onmouseout="UnTip()">ISJP</td>
+<td onmouseover="Tip('<b>EBS</b>, BATECH', TITLE, 'All Available Exchanges')" onmouseout="UnTip()">EBS</td>
+<td>Exchange-Traded Fund (ETF)</th>
+<td align="right">8,677.0</td>
+<td>JPY</td>
+</tr>
+<tr class="even">
+<td><a href="javascript:showDetails('208813720')">Details</a></td>
+<td><div style="padding-left:10px;"><b>Google Inc.</b></div></td>
+<td>Stock</td>
+<td onmouseover="Tip('Conid: 208813720')" onmouseout="UnTip()">GOOG</td>
+<td onmouseover="Tip('<b>NASDAQ</b>, AMEX', TITLE, 'All Available Exchanges')" onmouseout="UnTip()">NASDAQ</td>
+<td>Common</th>
+<td align="right">306.01</td>
+<td>USD</td>
+</tr>
+`;
+
 function loadHoodlefinance() {
   const source = fs.readFileSync(path.join(__dirname, "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
@@ -199,6 +222,17 @@ test("unsupported or unmapped exchanges fall back to blank hint", () => {
   assert.equal(ctx.hoodlefinanceInferIbkrExchange_("UNKNOWN:FOO", "FOO"), "");
 });
 
+test("unsupported exchange prefixes fail early during ticker normalization", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceNormalizeTicker_("PDA:BDO");
+    },
+    /Unsupported exchange prefix "PDA"/
+  );
+});
+
 test("extracts IBKR detail URLs and de-duplicates matches", () => {
   const ctx = loadHoodlefinance();
   const html = [
@@ -214,6 +248,17 @@ test("extracts IBKR detail URLs and de-duplicates matches", () => {
   assert.equal(entries[1].url, "https://misc.interactivebrokers.com/cstools/contract_info/index.php?action=Details&conid=456&site=GEN");
 });
 
+test("extracts IBKR detail URLs from the modern contract search results", () => {
+  const ctx = loadHoodlefinance();
+  const entries = ctx.hoodlefinanceExtractIbkrDetailUrls_(IBKR_MODERN_SEARCH_HTML);
+
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].url, "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=90581046");
+  assert.equal(entries[0].exchangeHint, "EBS");
+  assert.equal(entries[1].url, "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=208813720");
+  assert.equal(entries[1].exchangeHint, "NASDAQ");
+});
+
 test("sorts IBKR detail entries to prefer the requested exchange", () => {
   const ctx = loadHoodlefinance();
   const entries = [
@@ -227,6 +272,18 @@ test("sorts IBKR detail entries to prefer the requested exchange", () => {
   assert.deepEqual(
     entries.map((entry) => entry.url),
     ["lse", "ibis", "other"]
+  );
+});
+
+test("builds preferred and fallback IBKR search URLs", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceBuildIbkrSearchUrls_("ISJP", "EBS")),
+    JSON.stringify([
+      "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=ISJP&exchange=EBS",
+      "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=ISJP",
+    ])
   );
 });
 
