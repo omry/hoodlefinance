@@ -1,0 +1,7 @@
+- script versioning
+- version check agasint GitHub (can add to google sheets menu)
+- diagnose failing tickers and add support if possible
+- support currency conversions with same currency conversion ratio (always 1)
+- document that price information is likely delayed by an unspecified time due to different data sources
+- Improve the error message for this case so a 404 on clearly dead/delisted OTC tickers reads more like: No current Yahoo quote data was found for OTCMKTS:HGEN. The symbol may be delisted or cancelled.
+- diagnose SGX:D05, TSE:ZTL
