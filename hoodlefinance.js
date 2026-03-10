@@ -1,5 +1,8 @@
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
+  "ibkr:isin": function (quote, context) {
+    return hoodlefinanceResolveIbkrIsin_(quote, context);
+  },
   currency: function (quote) {
     return hoodlefinanceNormalizeCurrency_(quote.currency || quote.financialCurrency || "");
   },
@@ -19,10 +22,7 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
     return hoodlefinanceNormalizeMoney_(quote, quote.regularMarketDayLow);
   },
   isin: function (quote, context) {
-    if (quote && quote.isin) {
-      return String(quote.isin).toUpperCase();
-    }
-    return hoodlefinanceResolveIbkrIsin_(quote, context);
+    return hoodlefinanceResolveDefaultIsin_(quote, context);
   },
   name: function (quote) {
     return quote.longName || quote.shortName || quote.displayName || quote.symbol || "";
@@ -32,6 +32,9 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
   price: function (quote) {
     return hoodlefinanceNormalizeMoney_(quote, hoodlefinancePickPrice_(quote));
+  },
+  "pse:isin": function (quote, context) {
+    return hoodlefinanceResolvePseIsin_(quote, context);
   },
   tradetime: function (quote) {
     const timestamp = quote.regularMarketTime || quote.postMarketTime || quote.preMarketTime;
@@ -203,6 +206,60 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_ = {
   WA: "WSE",
 };
 
+const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
+  AS: "AMS",
+  AX: "ASX",
+  BO: "BOM",
+  BR: "BRU",
+  CO: "CPH",
+  DE: "ETR",
+  F: "FRA",
+  HE: "HEL",
+  HK: "HKG",
+  IC: "ICE",
+  IS: "IST",
+  JO: "JSE",
+  KQ: "KOSDAQ",
+  KS: "KRX",
+  L: "LON",
+  MC: "MAD",
+  MI: "BIT",
+  MX: "BMV",
+  NS: "NSE",
+  NZ: "NZE",
+  OL: "OSL",
+  PA: "PAR",
+  SA: "BVMF",
+  SS: "SHA",
+  ST: "STO",
+  SW: "SIX",
+  SZ: "SHE",
+  T: "TYO",
+  TO: "TSX",
+  TW: "TPE",
+  V: "CVE",
+  VI: "VIE",
+  WA: "WSE",
+};
+
+const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
+  AMEX: "AMEX",
+  ARCA: "NYSEARCA",
+  ASE: "AMEX",
+  BATS: "BATS",
+  NASDAQ: "NASDAQ",
+  NMS: "NASDAQ",
+  NYQ: "NYSE",
+  NYSE: "NYSE",
+  OQX: "OTCMKTS",
+  OTO: "OTCMKTS",
+  PNK: "OTCMKTS",
+};
+
+const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
+  PSE: "pse:isin",
+};
+
 /**
  * Drop-in replacement for GOOGLEFINANCE for single-result quote fields.
  *
@@ -215,8 +272,10 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_ = {
  * - "volume"
  * - "high"
  * - "low"
+ * - "ibkr:isin"
  * - "isin"
  * - "open"
+ * - "pse:isin"
  * - "close"
  * - "closeyest"
  * - "changepct"
@@ -640,8 +699,98 @@ function hoodlefinanceResolveIbkrIsin_(quote, context) {
   throw new Error("No IBKR ISIN is available for this ticker.");
 }
 
+function hoodlefinanceResolveDefaultIsin_(quote, context) {
+  const exchange = hoodlefinanceInferIsinExchange_(quote, context);
+  const attribute = exchange ? HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_[exchange] || "" : "";
+
+  if (!exchange) {
+    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"pse:isin\" or \"ibkr:isin\".");
+  }
+
+  if (!attribute) {
+    throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an explicit source attribute such as \"ibkr:isin\".");
+  }
+
+  return hoodlefinanceExtractAttribute_(quote, attribute, context || {});
+}
+
+function hoodlefinanceResolvePseIsin_(quote, context) {
+  const exchange = hoodlefinanceInferIsinExchange_(quote, context);
+
+  if (exchange !== "PSE") {
+    throw new Error("pse:isin is only implemented for PSE tickers.");
+  }
+
+  if (quote && quote.isin) {
+    return String(quote.isin).toUpperCase();
+  }
+
+  throw new Error("No PSE ISIN is available for this ticker.");
+}
+
 function hoodlefinanceExtractQuoteSymbol_(quote) {
   return quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+}
+
+function hoodlefinanceInferIsinExchange_(quote, context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
+  const explicitExchange = hoodlefinanceExtractTickerExchange_(tickerInput);
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+  const suffixExchange = hoodlefinanceExtractYahooExchangeFromSymbol_(resolvedSymbol || tickerInput);
+  const metaExchange = hoodlefinanceExtractYahooExchangeFromQuote_(quote);
+
+  if (hoodlefinanceIsPseTicker_(tickerInput)) {
+    return "PSE";
+  }
+
+  if (explicitExchange) {
+    return explicitExchange;
+  }
+
+  if (suffixExchange) {
+    return suffixExchange;
+  }
+
+  if (metaExchange) {
+    return metaExchange;
+  }
+
+  return "";
+}
+
+function hoodlefinanceExtractTickerExchange_(ticker) {
+  const value = String(ticker || "").trim().toUpperCase();
+  const parts = value.split(":");
+  const exchange = parts.length > 1 ? parts[0] : "";
+
+  if (!exchange || exchange === "CURRENCY" || exchange === "ISIN") {
+    return "";
+  }
+
+  if (exchange === "PSE") {
+    return "PSE";
+  }
+
+  if (HOODLEFINANCE_PREFIXLESS_EXCHANGES_[exchange] || HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange] || hoodlefinanceNormalizeExplicitIbkrExchange_(exchange)) {
+    return exchange;
+  }
+
+  return "";
+}
+
+function hoodlefinanceExtractYahooExchangeFromSymbol_(symbol) {
+  const match = String(symbol || "").trim().toUpperCase().match(/\.([A-Z0-9]+)$/);
+  const suffix = match ? match[1] : "";
+
+  return suffix ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_[suffix] || "" : "";
+}
+
+function hoodlefinanceExtractYahooExchangeFromQuote_(quote) {
+  const exchangeName = String(
+    (quote && (quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName)) || ""
+  ).trim().toUpperCase();
+
+  return exchangeName ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[exchangeName] || "" : "";
 }
 
 function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {

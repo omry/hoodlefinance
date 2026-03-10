@@ -221,6 +221,17 @@ test("maps Yahoo suffixes to IBKR exchange hints", () => {
   assert.equal(ctx.hoodlefinanceInferIbkrExchange_("IUVL.L", "IUVL.L"), "LSEETF");
 });
 
+test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.hoodlefinanceInferIsinExchange_({}, { tickerInput: "PSE:BDO" }), "PSE");
+  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ISJP.L" }, { tickerInput: "ISJP.L" }), "LON");
+  assert.equal(
+    ctx.hoodlefinanceInferIsinExchange_({ symbol: "GOOG", exchangeName: "NMS" }, { tickerInput: "GOOG" }),
+    "NASDAQ"
+  );
+});
+
 test("explicit IBKR exchange codes override Yahoo-derived mapping", () => {
   const ctx = loadHoodlefinance();
 
@@ -347,7 +358,7 @@ test("detects IBKR captcha challenges and reports them explicitly", () => {
 
   assert.throws(
     function () {
-      ctx.HOODLEFINANCE("GOOG", "isin");
+      ctx.HOODLEFINANCE("GOOG", "ibkr:isin");
     },
     /IBKR ISIN lookup is currently blocked by a captcha challenge for "GOOG"\. URL: https:\/\/contract\.ibkr\.info\//
   );
@@ -361,7 +372,7 @@ test("money normalization converts GBp prices to GBP", () => {
   assert.equal(ctx.hoodlefinanceNormalizeCurrency_("GBp"), "GBP");
 });
 
-test("attribute extraction uses context-aware isin resolver", () => {
+test("attribute extraction uses context-aware ibkr:isin resolver", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -372,7 +383,7 @@ test("attribute extraction uses context-aware isin resolver", () => {
 
   const result = ctx.hoodlefinanceExtractAttribute_(
     { symbol: "ISJP.L" },
-    "isin",
+    "ibkr:isin",
     { tickerInput: "LON:ISJP" }
   );
 
@@ -381,6 +392,36 @@ test("attribute extraction uses context-aware isin resolver", () => {
     quote: { symbol: "ISJP.L" },
     context: { tickerInput: "LON:ISJP" },
   });
+});
+
+test("isin dispatches to the implemented exchange-specific source", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolvePseIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "PHY030431175";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA" }),
+    "PHY030431175"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "AAA", isin: "PHY030431175" },
+    context: { tickerInput: "PSE:AAA" },
+  });
+});
+
+test("isin fails clearly when no exchange-specific source is implemented", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG" });
+    },
+    /No isin source is implemented for exchange "NASDAQ"\. Use an explicit source attribute such as "ibkr:isin"\./
+  );
 });
 
 test("extracts exact PSE listing matches from search results", () => {
@@ -500,18 +541,41 @@ test("fetches PSE quotes through the direct PSE path", () => {
   assert.equal(quote.regularMarketPrice, 1.63);
 });
 
-test("isin returns direct quote isin before trying IBKR resolution", () => {
+test("pse:isin returns direct quote isin", () => {
   const ctx = loadHoodlefinance();
-  let ibkrCalled = false;
 
-  ctx.hoodlefinanceResolveIbkrIsin_ = function () {
-    ibkrCalled = true;
-    return "SHOULDNOTHAPPEN";
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "pse:isin", { tickerInput: "PSE:AAA" }),
+    "PHY030431175"
+  );
+});
+
+test("pse:isin rejects non-PSE tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "pse:isin", { tickerInput: "GOOG" });
+    },
+    /pse:isin is only implemented for PSE tickers\./
+  );
+});
+
+test("ibkr:isin does not short-circuit to direct quote isin", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveIbkrIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "IBKRISIN123";
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA" }),
-    "PHY030431175"
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "ibkr:isin", { tickerInput: "PSE:AAA" }),
+    "IBKRISIN123"
   );
-  assert.equal(ibkrCalled, false);
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "AAA", isin: "PHY030431175" },
+    context: { tickerInput: "PSE:AAA" },
+  });
 });

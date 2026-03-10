@@ -2,7 +2,7 @@
 
 `HOODLEFINANCE` is a Google Apps Script custom function intended as a partial single-result replacement for `GOOGLEFINANCE`.
 
-It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and IBKR public contract pages for non-PSE `isin`.
+It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and source-specific resolvers for `isin` attributes.
 
 ## Advantages Over `GOOGLEFINANCE`
 
@@ -12,7 +12,7 @@ Main advantages:
 
 - Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L` and `ZPRX.DE`.
 - Adds `name` and `currency` support using the same quote path as `price`, which makes the output more consistent across symbols.
-- Adds `isin`, which `GOOGLEFINANCE` does not provide. This is especially useful for broker portability and execution workflows.
+- Adds exchange-specific `isin` support, which `GOOGLEFINANCE` does not provide. This is especially useful for broker portability and execution workflows.
 - Works better for many non-U.S. ETFs and UCITS listings that are awkward or inconsistent in `GOOGLEFINANCE`.
 - Supports `PSE:` tickers directly from the Philippine Stock Exchange website instead of depending on Yahoo coverage.
 - Normalizes `GBp` quotes into `GBP`, so price and currency are easier to work with in downstream formulas.
@@ -29,9 +29,10 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 - Only single-result quote fields are supported.
 - Historical data arguments are not implemented.
 - `marketcap` is intentionally not supported.
-- `isin` depends on IBKR public HTML pages rather than a clean public API.
+- `ibkr:isin` depends on IBKR public HTML pages rather than a clean public API.
 - ISIN resolution is therefore more brittle than `price`, `name`, or `currency`.
-- IBKR may present a captcha challenge on its public search pages; when that happens, `isin` lookups fail until the endpoint becomes accessible again.
+- IBKR may present a captcha challenge on its public search pages; when that happens, `ibkr:isin` lookups fail until the endpoint becomes accessible again.
+- Generic `isin` only works for exchanges that have an implemented exchange-specific source.
 - `PSE:` support depends on public PSE EDGE HTML pages, so it is more brittle than the Yahoo quote path.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - The function is custom Apps Script code, so it is not as portable across spreadsheets as built-in `GOOGLEFINANCE`.
@@ -76,6 +77,8 @@ If any historical-data arguments are provided, the function throws an error.
 ## Supported Attributes
 
 - `price`
+- `ibkr:isin`
+- `isin`
 - `name`
 - `currency`
 - `tradetime`
@@ -83,8 +86,8 @@ If any historical-data arguments are provided, the function throws an error.
 - `volume`
 - `high`
 - `low`
-- `isin`
 - `open`
+- `pse:isin`
 - `close`
 - `closeyest`
 - `changepct`
@@ -99,7 +102,9 @@ Examples:
 =HOODLEFINANCE("NASDAQ:GOOG", "price")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
-=HOODLEFINANCE("ISJP.L", "isin")
+=HOODLEFINANCE("ISJP.L", "ibkr:isin")
+=HOODLEFINANCE("PSE:BDO", "isin")
+=HOODLEFINANCE("PSE:BDO", "pse:isin")
 =HOODLEFINANCE("PSE:AAA", "price")
 ```
 
@@ -143,6 +148,7 @@ Philippine listings can use the `PSE:` prefix:
 =HOODLEFINANCE("PSE:AAA", "price")
 =HOODLEFINANCE("PSE:BDO", "name")
 =HOODLEFINANCE("PSE:BDO", "isin")
+=HOODLEFINANCE("PSE:BDO", "pse:isin")
 ```
 
 These do not go through Yahoo. They are resolved directly from public PSE EDGE company-directory and stock-data pages.
@@ -158,38 +164,73 @@ If the input itself is an ISIN, `HOODLEFINANCE` resolves it to a Yahoo symbol fi
 
 This resolution uses Yahoo search and is less robust than direct symbol lookup.
 
-## `isin` Attribute
+## ISIN Attributes
 
-The `isin` attribute does **not** come from Yahoo quote metadata.
+`HOODLEFINANCE` now uses this convention:
 
-Instead, it:
+- `isin`: generic ISIN lookup. It deduces the exchange from the ticker and dispatches to the exchange-specific implementation.
+- `<exchange>:isin`: explicit exchange/source-specific ISIN lookup, for example `pse:isin`.
+- `ibkr:isin`: explicit IBKR-backed lookup.
 
-1. returns a direct `quote.isin` value when the quote source provides one, such as `PSE:`
-2. otherwise resolves the ticker to a Yahoo symbol for quote retrieval
-3. strips Yahoo suffixes such as `.L` or `.DE` when searching IBKR
-4. uses the original callsite ticker to infer a preferred IBKR exchange
-5. scrapes IBKR public contract-detail pages for the first matching ISIN
+If `isin` deduces an exchange that does not have an implemented ISIN resolver yet, the function throws a clear error.
+
+### `isin`
+
+`isin` dispatches to an exchange-specific resolver based on the ticker.
+
+Current implemented exchanges:
+
+- `PSE` -> `pse:isin`
 
 Examples:
 
 ```gs
 =HOODLEFINANCE("PSE:BDO", "isin")
-=HOODLEFINANCE("ISJP.L", "isin")
-=HOODLEFINANCE("ZPRX.DE", "isin")
-=HOODLEFINANCE("LON:ISJP", "isin")
-=HOODLEFINANCE("ETR:ZPRX", "isin")
-=HOODLEFINANCE("LSEETF:ISJP", "isin")
-=HOODLEFINANCE("IBIS:ZPRX", "isin")
 ```
 
-For non-PSE tickers, the resolver:
+If the exchange is not specified explicitly, `isin` tries to deduce it from the ticker form, Yahoo suffix, or quote metadata. If no exchange-specific ISIN resolver is implemented for the deduced exchange, the function errors clearly.
+
+### `pse:isin`
+
+`pse:isin` is the first implemented exchange-specific ISIN source.
+
+It uses the public PSE EDGE stock-data page directly and only works for `PSE:` tickers.
+
+Examples:
+
+```gs
+=HOODLEFINANCE("PSE:BDO", "pse:isin")
+```
+
+### `ibkr:isin`
+
+The `ibkr:isin` attribute does **not** come from Yahoo quote metadata.
+
+Instead, it:
 
 1. resolves the ticker to a Yahoo symbol for quote retrieval
 2. strips Yahoo suffixes such as `.L` or `.DE` when searching IBKR
 3. uses the original callsite ticker to infer a preferred IBKR exchange
 4. scrapes IBKR public contract-detail pages for the first matching ISIN
 
-### Exchange inference for `isin`
+Important:
+
+- `ibkr:isin` can fail when IBKR presents a captcha challenge on its public search pages.
+- In that case the function returns an explicit error that includes the blocked IBKR search URL.
+
+Examples:
+
+```gs
+=HOODLEFINANCE("PSE:BDO", "ibkr:isin")
+=HOODLEFINANCE("ISJP.L", "ibkr:isin")
+=HOODLEFINANCE("ZPRX.DE", "ibkr:isin")
+=HOODLEFINANCE("LON:ISJP", "ibkr:isin")
+=HOODLEFINANCE("ETR:ZPRX", "ibkr:isin")
+=HOODLEFINANCE("LSEETF:ISJP", "ibkr:isin")
+=HOODLEFINANCE("IBIS:ZPRX", "ibkr:isin")
+```
+
+### Exchange inference for `ibkr:isin`
 
 The resolver can infer or accept an IBKR exchange hint:
 
@@ -240,7 +281,8 @@ ISIN:
 
 - Historical arguments are not implemented.
 - `marketcap` is intentionally not supported.
-- `isin` depends on IBKR public HTML pages, so it is more brittle than quote attributes.
+- `isin` only works for exchanges with an implemented exchange-specific resolver. Right now, that means `PSE`.
+- `ibkr:isin` depends on IBKR public HTML pages, so it is more brittle than quote attributes.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - `changepct` returns a fraction such as `0.0123` for `1.23%`, so format the cell as Percent in Sheets.
 - `GBp` quotes are normalized to `GBP`: money values are divided by 100 and the reported currency is changed to `GBP`.
