@@ -2,7 +2,7 @@
 
 `HOODLEFINANCE` is a Google Apps Script custom function intended as a partial single-result replacement for `GOOGLEFINANCE`.
 
-It uses Yahoo Finance for quote data and IBKR public contract pages for `isin`.
+It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and IBKR public contract pages for non-PSE `isin`.
 
 ## Advantages Over `GOOGLEFINANCE`
 
@@ -14,6 +14,7 @@ Main advantages:
 - Adds `name` and `currency` support using the same quote path as `price`, which makes the output more consistent across symbols.
 - Adds `isin`, which `GOOGLEFINANCE` does not provide. This is especially useful for broker portability and execution workflows.
 - Works better for many non-U.S. ETFs and UCITS listings that are awkward or inconsistent in `GOOGLEFINANCE`.
+- Supports `PSE:` tickers directly from the Philippine Stock Exchange website instead of depending on Yahoo coverage.
 - Normalizes `GBp` quotes into `GBP`, so price and currency are easier to work with in downstream formulas.
 - Uses explicit exchange normalization rules instead of relying only on Google’s ticker recognition.
 
@@ -30,6 +31,7 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 - `marketcap` is intentionally not supported.
 - `isin` depends on IBKR public HTML pages rather than a clean public API.
 - ISIN resolution is therefore more brittle than `price`, `name`, or `currency`.
+- `PSE:` support depends on public PSE EDGE HTML pages, so it is more brittle than the Yahoo quote path.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - The function is custom Apps Script code, so it is not as portable across spreadsheets as built-in `GOOGLEFINANCE`.
 - The quote path depends on Yahoo public endpoints, which may change behavior without notice.
@@ -97,6 +99,7 @@ Examples:
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
 =HOODLEFINANCE("ISJP.L", "isin")
+=HOODLEFINANCE("PSE:AAA", "price")
 ```
 
 ## Ticker Forms
@@ -131,6 +134,18 @@ Currency tickers use the `CURRENCY:` prefix:
 
 This normalizes to Yahoo's `EURUSD=X`.
 
+### PSE tickers
+
+Philippine listings can use the `PSE:` prefix:
+
+```gs
+=HOODLEFINANCE("PSE:AAA", "price")
+=HOODLEFINANCE("PSE:BDO", "name")
+=HOODLEFINANCE("PSE:BDO", "isin")
+```
+
+These do not go through Yahoo. They are resolved directly from public PSE EDGE company-directory and stock-data pages.
+
 ### ISIN-to-symbol lookup
 
 If the input itself is an ISIN, `HOODLEFINANCE` resolves it to a Yahoo symbol first:
@@ -148,14 +163,16 @@ The `isin` attribute does **not** come from Yahoo quote metadata.
 
 Instead, it:
 
-1. resolves the ticker to a Yahoo symbol for quote retrieval
-2. strips Yahoo suffixes such as `.L` or `.DE` when searching IBKR
-3. uses the original callsite ticker to infer a preferred IBKR exchange
-4. scrapes IBKR public contract-detail pages for the first matching ISIN
+1. returns a direct `quote.isin` value when the quote source provides one, such as `PSE:`
+2. otherwise resolves the ticker to a Yahoo symbol for quote retrieval
+3. strips Yahoo suffixes such as `.L` or `.DE` when searching IBKR
+4. uses the original callsite ticker to infer a preferred IBKR exchange
+5. scrapes IBKR public contract-detail pages for the first matching ISIN
 
 Examples:
 
 ```gs
+=HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("ISJP.L", "isin")
 =HOODLEFINANCE("ZPRX.DE", "isin")
 =HOODLEFINANCE("LON:ISJP", "isin")
@@ -163,6 +180,13 @@ Examples:
 =HOODLEFINANCE("LSEETF:ISJP", "isin")
 =HOODLEFINANCE("IBIS:ZPRX", "isin")
 ```
+
+For non-PSE tickers, the resolver:
+
+1. resolves the ticker to a Yahoo symbol for quote retrieval
+2. strips Yahoo suffixes such as `.L` or `.DE` when searching IBKR
+3. uses the original callsite ticker to infer a preferred IBKR exchange
+4. scrapes IBKR public contract-detail pages for the first matching ISIN
 
 ### Exchange inference for `isin`
 

@@ -19,6 +19,9 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
     return hoodlefinanceNormalizeMoney_(quote, quote.regularMarketDayLow);
   },
   isin: function (quote, context) {
+    if (quote && quote.isin) {
+      return String(quote.isin).toUpperCase();
+    }
     return hoodlefinanceResolveIbkrIsin_(quote, context);
   },
   name: function (quote) {
@@ -261,7 +264,13 @@ function HOODLEFINANCE(ticker, attribute, startDate, endDateOrNumDays, interval)
 }
 
 function hoodlefinanceFetchQuote_(ticker) {
-  const yahooSymbol = hoodlefinanceNormalizeTicker_(ticker);
+  const normalizedTicker = String(ticker).trim();
+
+  if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
+    return hoodlefinanceFetchPseQuote_(normalizedTicker);
+  }
+
+  const yahooSymbol = hoodlefinanceNormalizeTicker_(normalizedTicker);
   const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:" + yahooSymbol;
   const cached = cache.get(cacheKey);
@@ -299,6 +308,38 @@ function hoodlefinanceFetchQuote_(ticker) {
 
   cache.put(cacheKey, JSON.stringify(meta), 60);
   return meta;
+}
+
+function hoodlefinanceFetchPseQuote_(ticker) {
+  const symbol = hoodlefinanceParsePseSymbol_(ticker);
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "hoodlefinance:pse:" + symbol;
+  const cached = cache.get(cacheKey);
+  let listing;
+  let html;
+  let quote;
+
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  listing = hoodlefinanceResolvePseListing_(symbol);
+  html = hoodlefinanceFetchText_(
+    HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+      "?cmpy_id=" +
+      encodeURIComponent(listing.companyId) +
+      "&security_id=" +
+      encodeURIComponent(listing.securityId)
+  );
+
+  quote = hoodlefinanceExtractPseQuote_(html, listing);
+
+  if (!quote || !quote.symbol) {
+    throw new Error("No PSE quote data was found for " + ticker + ".");
+  }
+
+  cache.put(cacheKey, JSON.stringify(quote), 300);
+  return quote;
 }
 
 function hoodlefinanceNormalizeTicker_(ticker) {
@@ -354,6 +395,22 @@ function hoodlefinanceCoerceScalar_(value, label) {
   }
 
   return value;
+}
+
+function hoodlefinanceIsPseTicker_(ticker) {
+  return String(ticker || "").trim().toUpperCase().indexOf("PSE:") === 0;
+}
+
+function hoodlefinanceParsePseSymbol_(ticker) {
+  const value = String(ticker || "").trim();
+  const parts = value.split(":");
+  const symbol = parts.length > 1 ? parts.slice(1).join(":").trim().toUpperCase() : "";
+
+  if (!symbol) {
+    throw new Error('PSE ticker "' + ticker + '" is invalid.');
+  }
+
+  return symbol;
 }
 
 function hoodlefinanceExtractAttribute_(quote, attribute, context) {
@@ -419,6 +476,149 @@ function hoodlefinanceNormalizeMoney_(quote, value) {
     (quote.currency === "GBp" || quote.financialCurrency === "GBp")
     ? value / 100
     : value;
+}
+
+function hoodlefinanceResolvePseListing_(symbol) {
+  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const html = hoodlefinanceFetchText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol));
+  const listings = hoodlefinanceExtractPseListings_(html);
+  let i;
+
+  for (i = 0; i < listings.length; i += 1) {
+    if (listings[i].symbol === normalizedSymbol) {
+      return listings[i];
+    }
+  }
+
+  throw new Error('No PSE listing was found for "' + normalizedSymbol + '".');
+}
+
+function hoodlefinanceExtractPseListings_(html) {
+  const text = String(html || "");
+  const pattern = /<tr>[\s\S]*?cmDetail\('(\d+)','(\d+)'\);return false;">([\s\S]*?)<\/a>[\s\S]*?<td class="alignC"><a[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
+  const listings = [];
+  let match;
+
+  while ((match = pattern.exec(text))) {
+    listings.push({
+      companyId: match[1],
+      name: hoodlefinanceCleanHtmlText_(match[3]),
+      securityId: match[2],
+      symbol: hoodlefinanceCleanHtmlText_(match[4]).toUpperCase(),
+    });
+  }
+
+  return listings;
+}
+
+function hoodlefinanceExtractPseQuote_(html, listing) {
+  const previousClose = hoodlefinanceParseNumber_(hoodlefinanceExtractPseField_(html, "Previous Close and Date"));
+  const lastPrice = hoodlefinanceParseNumber_(hoodlefinanceExtractPseField_(html, "Last Traded Price"));
+  const changeText = hoodlefinanceExtractPseField_(html, "Change(% Change)");
+  const price = lastPrice != null ? lastPrice : previousClose;
+  const asOf = hoodlefinanceExtractPseAsOf_(html);
+  const change = hoodlefinanceExtractPseChange_(changeText, price, previousClose);
+  const changePercent = hoodlefinanceExtractPseChangePercent_(changeText, change, previousClose);
+
+  return {
+    currency: "PHP",
+    exchangeDataDelayedBy: 0,
+    financialCurrency: "PHP",
+    isin: hoodlefinanceExtractPseField_(html, "ISIN").toUpperCase(),
+    longName: hoodlefinanceExtractPseCompanyName_(html) || (listing && listing.name) || "",
+    regularMarketChange: change,
+    regularMarketChangePercent: changePercent,
+    regularMarketDayHigh: hoodlefinanceParseNumber_(hoodlefinanceExtractPseField_(html, "High")),
+    regularMarketDayLow: hoodlefinanceParseNumber_(hoodlefinanceExtractPseField_(html, "Low")),
+    regularMarketOpen: hoodlefinanceParseNumber_(hoodlefinanceExtractPseField_(html, "Open")),
+    regularMarketPreviousClose: previousClose,
+    regularMarketPrice: price,
+    regularMarketTime: asOf ? Math.floor(asOf.getTime() / 1000) : null,
+    regularMarketVolume: hoodlefinanceParseNumber_(hoodlefinanceExtractPseField_(html, "Volume")),
+    shortName: hoodlefinanceExtractPseCompanyName_(html) || (listing && listing.name) || "",
+    symbol: hoodlefinanceExtractPseSelectedSymbol_(html) || (listing && listing.symbol) || "",
+  };
+}
+
+function hoodlefinanceExtractPseField_(html, label) {
+  const pattern = new RegExp(
+    "<th>\\s*" + hoodlefinanceEscapeRegex_(label) + "\\s*<\\/th>[\\s\\S]*?<td[^>]*>([\\s\\S]*?)<\\/td>",
+    "i"
+  );
+  const match = String(html || "").match(pattern);
+  return match ? hoodlefinanceCleanHtmlText_(match[1]) : "";
+}
+
+function hoodlefinanceExtractPseCompanyName_(html) {
+  const match = String(html || "").match(/<div class="compInfo">[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i);
+  return match ? hoodlefinanceCleanHtmlText_(match[1]) : "";
+}
+
+function hoodlefinanceExtractPseSelectedSymbol_(html) {
+  const match = String(html || "").match(/<option value="[^"]+" selected>([\s\S]*?)<\/option>/i);
+  return match ? hoodlefinanceCleanHtmlText_(match[1]).toUpperCase() : "";
+}
+
+function hoodlefinanceExtractPseAsOf_(html) {
+  const match = String(html || "").match(/As of\s+([^<]+)/i);
+  const value = match ? hoodlefinanceCleanHtmlText_(match[1]) : "";
+  const parsed = value ? Date.parse(value + " GMT+0800") : NaN;
+
+  return isNaN(parsed) ? null : new Date(parsed);
+}
+
+function hoodlefinanceExtractPseChange_(text, price, previousClose) {
+  const value = hoodlefinanceParseNumber_(text);
+
+  if (value != null) {
+    return /down/i.test(String(text || "")) ? -value : value;
+  }
+
+  if (price != null && previousClose != null) {
+    return price - previousClose;
+  }
+
+  return null;
+}
+
+function hoodlefinanceExtractPseChangePercent_(text, change, previousClose) {
+  const match = String(text || "").match(/\(([-+]?\d[\d,]*(?:\.\d+)?)%\)/);
+
+  if (match) {
+    return Number(match[1].replace(/,/g, "")) / 100;
+  }
+
+  if (change != null && previousClose) {
+    return change / previousClose;
+  }
+
+  return null;
+}
+
+function hoodlefinanceCleanHtmlText_(text) {
+  return hoodlefinanceDecodeHtmlEntities_(String(text || ""))
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hoodlefinanceDecodeHtmlEntities_(text) {
+  return String(text || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function hoodlefinanceParseNumber_(text) {
+  const match = String(text || "").replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function hoodlefinanceEscapeRegex_(text) {
+  return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function hoodlefinanceResolveIbkrIsin_(quote, context) {

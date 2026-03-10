@@ -4,6 +4,123 @@ const path = require("node:path");
 const vm = require("node:vm");
 const test = require("node:test");
 
+const PSE_SEARCH_AAA_HTML = `
+<tbody>
+  <tr>
+      <td><a href="#company" onclick="cmDetail('55','347');return false;">Asia Amalgamated Holdings Corporation</a></td>
+      <td class="alignC"><a href="#company" onclick="cmDetail('55','347');return false;">AAA</a></td>
+      <td>Holding Firms</td>
+      <td>Holding Firms</td>
+      <td class="alignC">Mar 22, 1973</td>
+    </tr>
+  </tbody>
+`;
+
+const PSE_SEARCH_AC_HTML = `
+<tbody>
+  <tr>
+      <td><a href="#company" onclick="cmDetail('174','173');return false;">AbaCore Capital Holdings, Inc.</a></td>
+      <td class="alignC"><a href="#company" onclick="cmDetail('174','173');return false;">ABA</a></td>
+  </tr>
+  <tr>
+      <td><a href="#company" onclick="cmDetail('57','180');return false;">Ayala Corporation</a></td>
+      <td class="alignC"><a href="#company" onclick="cmDetail('57','180');return false;">AC</a></td>
+  </tr>
+  <tr>
+      <td><a href="#company" onclick="cmDetail('233','140');return false;">ACEN CORPORATION</a></td>
+      <td class="alignC"><a href="#company" onclick="cmDetail('233','140');return false;">ACEN</a></td>
+  </tr>
+  </tbody>
+`;
+
+const PSE_STOCK_AAA_HTML = `
+<div class="compInfo">
+  <p style="">Asia Amalgamated Holdings Corporation</p>
+</div>
+<form name="form1" action="/companyPage/stockData.do">
+  <input type="hidden" name="cmpy_id" value="55"/>
+  <select name="security_id" onchange="document.form1.submit();">
+<option value="347" selected>AAA</option>
+</select>
+  <span style="margin-left:1em;">As of Mar 10, 2026 02:50 PM</span>
+</form>
+<table class="view">
+<tr><th>ISIN</th><td>PHY030431175</td></tr>
+</table>
+<table class="view">
+<tr>
+  <th>Last Traded Price</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+  <th>Open</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+  <th>Previous Close and Date</th>
+  <td style="text-align:right;padding-right:1.2em;">1.63 (May 15, 2015)</td>
+</tr>
+<tr>
+  <th>Change(% Change)</th>
+  <td style="text-align:right;padding-right:1.2em;">down&nbsp; (%)</td>
+  <th>High</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+</tr>
+<tr>
+  <th>Value</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+  <th>Low</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+</tr>
+<tr>
+  <th>Volume</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+  <th>Average Price</th>
+  <td style="text-align:right;padding-right:1.2em;"></td>
+</tr>
+</table>
+`;
+
+const PSE_STOCK_BDO_HTML = `
+<div class="compInfo">
+  <p style="">BDO Unibank, Inc.</p>
+</div>
+<form name="form1" action="/companyPage/stockData.do">
+  <input type="hidden" name="cmpy_id" value="260"/>
+  <select name="security_id" onchange="document.form1.submit();">
+<option value="468" selected>BDO</option>
+</select>
+  <span style="margin-left:1em;">As of Mar 10, 2026 02:50 PM</span>
+</form>
+<table class="view">
+<tr><th>ISIN</th><td>PHY077751022</td></tr>
+</table>
+<table class="view">
+<tr>
+  <th>Last Traded Price</th>
+  <td style="text-align:right;padding-right:1.2em;">123.80</td>
+  <th>Open</th>
+  <td style="text-align:right;padding-right:1.2em;">122.20</td>
+  <th>Previous Close and Date</th>
+  <td style="text-align:right;padding-right:1.2em;">120.20 (Mar 09, 2026)</td>
+</tr>
+<tr>
+  <th>Change(% Change)</th>
+  <td style="text-align:right;padding-right:1.2em;">up&nbsp; 3.60 (3.00%)</td>
+  <th>High</th>
+  <td style="text-align:right;padding-right:1.2em;">124.20</td>
+</tr>
+<tr>
+  <th>Value</th>
+  <td style="text-align:right;padding-right:1.2em;">423,192,092.00</td>
+  <th>Low</th>
+  <td style="text-align:right;padding-right:1.2em;">122.20</td>
+</tr>
+<tr>
+  <th>Volume</th>
+  <td style="text-align:right;padding-right:1.2em;">3,435,630</td>
+  <th>Average Price</th>
+  <td style="text-align:right;padding-right:1.2em;">123.18</td>
+</tr>
+</table>
+`;
+
 function loadHoodlefinance() {
   const source = fs.readFileSync(path.join(__dirname, "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
@@ -141,4 +258,137 @@ test("attribute extraction uses context-aware isin resolver", () => {
     quote: { symbol: "ISJP.L" },
     context: { tickerInput: "LON:ISJP" },
   });
+});
+
+test("extracts exact PSE listing matches from search results", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(url, "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=AC");
+    return {
+      getResponseCode() {
+        return 200;
+      },
+      getContentText() {
+        return PSE_SEARCH_AC_HTML;
+      },
+    };
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceExtractPseListings_(PSE_SEARCH_AAA_HTML)),
+    JSON.stringify([
+      {
+        companyId: "55",
+        name: "Asia Amalgamated Holdings Corporation",
+        securityId: "347",
+        symbol: "AAA",
+      },
+    ])
+  );
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceResolvePseListing_.call(null, "AC")),
+    JSON.stringify({
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "180",
+      symbol: "AC",
+    })
+  );
+});
+
+test("parses active PSE stock pages into the quote model", () => {
+  const ctx = loadHoodlefinance();
+  const quote = ctx.hoodlefinanceExtractPseQuote_(PSE_STOCK_BDO_HTML, {
+    companyId: "260",
+    name: "BDO Unibank, Inc.",
+    securityId: "468",
+    symbol: "BDO",
+  });
+
+  assert.equal(quote.symbol, "BDO");
+  assert.equal(quote.longName, "BDO Unibank, Inc.");
+  assert.equal(quote.currency, "PHP");
+  assert.equal(quote.isin, "PHY077751022");
+  assert.equal(quote.regularMarketPrice, 123.8);
+  assert.equal(quote.regularMarketOpen, 122.2);
+  assert.equal(quote.regularMarketDayHigh, 124.2);
+  assert.equal(quote.regularMarketDayLow, 122.2);
+  assert.equal(quote.regularMarketPreviousClose, 120.2);
+  assert.equal(quote.regularMarketVolume, 3435630);
+  assert.equal(quote.regularMarketChange, 3.6);
+  assert.equal(quote.regularMarketChangePercent, 0.03);
+});
+
+test("parses suspended PSE stock pages and falls back to previous close for price", () => {
+  const ctx = loadHoodlefinance();
+  const quote = ctx.hoodlefinanceExtractPseQuote_(PSE_STOCK_AAA_HTML, {
+    companyId: "55",
+    name: "Asia Amalgamated Holdings Corporation",
+    securityId: "347",
+    symbol: "AAA",
+  });
+
+  assert.equal(quote.symbol, "AAA");
+  assert.equal(quote.isin, "PHY030431175");
+  assert.equal(quote.regularMarketPrice, 1.63);
+  assert.equal(quote.regularMarketPreviousClose, 1.63);
+  assert.equal(quote.regularMarketOpen, null);
+  assert.equal(quote.regularMarketVolume, null);
+  assert.equal(quote.regularMarketChange, 0);
+  assert.equal(quote.regularMarketChangePercent, 0);
+});
+
+test("fetches PSE quotes through the direct PSE path", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=AAA") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return PSE_SEARCH_AAA_HTML;
+        },
+      };
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=55&security_id=347") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return PSE_STOCK_AAA_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  const quote = ctx.hoodlefinanceFetchQuote_("PSE:AAA");
+
+  assert.equal(quote.symbol, "AAA");
+  assert.equal(quote.currency, "PHP");
+  assert.equal(quote.isin, "PHY030431175");
+  assert.equal(quote.regularMarketPrice, 1.63);
+});
+
+test("isin returns direct quote isin before trying IBKR resolution", () => {
+  const ctx = loadHoodlefinance();
+  let ibkrCalled = false;
+
+  ctx.hoodlefinanceResolveIbkrIsin_ = function () {
+    ibkrCalled = true;
+    return "SHOULDNOTHAPPEN";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA" }),
+    "PHY030431175"
+  );
+  assert.equal(ibkrCalled, false);
 });
