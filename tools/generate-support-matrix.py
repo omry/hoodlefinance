@@ -48,6 +48,11 @@ EXCHANGES = [
         ],
     },
     {
+        "code": "TLV",
+        "name": "Tel Aviv Stock Exchange",
+        "samples": ["TASE.TA", "POLI.TA", "NICE.TA"],
+    },
+    {
         "code": "TYO",
         "name": "Tokyo Stock Exchange",
         "samples": ["7203.T", "6758.T", "9984.T"],
@@ -57,7 +62,14 @@ EXCHANGES = [
         "name": "Philippine Stock Exchange",
         "samples": ["PSE:BDO", "PSE:AAA", "PSE:JFC"],
     },
+        {
+        "code": "OTCMKTS",
+        "name": "OTC Markets",
+        "samples": ["OTCMKTS:RYCEY", "OTCMKTS:NSRGY", "OTCMKTS:TCEHY"],
+    },
 ]
+
+EXCHANGES = sorted(EXCHANGES, key=lambda exchange: str(exchange["name"]))
 
 FEATURES = [
     {

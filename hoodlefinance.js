@@ -93,6 +93,8 @@ const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = {
   STO: ".ST",
   SWX: ".SW",
   TPE: ".TW",
+  TLV: ".TA",
+  TASE: ".TA",
   TSX: ".TO",
   TSE: ".TO",
   TYO: ".T",
@@ -170,6 +172,8 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   STO: "SFB",
   SWX: "EBS",
   TPE: "TSE",
+  TLV: "",
+  TASE: "",
   TSX: "TSE",
   TSE: "TSE",
   TYO: "TSEJ",
@@ -206,6 +210,7 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_ = {
   SW: "EBS",
   SZ: "",
   T: "TSEJ",
+  TA: "",
   TO: "TSE",
   TW: "TSE",
   V: "VENTURE",
@@ -242,6 +247,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
   SW: "SIX",
   SZ: "SHE",
   T: "TYO",
+  TA: "TLV",
   TO: "TSX",
   TW: "TPE",
   V: "CVE",
@@ -272,6 +278,8 @@ const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   NYSE: "NYSE",
   NYSEAMERICAN: "AMEX",
   NYSEARCA: "AMEX",
+  OTCMKTS: "OTC",
+  TLV: "TASE",
 };
 
 const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
@@ -280,7 +288,9 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
   LON: "lon:isin",
   NASDAQ: "tradingview:isin",
   NYSE: "tradingview:isin",
+  OTCMKTS: "tradingview:isin",
   PSE: "pse:isin",
+  TLV: "tradingview:isin",
 };
 
 /**

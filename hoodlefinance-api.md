@@ -10,7 +10,7 @@ It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and sour
 
 Main advantages:
 
-- Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L`, `ZPRX.DE`, and `9988.HK`.
+- Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `POLI.TA`, and `RYCEY`.
 - Adds `name` and `currency` support using the same quote path as `price`, which makes the output more consistent across symbols.
 - Adds exchange-specific `isin` support, which `GOOGLEFINANCE` does not provide. This is especially useful for broker portability and execution workflows.
 - Works better for many non-U.S. ETFs and UCITS listings that are awkward or inconsistent in `GOOGLEFINANCE`.
@@ -111,7 +111,9 @@ Examples:
 =HOODLEFINANCE("SJPA.L", "lon:isin")
 =HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
 =HOODLEFINANCE("9988.HK", "tradingview:isin")
+=HOODLEFINANCE("POLI.TA", "tradingview:isin")
 =HOODLEFINANCE("GOOG", "tradingview:isin")
+=HOODLEFINANCE("OTCMKTS:RYCEY", "tradingview:isin")
 =HOODLEFINANCE("ISJP.L", "ibkr:isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("PSE:BDO", "pse:isin")
@@ -127,7 +129,9 @@ These pass through unchanged:
 ```gs
 =HOODLEFINANCE("ISJP.L", "price")
 =HOODLEFINANCE("ZPRX.DE", "currency")
+=HOODLEFINANCE("POLI.TA", "price")
 =HOODLEFINANCE("GOOG", "price")
+=HOODLEFINANCE("RYCEY", "price")
 ```
 
 ### GOOGLEFINANCE-style exchange tickers
@@ -139,6 +143,8 @@ These are normalized to Yahoo symbols:
 =HOODLEFINANCE("LON:SJPA", "isin")    // -> dispatches to lon:isin
 =HOODLEFINANCE("ETR:ZPRX", "price")   // -> ZPRX.DE
 =HOODLEFINANCE("HKG:9988", "price")   // -> 9988.HK
+=HOODLEFINANCE("TLV:POLI", "price")   // -> POLI.TA
+=HOODLEFINANCE("OTCMKTS:RYCEY", "price") // -> RYCEY
 =HOODLEFINANCE("NASDAQ:GOOG", "price") // -> GOOG
 ```
 
@@ -198,7 +204,9 @@ Current implemented exchanges:
 - `LON` -> `lon:isin`
 - `NASDAQ` -> `tradingview:isin`
 - `NYSE` -> `tradingview:isin`
+- `OTCMKTS` -> `tradingview:isin`
 - `PSE` -> `pse:isin`
+- `TLV` -> `tradingview:isin`
 
 Examples:
 
@@ -208,8 +216,10 @@ Examples:
 =HOODLEFINANCE("SJPA.L", "isin")
 =HOODLEFINANCE("LON:SJPA", "isin")
 =HOODLEFINANCE("9988.HK", "isin")
+=HOODLEFINANCE("POLI.TA", "isin")
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("NYSE:IBM", "isin")
+=HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
@@ -226,6 +236,8 @@ This source is useful for testing coverage beyond the currently wired default ex
 - `LON` / `LSE`
 - `NASDAQ`
 - `NYSE`
+- `OTCMKTS` / `OTC`
+- `TLV` / `TASE`
 
 Examples:
 
@@ -233,8 +245,10 @@ Examples:
 =HOODLEFINANCE("ZPRX.DE", "tradingview:isin")
 =HOODLEFINANCE("SJPA.L", "tradingview:isin")
 =HOODLEFINANCE("9988.HK", "tradingview:isin")
+=HOODLEFINANCE("POLI.TA", "tradingview:isin")
 =HOODLEFINANCE("GOOG", "tradingview:isin")
 =HOODLEFINANCE("NYSE:IBM", "tradingview:isin")
+=HOODLEFINANCE("OTCMKTS:RYCEY", "tradingview:isin")
 ```
 
 ### `ariva:isin`

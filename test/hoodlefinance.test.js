@@ -195,6 +195,20 @@ window.initData.symbolInfo = {"resolved_symbol":"NASDAQ:GOOG","isin_displayed":"
 </script>
 `;
 
+const TRADINGVIEW_OTC_RYCEY_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"OTC:RYCEY","isin_displayed":"US7757812067","exchange":"OTC","short_name":"RYCEY"};
+</script>
+`;
+
+const TRADINGVIEW_TASE_POLI_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"TASE:POLI","isin_displayed":"IL0006625771","exchange":"TASE","short_name":"POLI"};
+</script>
+`;
+
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
 <td><a href="javascript:showDetails('90581046')">Details</a></td>
@@ -274,6 +288,7 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
 
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("LON:ISJP"), "ISJP.L");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("ETR:ZPRX"), "ZPRX.DE");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
 });
@@ -300,9 +315,14 @@ test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
 
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({}, { tickerInput: "PSE:BDO" }), "PSE");
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ISJP.L" }, { tickerInput: "ISJP.L" }), "LON");
+  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "POLI.TA" }, { tickerInput: "POLI.TA" }), "TLV");
   assert.equal(
     ctx.hoodlefinanceInferIsinExchange_({ symbol: "GOOG", exchangeName: "NMS" }, { tickerInput: "GOOG" }),
     "NASDAQ"
+  );
+  assert.equal(
+    ctx.hoodlefinanceInferIsinExchange_({ symbol: "RYCEY", exchangeName: "PNK" }, { tickerInput: "OTCMKTS:RYCEY" }),
+    "OTCMKTS"
   );
 });
 
@@ -667,6 +687,44 @@ test("isin dispatches to tradingview:isin for NASDAQ tickers", () => {
   });
 });
 
+test("isin dispatches to tradingview:isin for OTCMKTS tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "US7757812067";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "isin", { tickerInput: "OTCMKTS:RYCEY" }),
+    "US7757812067"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "RYCEY", exchangeName: "PNK" },
+    context: { tickerInput: "OTCMKTS:RYCEY" },
+  });
+});
+
+test("isin dispatches to tradingview:isin for TLV tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "IL0006625771";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "POLI.TA" }),
+    "IL0006625771"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "POLI.TA" },
+    context: { tickerInput: "POLI.TA" },
+  });
+});
+
 test("isin fails clearly when no exchange-specific source is implemented", () => {
   const ctx = loadHoodlefinance();
 
@@ -683,6 +741,10 @@ test("extracts TradingView symbol metadata from the page bootstrap", () => {
 
   assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_XETR_ZPRX_HTML), "XETR:ZPRX");
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_XETR_ZPRX_HTML), "IE00BSPLC298");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_OTC_RYCEY_HTML), "OTC:RYCEY");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_OTC_RYCEY_HTML), "US7757812067");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_TASE_POLI_HTML), "TASE:POLI");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_TASE_POLI_HTML), "IL0006625771");
 });
 
 test("tradingview:isin resolves for XETR tickers", () => {
@@ -754,6 +816,54 @@ test("tradingview:isin resolves for NASDAQ tickers", () => {
   assert.equal(
     ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "tradingview:isin", { tickerInput: "GOOG" }),
     "US02079K1079"
+  );
+});
+
+test("tradingview:isin resolves for OTCMKTS tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/OTC-RYCEY/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_OTC_RYCEY_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "tradingview:isin", { tickerInput: "OTCMKTS:RYCEY" }),
+    "US7757812067"
+  );
+});
+
+test("tradingview:isin resolves for TLV tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/TASE-POLI/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_TASE_POLI_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "tradingview:isin", { tickerInput: "POLI.TA" }),
+    "IL0006625771"
   );
 });
 
