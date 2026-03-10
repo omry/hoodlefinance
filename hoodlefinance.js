@@ -626,10 +626,15 @@ function hoodlefinanceEscapeRegex_(text) {
 function hoodlefinanceResolveIbkrIsin_(quote, context) {
   const symbol = hoodlefinanceExtractQuoteSymbol_(quote);
   const preferredExchange = hoodlefinanceInferIbkrExchange_(context && context.tickerInput, symbol);
-  const ibkrIsin = hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange);
+  const resolution = hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange);
+  const ibkrIsin = resolution && resolution.isin ? resolution.isin : "";
 
   if (ibkrIsin) {
     return ibkrIsin;
+  }
+
+  if (resolution && resolution.error) {
+    throw new Error(resolution.error);
   }
 
   throw new Error("No IBKR ISIN is available for this ticker.");
@@ -648,31 +653,55 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
   const cached = cache.get(cacheKey);
   let searchUrls;
   let detailEntries;
+  let searchHtml;
+  let searchError;
   let i;
   let isin;
 
   if (!lookupSymbol) {
-    return "";
+    return {
+      error: "",
+      isin: "",
+    };
   }
 
   if (cached) {
-    return cached;
+    return {
+      error: "",
+      isin: cached,
+    };
   }
 
   searchUrls = hoodlefinanceBuildIbkrSearchUrls_(lookupSymbol, preferredExchange);
 
   for (i = 0; i < searchUrls.length; i += 1) {
-    detailEntries = hoodlefinanceExtractIbkrDetailUrls_(hoodlefinanceFetchText_(searchUrls[i]));
+    searchHtml = hoodlefinanceFetchText_(searchUrls[i]);
+    searchError = hoodlefinanceExtractIbkrSearchError_(searchHtml, lookupSymbol, searchUrls[i]);
+
+    if (searchError) {
+      return {
+        error: searchError,
+        isin: "",
+      };
+    }
+
+    detailEntries = hoodlefinanceExtractIbkrDetailUrls_(searchHtml);
     hoodlefinanceSortIbkrDetailEntries_(detailEntries, preferredExchange);
 
     isin = hoodlefinanceResolveIbkrIsinFromDetailEntries_(detailEntries);
     if (isin) {
       cache.put(cacheKey, isin, 21600);
-      return isin;
+      return {
+        error: "",
+        isin: isin,
+      };
     }
   }
 
-  return "";
+  return {
+    error: "",
+    isin: "",
+  };
 }
 
 function hoodlefinanceBuildIbkrSearchUrls_(symbol, preferredExchange) {
@@ -744,6 +773,31 @@ function hoodlefinanceExtractIbkrDetailUrls_(text) {
   }
 
   return urls;
+}
+
+function hoodlefinanceExtractIbkrSearchError_(text, symbol, url) {
+  const html = String(text || "");
+  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const lookupUrl = String(url || "");
+
+  if (!html) {
+    return "";
+  }
+
+  if (
+    /To continue please enter the text from the image below/i.test(html) ||
+    /<img[^>]+image\.php\?str=/i.test(html) ||
+    /name=["']filter["']/i.test(html)
+  ) {
+    return (
+      'IBKR ISIN lookup is currently blocked by a captcha challenge for "' +
+      normalizedSymbol +
+      '". URL: ' +
+      lookupUrl
+    );
+  }
+
+  return "";
 }
 
 function hoodlefinanceExtractIbkrModernExchangeHint_(rowHtml) {

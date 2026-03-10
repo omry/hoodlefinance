@@ -144,6 +144,19 @@ const IBKR_MODERN_SEARCH_HTML = `
 </tr>
 `;
 
+const IBKR_CAPTCHA_HTML = `
+</form>
+
+<br>
+<form type="post">
+To continue please enter the text from the image below
+<br>
+<img src="image.php?str=79BQ2A">
+<br>
+Text: <input type="text" name="filter">
+</form>
+`;
+
 function loadHoodlefinance() {
   const source = fs.readFileSync(path.join(__dirname, "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
@@ -284,6 +297,59 @@ test("builds preferred and fallback IBKR search URLs", () => {
       "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=ISJP&exchange=EBS",
       "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=ISJP",
     ])
+  );
+});
+
+test("detects IBKR captcha challenges and reports them explicitly", () => {
+  const ctx = loadHoodlefinance();
+  const url = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=GOOG";
+
+  assert.equal(
+    ctx.hoodlefinanceExtractIbkrSearchError_(IBKR_CAPTCHA_HTML, "GOOG", url),
+    'IBKR ISIN lookup is currently blocked by a captcha challenge for "GOOG". URL: ' + url
+  );
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url.indexOf("query1.finance.yahoo.com") >= 0) {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return JSON.stringify({
+            chart: {
+              result: [
+                {
+                  meta: {
+                    symbol: "GOOG",
+                  },
+                },
+              ],
+            },
+          });
+        },
+      };
+    }
+
+    if (url.indexOf("contract.ibkr.info") >= 0) {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return IBKR_CAPTCHA_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(
+    function () {
+      ctx.HOODLEFINANCE("GOOG", "isin");
+    },
+    /IBKR ISIN lookup is currently blocked by a captcha challenge for "GOOG"\. URL: https:\/\/contract\.ibkr\.info\//
   );
 });
 

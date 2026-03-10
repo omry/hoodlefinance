@@ -31,6 +31,7 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 - `marketcap` is intentionally not supported.
 - `isin` depends on IBKR public HTML pages rather than a clean public API.
 - ISIN resolution is therefore more brittle than `price`, `name`, or `currency`.
+- IBKR may present a captcha challenge on its public search pages; when that happens, `isin` lookups fail until the endpoint becomes accessible again.
 - `PSE:` support depends on public PSE EDGE HTML pages, so it is more brittle than the Yahoo quote path.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - The function is custom Apps Script code, so it is not as portable across spreadsheets as built-in `GOOGLEFINANCE`.
