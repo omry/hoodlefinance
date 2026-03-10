@@ -5,3 +5,6 @@
 - add NEO support for symbols like ZTL.NE (current failure is wrong venue, not TSE)
 - diagnos ASIN for AVLV (unspecified exchange)
 - Make sure cache is used when it makes sense in the service
+- add range-aware batching to `HOODLEFINANCE`
+- allow `HOODLEFINANCE(tickerRange, attribute)` to return a spilled array without `MAP`
+- dedupe repeated tickers within one recalculation and preserve blank cells in-place
