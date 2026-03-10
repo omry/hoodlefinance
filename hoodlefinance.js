@@ -1,5 +1,8 @@
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
+  "ariva:isin": function (quote, context) {
+    return hoodlefinanceResolveArivaIsin_(quote, context);
+  },
   "ibkr:isin": function (quote, context) {
     return hoodlefinanceResolveIbkrIsin_(quote, context);
   },
@@ -117,6 +120,8 @@ const HOODLEFINANCE_PREFIXLESS_EXCHANGES_ = {
 
 const HOODLEFINANCE_IBKR_SEARCH_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=";
 const HOODLEFINANCE_IBKR_DETAIL_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=";
+const HOODLEFINANCE_ARIVA_BASE_URL_ = "https://www.ariva.de";
+const HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ = "https://www.ariva.de/search/livesearch.m?searchname=";
 const HOODLEFINANCE_LSE_SEARCH_URL_ = "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=";
 
 const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
@@ -261,6 +266,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
 };
 
 const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
+  ETR: "ariva:isin",
   LON: "lon:isin",
   PSE: "pse:isin",
 };
@@ -277,6 +283,7 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  * - "volume"
  * - "high"
  * - "low"
+ * - "ariva:isin"
  * - "ibkr:isin"
  * - "isin"
  * - "lon:isin"
@@ -773,14 +780,48 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
   const attribute = exchange ? HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_[exchange] || "" : "";
 
   if (!exchange) {
-    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"lon:isin\", \"pse:isin\", or \"ibkr:isin\".");
+    throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", or \"ibkr:isin\".");
   }
 
   if (!attribute) {
-    throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an explicit source attribute such as \"ibkr:isin\".");
+    throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", or \"ibkr:isin\".");
   }
 
   return hoodlefinanceExtractAttribute_(quote, attribute, context || {});
+}
+
+function hoodlefinanceResolveArivaIsin_(quote, context) {
+  const exchange = hoodlefinanceInferIsinExchange_(quote, context);
+  const code = hoodlefinanceExtractArivaCode_(quote, context);
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "hoodlefinance:ariva:isin:" + code;
+  const cached = code ? cache.get(cacheKey) : "";
+  let listing;
+
+  if (exchange !== "ETR") {
+    throw new Error("ariva:isin is only implemented for ETR tickers.");
+  }
+
+  if (!code) {
+    throw new Error("Could not determine the ARIVA search code for this ticker.");
+  }
+
+  if (cached) {
+    return cached;
+  }
+
+  listing = hoodlefinanceResolveArivaListing_(code);
+
+  if (!listing.isin) {
+    throw new Error('No ARIVA ISIN is available for "' + code + '".');
+  }
+
+  if (!listing.hasXetra) {
+    throw new Error('ARIVA did not expose a Xetra listing for "' + code + '".');
+  }
+
+  cache.put(cacheKey, listing.isin, 21600);
+  return listing.isin;
 }
 
 function hoodlefinanceResolvePseIsin_(quote, context) {
@@ -863,6 +904,38 @@ function hoodlefinanceExtractLonCode_(quote, context) {
   return "";
 }
 
+function hoodlefinanceExtractArivaCode_(quote, context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+  const candidates = [
+    tickerInput,
+    resolvedSymbol,
+  ];
+  let i;
+  let candidate;
+  let parts;
+  let match;
+
+  for (i = 0; i < candidates.length; i += 1) {
+    candidate = candidates[i];
+    if (!candidate) {
+      continue;
+    }
+
+    if (candidate.indexOf("ETR:") === 0) {
+      parts = candidate.split(":");
+      return parts.slice(1).join(":").trim().toUpperCase();
+    }
+
+    match = candidate.match(/^([A-Z0-9]+)\.DE$/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return "";
+}
+
 function hoodlefinanceInferIsinExchange_(quote, context) {
   const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
   const explicitExchange = hoodlefinanceExtractTickerExchange_(tickerInput);
@@ -922,6 +995,66 @@ function hoodlefinanceExtractYahooExchangeFromQuote_(quote) {
   ).trim().toUpperCase();
 
   return exchangeName ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[exchangeName] || "" : "";
+}
+
+function hoodlefinanceResolveArivaListing_(code) {
+  const normalizedCode = String(code || "").trim().toUpperCase();
+  const html = hoodlefinanceFetchText_(HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ + encodeURIComponent(normalizedCode));
+  const listings = hoodlefinanceExtractArivaListings_(html);
+  let i;
+  let detailHtml;
+
+  for (i = 0; i < listings.length; i += 1) {
+    if (listings[i].code !== normalizedCode) {
+      continue;
+    }
+
+    detailHtml = hoodlefinanceFetchText_(HOODLEFINANCE_ARIVA_BASE_URL_ + listings[i].href);
+    return {
+      code: normalizedCode,
+      hasXetra: hoodlefinanceArivaHasXetra_(detailHtml),
+      href: listings[i].href,
+      isin: hoodlefinanceExtractArivaIsin_(detailHtml),
+      type: listings[i].type,
+    };
+  }
+
+  throw new Error('No ARIVA listing was found for "' + normalizedCode + '".');
+}
+
+function hoodlefinanceExtractArivaListings_(html) {
+  const text = String(html || "");
+  const pattern = /<tr\b[^>]*>[\s\S]*?<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<td>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi;
+  const listings = [];
+  let match;
+  let codeMatch;
+
+  while ((match = pattern.exec(text))) {
+    codeMatch = String(match[2] || "").match(/liveSearchMark">([\s\S]*?)<\/span>/i);
+    if (!codeMatch) {
+      continue;
+    }
+
+    listings.push({
+      code: hoodlefinanceCleanHtmlText_(codeMatch[1]).toUpperCase(),
+      href: String(match[1] || "").trim(),
+      type: hoodlefinanceCleanHtmlText_(match[3]),
+    });
+  }
+
+  return listings;
+}
+
+function hoodlefinanceExtractArivaIsin_(html) {
+  const titleMatch = String(html || "").match(/<title>[\s\S]*?\bISIN\s+([A-Z]{2}[A-Z0-9]{9}[0-9])\b[\s\S]*?<\/title>/i);
+  const fieldMatch = String(html || "").match(/ISIN:&nbsp;<\/span>\s*<span class="value">([A-Z]{2}[A-Z0-9]{9}[0-9])<\/span>/i);
+  const rawIsin = fieldMatch ? fieldMatch[1] : titleMatch ? titleMatch[1] : "";
+
+  return rawIsin ? rawIsin.toUpperCase() : "";
+}
+
+function hoodlefinanceArivaHasXetra_(html) {
+  return /\bXetra\b/i.test(String(html || ""));
 }
 
 function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {

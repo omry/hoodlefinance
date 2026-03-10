@@ -146,6 +146,34 @@ const LON_SEARCH_CPXJ_HTML = `
 </tbody>
 `;
 
+const ARIVA_SEARCH_ZPRV_HTML = `
+<div class="LSResultOut" onmouseout="checkLiveSearchMouseOut(event)">
+<table class="line" id="overDivLive">
+  <tr id="liveSearchRow1" class="liveSearchRow" onmouseover="liveSearchSelectRow(1)" onclick="liveSearchSubmit(1)">
+    <td class="liveSearchLinkText ellipsis">
+      <a href="/fonds/spdr-msci-usa-small-cap-value-weighted-ucits-etf" onclick="return false;" id="liveSearchLink1"><span class="liveSearchMark">ZPRV</span>F (SPDR MSCI USA Small Cap Valu.)</a>
+    </td>
+    <td>Fonds</td>
+    <td class="right searches_num">6</td>
+  </tr>
+</table>
+</div>
+`;
+
+const ARIVA_DETAIL_ZPRV_HTML = `
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>SPDR MSCI USA Small Cap Value Weighted UCITS ETF Kurs - WKN A12HU5, ISIN IE00BSPLC413 - ARIVA.DE</title>
+  <link rel="canonical" href="https://www.ariva.de/etf/spdr-msci-usa-small-cap-value-weighted-ucits-etf">
+</head>
+<body>
+  <span class="key">ISIN:&nbsp;</span> <span class="value">IE00BSPLC413</span>
+  <span class="app-dropdown--state IE00BSPLC413">Xetra</span>
+</body>
+</html>
+`;
+
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
 <td><a href="javascript:showDetails('90581046')">Details</a></td>
@@ -511,6 +539,75 @@ test("lon:isin resolves from the public LSE search results", () => {
   );
 });
 
+test("extracts exact ARIVA listing matches from live search results", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceExtractArivaListings_(ARIVA_SEARCH_ZPRV_HTML)),
+    JSON.stringify([
+      {
+        code: "ZPRV",
+        href: "/fonds/spdr-msci-usa-small-cap-value-weighted-ucits-etf",
+        type: "Fonds",
+      },
+    ])
+  );
+});
+
+test("ariva:isin resolves from ARIVA search and detail pages", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.ariva.de/search/livesearch.m?searchname=ZPRV") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return ARIVA_SEARCH_ZPRV_HTML;
+        },
+      };
+    }
+
+    if (url === "https://www.ariva.de/fonds/spdr-msci-usa-small-cap-value-weighted-ucits-etf") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return ARIVA_DETAIL_ZPRV_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
+    "IE00BSPLC413"
+  );
+});
+
+test("isin dispatches to ariva:isin for ETR tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveArivaIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "IE00BSPLC413";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE" }),
+    "IE00BSPLC413"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "ZPRV.DE" },
+    context: { tickerInput: "ZPRV.DE" },
+  });
+});
+
 test("isin dispatches to lon:isin for London tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
@@ -537,7 +634,7 @@ test("isin fails clearly when no exchange-specific source is implemented", () =>
     function () {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG" });
     },
-    /No isin source is implemented for exchange "NASDAQ"\. Use an explicit source attribute such as "ibkr:isin"\./
+    /No isin source is implemented for exchange "NASDAQ"\. Use an explicit source attribute such as "ariva:isin", "lon:isin", "pse:isin", or "ibkr:isin"\./
   );
 });
 
@@ -686,6 +783,17 @@ test("lon:isin rejects non-LON tickers", () => {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "lon:isin", { tickerInput: "GOOG" });
     },
     /lon:isin is only implemented for LON tickers\./
+  );
+});
+
+test("ariva:isin rejects non-ETR tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "ariva:isin", { tickerInput: "SJPA.L" });
+    },
+    /ariva:isin is only implemented for ETR tickers\./
   );
 });
 

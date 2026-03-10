@@ -77,6 +77,7 @@ If any historical-data arguments are provided, the function throws an error.
 ## Supported Attributes
 
 - `price`
+- `ariva:isin`
 - `ibkr:isin`
 - `isin`
 - `lon:isin`
@@ -103,6 +104,8 @@ Examples:
 =HOODLEFINANCE("NASDAQ:GOOG", "price")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
+=HOODLEFINANCE("ZPRV.DE", "ariva:isin")
+=HOODLEFINANCE("ZPRV.DE", "isin")
 =HOODLEFINANCE("SJPA.L", "lon:isin")
 =HOODLEFINANCE("ISJP.L", "ibkr:isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
@@ -172,7 +175,7 @@ This resolution uses Yahoo search and is less robust than direct symbol lookup.
 `HOODLEFINANCE` now uses this convention:
 
 - `isin`: generic ISIN lookup. It deduces the exchange from the ticker and dispatches to the exchange-specific implementation.
-- `<exchange>:isin`: explicit exchange/source-specific ISIN lookup, for example `pse:isin`.
+- `<exchange>:isin`: explicit exchange/source-specific ISIN lookup, for example `ariva:isin`, `lon:isin`, or `pse:isin`.
 - `ibkr:isin`: explicit IBKR-backed lookup.
 
 If `isin` deduces an exchange that does not have an implemented ISIN resolver yet, the function throws a clear error.
@@ -183,18 +186,39 @@ If `isin` deduces an exchange that does not have an implemented ISIN resolver ye
 
 Current implemented exchanges:
 
+- `ETR` -> `ariva:isin`
 - `LON` -> `lon:isin`
 - `PSE` -> `pse:isin`
 
 Examples:
 
 ```gs
+=HOODLEFINANCE("ZPRV.DE", "isin")
+=HOODLEFINANCE("ETR:ZPRV", "isin")
 =HOODLEFINANCE("SJPA.L", "isin")
 =HOODLEFINANCE("LON:SJPA", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
 If the exchange is not specified explicitly, `isin` tries to deduce it from the ticker form, Yahoo suffix, or quote metadata. If no exchange-specific ISIN resolver is implemented for the deduced exchange, the function errors clearly.
+
+### `ariva:isin`
+
+`ariva:isin` uses ARIVA's public live search and detail pages.
+
+The current implementation is intentionally narrow:
+
+- it is only enabled for `ETR` / `.DE` tickers
+- it resolves the code through ARIVA live search
+- it extracts the ISIN from the instrument page
+- it requires the page to expose `Xetra`
+
+Examples:
+
+```gs
+=HOODLEFINANCE("ZPRV.DE", "ariva:isin")
+=HOODLEFINANCE("ETR:ZPRV", "ariva:isin")
+```
 
 ### `lon:isin`
 
