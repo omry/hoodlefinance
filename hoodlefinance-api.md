@@ -65,6 +65,10 @@ If Sheets reports `Unknown function: HOODLEFINANCE`, the Apps Script project did
 =HOODLEFINANCE(ticker, [attribute], [startDate], [endDateOrNumDays], [interval])
 ```
 
+```gs
+=HOODLEFINANCE_VERSION()
+```
+
 Only the first two arguments are currently supported.
 
 - `ticker`: required
@@ -74,6 +78,34 @@ Only the first two arguments are currently supported.
 - `interval`: unsupported
 
 If any historical-data arguments are provided, the function throws an error.
+
+## Script Version
+
+`HOODLEFINANCE_VERSION()` returns the version string embedded in the pasted script.
+
+Current version:
+
+```text
+0.1.0
+```
+
+Example:
+
+```gs
+=HOODLEFINANCE_VERSION()
+```
+
+## Update Checks
+
+When the script is used in a bound spreadsheet, it adds a `Hoodlefinance` menu with:
+
+- `Check for updates`
+- `Show installed version`
+- `Suppress automatic update checks` or `Enable automatic update checks`
+
+Automatic version checks run at most once per day per user on spreadsheet open. If a newer version is found, the script opens a dialog with clickable links to the raw source, README, and repository.
+
+Suppression only disables the automatic once-per-day check. Manual checks from the menu still work.
 
 ## Supported Attributes
 

@@ -59,6 +59,7 @@ Changes should usually include:
 1. Unit tests for any new parsing, routing, or normalization logic.
 2. Documentation updates in [`hoodlefinance-api.md`](./hoodlefinance-api.md) and, when appropriate, [`README.md`](./README.md).
 3. Live CLI checks for any source-backed change, especially new ISIN resolvers.
+4. A version bump in `HOODLEFINANCE_VERSION_` for substantive user-facing changes.
 
 If a change adds a new source or exchange path, include both:
 

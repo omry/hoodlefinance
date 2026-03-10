@@ -255,6 +255,40 @@ Text: <input type="text" name="filter">
 function loadHoodlefinance() {
 const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
+  const userPropertiesStore = new Map();
+  const uiState = {
+    alerts: [],
+    dialogs: [],
+    menus: [],
+  };
+  const ui = {
+    ButtonSet: {
+      OK: "OK",
+    },
+    alert() {
+      uiState.alerts.push(Array.from(arguments));
+      return "OK";
+    },
+    createMenu(name) {
+      const items = [];
+      return {
+        addItem(label, functionName) {
+          items.push({ functionName, label, type: "item" });
+          return this;
+        },
+        addSeparator() {
+          items.push({ type: "separator" });
+          return this;
+        },
+        addToUi() {
+          uiState.menus.push({ items: items.slice(), name });
+        },
+      };
+    },
+    showModalDialog(output, title) {
+      uiState.dialogs.push({ output, title });
+    },
+  };
   const sandbox = {
     console,
     Date,
@@ -266,6 +300,8 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
     RegExp,
     Error,
     Map,
+    __uiState: uiState,
+    __userPropertiesStore: userPropertiesStore,
     CacheService: {
       getScriptCache() {
         return {
@@ -274,6 +310,43 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
           },
           put(key, value) {
             cacheStore.set(key, value);
+          },
+        };
+      },
+    },
+    PropertiesService: {
+      getUserProperties() {
+        return {
+          deleteProperty(key) {
+            userPropertiesStore.delete(key);
+          },
+          getProperty(key) {
+            return userPropertiesStore.has(key) ? userPropertiesStore.get(key) : null;
+          },
+          setProperty(key, value) {
+            userPropertiesStore.set(key, String(value));
+          },
+        };
+      },
+    },
+    SpreadsheetApp: {
+      getUi() {
+        return ui;
+      },
+    },
+    HtmlService: {
+      createHtmlOutput(content) {
+        return {
+          content,
+          height: null,
+          width: null,
+          setHeight(value) {
+            this.height = value;
+            return this;
+          },
+          setWidth(value) {
+            this.width = value;
+            return this;
           },
         };
       },
@@ -299,6 +372,87 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
+});
+
+test("exposes a script version custom function", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.1.0");
+});
+
+test("compares semantic-style versions correctly", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.1.1", "0.1.0"), 1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.1.0", "0.1.1"), -1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("1.0.0", "1.0"), 0);
+});
+
+test("extracts the published version from raw source text", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(
+    ctx.hoodlefinanceExtractVersionFromSource_('const HOODLEFINANCE_VERSION_ = "2.3.4";'),
+    "2.3.4"
+  );
+});
+
+test("runs automatic update checks at most once per day", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.hoodlefinanceShouldRunVersionCheckNow_(0, 1000), true);
+  assert.equal(ctx.hoodlefinanceShouldRunVersionCheckNow_(1000, 1000 + 60 * 60 * 1000), false);
+  assert.equal(
+    ctx.hoodlefinanceShouldRunVersionCheckNow_(1000, 1000 + 24 * 60 * 60 * 1000),
+    true
+  );
+});
+
+test("suppressed automatic checks do not fetch remote versions", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__userPropertiesStore.set("hoodlefinance.suppressUpdateChecks", "true");
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Fetch should not run while suppressed");
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceMaybeCheckForUpdates_()),
+    JSON.stringify({ status: "suppressed" })
+  );
+});
+
+test("manual update checks show a dialog when a newer version exists", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(url, "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js");
+    return {
+      getResponseCode() {
+        return 200;
+      },
+      getContentText() {
+        return 'const HOODLEFINANCE_VERSION_ = "0.2.0";';
+      },
+    };
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
+    JSON.stringify({ latestVersion: "0.2.0", status: "outdated" })
+  );
+  assert.equal(ctx.__uiState.dialogs.length, 1);
+  assert.match(ctx.__uiState.dialogs[0].output.content, /Open raw source/);
+});
+
+test("suppression can be toggled from helper functions", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.hoodlefinanceSuppressUpdateChecks();
+  assert.equal(ctx.__userPropertiesStore.get("hoodlefinance.suppressUpdateChecks"), "true");
+
+  ctx.hoodlefinanceEnableUpdateChecks();
+  assert.equal(ctx.__userPropertiesStore.has("hoodlefinance.suppressUpdateChecks"), false);
 });
 
 test("maps Yahoo exchange codes to IBKR exchange hints", () => {

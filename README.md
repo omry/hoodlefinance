@@ -4,6 +4,8 @@
 
 It uses Yahoo Finance for quote data and adds ISIN support that `GOOGLEFINANCE` does not provide.
 
+Current script version: `0.1.0`
+
 ## What It Does
 
 - Fetches scalar quote fields such as `price`, `name`, `currency`, `tradetime`, `volume`, `high`, `low`, `close`, `changepct`, and `change`
@@ -54,6 +56,19 @@ Then try a few more examples:
 =HOODLEFINANCE("POLI.TA", "isin")
 =HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
 ```
+
+To confirm which pasted version is in your sheet:
+
+```gs
+=HOODLEFINANCE_VERSION()
+```
+
+The bound script also adds a `Hoodlefinance` menu in Sheets with:
+
+- `Check for updates`
+- `Show installed version`
+- automatic once-per-day version checks on open
+- per-user suppression for automatic update checks
 
 ## Examples
 

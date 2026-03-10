@@ -60,6 +60,17 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
 };
 
+const HOODLEFINANCE_VERSION_ = "0.1.0";
+const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
+const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
+const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
+const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
+const HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_ = "hoodlefinance.suppressUpdateChecks";
+const HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
+const HOODLEFINANCE_UPDATE_CACHE_KEY_ = "hoodlefinance:update:latestVersion";
+const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
+const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
+
 const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = {
   AMS: ".AS",
   ASX: ".AX",
@@ -359,6 +370,333 @@ function HOODLEFINANCE(ticker, attribute, startDate, endDateOrNumDays, interval)
   return hoodlefinanceExtractAttribute_(quote, rawAttribute, {
     tickerInput: normalizedTicker,
   });
+}
+
+/**
+ * Returns the current HOODLEFINANCE script version.
+ *
+ * @return {string}
+ * @customfunction
+ */
+function HOODLEFINANCE_VERSION() {
+  return HOODLEFINANCE_VERSION_;
+}
+
+function onOpen() {
+  hoodlefinanceAddMenu_();
+  hoodlefinanceMaybeCheckForUpdates_();
+}
+
+function hoodlefinanceCheckForUpdates() {
+  return hoodlefinanceRunVersionCheck_({
+    force: true,
+    interactive: true,
+  });
+}
+
+function hoodlefinanceShowInstalledVersion() {
+  const ui = hoodlefinanceGetUi_();
+
+  if (!ui) {
+    return HOODLEFINANCE_VERSION_;
+  }
+
+  ui.alert("HOODLEFINANCE version", "Installed version: " + HOODLEFINANCE_VERSION_, ui.ButtonSet.OK);
+  return HOODLEFINANCE_VERSION_;
+}
+
+function hoodlefinanceSuppressUpdateChecks() {
+  const userProperties = hoodlefinanceGetUserProperties_();
+  const ui = hoodlefinanceGetUi_();
+
+  if (userProperties) {
+    userProperties.setProperty(HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_, "true");
+  }
+
+  if (ui) {
+    ui.alert(
+      "HOODLEFINANCE updates",
+      "Automatic update checks are now suppressed for this user. You can re-enable them from the Hoodlefinance menu.",
+      ui.ButtonSet.OK
+    );
+  }
+
+  hoodlefinanceAddMenu_();
+}
+
+function hoodlefinanceEnableUpdateChecks() {
+  const userProperties = hoodlefinanceGetUserProperties_();
+  const ui = hoodlefinanceGetUi_();
+
+  if (userProperties) {
+    userProperties.deleteProperty(HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_);
+  }
+
+  if (ui) {
+    ui.alert(
+      "HOODLEFINANCE updates",
+      "Automatic update checks are enabled again.",
+      ui.ButtonSet.OK
+    );
+  }
+
+  hoodlefinanceAddMenu_();
+}
+
+function hoodlefinanceDismissUpdateNotice() {
+  return true;
+}
+
+function hoodlefinanceMaybeCheckForUpdates_() {
+  return hoodlefinanceRunVersionCheck_({
+    force: false,
+    interactive: false,
+  });
+}
+
+function hoodlefinanceRunVersionCheck_(options) {
+  const normalizedOptions = options || {};
+  const interactive = !!normalizedOptions.interactive;
+  const force = !!normalizedOptions.force;
+  const userProperties = hoodlefinanceGetUserProperties_();
+  const now = new Date();
+  let latestInfo;
+  let comparison;
+
+  if (!hoodlefinanceGetUi_()) {
+    return { status: "no-ui" };
+  }
+
+  if (!force) {
+    if (hoodlefinanceIsUpdateCheckSuppressed_(userProperties)) {
+      return { status: "suppressed" };
+    }
+
+    if (!hoodlefinanceShouldRunVersionCheckNow_(hoodlefinanceGetLastUpdateCheckMs_(userProperties), now.getTime())) {
+      return { status: "skipped" };
+    }
+  }
+
+  latestInfo = hoodlefinanceFetchLatestVersionInfo_();
+  hoodlefinanceMarkUpdateCheckRun_(userProperties, now.getTime());
+
+  if (!latestInfo.version) {
+    if (interactive) {
+      hoodlefinanceGetUi_().alert(
+        "HOODLEFINANCE updates",
+        "Unable to determine the latest published version right now.",
+        hoodlefinanceGetUi_().ButtonSet.OK
+      );
+    }
+
+    return { status: "error" };
+  }
+
+  comparison = hoodlefinanceCompareVersions_(latestInfo.version, HOODLEFINANCE_VERSION_);
+
+  if (comparison > 0) {
+    hoodlefinanceShowUpdateDialog_(latestInfo.version);
+    return {
+      latestVersion: latestInfo.version,
+      status: "outdated",
+    };
+  }
+
+  if (interactive) {
+    hoodlefinanceGetUi_().alert(
+      "HOODLEFINANCE updates",
+      "You are up to date. Installed version: " + HOODLEFINANCE_VERSION_,
+      hoodlefinanceGetUi_().ButtonSet.OK
+    );
+  }
+
+  return {
+    latestVersion: latestInfo.version,
+    status: "current",
+  };
+}
+
+function hoodlefinanceAddMenu_() {
+  const ui = hoodlefinanceGetUi_();
+  const userProperties = hoodlefinanceGetUserProperties_();
+  const isSuppressed = hoodlefinanceIsUpdateCheckSuppressed_(userProperties);
+  let menu;
+
+  if (!ui || !ui.createMenu) {
+    return null;
+  }
+
+  menu = ui.createMenu(HOODLEFINANCE_MENU_TITLE_);
+  menu.addItem("Check for updates", "hoodlefinanceCheckForUpdates");
+  menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
+  menu.addSeparator();
+  menu.addItem(
+    isSuppressed ? "Enable automatic update checks" : "Suppress automatic update checks",
+    isSuppressed ? "hoodlefinanceEnableUpdateChecks" : "hoodlefinanceSuppressUpdateChecks"
+  );
+  menu.addToUi();
+  return menu;
+}
+
+function hoodlefinanceGetUi_() {
+  if (typeof SpreadsheetApp === "undefined" || !SpreadsheetApp || !SpreadsheetApp.getUi) {
+    return null;
+  }
+
+  return SpreadsheetApp.getUi();
+}
+
+function hoodlefinanceGetUserProperties_() {
+  if (typeof PropertiesService === "undefined" || !PropertiesService || !PropertiesService.getUserProperties) {
+    return null;
+  }
+
+  return PropertiesService.getUserProperties();
+}
+
+function hoodlefinanceIsUpdateCheckSuppressed_(userProperties) {
+  return !!(
+    userProperties &&
+    String(userProperties.getProperty(HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_) || "").toLowerCase() === "true"
+  );
+}
+
+function hoodlefinanceGetLastUpdateCheckMs_(userProperties) {
+  const rawValue = userProperties ? userProperties.getProperty(HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_) : "";
+  const parsedValue = rawValue ? Number(rawValue) : NaN;
+
+  return isNaN(parsedValue) ? 0 : parsedValue;
+}
+
+function hoodlefinanceMarkUpdateCheckRun_(userProperties, nowMs) {
+  if (userProperties) {
+    userProperties.setProperty(HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_, String(nowMs));
+  }
+}
+
+function hoodlefinanceShouldRunVersionCheckNow_(lastCheckMs, nowMs) {
+  const previousCheck = Number(lastCheckMs) || 0;
+  const currentTime = Number(nowMs) || 0;
+
+  return !previousCheck || currentTime - previousCheck >= HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_;
+}
+
+function hoodlefinanceCompareVersions_(left, right) {
+  const leftParts = String(left || "0").split(".");
+  const rightParts = String(right || "0").split(".");
+  const length = Math.max(leftParts.length, rightParts.length);
+  let i;
+  let leftValue;
+  let rightValue;
+
+  for (i = 0; i < length; i += 1) {
+    leftValue = Number(leftParts[i] || 0);
+    rightValue = Number(rightParts[i] || 0);
+
+    if (leftValue > rightValue) {
+      return 1;
+    }
+
+    if (leftValue < rightValue) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+function hoodlefinanceFetchLatestVersionInfo_() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(HOODLEFINANCE_UPDATE_CACHE_KEY_);
+  let response;
+  let version;
+
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  response = UrlFetchApp.fetch(HOODLEFINANCE_GITHUB_RAW_URL_, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept-Language": "en-US,en;q=0.9"
+    },
+    muteHttpExceptions: true,
+  });
+
+  if (response.getResponseCode() !== 200) {
+    return { version: "" };
+  }
+
+  version = hoodlefinanceExtractVersionFromSource_(response.getContentText());
+
+  cache.put(
+    HOODLEFINANCE_UPDATE_CACHE_KEY_,
+    JSON.stringify({ version: version }),
+    HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
+  );
+
+  return { version: version };
+}
+
+function hoodlefinanceExtractVersionFromSource_(sourceText) {
+  const match = String(sourceText || "").match(/const HOODLEFINANCE_VERSION_ = "([^"]+)"/);
+  return match ? match[1] : "";
+}
+
+function hoodlefinanceShowUpdateDialog_(latestVersion) {
+  const ui = hoodlefinanceGetUi_();
+  let output;
+
+  if (!ui) {
+    return;
+  }
+
+  if (typeof HtmlService === "undefined" || !HtmlService || !HtmlService.createHtmlOutput) {
+    ui.alert(
+      "HOODLEFINANCE updates",
+      "A newer version is available (" + latestVersion + ").\n\nUpdate link: " + HOODLEFINANCE_GITHUB_RAW_URL_,
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  output = HtmlService.createHtmlOutput(hoodlefinanceBuildUpdateDialogHtml_(latestVersion))
+    .setWidth(520)
+    .setHeight(280);
+
+  ui.showModalDialog(output, "HOODLEFINANCE update available");
+}
+
+function hoodlefinanceBuildUpdateDialogHtml_(latestVersion) {
+  return (
+    '<div style="font-family:Arial,sans-serif;padding:16px;line-height:1.5;">' +
+      "<h2 style=\"margin:0 0 12px 0;font-size:18px;\">HOODLEFINANCE update available</h2>" +
+      "<p style=\"margin:0 0 12px 0;\">Installed version: <code>" + hoodlefinanceEscapeHtml_(HOODLEFINANCE_VERSION_) + "</code><br>" +
+      "Latest version: <code>" + hoodlefinanceEscapeHtml_(latestVersion) + "</code></p>" +
+      "<p style=\"margin:0 0 16px 0;\">Open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
+      "<p style=\"margin:0 0 16px 0;\">" +
+        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) + '" target="_blank">Open raw source</a>' +
+        " | " +
+        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_README_URL_) + '" target="_blank">Open README</a>' +
+        " | " +
+        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_REPO_URL_) + '" target="_blank">Open repository</a>' +
+      "</p>" +
+      "<div>" +
+        '<button onclick="google.script.run.withSuccessHandler(closeDialog).hoodlefinanceSuppressUpdateChecks()" style="margin-right:8px;">Suppress automatic checks</button>' +
+        '<button onclick="closeDialog()">Later</button>' +
+      "</div>" +
+      "<script>function closeDialog(){google.script.host.close();}</script>" +
+    "</div>"
+  );
+}
+
+function hoodlefinanceEscapeHtml_(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function hoodlefinanceFetchQuote_(ticker) {
