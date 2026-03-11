@@ -32,6 +32,12 @@ If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier l
 
 See [`support-matrix.md`](./support-matrix.md) for the full sample-based exchange coverage matrix.
 
+## Live Demo
+
+<!-- DEMO_SHEET_LINK:START -->
+See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).
+<!-- DEMO_SHEET_LINK:END -->
+
 ## Quick Start
 
 1. Open a Google Sheet.
@@ -123,7 +129,7 @@ For the explicit source-backed ISIN attributes, see [`hoodlefinance-api.md`](./h
 
 ## Development
 
-For local development, tests, CLI smoke checks, and support-matrix maintenance, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+For local development, tests, CLI smoke checks, demo-sheet maintenance, and support-matrix maintenance, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Limits
 

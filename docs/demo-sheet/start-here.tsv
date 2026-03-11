@@ -1,0 +1,8 @@
+Label	Value
+Demo	hoodlefinance public demo
+Installed version	=HOODLEFINANCE_VERSION()
+Sample price	=HOODLEFINANCE("NASDAQ:GOOG","price")
+Sample foreign ETF ISIN	=HOODLEFINANCE("SJPA.L","isin")
+Sample PSE ISIN	=HOODLEFINANCE("PSE:BDO","isin")
+Sample alias form	=HOODLEFINANCE("LON:SJPA","name")
+Note	This sheet is read-only. The tab data comes from repo-tracked TSV files.

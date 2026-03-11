@@ -1,0 +1,5 @@
+yahoo_style	alias_style	name_from_yahoo	name_from_alias	isin_from_yahoo	isin_from_alias
+SJPA.L	LON:SJPA	=HOODLEFINANCE(A2,"name")	=HOODLEFINANCE(B2,"name")	=HOODLEFINANCE(A2,"isin")	=HOODLEFINANCE(B2,"isin")
+ZPRX.DE	ETR:ZPRX	=HOODLEFINANCE(A3,"name")	=HOODLEFINANCE(B3,"name")	=HOODLEFINANCE(A3,"isin")	=HOODLEFINANCE(B3,"isin")
+9988.HK	HKG:9988	=HOODLEFINANCE(A4,"name")	=HOODLEFINANCE(B4,"name")	=HOODLEFINANCE(A4,"isin")	=HOODLEFINANCE(B4,"isin")
+D05.SI	SGX:D05	=HOODLEFINANCE(A5,"name")	=HOODLEFINANCE(B5,"name")	=HOODLEFINANCE(A5,"isin")	=HOODLEFINANCE(B5,"isin")

@@ -1,0 +1,11 @@
+ticker	currency_spill	isin_spill
+SJPA.L	=HOODLEFINANCE(A2:A5,"currency")	=HOODLEFINANCE(A2:A5,"isin")
+CPXJ.L		
+ZPRX.DE		
+5MVL.DE		
+
+currency	price	price_usd
+GBP	125	=ARRAYFORMULA(IF((A8:A11="")+(B8:B11=""),,ROUND(B8:B11*HOODLEFINANCE(IF((A8:A11="")+(B8:B11=""),,"CURRENCY:"&A8:A11&"USD"),"price"),2)))
+EUR	48.5	
+USD	10	
+HKD	88.2	

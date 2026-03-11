@@ -7,8 +7,10 @@ The codebase is intentionally simple:
 - [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script implementation
 - [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node unit tests
 - [`tools/cli.js`](./tools/cli.js): local smoke-test wrapper
+- [`tools/sync-demo-sheet.js`](./tools/sync-demo-sheet.js): public demo sheet sync tool
 - [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
 - [`support-matrix.md`](./support-matrix.md): generated exchange coverage matrix
+- [`docs/demo-sheet/`](./docs/demo-sheet/): tracked demo sheet config and TSV tab data
 - [`hoodlefinance-api.md`](./hoodlefinance-api.md): detailed user-facing reference
 
 ## License
@@ -23,6 +25,7 @@ Run the unit tests:
 
 ```sh
 node --test test/hoodlefinance.test.js
+node --test test/sync-demo-sheet.test.js
 ```
 
 Run syntax checks:
@@ -30,6 +33,8 @@ Run syntax checks:
 ```sh
 node --check hoodlefinance.js
 node --check test/hoodlefinance.test.js
+node --check tools/sync-demo-sheet.js
+node --check test/sync-demo-sheet.test.js
 ```
 
 Run the CLI for live smoke tests:
@@ -49,7 +54,28 @@ node tools/benchmark.js --attribute price --count 50
 node tools/benchmark.js --tickers GOOG,AAPL,MSFT,AMZN,META
 ```
 
-The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through `curl`, so it is useful for checking live endpoints without pasting into Google Sheets.
+The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through the local Node HTTP transport, so it is useful for checking live endpoints without pasting into Google Sheets.
+
+Sync the public demo sheet:
+
+```sh
+node tools/sync-demo-sheet.js --dry-run
+node tools/sync-demo-sheet.js
+```
+
+Before the live sync will work, set up:
+
+- Google OAuth desktop-app credentials at `.demo-sheet.local/oauth-client.json`
+- `clasp` installed from npm and authenticated:
+
+```sh
+npm install -g @google/clasp
+clasp login --no-localhost
+```
+
+The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. It writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
+
+For the high-level process for adding another trusted demo maintainer, see [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md).
 
 Generate the support matrix from live CLI probes:
 
@@ -69,6 +95,7 @@ Changes should usually include:
 2. Documentation updates in [`hoodlefinance-api.md`](./hoodlefinance-api.md) and, when appropriate, [`README.md`](./README.md).
 3. Live CLI checks for any source-backed change, especially new ISIN resolvers.
 4. A version bump in `HOODLEFINANCE_VERSION_` for substantive user-facing changes.
+5. Demo-sheet TSV and config updates when the public demo should reflect the new behavior.
 
 If a change adds a new source or exchange path, include both:
 
@@ -98,3 +125,5 @@ That includes:
 If the user-facing behavior changed and the docs did not, the change is incomplete.
 
 If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
+
+If the change affects the public demo examples, refresh the demo sheet with `node tools/sync-demo-sheet.js`.

@@ -1,0 +1,5 @@
+ticker	price	currency	name	isin
+SJPA.L	=HOODLEFINANCE(A2:A5,"price")	=HOODLEFINANCE(A2:A5,"currency")	=HOODLEFINANCE(A2:A5,"name")	=HOODLEFINANCE(A2:A5,"isin")
+CPXJ.L				
+ZPRX.DE				
+5MVL.DE				

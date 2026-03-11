@@ -1,0 +1,37 @@
+{
+  "title": "hoodlefinance public demo",
+  "spreadsheetId": "1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4",
+  "publicUrl": "https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing",
+  "sharePublicReadOnly": true,
+  "script": {
+    "scriptId": "1oUtlXNtfr51n6lwV_G770U1ePaau_04dqHQRWMsQxl6XPzOVU3ktU5dh",
+    "title": "hoodlefinance public demo"
+  },
+  "tabs": [
+    {
+      "title": "Start Here",
+      "path": "docs/demo-sheet/start-here.tsv",
+      "startCell": "A1"
+    },
+    {
+      "title": "Foreign ETFs",
+      "path": "docs/demo-sheet/foreign-etfs.tsv",
+      "startCell": "A1"
+    },
+    {
+      "title": "PSE",
+      "path": "docs/demo-sheet/pse.tsv",
+      "startCell": "A1"
+    },
+    {
+      "title": "Ticker Forms",
+      "path": "docs/demo-sheet/ticker-forms.tsv",
+      "startCell": "A1"
+    },
+    {
+      "title": "Array Usage",
+      "path": "docs/demo-sheet/array-usage.tsv",
+      "startCell": "A1"
+    }
+  ]
+}
