@@ -195,6 +195,13 @@ window.initData.symbolInfo = {"resolved_symbol":"NASDAQ:GOOG","isin_displayed":"
 </script>
 `;
 
+const TRADINGVIEW_AMEX_AVLV_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"AMEX:AVLV","isin_displayed":"US05351W1036","exchange":"AMEX","short_name":"AVLV"};
+</script>
+`;
+
 const TRADINGVIEW_OTC_RYCEY_HTML = `
 <script>
 window.initData = {};
@@ -528,6 +535,10 @@ test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
   assert.equal(
     ctx.hoodlefinanceInferIsinExchange_({ symbol: "RYCEY", exchangeName: "PNK" }, { tickerInput: "OTCMKTS:RYCEY" }),
     "OTCMKTS"
+  );
+  assert.equal(
+    ctx.hoodlefinanceInferIsinExchange_({ symbol: "AVLV", exchangeName: "PCX" }, { tickerInput: "AVLV" }),
+    "NYSEARCA"
   );
 });
 
@@ -892,6 +903,25 @@ test("isin dispatches to tradingview:isin for NASDAQ tickers", () => {
   });
 });
 
+test("isin dispatches to tradingview:isin for NYSEARCA tickers inferred from metadata", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "US05351W1036";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AVLV", exchangeName: "PCX" }, "isin", { tickerInput: "AVLV" }),
+    "US05351W1036"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "AVLV", exchangeName: "PCX" },
+    context: { tickerInput: "AVLV" },
+  });
+});
+
 test("isin dispatches to tradingview:isin for OTCMKTS tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
@@ -1042,6 +1072,30 @@ test("tradingview:isin resolves for NASDAQ tickers", () => {
   assert.equal(
     ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "tradingview:isin", { tickerInput: "GOOG" }),
     "US02079K1079"
+  );
+});
+
+test("tradingview:isin resolves for NYSEARCA tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/AMEX-AVLV/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_AMEX_AVLV_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AVLV", exchangeName: "PCX" }, "tradingview:isin", { tickerInput: "AVLV" }),
+    "US05351W1036"
   );
 });
 

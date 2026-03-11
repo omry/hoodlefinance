@@ -1,8 +1,8 @@
 - document that price information is likely delayed by an unspecified time due to different data sources
 - Improve the error message for this case so a 404 on clearly dead/delisted OTC tickers reads more like: No current Yahoo quote data was found for OTCMKTS:HGEN. The symbol may be delisted or cancelled.
 - add NEO support for symbols like ZTL.NE (current failure is wrong venue, not TSE)
-- diagnos ASIN for AVLV (unspecified exchange)
 - Make sure cache is used when it makes sense in the service
 - add range-aware batching to `HOODLEFINANCE`
 - allow `HOODLEFINANCE(tickerRange, attribute)` to return a spilled array without `MAP`
 - dedupe repeated tickers within one recalculation and preserve blank cells in-place
+- upodate installaton guide and recommend adding the code to a new HoodleFinance.gs file

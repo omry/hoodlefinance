@@ -274,10 +274,14 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
 const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
   AMEX: "AMEX",
   ARCA: "NYSEARCA",
+  ARCX: "NYSEARCA",
   ASE: "AMEX",
   BATS: "BATS",
   NASDAQ: "NASDAQ",
   NMS: "NASDAQ",
+  PCX: "NYSEARCA",
+  "NYSE ARCA": "NYSEARCA",
+  NYSEARCA: "NYSEARCA",
   NYQ: "NYSE",
   NYSE: "NYSE",
   OQX: "OTCMKTS",
@@ -300,11 +304,14 @@ const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
 };
 
 const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
+  AMEX: "tradingview:isin",
   ETR: "tradingview:isin",
   HKG: "tradingview:isin",
   LON: "lon:isin",
   NASDAQ: "tradingview:isin",
   NYSE: "tradingview:isin",
+  NYSEAMERICAN: "tradingview:isin",
+  NYSEARCA: "tradingview:isin",
   OTCMKTS: "tradingview:isin",
   PSE: "pse:isin",
   SGX: "tradingview:isin",
