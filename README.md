@@ -4,7 +4,7 @@
 
 It uses multiple data sources to cover data, identifiers, and markets that `GOOGLEFINANCE` does not provide or does not support well.
 
-Current script version: `0.2.2`
+Current script version: `0.2.3`
 
 Quote freshness depends on the upstream source used for a given symbol and attribute. In practice, price data may be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
 
@@ -30,7 +30,7 @@ The short version: this is most useful if your sheet is ETF-heavy, non-U.S.-heav
 - Better practical support for many foreign ETFs, especially Yahoo-style symbols such as `.L` and `.DE`
 - Dedicated support for the Philippine Stock Exchange (`PSE`)
 - Support for `isin` lookups
-- Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, and `SGX:D05`
+- Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `NEO:ZTL`, `HKG:9988`, and `SGX:D05`
 
 If you only need basic U.S. large-cap quotes and do not care about ISINs, `GOOGLEFINANCE` may already be sufficient. This is not a full drop-in replacement because historical arguments are unsupported. The main value here is better behavior for cross-market portfolios and more predictable spreadsheet formulas around them.
 

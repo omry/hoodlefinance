@@ -223,6 +223,13 @@ window.initData.symbolInfo = {"resolved_symbol":"SGX:D05","isin_displayed":"SG1L
 </script>
 `;
 
+const TRADINGVIEW_NEO_ZTL_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"NEO:ZTL","isin_displayed":"CA05582Y1007","exchange":"NEO","short_name":"ZTL"};
+</script>
+`;
+
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
 <td><a href="javascript:showDetails('90581046')">Details</a></td>
@@ -414,6 +421,7 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
 
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("LON:ISJP"), "ISJP.L");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("ETR:ZPRX"), "ZPRX.DE");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("NEO:ZTL"), "ZTL.NE");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("SGX:D05"), "D05.SI");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
@@ -720,14 +728,14 @@ test("shared batch fetches are chunked in groups of fifty", () => {
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.2");
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.3");
 });
 
 test("compares semantic-style versions correctly", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.2", "0.2.1"), 1);
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.1", "0.2.2"), -1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.3", "0.2.2"), 1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.2", "0.2.3"), -1);
   assert.equal(ctx.hoodlefinanceCompareVersions_("1.0.0", "1.0"), 0);
 });
 
@@ -776,14 +784,14 @@ test("manual update checks show a dialog when a newer version exists", () => {
         return 200;
       },
       getContentText() {
-        return 'const HOODLEFINANCE_VERSION_ = "0.2.3";';
+        return 'const HOODLEFINANCE_VERSION_ = "0.2.4";';
       },
     };
   };
 
   assert.equal(
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
-    JSON.stringify({ latestVersion: "0.2.3", status: "outdated" })
+    JSON.stringify({ latestVersion: "0.2.4", status: "outdated" })
   );
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js"]);
   assert.equal(ctx.__uiState.dialogs.length, 1);
@@ -801,7 +809,7 @@ test("manual update checks bypass stale cached latest-version info", () => {
         return 200;
       },
       getContentText() {
-        return 'const HOODLEFINANCE_VERSION_ = "' + (seenUrls.length === 1 ? "0.2.0" : "0.2.3") + '";';
+        return 'const HOODLEFINANCE_VERSION_ = "' + (seenUrls.length === 1 ? "0.2.0" : "0.2.4") + '";';
       },
     };
   };
@@ -812,7 +820,7 @@ test("manual update checks bypass stale cached latest-version info", () => {
   );
   assert.equal(
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
-    JSON.stringify({ latestVersion: "0.2.3", status: "outdated" })
+    JSON.stringify({ latestVersion: "0.2.4", status: "outdated" })
   );
   assert.deepEqual(seenUrls, [
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js",
@@ -880,6 +888,7 @@ test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
 
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({}, { tickerInput: "PSE:BDO" }), "PSE");
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ISJP.L" }, { tickerInput: "ISJP.L" }), "LON");
+  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ZTL.NE" }, { tickerInput: "ZTL.NE" }), "NEO");
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "D05.SI" }, { tickerInput: "SGX:D05" }), "SGX");
   assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "POLI.TA" }, { tickerInput: "POLI.TA" }), "TLV");
   assert.equal(
@@ -1257,6 +1266,25 @@ test("isin dispatches to tradingview:isin for NASDAQ tickers", () => {
   });
 });
 
+test("isin dispatches to tradingview:isin for NEO tickers", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "CA05582Y1007";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZTL.NE" }, "isin", { tickerInput: "ZTL.NE" }),
+    "CA05582Y1007"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "ZTL.NE" },
+    context: { tickerInput: "ZTL.NE" },
+  });
+});
+
 test("isin dispatches to tradingview:isin for NYSEARCA tickers inferred from metadata", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
@@ -1355,6 +1383,8 @@ test("extracts TradingView symbol metadata from the page bootstrap", () => {
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_SGX_D05_HTML), "SG1L01001701");
   assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_TASE_POLI_HTML), "TASE:POLI");
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_TASE_POLI_HTML), "IL0006625771");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_NEO_ZTL_HTML), "NEO:ZTL");
+  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_NEO_ZTL_HTML), "CA05582Y1007");
 });
 
 test("tradingview:isin resolves for XETR tickers", () => {
@@ -1498,6 +1528,30 @@ test("tradingview:isin resolves for SGX tickers", () => {
   assert.equal(
     ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "tradingview:isin", { tickerInput: "SGX:D05" }),
     "SG1L01001701"
+  );
+});
+
+test("tradingview:isin resolves for NEO tickers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/NEO-ZTL/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_NEO_ZTL_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZTL.NE" }, "tradingview:isin", { tickerInput: "ZTL.NE" }),
+    "CA05582Y1007"
   );
 });
 

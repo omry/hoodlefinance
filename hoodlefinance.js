@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.2.2";
+const HOODLEFINANCE_VERSION_ = "0.2.3";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
@@ -96,6 +96,7 @@ const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = {
   KRX: ".KS",
   LON: ".L",
   MAD: ".MC",
+  NEO: ".NE",
   NSE: ".NS",
   NZE: ".NZ",
   OSL: ".OL",
@@ -171,6 +172,7 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   KRX: "KSE",
   LON: "LSEETF",
   MAD: "BM",
+  NEO: "",
   NASDAQ: "NASDAQ",
   NSE: "NSE",
   NYSE: "NYSE",
@@ -213,6 +215,7 @@ const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_ = {
   KS: "KSE",
   L: "LSEETF",
   MC: "BM",
+  NE: "",
   MI: "BVME",
   MX: "MEXI",
   NS: "NSE",
@@ -251,6 +254,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
   KS: "KRX",
   L: "LON",
   MC: "MAD",
+  NE: "NEO",
   MI: "BIT",
   MX: "BMV",
   NS: "NSE",
@@ -279,6 +283,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
   ASE: "AMEX",
   BATS: "BATS",
   NASDAQ: "NASDAQ",
+  NEO: "NEO",
   NMS: "NASDAQ",
   PCX: "NYSEARCA",
   "NYSE ARCA": "NYSEARCA",
@@ -296,6 +301,7 @@ const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   HKG: "HKEX",
   LON: "LSE",
   NASDAQ: "NASDAQ",
+  NEO: "NEO",
   NYSE: "NYSE",
   NYSEAMERICAN: "AMEX",
   NYSEARCA: "AMEX",
@@ -310,6 +316,7 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
   HKG: "tradingview:isin",
   LON: "lon:isin",
   NASDAQ: "tradingview:isin",
+  NEO: "tradingview:isin",
   NYSE: "tradingview:isin",
   NYSEAMERICAN: "tradingview:isin",
   NYSEARCA: "tradingview:isin",

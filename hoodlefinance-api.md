@@ -10,7 +10,7 @@ It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and sour
 
 Main advantages:
 
-- Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `POLI.TA`, and `RYCEY`.
+- Supports ticker forms that are practical for Yahoo-based ETF workflows, including Yahoo symbols such as `ISJP.L`, `ZPRX.DE`, `ZTL.NE`, `9988.HK`, `POLI.TA`, and `RYCEY`.
 - Adds `name` and `currency` support using the same quote path as `price`, which makes the output more consistent across symbols.
 - Adds exchange-specific `isin` support, which `GOOGLEFINANCE` does not provide. This is especially useful for broker portability and execution workflows.
 - Works better for many non-U.S. ETFs and UCITS listings that are awkward or inconsistent in `GOOGLEFINANCE`.
@@ -87,7 +87,7 @@ If any historical-data arguments are provided, the function throws an error.
 Current version:
 
 ```text
-0.2.2
+0.2.3
 ```
 
 Example:
