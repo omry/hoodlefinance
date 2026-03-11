@@ -467,6 +467,53 @@ test("blank scalar ticker input still throws", () => {
 
   assert.throws(() => ctx.HOODLEFINANCE("", "price"), /Ticker is required\./);
   assert.throws(() => ctx.HOODLEFINANCE([["  "]], "price"), /Ticker is required\./);
+  assert.throws(
+    () => ctx.HOODLEFINANCE("CURRENCY:USD", "price"),
+    /Currency ticker "CURRENCY:USD" must look like CURRENCY:USDEUR\./
+  );
+});
+
+test("range-built currency tickers ignore trailing blank-built rows", () => {
+  const ctx = loadHoodlefinance();
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d") {
+        return createYahooChartResponse("EURUSD=X", {
+          currency: "USD",
+          regularMarketPrice: 1.08,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/CHFUSD%3DX?interval=1d&range=1d") {
+        return createYahooChartResponse("CHFUSD=X", {
+          currency: "USD",
+          regularMarketPrice: 1.13,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(
+    JSON.stringify(
+      ctx.HOODLEFINANCE([["CURRENCY:USDUSD"], ["CURRENCY:EURUSD"], ["CURRENCY:CHFUSD"], ["CURRENCY:USD"]], "price")
+    ),
+    JSON.stringify([[1], [1.08], [1.13], [""]])
+  );
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([[
+      "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d",
+      "https://query1.finance.yahoo.com/v8/finance/chart/CHFUSD%3DX?interval=1d&range=1d",
+    ]])
+  );
 });
 
 test("range calls preserve blanks and de-duplicate repeated quote lookups", () => {
@@ -651,14 +698,14 @@ test("shared batch fetches are chunked in groups of fifty", () => {
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.0");
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.1");
 });
 
 test("compares semantic-style versions correctly", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.0", "0.1.1"), 1);
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.1.1", "0.2.0"), -1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.1", "0.2.0"), 1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.0", "0.2.1"), -1);
   assert.equal(ctx.hoodlefinanceCompareVersions_("1.0.0", "1.0"), 0);
 });
 
@@ -707,14 +754,14 @@ test("manual update checks show a dialog when a newer version exists", () => {
         return 200;
       },
       getContentText() {
-        return 'const HOODLEFINANCE_VERSION_ = "0.2.1";';
+        return 'const HOODLEFINANCE_VERSION_ = "0.2.2";';
       },
     };
   };
 
   assert.equal(
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
-    JSON.stringify({ latestVersion: "0.2.1", status: "outdated" })
+    JSON.stringify({ latestVersion: "0.2.2", status: "outdated" })
   );
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js"]);
   assert.equal(ctx.__uiState.dialogs.length, 1);

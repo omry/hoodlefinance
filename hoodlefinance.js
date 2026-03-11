@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.2.0";
+const HOODLEFINANCE_VERSION_ = "0.2.1";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
@@ -902,15 +902,16 @@ function hoodlefinanceUnwrapTickerGridResult_(grid) {
 }
 
 function hoodlefinanceResolveTickerGrid_(tickerGrid, attribute) {
-  const jobs = hoodlefinanceCollectTickerJobs_(tickerGrid, attribute);
+  const allowImplicitBlankTickers = hoodlefinanceIsMultiCellTickerGrid_(tickerGrid);
+  const jobs = hoodlefinanceCollectTickerJobs_(tickerGrid, attribute, allowImplicitBlankTickers);
 
   hoodlefinancePrefetchTickerJobs_(jobs);
   hoodlefinanceResolvePrefetchedTickerJobs_(jobs);
 
-  return hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobs.jobByKey, attribute);
+  return hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobs.jobByKey, attribute, allowImplicitBlankTickers);
 }
 
-function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute) {
+function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute, allowImplicitBlankTickers) {
   const orderedJobs = [];
   const jobByKey = {};
   let rowIndex;
@@ -922,7 +923,7 @@ function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute) {
   for (rowIndex = 0; rowIndex < tickerGrid.length; rowIndex += 1) {
     for (columnIndex = 0; columnIndex < tickerGrid[rowIndex].length; columnIndex += 1) {
       value = tickerGrid[rowIndex][columnIndex];
-      normalizedTicker = String(value == null ? "" : value).trim();
+      normalizedTicker = hoodlefinanceNormalizeTickerGridCellValue_(value, allowImplicitBlankTickers);
 
       if (!normalizedTicker) {
         continue;
@@ -952,6 +953,38 @@ function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute) {
 
 function hoodlefinanceBuildTickerJobKey_(ticker, attribute) {
   return String(ticker).trim() + "\n" + String(attribute).trim().toLowerCase();
+}
+
+function hoodlefinanceIsMultiCellTickerGrid_(tickerGrid) {
+  return tickerGrid.length !== 1 || !tickerGrid[0] || tickerGrid[0].length !== 1;
+}
+
+function hoodlefinanceNormalizeTickerGridCellValue_(value, allowImplicitBlankTickers) {
+  const normalizedTicker = String(value == null ? "" : value).trim();
+
+  if (!normalizedTicker || !allowImplicitBlankTickers) {
+    return normalizedTicker;
+  }
+
+  return hoodlefinanceShouldTreatRangeTickerAsBlank_(normalizedTicker) ? "" : normalizedTicker;
+}
+
+function hoodlefinanceShouldTreatRangeTickerAsBlank_(ticker) {
+  const value = String(ticker || "").trim();
+  const parts = value.split(":");
+  const exchange = parts.length > 1 ? parts[0].trim().toUpperCase() : "";
+  const symbol = parts.length > 1 ? parts.slice(1).join(":").trim() : "";
+  const currencyPair = exchange === "CURRENCY" ? symbol.replace(/[^A-Za-z]/g, "").toUpperCase() : "";
+
+  if (!exchange) {
+    return false;
+  }
+
+  if (!symbol) {
+    return true;
+  }
+
+  return exchange === "CURRENCY" && currencyPair.length === 3;
 }
 
 function hoodlefinancePrefetchTickerJobs_(jobs) {
@@ -1230,7 +1263,7 @@ function hoodlefinanceResolvePrefetchedTickerJobs_(jobs) {
   }
 }
 
-function hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobByKey, attribute) {
+function hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobByKey, attribute, allowImplicitBlankTickers) {
   const resultGrid = [];
   let rowIndex;
   let columnIndex;
@@ -1244,7 +1277,7 @@ function hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobByKey, attribute) {
 
     for (columnIndex = 0; columnIndex < tickerGrid[rowIndex].length; columnIndex += 1) {
       value = tickerGrid[rowIndex][columnIndex];
-      normalizedTicker = String(value == null ? "" : value).trim();
+      normalizedTicker = hoodlefinanceNormalizeTickerGridCellValue_(value, allowImplicitBlankTickers);
 
       if (!normalizedTicker) {
         row.push("");
