@@ -14,42 +14,47 @@ Chosen defaults:
 - `attribute` stays scalar-only in v1
 - array output preserves the exact input shape
 - blank input cells return blank output cells
-- array-mode failures return plain error-message strings per cell
-- scalar mode keeps current behavior and still throws real errors
+- all inputs go through one shared batch pipeline; a scalar call is just a `1x1` batch
+- any failing cell aborts the formula with one native Sheets error
 
 ## Key Changes
 
-- Update `HOODLEFINANCE` to branch into:
-  - scalar path: current behavior, unchanged semantically
-  - array path: normalize the ticker input into a 2D grid, validate `attribute` as scalar/`1x1`, and return a 2D result grid
+- Update `HOODLEFINANCE` to normalize every call into a 2D job grid:
+  - scalar calls become a `1x1` grid
+  - range calls preserve their original dimensions
+  - successful `1x1` results unwrap back to a scalar return value; larger grids return a 2D array
+  - each populated range cell behaves like an equivalent independent scalar call with the same scalar `attribute`
 - Replace the current scalar-only ticker coercion with a helper split:
   - scalar coercion for `attribute`
   - range normalization for `ticker`
-  - keep `1x1` ticker ranges valid and treat them as scalar-compatible
+  - keep `1x1` ticker ranges valid and route them through the same shared execution path
 - Introduce a per-invocation execution context object for array mode:
-  - memoized result/error by `(ticker, attribute)`
-  - memoized quote by normalized ticker input
-  - memoized fetched text by URL for nested resolvers
+  - memoized result/error by normalized `(ticker, attribute)` input pair only
   - this memo is request-local only and exists in addition to existing `CacheService` usage
-- Add a quote prefetch phase for array mode:
-  - collect unique non-blank ticker jobs first
-  - split them into:
-    - Yahoo chart requests for normal quote lookups
-    - direct synthetic same-currency FX quotes
-    - PSE quote jobs
-    - direct-ISIN-to-Yahoo symbol resolution jobs
-  - batch Yahoo chart requests with `UrlFetchApp.fetchAll`
-  - batch Yahoo ISIN search requests with `UrlFetchApp.fetchAll`
-  - keep PSE and scrape-based ISIN resolvers on their current logic, but dedupe them via request-local memo so repeated cells do not repeat work
+  - `CacheService` remains keyed to individual reusable upstream artifacts such as quote payloads and provider-specific resolver results, not whole array calls
+- Add one reusable batch utility for all HTTP fanout:
+  - one generic `fetchAll` helper handles chunking, request fanout, response collection, and stable mapping back to jobs
+  - the helper chunks requests using a fixed constant `HOODLEFINANCE_FETCHALL_BATCH_SIZE_ = 50`
+  - the concurrency limit is per upstream source; do not send more than `50` concurrent requests to the same source
+  - introduce an explicit source concept for batching, such as Yahoo chart, Yahoo ISIN search, PSE, TradingView, LSE, ARIVA, and IBKR
+  - batching utility code must not be duplicated, but source-specific fetchers are allowed
+- Add source-specific fetchers on top of that shared utility:
+  - collect unique non-blank `(ticker, attribute)` jobs first
+  - route each job through the same provider logic it would use in scalar mode
+  - Yahoo chart, Yahoo ISIN search, PSE, and scrape-based resolvers may each have their own fetcher as long as they reuse the same batch utility for HTTP fanout
+  - direct synthetic same-currency FX quotes still short-circuit locally without any fetch
+  - process source buckets sequentially in v1; do not add cross-source parallel fanout
 - Keep attribute extraction logic source-compatible:
-  - quote-based attributes (`price`, `name`, `currency`, `tradetime`, `datadelay`, `volume`, `high`, `low`, `close`, `change`, `changepct`) use the prefetched/memoized quote
-  - `isin` and explicit source attributes continue through current resolvers, but repeated identical lookups reuse request-local cached values
+  - quote-based attributes (`price`, `name`, `currency`, `tradetime`, `datadelay`, `volume`, `high`, `low`, `close`, `change`, `changepct`) keep the same output and error behavior as scalar mode
+  - `isin` and explicit source attributes continue through the same resolver logic they use today
 - Preserve call-level validation:
   - unsupported historical arguments still fail the whole call
   - multi-cell `attribute` remains unsupported in v1 and throws one clear call-level error
+  - blank or omitted scalar `attribute` still defaults to `"price"` exactly as it does today
+  - if any populated cell fails, the whole formula throws one native Sheets error using the first error encountered under the source/batch processing order
 - Update docs in `hoodlefinance-api.md` and `README.md`:
   - replace `MAP` guidance with native range examples
-  - document shape preservation, blank preservation, scalar-only `attribute`, and array-mode error-string behavior
+  - document shape preservation, blank preservation, scalar-only `attribute`, and whole-formula native error behavior in range mode
 
 ## Public API / Behavior
 
@@ -57,7 +62,7 @@ Chosen defaults:
 - `HOODLEFINANCE(A3:A, "price")` becomes supported and spills one result per input row
 - `HOODLEFINANCE(A3:C10, "isin")` becomes supported and returns an output grid with the same shape
 - blank ticker cells return `""`
-- failed ticker cells in array mode return the plain message string that scalar mode would have thrown
+- if any populated ticker cell fails, the formula aborts with one native Sheets error using one discovered failure message
 - `HOODLEFINANCE(A3:A, B3:B)` remains unsupported in v1
 - historical arguments remain unsupported for both scalar and array calls
 
@@ -70,17 +75,18 @@ Add coverage for:
 - vertical ticker range spills one column with matching values
 - rectangular ticker range preserves exact dimensions
 - blank input cells stay blank in place
-- repeated identical tickers in one array call trigger only one Yahoo chart fetch
-- repeated direct-ISIN inputs trigger only one Yahoo ISIN search fetch
-- repeated `isin`/`tradingview:isin` lookups reuse one underlying page fetch per unique symbol
-- mixed success/failure arrays return values plus plain error strings without aborting the whole result
+- repeated identical `(ticker, attribute)` pairs in one call execute only once and fan out their result to every matching cell
+- mixed success/failure arrays abort the whole formula and surface the first encountered native error deterministically under the defined processing order
 - unsupported multi-cell `attribute` still throws one call-level error
 - unsupported historical arguments still throw one call-level error
 - same-currency FX rows still short-circuit locally and do not fetch
+- no upstream source receives more than `50` concurrent requests in one chunk
 
 ## Assumptions
 
 - v1 only supports ticker ranges; attribute ranges/matrices are intentionally deferred
-- "Range-aware batching" means real batching for Yahoo-backed quote/search requests plus request-local dedupe for the remaining resolver paths
-- No new persistent cache policy is introduced beyond current `CacheService` keys and TTLs
-- Array-mode error cells are plain strings, not Sheets native error objects
+- "Range-aware batching" means one reusable `fetchAll` utility reused by source-specific fetchers, plus request-local dedupe by normalized `(ticker, attribute)` input pair
+- Batch fanout uses a fixed constant of `50` requests per source-specific `fetchAll` chunk; if this ever becomes user-tunable, expose it later through a menu/settings surface rather than changing the v1 interface
+- Source buckets are explicit and processed sequentially in v1; the first error encountered in that processing order is the one surfaced to Sheets
+- Persistent caching stays at individual ticker/provider artifact granularity; do not add `CacheService` entries for whole array-call results
+- The shared pipeline does not attempt per-cell native errors inside a spilled result; it throws one native error for the whole formula instead
