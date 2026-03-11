@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CLI_PATH = ROOT_DIR / "tools" / "cli.js"
-README_PATH = ROOT_DIR / "README.md"
+SUPPORT_MATRIX_PATH = ROOT_DIR / "support-matrix.md"
 MARKER_START = "<!-- SUPPORT_MATRIX:START -->"
 MARKER_END = "<!-- SUPPORT_MATRIX:END -->"
 
@@ -119,13 +119,19 @@ DEFAULT_MAX_WORKERS = min(32, max(4, (os.cpu_count() or 4) * 4))
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="generate-support-matrix.py",
-        description="Generate the README support matrix from live CLI probes.",
+        description="Generate the support-matrix page from live CLI probes.",
     )
     parser.add_argument("--details", action="store_true", help="include failing probe details")
     parser.add_argument(
+        "--update-page",
+        action="store_true",
+        help="replace the support-matrix page block between marker comments",
+    )
+    parser.add_argument(
         "--update-readme",
         action="store_true",
-        help="replace the README support-matrix block between marker comments",
+        dest="update_page",
+        help=argparse.SUPPRESS,
     )
     return parser.parse_args()
 
@@ -380,26 +386,26 @@ def generate_output(show_details: bool) -> str:
     return output
 
 
-def update_readme(generated_block: str) -> None:
-    content = README_PATH.read_text(encoding="utf8")
+def update_support_matrix_page(generated_block: str) -> None:
+    content = SUPPORT_MATRIX_PATH.read_text(encoding="utf8")
 
     if MARKER_START not in content or MARKER_END not in content:
-        raise SystemExit(f"README markers not found in {README_PATH}")
+        raise SystemExit(f"Support-matrix markers not found in {SUPPORT_MATRIX_PATH}")
 
     start_index = content.index(MARKER_START) + len(MARKER_START)
     end_index = content.index(MARKER_END)
     replacement = "\n" + generated_block.rstrip() + "\n"
     updated = content[:start_index] + replacement + content[end_index:]
-    README_PATH.write_text(updated, encoding="utf8")
+    SUPPORT_MATRIX_PATH.write_text(updated, encoding="utf8")
 
 
 def main() -> int:
     args = parse_args()
     output = generate_output(args.details)
 
-    if args.update_readme:
-        update_readme(output)
-        print(f"Updated README support matrix in {README_PATH}")
+    if args.update_page:
+        update_support_matrix_page(output)
+        print(f"Updated support matrix in {SUPPORT_MATRIX_PATH}")
         return 0
 
     print(output)

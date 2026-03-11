@@ -8,6 +8,7 @@ The codebase is intentionally simple:
 - [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node unit tests
 - [`tools/cli.js`](./tools/cli.js): local smoke-test wrapper
 - [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
+- [`support-matrix.md`](./support-matrix.md): generated exchange coverage matrix
 - [`hoodlefinance-api.md`](./hoodlefinance-api.md): detailed user-facing reference
 
 ## License
@@ -55,7 +56,7 @@ Generate the support matrix from live CLI probes:
 ```sh
 python3 tools/generate-support-matrix.py
 python3 tools/generate-support-matrix.py --details
-python3 tools/generate-support-matrix.py --update-readme
+python3 tools/generate-support-matrix.py --update-page
 ```
 
 The generator is intentionally user-facing: it reports exchange coverage for the features a normal user calls, not the backend-specific helper attributes. It also contains a small reliability override map for combinations that are known to be flaky in practice. Use that map for long-term stability issues; do not rely on a single successful run to promote a fragile combination to stable support.
@@ -96,4 +97,4 @@ That includes:
 
 If the user-facing behavior changed and the docs did not, the change is incomplete.
 
-If the change affects exchange coverage or source support, regenerate the README support matrix with `python3 tools/generate-support-matrix.py --update-readme`.
+If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.

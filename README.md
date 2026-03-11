@@ -15,26 +15,22 @@ Quote freshness depends on the upstream source used for a given symbol and attri
 - Supports Yahoo-style symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
 - Supports `GOOGLEFINANCE`-style tickers such as `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, and `TLV:POLI`
 
+## Why Use It Instead Of GOOGLEFINANCE?
+
+The short version: this is most useful if your sheet is ETF-heavy, non-U.S.-heavy, or needs identifiers that `GOOGLEFINANCE` does not expose.
+
+- Better practical support for many foreign ETFs, especially Yahoo-style symbols such as `.L` and `.DE`
+- Dedicated support for the Philippine Stock Exchange (`PSE`)
+- Support for `isin` lookups
+- Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, and `SGX:D05`
+
+If you only need basic U.S. large-cap quotes and do not care about ISINs, `GOOGLEFINANCE` may already be sufficient. The main value here is better behavior for cross-market portfolios and more predictable spreadsheet formulas around them.
+
+If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier lookup you care about, please file an issue with a concrete example for evaluation, or send a contribution following [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
 ## Support Matrix
 
-<!-- SUPPORT_MATRIX:START -->
-| <span title="Code and full venue name.">Exchange</span> | <span title="Hover the info icon to see the sample tickers used for probes.">Samples</span> | <span title="Grouped attributes: price, name, currency">Basic quote<br><sub><code>price</code><br><code>name</code><br><code>currency</code></sub></span> | <span title="Grouped attributes: high, low, close">Session stats<br><sub><code>high</code><br><code>low</code><br><code>close</code></sub></span> | <span title="Grouped attributes: volume, tradetime, datadelay">Activity/time<br><sub><code>volume</code><br><code>tradetime</code><br><code>datadelay</code></sub></span> | <span title="Grouped attributes: change, changepct">Change<br><sub><code>change</code><br><code>changepct</code></sub></span> | <span title="Grouped attributes: isin">ISIN<br><sub><code>isin</code></sub></span> |
-| --- | --- | --- | --- | --- | --- | --- |
-| <code>HKG</code><br><sub>Hong Kong Stock Exchange</sub> | <span title="9988.HK (Alibaba / BABA), 1299.HK, 1810.HK">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>LON</code><br><sub>London Stock Exchange</sub> | <span title="SJPA.L, CPXJ.L, VUAG.L">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>NASDAQ</code><br><sub>Nasdaq</sub> | <span title="GOOG, AAPL, MSFT">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>NYSE</code><br><sub>New York Stock Exchange</sub> | <span title="NYSE:IBM, NYSE:KO, NYSE:DIS">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>OTCMKTS</code><br><sub>OTC Markets</sub> | <span title="OTCMKTS:RYCEY, OTCMKTS:NSRGY, OTCMKTS:TCEHY">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>PSE</code><br><sub>Philippine Stock Exchange</sub> | <span title="PSE:BDO, PSE:AAA, PSE:JFC">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="Failing probes: high (PSE:AAA); low (PSE:AAA).">⚠️</span> | <span title="Failing probes: volume (PSE:AAA).">⚠️</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>SGX</code><br><sub>Singapore Exchange</sub> | <span title="SGX:D05, SGX:U11, SGX:O39">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>TLV</code><br><sub>Tel Aviv Stock Exchange</sub> | <span title="TASE.TA, POLI.TA, NICE.TA">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-| <code>TYO</code><br><sub>Tokyo Stock Exchange</sub> | <span title="7203.T, 6758.T, 9984.T">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="Failing probes: isin (7203.T, 6758.T, 9984.T).">❌</span> |
-| <code>ETR</code><br><sub>Xetra</sub> | <span title="ZPRV.DE, ZPRX.DE, 5MVL.DE">ⓘ</span> | <span title="All probes passed. Attributes: price, name, currency.">✅</span> | <span title="All probes passed. Attributes: high, low, close.">✅</span> | <span title="All probes passed. Attributes: volume, tradetime, datadelay.">✅</span> | <span title="All probes passed. Attributes: change, changepct.">✅</span> | <span title="All probes passed. Attributes: isin.">✅</span> |
-
-Legend: `✅` all probes passed, `⚠️` mixed results, `❌` no probes passed or no implementation is configured.
-<!-- SUPPORT_MATRIX:END -->
-
-This matrix is sample-based, not exhaustive. It is intended to show current practical coverage of the public interface, not a formal guarantee for every symbol on an exchange.
+See [`support-matrix.md`](./support-matrix.md) for the full sample-based exchange coverage matrix.
 
 ## Quick Start
 
