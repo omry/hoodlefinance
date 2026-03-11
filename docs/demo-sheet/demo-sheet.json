@@ -123,6 +123,13 @@
         ],
         "numberFormats": [
           {
+            "column": 4,
+            "startRow": 11,
+            "endRow": 14,
+            "type": "NUMBER",
+            "pattern": "0.00"
+          },
+          {
             "column": 5,
             "startRow": 11,
             "endRow": 14,
