@@ -6,6 +6,8 @@ It uses Yahoo Finance for quote data and adds ISIN support that `GOOGLEFINANCE` 
 
 Current script version: `0.1.1`
 
+Quote freshness depends on the upstream source used for a given symbol and attribute. In practice, price data may be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
+
 ## What It Does
 
 - Fetches scalar quote fields such as `price`, `name`, `currency`, `tradetime`, `volume`, `high`, `low`, `close`, `changepct`, and `change`
@@ -131,6 +133,7 @@ For local development, tests, CLI smoke checks, and support-matrix maintenance, 
 - Only single-result quote fields are supported
 - Historical data arguments are not implemented
 - `marketcap` is intentionally unsupported
+- Quote freshness depends on the upstream source and may be delayed by an unspecified amount of time
 - Public-site resolvers can break when upstream pages change
 - `ibkr:isin` can be blocked by captcha on IBKR public pages
 

@@ -131,6 +131,8 @@ Attribute matching is case-insensitive.
 
 `close` means the close price for the most recent completed trading day.
 
+Quote freshness depends on the upstream source used for a given symbol and attribute. Price data may therefore be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
+
 Examples:
 
 ```gs
@@ -424,3 +426,4 @@ ISIN:
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - `changepct` returns a fraction such as `0.0123` for `1.23%`, so format the cell as Percent in Sheets.
 - `GBp` quotes are normalized to `GBP`: money values are divided by 100 and the reported currency is changed to `GBP`.
+- Quote freshness depends on the upstream source and may be delayed by an unspecified amount of time.
