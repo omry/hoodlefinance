@@ -105,7 +105,7 @@ test("formatting helpers build the expected Sheets API requests", function () {
           },
         },
       },
-      fields: "userEnteredFormat(backgroundColor,backgroundColorStyle,horizontalAlignment,textFormat)",
+      fields: "userEnteredFormat",
       range: {
         endColumnIndex: 2,
         endRowIndex: 3,

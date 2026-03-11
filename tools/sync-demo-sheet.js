@@ -325,6 +325,7 @@ async function syncDemoSheet(accessToken, inputConfig, options) {
   await ensureSpreadsheet(accessToken, config);
   await ensureTabs(accessToken, config);
   sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
+  await resetTabFormatsBeforeWrite(accessToken, config, sheetMap);
   await writeTabs(accessToken, config);
   await applyTabFormatting(accessToken, config, sheetMap);
 
@@ -340,6 +341,50 @@ async function syncDemoSheet(accessToken, inputConfig, options) {
 
   config.publicUrl = buildSpreadsheetUrl(config.spreadsheetId);
   return config;
+}
+
+async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
+  const requests = [];
+  let i;
+  let tab;
+  let values;
+  let sheetProperties;
+  let maxColumns;
+  let sheetRowCount;
+
+  for (i = 0; i < config.tabs.length; i += 1) {
+    tab = config.tabs[i];
+    sheetProperties = sheetMap[tab.title];
+
+    if (!sheetProperties) {
+      continue;
+    }
+
+    values = parseTsv(await fsp.readFile(resolveRepoPath(tab.path), "utf8"));
+    maxColumns = values.reduce(function (currentMax, row) {
+      const width = Array.isArray(row) ? row.length : 0;
+      return Math.max(currentMax, width);
+    }, 1);
+    sheetRowCount = Math.max(
+      (sheetProperties.gridProperties && sheetProperties.gridProperties.rowCount) || values.length || 1,
+      values.length || 1
+    );
+
+    requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, maxColumns));
+  }
+
+  if (!requests.length) {
+    return;
+  }
+
+  await googleApiJson(
+    accessToken,
+    "POST",
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+      encodeURIComponent(config.spreadsheetId) +
+      ":batchUpdate",
+    { requests: requests }
+  );
 }
 
 async function ensureSpreadsheet(accessToken, config) {
@@ -671,7 +716,7 @@ function buildBodyAlignmentRequest(sheetId, maxRows, maxColumns) {
           },
         },
       },
-      fields: "userEnteredFormat(backgroundColor,backgroundColorStyle,horizontalAlignment,textFormat)",
+      fields: "userEnteredFormat",
       range: {
         startRowIndex: 0,
         endRowIndex: maxRows,
