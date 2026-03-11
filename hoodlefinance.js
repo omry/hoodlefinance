@@ -2406,10 +2406,21 @@ function hoodlefinanceBuildYahooIsinSearchUrl_(isin) {
 
 function hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker) {
   if (response.getResponseCode() !== 200) {
-    throw new Error("Quote lookup failed for " + ticker + " (" + response.getResponseCode() + ").");
+    throw new Error(hoodlefinanceBuildYahooQuoteLookupErrorMessage_(ticker, response.getResponseCode()));
   }
 
   return hoodlefinanceExtractYahooQuoteMetaFromPayload_(JSON.parse(response.getContentText()), ticker);
+}
+
+function hoodlefinanceBuildYahooQuoteLookupErrorMessage_(ticker, statusCode) {
+  const normalizedTicker = String(ticker || "").trim();
+  const upperTicker = normalizedTicker.toUpperCase();
+
+  if (Number(statusCode) === 404 && upperTicker.indexOf("OTCMKTS:") === 0) {
+    return "No current quote data was found for " + normalizedTicker + ". The symbol may be delisted or cancelled.";
+  }
+
+  return "Quote lookup failed for " + normalizedTicker + " (" + statusCode + ").";
 }
 
 function hoodlefinanceExtractYahooQuoteMetaFromPayload_(payload, ticker) {

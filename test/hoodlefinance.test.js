@@ -671,6 +671,28 @@ test("chunk-level fetchAll failures fall back to per-request errors", () => {
   );
 });
 
+test("dead OTC tickers report a delisted-style 404 message", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/RYCE?interval=1d&range=1d") {
+        return createHttpResponse(404, "not found");
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.throws(
+    () => ctx.HOODLEFINANCE([["OTCMKTS:RYCE"]], "price"),
+    /No current quote data was found for OTCMKTS:RYCE\. The symbol may be delisted or cancelled\./
+  );
+});
+
 test("shared batch fetches are chunked in groups of fifty", () => {
   const ctx = loadHoodlefinance();
   const batchSizes = [];
