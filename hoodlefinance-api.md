@@ -1,6 +1,6 @@
 # HOODLEFINANCE API
 
-`HOODLEFINANCE` is a Google Apps Script custom function intended as a partial single-result replacement for `GOOGLEFINANCE`.
+`HOODLEFINANCE` is a Google Apps Script custom function intended as a partial replacement for supported current-data `GOOGLEFINANCE` use cases, including both single-cell and array formulas.
 
 It uses Yahoo Finance for most quote data, PSE EDGE for `PSE:` tickers, and source-specific resolvers for `isin` attributes.
 
@@ -26,7 +26,7 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 
 ## Limitations
 
-- Only single-result quote fields are supported.
+- Only current scalar per-ticker quote fields are supported; historical series are not.
 - Historical data arguments are not implemented.
 - `marketcap` is currently unsupported.
 - `ibkr:isin` depends on IBKR public HTML pages rather than a clean public API.

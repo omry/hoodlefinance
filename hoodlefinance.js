@@ -320,7 +320,8 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
 };
 
 /**
- * Drop-in replacement for GOOGLEFINANCE for single-result quote fields.
+ * Partial GOOGLEFINANCE-compatible quote function for supported current quote
+ * attributes, including single-cell and spilled-array workflows.
  *
  * Supported attributes in this version:
  * - "price" (default)
