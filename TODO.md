@@ -2,4 +2,3 @@
 - add NEO support for symbols like ZTL.NE (current failure is wrong venue, not TSE)
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
 - Add CI-backed demo-sheet sync/deploy support so public demo updates do not depend only on local maintainer auth setup
-- upodate installaton guide and recommend adding the code to a new HoodleFinance.gs file

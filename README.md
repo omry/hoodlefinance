@@ -41,8 +41,9 @@ If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier l
 1. Open a Google Sheet.
 2. Go to `Extensions -> Apps Script`.
 3. Open the raw source file: [hoodlefinance.js (raw)](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js)
-4. Copy the file contents into `Code.gs`.
-5. Save the project and reload the spreadsheet.
+4. Create a new script file named `HoodleFinance`.
+5. Paste the file contents into the new `HoodleFinance` file.
+6. Save the project and reload the spreadsheet.
 
 Start with:
 

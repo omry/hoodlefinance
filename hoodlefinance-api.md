@@ -43,8 +43,8 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 
 1. Open the target Google Sheet.
 2. Go to `Extensions -> Apps Script`.
-3. Create or open `Code.gs`.
-4. Paste the contents of `hoodlefinance.js` into the Apps Script project.
+3. Create a new script file named `HoodleFinance`.
+4. Paste the contents of `hoodlefinance.js` into the new `HoodleFinance` file.
 5. Save the project.
 6. Reload the spreadsheet.
 7. Test with a simple formula such as:
@@ -57,6 +57,7 @@ If Sheets reports `Unknown function: HOODLEFINANCE`, the Apps Script project did
 
 - check for syntax errors in the Apps Script editor
 - make sure the code was pasted into the spreadsheet's bound script project
+- make sure the new `HoodleFinance` file was saved successfully
 - save the script and reload the sheet again
 
 ## Function Signature
