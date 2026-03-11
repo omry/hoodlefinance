@@ -28,7 +28,7 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 
 - Only single-result quote fields are supported.
 - Historical data arguments are not implemented.
-- `marketcap` is intentionally not supported.
+- `marketcap` is currently unsupported.
 - `ibkr:isin` depends on IBKR public HTML pages rather than a clean public API.
 - ISIN resolution is therefore more brittle than `price`, `name`, or `currency`.
 - IBKR may present a captcha challenge on its public search pages; when that happens, `ibkr:isin` lookups fail until the endpoint becomes accessible again.
@@ -421,7 +421,7 @@ Blank ticker cells stay blank in the spilled output. If any populated cell fails
 ## Notes and Limitations
 
 - Historical arguments are not implemented.
-- `marketcap` is intentionally not supported.
+- `marketcap` is currently unsupported.
 - `isin` only works for exchanges with an implemented exchange-specific resolver. Right now, that includes `ETR`, `HKG`, `LON`, `NASDAQ`, `NYSE`, `OTCMKTS`, `PSE`, `SGX`, and `TLV`.
 - `ibkr:isin` depends on IBKR public HTML pages, so it is more brittle than quote attributes.
 - `tradingview:isin` depends on TradingView public symbol pages and their bootstrap data, so it is also a scrape-based source.

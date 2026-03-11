@@ -1,12 +1,14 @@
 # HOODLEFINANCE
 
-`HOODLEFINANCE` is a Google Apps Script custom function that provides a practical single-result alternative to `GOOGLEFINANCE` for many ETF-heavy and non-U.S. workflows.
+`HOODLEFINANCE` is a Google Apps Script custom function that provides a practical alternative to `GOOGLEFINANCE` for many single-cell and array-based workflows, especially ETF-heavy and non-U.S. ones.
 
 It uses Yahoo Finance for quote data and adds ISIN support that `GOOGLEFINANCE` does not provide.
 
 Current script version: `0.2.0`
 
 Quote freshness depends on the upstream source used for a given symbol and attribute. In practice, price data may be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
+
+There are also some limitations; see [Limits](#limits).
 
 ## What It Does
 
@@ -24,7 +26,7 @@ The short version: this is most useful if your sheet is ETF-heavy, non-U.S.-heav
 - Support for `isin` lookups
 - Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, and `SGX:D05`
 
-If you only need basic U.S. large-cap quotes and do not care about ISINs, `GOOGLEFINANCE` may already be sufficient. The main value here is better behavior for cross-market portfolios and more predictable spreadsheet formulas around them.
+If you only need basic U.S. large-cap quotes and do not care about ISINs, `GOOGLEFINANCE` may already be sufficient. This is not a full drop-in replacement because historical arguments are still unsupported. The main value here is better behavior for cross-market portfolios and more predictable spreadsheet formulas around them.
 
 If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier lookup you care about, please file an issue with a concrete example for evaluation, or send a contribution following [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
@@ -133,12 +135,10 @@ For local development, tests, CLI smoke checks, demo-sheet maintenance, and supp
 
 ## Limits
 
-- Only single-result quote fields are supported
 - Historical data arguments are not implemented
-- `marketcap` is intentionally unsupported
+- Not all `GOOGLEFINANCE` attributes are supported
 - Quote freshness depends on the upstream source and may be delayed by an unspecified amount of time
-- Public-site resolvers can break when upstream pages change
-- `ibkr:isin` can be blocked by captcha on IBKR public pages
+- Some lookups depend on unofficial APIs or public website behavior and may break without notice
 
 ## License
 
