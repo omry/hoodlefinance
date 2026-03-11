@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const childProcess = require("child_process");
+const { createUrlFetchApp } = require("./urlfetch-sync.js");
 
 function loadHoodlefinance() {
   const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
@@ -31,38 +31,7 @@ function loadHoodlefinance() {
         };
       },
     },
-    UrlFetchApp: {
-      fetch(url) {
-        const output = childProcess.execFileSync(
-          "curl",
-          [
-            "-Ls",
-            "-H",
-            "User-Agent: Mozilla/5.0",
-            "-H",
-            "Accept-Language: en-US,en;q=0.9",
-            "-w",
-            "\n__HOODLEFINANCE_STATUS__:%{http_code}\n",
-            url,
-          ],
-          {
-            encoding: "utf8",
-          }
-        );
-        const match = output.match(/\n__HOODLEFINANCE_STATUS__:(\d{3})\n$/);
-        const body = match ? output.slice(0, match.index) : output;
-        const statusCode = match ? Number(match[1]) : 0;
-
-        return {
-          getResponseCode() {
-            return statusCode;
-          },
-          getContentText() {
-            return body;
-          },
-        };
-      },
-    },
+    UrlFetchApp: createUrlFetchApp(),
   };
 
   vm.createContext(sandbox);

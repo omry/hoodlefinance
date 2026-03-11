@@ -40,6 +40,14 @@ node tools/cli.js ZPRX.DE isin
 node tools/cli.js PSE:BDO isin
 ```
 
+Run the live benchmark for scalar-vs-range performance:
+
+```sh
+node tools/benchmark.js
+node tools/benchmark.js --attribute price --count 50
+node tools/benchmark.js --tickers GOOG,AAPL,MSFT,AMZN,META
+```
+
 The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through `curl`, so it is useful for checking live endpoints without pasting into Google Sheets.
 
 Generate the support matrix from live CLI probes:
