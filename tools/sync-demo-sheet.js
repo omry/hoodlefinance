@@ -130,6 +130,8 @@ function validateConfig(config) {
       if (!String(tab.startCell || "").trim()) {
         issues.push("Tab \"" + (tab.title || "#" + (i + 1)) + "\" is missing \"startCell\".");
       }
+
+      validateTabFormatting(tab, issues, i + 1);
     }
   }
 
@@ -138,6 +140,170 @@ function validateConfig(config) {
   }
 
   return config;
+}
+
+function validateTabFormatting(tab, issues, index) {
+  const formatting = tab && tab.formatting;
+  const tabLabel = tab && tab.title ? tab.title : "#" + index;
+
+  if (!formatting) {
+    return;
+  }
+
+  if (formatting.freezeRows != null && (!Number.isInteger(formatting.freezeRows) || formatting.freezeRows < 0)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.freezeRows\".");
+  }
+
+  if (formatting.autoResizeColumns != null && typeof formatting.autoResizeColumns !== "boolean") {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.autoResizeColumns\".");
+  }
+
+  if (formatting.columnPixelSizes != null) {
+    if (!Array.isArray(formatting.columnPixelSizes) || !formatting.columnPixelSizes.length) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.columnPixelSizes\".");
+      return;
+    }
+
+    formatting.columnPixelSizes.forEach(function (size) {
+      if (!Number.isInteger(size) || size <= 0) {
+        issues.push("Tab \"" + tabLabel + "\" has invalid column pixel size: " + size);
+      }
+    });
+  }
+
+  validateFormattingSections_(formatting.headerSections, "headerSections", tabLabel, issues);
+  validateFormattingSections_(formatting.formulaSections, "formulaSections", tabLabel, issues);
+  validateNumberFormats_(formatting.numberFormats, tabLabel, issues);
+  validateRowNumbers_(formatting.calloutRows, "calloutRows", tabLabel, issues);
+  validateMergedRanges_(formatting.mergedRanges, tabLabel, issues);
+
+  validateRowNumbers_(formatting.headerRows, "headerRows", tabLabel, issues);
+  validateRowNumbers_(formatting.formulaRows, "formulaRows", tabLabel, issues);
+
+  if (formatting.formulaColumns != null) {
+    if (!Array.isArray(formatting.formulaColumns)) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.formulaColumns\".");
+      return;
+    }
+
+    formatting.formulaColumns.forEach(function (columnNumber) {
+      if (!Number.isInteger(columnNumber) || columnNumber < 1) {
+        issues.push("Tab \"" + tabLabel + "\" has invalid formula column number: " + columnNumber);
+      }
+    });
+  }
+}
+
+function validateFormattingSections_(sections, label, tabLabel, issues) {
+  if (sections == null) {
+    return;
+  }
+
+  if (!Array.isArray(sections)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting." + label + "\".");
+    return;
+  }
+
+  sections.forEach(function (section) {
+    if (!section || typeof section !== "object") {
+      issues.push("Tab \"" + tabLabel + "\" has invalid formatting section in \"" + label + "\".");
+      return;
+    }
+
+    if (!Number.isInteger(section.row) || section.row < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid section row in \"" + label + "\": " + section.row);
+    }
+
+    if (!Number.isInteger(section.columns) || section.columns < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid section column count in \"" + label + "\": " + section.columns);
+    }
+  });
+}
+
+function validateRowNumbers_(rows, label, tabLabel, issues) {
+  if (rows == null) {
+    return;
+  }
+
+  if (!Array.isArray(rows)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting." + label + "\".");
+    return;
+  }
+
+  rows.forEach(function (rowNumber) {
+    if (!Number.isInteger(rowNumber) || rowNumber < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " row number: " + rowNumber);
+    }
+  });
+}
+
+function validateNumberFormats_(numberFormats, tabLabel, issues) {
+  if (numberFormats == null) {
+    return;
+  }
+
+  if (!Array.isArray(numberFormats)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.numberFormats\".");
+    return;
+  }
+
+  numberFormats.forEach(function (entry) {
+    if (!entry || typeof entry !== "object") {
+      issues.push("Tab \"" + tabLabel + "\" has invalid number format entry.");
+      return;
+    }
+
+    if (!Number.isInteger(entry.column) || entry.column < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid number format column: " + entry.column);
+    }
+
+    if (!Number.isInteger(entry.startRow) || entry.startRow < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid number format startRow: " + entry.startRow);
+    }
+
+    if (!Number.isInteger(entry.endRow) || entry.endRow < entry.startRow) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid number format endRow: " + entry.endRow);
+    }
+
+    if (!String(entry.type || "").trim()) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid number format type.");
+    }
+
+    if (!String(entry.pattern || "").trim()) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid number format pattern.");
+    }
+  });
+}
+
+function validateMergedRanges_(mergedRanges, tabLabel, issues) {
+  if (mergedRanges == null) {
+    return;
+  }
+
+  if (!Array.isArray(mergedRanges)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.mergedRanges\".");
+    return;
+  }
+
+  mergedRanges.forEach(function (range) {
+    if (!range || typeof range !== "object") {
+      issues.push("Tab \"" + tabLabel + "\" has invalid merged range entry.");
+      return;
+    }
+
+    if (!Number.isInteger(range.startRow) || range.startRow < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid merged range startRow: " + range.startRow);
+    }
+    if (!Number.isInteger(range.endRow) || range.endRow < range.startRow) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid merged range endRow: " + range.endRow);
+    }
+    if (!Number.isInteger(range.startColumn) || range.startColumn < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid merged range startColumn: " + range.startColumn);
+    }
+    if (!Number.isInteger(range.endColumn) || range.endColumn < range.startColumn) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid merged range endColumn: " + range.endColumn);
+    }
+  });
 }
 
 async function ensureConfiguredTabFilesExist(config) {
@@ -154,10 +320,13 @@ async function ensureConfiguredTabFilesExist(config) {
 
 async function syncDemoSheet(accessToken, inputConfig, options) {
   const config = JSON.parse(JSON.stringify(inputConfig));
+  let sheetMap;
 
   await ensureSpreadsheet(accessToken, config);
   await ensureTabs(accessToken, config);
+  sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
   await writeTabs(accessToken, config);
+  await applyTabFormatting(accessToken, config, sheetMap);
 
   if (config.sharePublicReadOnly && !options.skipSharing) {
     await ensurePublicReadPermission(accessToken, config.spreadsheetId);
@@ -201,22 +370,13 @@ async function ensureSpreadsheet(accessToken, config) {
 }
 
 async function ensureTabs(accessToken, config) {
-  const response = await googleApiJson(
-    accessToken,
-    "GET",
-    "https://sheets.googleapis.com/v4/spreadsheets/" +
-      encodeURIComponent(config.spreadsheetId) +
-      "?fields=sheets(properties(title))"
-  );
+  const sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
   const existingByTitle = {};
   const requests = [];
   let i;
 
-  (response.sheets || []).forEach(function (sheet) {
-    const title = sheet && sheet.properties ? sheet.properties.title : "";
-    if (title) {
-      existingByTitle[title] = true;
-    }
+  Object.keys(sheetMap).forEach(function (title) {
+    existingByTitle[title] = true;
   });
 
   for (i = 0; i < config.tabs.length; i += 1) {
@@ -243,6 +403,28 @@ async function ensureTabs(accessToken, config) {
       ":batchUpdate",
     { requests: requests }
   );
+}
+
+async function fetchSpreadsheetSheetMap(accessToken, spreadsheetId) {
+  const response = await googleApiJson(
+    accessToken,
+    "GET",
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+      encodeURIComponent(spreadsheetId) +
+      "?fields=sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))"
+  );
+  const sheetMap = {};
+
+  (response.sheets || []).forEach(function (sheet) {
+    const properties = sheet && sheet.properties ? sheet.properties : null;
+    const title = properties && properties.title ? properties.title : "";
+
+    if (title) {
+      sheetMap[title] = properties;
+    }
+  });
+
+  return sheetMap;
 }
 
 async function writeTabs(accessToken, config) {
@@ -280,6 +462,444 @@ async function writeTabs(accessToken, config) {
       }
     );
   }
+}
+
+async function applyTabFormatting(accessToken, config, sheetMap) {
+  const requests = [];
+  let i;
+  let tab;
+  let values;
+  let sheetProperties;
+  let formatting;
+  let maxColumns;
+  let sheetRowCount;
+
+  for (i = 0; i < config.tabs.length; i += 1) {
+    tab = config.tabs[i];
+    sheetProperties = sheetMap[tab.title];
+    formatting = normalizeTabFormatting(tab.formatting);
+
+    if (!sheetProperties || sheetProperties.sheetId == null) {
+      throw new Error("Could not find a sheet ID for tab \"" + tab.title + "\".");
+    }
+
+    values = parseTsv(await fsp.readFile(resolveRepoPath(tab.path), "utf8"));
+    maxColumns = values.reduce(function (currentMax, row) {
+      return Math.max(currentMax, Array.isArray(row) ? row.length : 0);
+    }, 0);
+    sheetRowCount =
+      sheetProperties &&
+      sheetProperties.gridProperties &&
+      Number.isInteger(sheetProperties.gridProperties.rowCount) &&
+      sheetProperties.gridProperties.rowCount > 0
+        ? sheetProperties.gridProperties.rowCount
+        : values.length;
+
+    if (values.length > 0 && maxColumns > 0) {
+      requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, maxColumns));
+    }
+
+    if (formatting.freezeRows > 0) {
+      requests.push(buildFreezeRowsRequest(sheetProperties.sheetId, formatting.freezeRows));
+    }
+
+    formatting.mergedRanges.forEach(function (range) {
+      requests.push(buildUnmergeCellsRequest(sheetProperties.sheetId, range));
+      requests.push(buildMergeCellsRequest(sheetProperties.sheetId, range));
+    });
+
+    formatting.headerSections.forEach(function (section) {
+      requests.push(buildHeaderRowFormatRequest(sheetProperties.sheetId, section.row, section.columns));
+    });
+
+    formatting.headerRows.forEach(function (rowNumber) {
+      requests.push(buildHeaderRowFormatRequest(sheetProperties.sheetId, rowNumber, maxColumns));
+    });
+
+    formatting.calloutRows.forEach(function (rowNumber) {
+      requests.push(buildCalloutRowFormatRequest(sheetProperties.sheetId, rowNumber, maxColumns));
+    });
+
+    formatting.formulaSections.forEach(function (section) {
+      requests.push(buildFormulaRowFormatRequest(sheetProperties.sheetId, section.row, section.columns));
+    });
+
+    formatting.formulaRows.forEach(function (rowNumber) {
+      requests.push(buildFormulaRowFormatRequest(sheetProperties.sheetId, rowNumber, maxColumns));
+    });
+
+    formatting.formulaColumns.forEach(function (columnNumber) {
+      requests.push(buildFormulaColumnFormatRequest(sheetProperties.sheetId, columnNumber, values.length));
+    });
+
+    requests.push.apply(requests, buildFormulaCellFormatRequests(sheetProperties.sheetId, values));
+    requests.push.apply(requests, buildNumberFormatRequests(sheetProperties.sheetId, formatting.numberFormats));
+
+    if (formatting.columnPixelSizes.length) {
+      requests.push.apply(requests, buildColumnWidthRequests(sheetProperties.sheetId, formatting.columnPixelSizes));
+    } else if (formatting.autoResizeColumns && maxColumns > 0) {
+      requests.push(buildAutoResizeColumnsRequest(sheetProperties.sheetId, maxColumns));
+    }
+  }
+
+  if (!requests.length) {
+    return;
+  }
+
+  await googleApiJson(
+    accessToken,
+    "POST",
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+      encodeURIComponent(config.spreadsheetId) +
+      ":batchUpdate",
+    { requests: requests }
+  );
+}
+
+function normalizeTabFormatting(formatting) {
+  const normalized = formatting || {};
+
+  return {
+    autoResizeColumns: normalized.autoResizeColumns !== false,
+    columnPixelSizes: Array.isArray(normalized.columnPixelSizes) ? normalized.columnPixelSizes.slice() : [],
+    freezeRows: Number(normalized.freezeRows || 0),
+    formulaColumns: Array.isArray(normalized.formulaColumns) ? normalized.formulaColumns.slice() : [],
+    formulaSections: Array.isArray(normalized.formulaSections)
+      ? normalized.formulaSections.map(copyFormattingSection_)
+      : [],
+    formulaRows: Array.isArray(normalized.formulaRows) ? normalized.formulaRows.slice() : [],
+    headerSections: Array.isArray(normalized.headerSections)
+      ? normalized.headerSections.map(copyFormattingSection_)
+      : [],
+    headerRows: Array.isArray(normalized.headerRows) ? normalized.headerRows.slice() : [],
+    calloutRows: Array.isArray(normalized.calloutRows) ? normalized.calloutRows.slice() : [],
+    mergedRanges: Array.isArray(normalized.mergedRanges) ? normalized.mergedRanges.map(copyMergedRange_) : [],
+    numberFormats: Array.isArray(normalized.numberFormats) ? normalized.numberFormats.map(copyNumberFormat_) : [],
+  };
+}
+
+function copyFormattingSection_(section) {
+  return {
+    columns: Number(section.columns),
+    row: Number(section.row),
+  };
+}
+
+function copyNumberFormat_(entry) {
+  return {
+    column: Number(entry.column),
+    endRow: Number(entry.endRow),
+    pattern: String(entry.pattern || ""),
+    startRow: Number(entry.startRow),
+    type: String(entry.type || ""),
+  };
+}
+
+function copyMergedRange_(range) {
+  return {
+    endColumn: Number(range.endColumn),
+    endRow: Number(range.endRow),
+    startColumn: Number(range.startColumn),
+    startRow: Number(range.startRow),
+  };
+}
+
+function buildFreezeRowsRequest(sheetId, freezeRows) {
+  return {
+    updateSheetProperties: {
+      fields: "gridProperties.frozenRowCount",
+      properties: {
+        gridProperties: {
+          frozenRowCount: freezeRows,
+        },
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildMergeCellsRequest(sheetId, range) {
+  return {
+    mergeCells: {
+      mergeType: "MERGE_ALL",
+      range: {
+        startRowIndex: range.startRow - 1,
+        endRowIndex: range.endRow,
+        startColumnIndex: range.startColumn - 1,
+        endColumnIndex: range.endColumn,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildUnmergeCellsRequest(sheetId, range) {
+  return {
+    unmergeCells: {
+      range: {
+        startRowIndex: range.startRow - 1,
+        endRowIndex: range.endRow,
+        startColumnIndex: range.startColumn - 1,
+        endColumnIndex: range.endColumn,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildBodyAlignmentRequest(sheetId, maxRows, maxColumns) {
+  return {
+    repeatCell: {
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: {
+            red: 1,
+            green: 1,
+            blue: 1,
+          },
+          backgroundColorStyle: {
+            rgbColor: {
+              red: 1,
+              green: 1,
+              blue: 1,
+            },
+          },
+          horizontalAlignment: "LEFT",
+          textFormat: {
+            bold: false,
+            italic: false,
+          },
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,backgroundColorStyle,horizontalAlignment,textFormat)",
+      range: {
+        startRowIndex: 0,
+        endRowIndex: maxRows,
+        startColumnIndex: 0,
+        endColumnIndex: maxColumns,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildCalloutRowFormatRequest(sheetId, rowNumber, maxColumns) {
+  return {
+    repeatCell: {
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: {
+            red: 0.95,
+            green: 0.95,
+            blue: 0.95,
+          },
+          horizontalAlignment: "LEFT",
+          textFormat: {
+            bold: true,
+            italic: false,
+          },
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat)",
+      range: {
+        startRowIndex: rowNumber - 1,
+        endRowIndex: rowNumber,
+        startColumnIndex: 0,
+        endColumnIndex: maxColumns,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildHeaderRowFormatRequest(sheetId, rowNumber, maxColumns) {
+  return {
+    repeatCell: {
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: {
+            red: 0.92,
+            green: 0.92,
+            blue: 0.92,
+          },
+          horizontalAlignment: "CENTER",
+          textFormat: {
+            bold: true,
+          },
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)",
+      range: {
+        startRowIndex: rowNumber - 1,
+        endRowIndex: rowNumber,
+        startColumnIndex: 0,
+        endColumnIndex: maxColumns,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildFormulaRowFormatRequest(sheetId, rowNumber, maxColumns) {
+  return {
+    repeatCell: {
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: {
+            red: 0.96,
+            green: 0.94,
+            blue: 0.88,
+          },
+          textFormat: {
+            italic: true,
+          },
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,textFormat)",
+      range: {
+        startRowIndex: rowNumber - 1,
+        endRowIndex: rowNumber,
+        startColumnIndex: 0,
+        endColumnIndex: maxColumns,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildFormulaColumnFormatRequest(sheetId, columnNumber, maxRows) {
+  return {
+    repeatCell: {
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: {
+            red: 0.96,
+            green: 0.94,
+            blue: 0.88,
+          },
+          textFormat: {
+            italic: true,
+          },
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,textFormat)",
+      range: {
+        startRowIndex: 0,
+        endRowIndex: maxRows,
+        startColumnIndex: columnNumber - 1,
+        endColumnIndex: columnNumber,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildFormulaCellFormatRequests(sheetId, values) {
+  const requests = [];
+  let rowIndex;
+  let columnIndex;
+  let row;
+  let value;
+
+  for (rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
+    row = Array.isArray(values[rowIndex]) ? values[rowIndex] : [];
+
+    for (columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+      value = String(row[columnIndex] == null ? "" : row[columnIndex]);
+
+      if (value.indexOf("'") === 0) {
+        requests.push(buildFormulaCellFormatRequest(sheetId, rowIndex + 1, columnIndex + 1));
+      }
+    }
+  }
+
+  return requests;
+}
+
+function buildFormulaCellFormatRequest(sheetId, rowNumber, columnNumber) {
+  return {
+    repeatCell: {
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: {
+            red: 0.96,
+            green: 0.94,
+            blue: 0.88,
+          },
+          horizontalAlignment: "LEFT",
+          textFormat: {
+            italic: true,
+          },
+          wrapStrategy: "WRAP",
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat,wrapStrategy)",
+      range: {
+        startRowIndex: rowNumber - 1,
+        endRowIndex: rowNumber,
+        startColumnIndex: columnNumber - 1,
+        endColumnIndex: columnNumber,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildAutoResizeColumnsRequest(sheetId, maxColumns) {
+  return {
+    autoResizeDimensions: {
+      dimensions: {
+        dimension: "COLUMNS",
+        startIndex: 0,
+        endIndex: maxColumns,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildColumnWidthRequests(sheetId, columnPixelSizes) {
+  return columnPixelSizes.map(function (pixelSize, index) {
+    return {
+      updateDimensionProperties: {
+        fields: "pixelSize",
+        properties: {
+          pixelSize: pixelSize,
+        },
+        range: {
+          dimension: "COLUMNS",
+          startIndex: index,
+          endIndex: index + 1,
+          sheetId: sheetId,
+        },
+      },
+    };
+  });
+}
+
+function buildNumberFormatRequests(sheetId, numberFormats) {
+  return numberFormats.map(function (entry) {
+    return {
+      repeatCell: {
+        cell: {
+          userEnteredFormat: {
+            numberFormat: {
+              pattern: entry.pattern,
+              type: entry.type,
+            },
+          },
+        },
+        fields: "userEnteredFormat.numberFormat",
+        range: {
+          startRowIndex: entry.startRow - 1,
+          endRowIndex: entry.endRow,
+          startColumnIndex: entry.column - 1,
+          endColumnIndex: entry.column,
+          sheetId: sheetId,
+        },
+      },
+    };
+  });
 }
 
 async function ensurePublicReadPermission(accessToken, spreadsheetId) {
@@ -555,7 +1175,7 @@ function renderDemoReadmeBlock(publicUrl) {
   return (
     DEMO_MARKER_START +
     "\nThe public demo sheet will be linked here after it is created with `node tools/sync-demo-sheet.js`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
-    DEMO_MARKER_END
+      DEMO_MARKER_END
   );
 }
 
@@ -696,9 +1316,22 @@ module.exports = {
   CONFIG_PATH,
   OAUTH_CLIENT_PATH,
   OAUTH_TOKEN_PATH,
+  buildAutoResizeColumnsRequest,
+  buildBodyAlignmentRequest,
+  buildCalloutRowFormatRequest,
+  buildColumnWidthRequests,
+  buildFormulaCellFormatRequests,
+  buildFreezeRowsRequest,
+  buildFormulaColumnFormatRequest,
+  buildFormulaRowFormatRequest,
+  buildHeaderRowFormatRequest,
+  buildMergeCellsRequest,
+  buildNumberFormatRequests,
   buildSheetRange,
   buildSpreadsheetUrl,
+  buildUnmergeCellsRequest,
   loadDemoSheetConfig,
+  normalizeTabFormatting,
   parseArgs,
   parseTsv,
   renderDemoReadmeBlock,

@@ -1,4 +1,5 @@
-ticker	price	currency	name	isin
-PSE:BDO	=HOODLEFINANCE(A2:A4,"price")	=HOODLEFINANCE(A2:A4,"currency")	=HOODLEFINANCE(A2:A4,"name")	=HOODLEFINANCE(A2:A4,"isin")
+Ticker	Price	Currency	Name	ISIN
+	'=HOODLEFINANCE(A3:A,"price")	'=HOODLEFINANCE(A3:A,"currency")	'=HOODLEFINANCE(A3:A,"name")	'=HOODLEFINANCE(A3:A,"isin")
+PSE:BDO	=HOODLEFINANCE(A3:A,"price")	=HOODLEFINANCE(A3:A,"currency")	=HOODLEFINANCE(A3:A,"name")	=HOODLEFINANCE(A3:A,"isin")
 PSE:JFC				
 PSE:AAA				

@@ -9,26 +9,128 @@
   },
   "tabs": [
     {
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
+          180,
+          360,
+          340
+        ],
+        "freezeRows": 1,
+        "formulaRows": [],
+        "formulaSections": [],
+        "headerRows": [],
+        "headerSections": [
+          {
+            "row": 1,
+            "columns": 2
+          },
+          {
+            "row": 5,
+            "columns": 3
+          }
+        ]
+      },
       "title": "Start Here",
       "path": "docs/demo-sheet/start-here.tsv",
       "startCell": "A1"
     },
     {
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
+          150,
+          300,
+          260,
+          360,
+          180
+        ],
+        "freezeRows": 1,
+        "formulaRows": [],
+        "headerRows": [
+          1
+        ]
+      },
       "title": "Foreign ETFs",
       "path": "docs/demo-sheet/foreign-etfs.tsv",
       "startCell": "A1"
     },
     {
-      "title": "PSE",
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
+          150,
+          300,
+          120,
+          300,
+          180
+        ],
+        "freezeRows": 1,
+        "formulaRows": [],
+        "headerRows": [
+          1
+        ]
+      },
+      "title": "Philippines Stock Exchange (PSE)",
       "path": "docs/demo-sheet/pse.tsv",
       "startCell": "A1"
     },
     {
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
+          220,
+          340,
+          200
+        ],
+        "freezeRows": 1,
+        "formulaRows": [],
+        "headerRows": [
+          1,
+          9
+        ]
+      },
       "title": "Ticker Forms",
       "path": "docs/demo-sheet/ticker-forms.tsv",
       "startCell": "A1"
     },
     {
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
+          150,
+          220,
+          180,
+          180,
+          220
+        ],
+        "freezeRows": 1,
+        "formulaRows": [],
+        "headerRows": [
+          1,
+          9
+        ],
+        "calloutRows": [
+          8
+        ],
+        "mergedRanges": [
+          {
+            "startRow": 8,
+            "endRow": 8,
+            "startColumn": 1,
+            "endColumn": 5
+          }
+        ],
+        "numberFormats": [
+          {
+            "column": 5,
+            "startRow": 11,
+            "endRow": 14,
+            "type": "CURRENCY",
+            "pattern": "$#,##0.00"
+          }
+        ]
+      },
       "title": "Array Usage",
       "path": "docs/demo-sheet/array-usage.tsv",
       "startCell": "A1"

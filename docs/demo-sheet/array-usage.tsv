@@ -1,11 +1,14 @@
-ticker	currency_spill	isin_spill
-SJPA.L	=HOODLEFINANCE(A2:A5,"currency")	=HOODLEFINANCE(A2:A5,"isin")
+Ticker	Currency	ISIN
+'inputs in A3:A6	'=HOODLEFINANCE(A3:A6,"currency")	'=HOODLEFINANCE(A3:A6,"isin")
+SJPA.L	=HOODLEFINANCE(A3:A6,"currency")	=HOODLEFINANCE(A3:A6,"isin")
 CPXJ.L		
 ZPRX.DE		
 5MVL.DE		
 
-currency	price	price_usd
-GBP	125	=ARRAYFORMULA(IF((A8:A11="")+(B8:B11=""),,ROUND(B8:B11*HOODLEFINANCE(IF((A8:A11="")+(B8:B11=""),,"CURRENCY:"&A8:A11&"USD"),"price"),2)))
-EUR	48.5	
-USD	10	
-HKD	88.2	
+What this shows: Real tickers -> detected currency -> live price -> USD-converted price.
+Ticker	Currency	Price	USD FX rate	Price in USD
+	'=HOODLEFINANCE(A11:A,"currency")	'=HOODLEFINANCE(A11:A,"price")	'=ARRAYFORMULA(IF(B11:B="",,HOODLEFINANCE(IF(B11:B="","", "CURRENCY:"&B11:B&"USD"),"price")))	'=ARRAYFORMULA(IF(C11:C="",,ROUND(C11:C*D11:D,2)))
+SJPA.L	=HOODLEFINANCE(A11:A,"currency")	=HOODLEFINANCE(A11:A,"price")	=ARRAYFORMULA(IF(B11:B="",,HOODLEFINANCE(IF(B11:B="","", "CURRENCY:"&B11:B&"USD"),"price")))	=ARRAYFORMULA(IF(C11:C="",,ROUND(C11:C*D11:D,2)))
+ZPRX.DE				
+NASDAQ:GOOG				
+9988.HK				

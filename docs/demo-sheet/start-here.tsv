@@ -1,8 +1,10 @@
-Label	Value
-Demo	hoodlefinance public demo
-Installed version	=HOODLEFINANCE_VERSION()
-Sample price	=HOODLEFINANCE("NASDAQ:GOOG","price")
-Sample foreign ETF ISIN	=HOODLEFINANCE("SJPA.L","isin")
-Sample PSE ISIN	=HOODLEFINANCE("PSE:BDO","isin")
-Sample alias form	=HOODLEFINANCE("LON:SJPA","name")
-Note	This sheet is read-only. The tab data comes from repo-tracked TSV files.
+Action	Details
+GitHub repo	github.com/omry/hoodlefinance
+Make a copy	Use File -> Make a copy if you want to experiment with the formulas yourself.
+
+Example	Formula	Result
+Installed version	'=HOODLEFINANCE_VERSION()	=HOODLEFINANCE_VERSION()
+Sample price	'=HOODLEFINANCE("NASDAQ:GOOG","price")	=HOODLEFINANCE("NASDAQ:GOOG","price")
+Sample foreign ETF ISIN	'=HOODLEFINANCE("SJPA.L","isin")	=HOODLEFINANCE("SJPA.L","isin")
+Sample PSE ISIN	'=HOODLEFINANCE("PSE:BDO","isin")	=HOODLEFINANCE("PSE:BDO","isin")
+Sample alias form	'=HOODLEFINANCE("LON:SJPA","name")	=HOODLEFINANCE("LON:SJPA","name")
