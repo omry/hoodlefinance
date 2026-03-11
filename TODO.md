@@ -1,5 +1,4 @@
 - Improve the error message for this case so a 404 on clearly dead/delisted OTC tickers reads more like: No current Yahoo quote data was found for OTCMKTS:HGEN. The symbol may be delisted or cancelled.
 - add NEO support for symbols like ZTL.NE (current failure is wrong venue, not TSE)
 - Make sure cache is used when it makes sense in the service
-- implement native range execution for `HOODLEFINANCE` per `docs/design/hoodlefinance-range-batching.md`
 - upodate installaton guide and recommend adding the code to a new HoodleFinance.gs file

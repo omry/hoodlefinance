@@ -4,13 +4,14 @@
 
 It uses Yahoo Finance for quote data and adds ISIN support that `GOOGLEFINANCE` does not provide.
 
-Current script version: `0.1.1`
+Current script version: `0.2.0`
 
 Quote freshness depends on the upstream source used for a given symbol and attribute. In practice, price data may be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
 
 ## What It Does
 
 - Fetches scalar quote fields such as `price`, `name`, `currency`, `tradetime`, `volume`, `high`, `low`, `close`, `changepct`, and `change`
+- Accepts either a single ticker or a ticker range and spills results with the same shape
 - Supports Yahoo-style symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
 - Supports `GOOGLEFINANCE`-style tickers such as `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, and `TLV:POLI`
 

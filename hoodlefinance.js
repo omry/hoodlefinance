@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.1.1";
+const HOODLEFINANCE_VERSION_ = "0.2.0";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
@@ -71,6 +71,7 @@ const HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_UPDATE_CACHE_KEY_ = "hoodlefinance:update:latestVersion";
 const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
+const HOODLEFINANCE_FETCHALL_BATCH_SIZE_ = 50;
 
 const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = {
   AMS: ".AS",
@@ -354,16 +355,12 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  * @param {*} startDate Unsupported for now.
  * @param {*} endDateOrNumDays Unsupported for now.
  * @param {*} interval Unsupported for now.
- * @return {string|number} The requested scalar quote field.
+ * @return {string|number|Array<Array<string|number>>} The requested quote field or a spilled result grid.
  * @customfunction
  */
 function HOODLEFINANCE(ticker, attribute, startDate, endDateOrNumDays, interval) {
-  const rawTicker = hoodlefinanceCoerceScalar_(ticker, "ticker");
   const rawAttribute = attribute == null ? "price" : hoodlefinanceCoerceScalar_(attribute, "attribute");
-
-  if (!rawTicker) {
-    throw new Error("Ticker is required.");
-  }
+  const normalizedAttribute = hoodlefinanceNormalizeAttribute_(rawAttribute);
 
   if (
     hoodlefinanceHasValue_(startDate) ||
@@ -373,11 +370,14 @@ function HOODLEFINANCE(ticker, attribute, startDate, endDateOrNumDays, interval)
     throw new Error("Historical data arguments are not supported yet.");
   }
 
-  const normalizedTicker = String(rawTicker).trim();
-  const quote = hoodlefinanceFetchQuote_(String(rawTicker).trim());
-  return hoodlefinanceExtractAttribute_(quote, rawAttribute, {
-    tickerInput: normalizedTicker,
-  });
+  const tickerGrid = hoodlefinanceNormalizeTickerGrid_(ticker);
+
+  if (hoodlefinanceIsSingleBlankTickerGrid_(tickerGrid)) {
+    throw new Error("Ticker is required.");
+  }
+
+  const resultGrid = hoodlefinanceResolveTickerGrid_(tickerGrid, normalizedAttribute);
+  return hoodlefinanceUnwrapTickerGridResult_(resultGrid);
 }
 
 /**
@@ -738,6 +738,11 @@ function hoodlefinanceEscapeHtml_(text) {
 function hoodlefinanceFetchQuote_(ticker) {
   const normalizedTicker = String(ticker).trim();
   const sameCurrencyPair = hoodlefinanceExtractSameCurrencyPair_(normalizedTicker);
+  const cache = CacheService.getScriptCache();
+  let yahooSymbol;
+  let cacheKey;
+  let cached;
+  let response;
 
   if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
     return hoodlefinanceFetchPseQuote_(normalizedTicker);
@@ -747,41 +752,16 @@ function hoodlefinanceFetchQuote_(ticker) {
     return hoodlefinanceBuildSameCurrencyQuote_(sameCurrencyPair);
   }
 
-  const yahooSymbol = hoodlefinanceNormalizeTicker_(normalizedTicker);
-  const cache = CacheService.getScriptCache();
-  const cacheKey = "hoodlefinance:" + yahooSymbol;
-  const cached = cache.get(cacheKey);
+  yahooSymbol = hoodlefinanceNormalizeTicker_(normalizedTicker);
+  cacheKey = "hoodlefinance:" + yahooSymbol;
+  cached = cache.get(cacheKey);
 
   if (cached) {
     return JSON.parse(cached);
   }
 
-  const response = UrlFetchApp.fetch(
-    "https://query1.finance.yahoo.com/v8/finance/chart/" +
-      encodeURIComponent(yahooSymbol) +
-      "?interval=1d&range=1d",
-    {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept-Language": "en-US,en;q=0.9"
-      },
-      muteHttpExceptions: true,
-    }
-  );
-
-  if (response.getResponseCode() !== 200) {
-    throw new Error("Quote lookup failed for " + ticker + " (" + response.getResponseCode() + ").");
-  }
-
-  const payload = JSON.parse(response.getContentText());
-  const chart = payload && payload.chart;
-  const results = chart && chart.result;
-  const firstResult = results && results[0];
-  const meta = firstResult && firstResult.meta;
-
-  if (!meta) {
-    throw new Error("No quote data was found for " + ticker + ".");
-  }
+  response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
+  const meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
 
   cache.put(cacheKey, JSON.stringify(meta), 60);
   return meta;
@@ -831,6 +811,11 @@ function hoodlefinanceNormalizeTicker_(ticker) {
     return hoodlefinanceResolveIsin_(upperValue.slice(5).trim());
   }
 
+  return hoodlefinanceNormalizeTickerWithoutIsin_(value);
+}
+
+function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
+  const value = String(ticker).trim();
   const parts = value.split(":");
 
   if (parts.length < 2) {
@@ -876,6 +861,403 @@ function hoodlefinanceCoerceScalar_(value, label) {
   }
 
   return value;
+}
+
+function hoodlefinanceNormalizeAttribute_(attribute) {
+  const normalizedAttribute = String(attribute == null ? "price" : attribute).trim();
+  return normalizedAttribute ? normalizedAttribute : "price";
+}
+
+function hoodlefinanceNormalizeTickerGrid_(ticker) {
+  let i;
+  const grid = [];
+
+  if (!Array.isArray(ticker)) {
+    return [[ticker]];
+  }
+
+  for (i = 0; i < ticker.length; i += 1) {
+    grid.push(Array.isArray(ticker[i]) ? ticker[i].slice() : [ticker[i]]);
+  }
+
+  return grid;
+}
+
+function hoodlefinanceIsSingleBlankTickerGrid_(tickerGrid) {
+  return (
+    tickerGrid.length === 1 &&
+    tickerGrid[0] &&
+    tickerGrid[0].length === 1 &&
+    !String(tickerGrid[0][0] == null ? "" : tickerGrid[0][0]).trim()
+  );
+}
+
+function hoodlefinanceUnwrapTickerGridResult_(grid) {
+  if (grid.length === 1 && grid[0] && grid[0].length === 1) {
+    return grid[0][0];
+  }
+
+  return grid;
+}
+
+function hoodlefinanceResolveTickerGrid_(tickerGrid, attribute) {
+  const jobs = hoodlefinanceCollectTickerJobs_(tickerGrid, attribute);
+
+  hoodlefinancePrefetchTickerJobs_(jobs);
+  hoodlefinanceResolvePrefetchedTickerJobs_(jobs);
+
+  return hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobs.jobByKey, attribute);
+}
+
+function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute) {
+  const orderedJobs = [];
+  const jobByKey = {};
+  let rowIndex;
+  let columnIndex;
+  let value;
+  let normalizedTicker;
+  let key;
+
+  for (rowIndex = 0; rowIndex < tickerGrid.length; rowIndex += 1) {
+    for (columnIndex = 0; columnIndex < tickerGrid[rowIndex].length; columnIndex += 1) {
+      value = tickerGrid[rowIndex][columnIndex];
+      normalizedTicker = String(value == null ? "" : value).trim();
+
+      if (!normalizedTicker) {
+        continue;
+      }
+
+      key = hoodlefinanceBuildTickerJobKey_(normalizedTicker, attribute);
+
+      if (!jobByKey[key]) {
+        jobByKey[key] = {
+          attribute: attribute,
+          key: key,
+          quote: null,
+          tickerInput: normalizedTicker,
+          value: null,
+          valueResolved: false,
+        };
+        orderedJobs.push(jobByKey[key]);
+      }
+    }
+  }
+
+  return {
+    jobByKey: jobByKey,
+    orderedJobs: orderedJobs,
+  };
+}
+
+function hoodlefinanceBuildTickerJobKey_(ticker, attribute) {
+  return String(ticker).trim() + "\n" + String(attribute).trim().toLowerCase();
+}
+
+function hoodlefinancePrefetchTickerJobs_(jobs) {
+  const orderedJobs = jobs.orderedJobs;
+  const yahooIsinJobs = [];
+  const yahooChartJobs = [];
+  const pseJobs = [];
+  let i;
+  let plan;
+
+  for (i = 0; i < orderedJobs.length; i += 1) {
+    try {
+      plan = hoodlefinanceClassifyTickerJob_(orderedJobs[i].tickerInput);
+      orderedJobs[i].plan = plan;
+
+      if (plan.source === "local-fx") {
+        orderedJobs[i].quote = hoodlefinanceBuildSameCurrencyQuote_(plan.sameCurrencyPair);
+        continue;
+      }
+
+      if (plan.source === "yahoo-isin-search") {
+        yahooIsinJobs.push(orderedJobs[i]);
+        continue;
+      }
+
+      if (plan.source === "yahoo-chart") {
+        yahooChartJobs.push(orderedJobs[i]);
+        continue;
+      }
+
+      if (plan.source === "pse") {
+        pseJobs.push(orderedJobs[i]);
+      }
+    } catch (error) {
+      orderedJobs[i].error = hoodlefinanceErrorMessage_(error);
+    }
+  }
+
+  hoodlefinancePrefetchYahooIsinJobs_(yahooIsinJobs);
+
+  for (i = 0; i < yahooIsinJobs.length; i += 1) {
+    if (!yahooIsinJobs[i].error && yahooIsinJobs[i].plan && yahooIsinJobs[i].plan.yahooSymbol) {
+      yahooChartJobs.push(yahooIsinJobs[i]);
+    }
+  }
+
+  hoodlefinancePrefetchYahooChartJobs_(yahooChartJobs);
+  hoodlefinancePrefetchPseJobs_(pseJobs);
+}
+
+function hoodlefinanceClassifyTickerJob_(ticker) {
+  const normalizedTicker = String(ticker).trim();
+  const upperTicker = normalizedTicker.toUpperCase();
+  const sameCurrencyPair = hoodlefinanceExtractSameCurrencyPair_(normalizedTicker);
+
+  if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
+    return {
+      source: "pse",
+      symbol: hoodlefinanceParsePseSymbol_(normalizedTicker),
+    };
+  }
+
+  if (sameCurrencyPair) {
+    return {
+      sameCurrencyPair: sameCurrencyPair,
+      source: "local-fx",
+    };
+  }
+
+  if (hoodlefinanceLooksLikeIsin_(normalizedTicker)) {
+    return {
+      isin: upperTicker,
+      source: "yahoo-isin-search",
+    };
+  }
+
+  if (upperTicker.indexOf("ISIN:") === 0) {
+    return {
+      isin: upperTicker.slice(5).trim(),
+      source: "yahoo-isin-search",
+    };
+  }
+
+  return {
+    source: "yahoo-chart",
+    yahooSymbol: hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker),
+  };
+}
+
+function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
+  const cache = CacheService.getScriptCache();
+  const requests = [];
+  let i;
+  let cacheKey;
+  let cached;
+  let responses;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    cacheKey = "hoodlefinance:isin:" + jobs[i].plan.isin;
+    cached = cache.get(cacheKey);
+
+    if (cached) {
+      jobs[i].plan.yahooSymbol = cached;
+      continue;
+    }
+
+    requests.push({
+      cacheKey: cacheKey,
+      job: jobs[i],
+      url: hoodlefinanceBuildYahooIsinSearchUrl_(jobs[i].plan.isin),
+    });
+  }
+
+  responses = hoodlefinanceFetchAllInChunks_("yahoo-isin-search", requests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      continue;
+    }
+
+    try {
+      responses[i].request.job.plan.yahooSymbol = hoodlefinanceExtractYahooSymbolFromSearchResponse_(
+        responses[i].response,
+        responses[i].request.job.plan.isin
+      );
+      cache.put(responses[i].request.cacheKey, responses[i].request.job.plan.yahooSymbol, 21600);
+    } catch (error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+    }
+  }
+}
+
+function hoodlefinancePrefetchYahooChartJobs_(jobs) {
+  const cache = CacheService.getScriptCache();
+  const requests = [];
+  let i;
+  let cacheKey;
+  let cached;
+  let responses;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    if (jobs[i].error) {
+      continue;
+    }
+
+    cacheKey = "hoodlefinance:" + jobs[i].plan.yahooSymbol;
+    cached = cache.get(cacheKey);
+
+    if (cached) {
+      jobs[i].quote = JSON.parse(cached);
+      continue;
+    }
+
+    requests.push({
+      cacheKey: cacheKey,
+      job: jobs[i],
+      url: hoodlefinanceBuildYahooChartUrl_(jobs[i].plan.yahooSymbol),
+    });
+  }
+
+  responses = hoodlefinanceFetchAllInChunks_("yahoo-chart", requests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      continue;
+    }
+
+    try {
+      responses[i].request.job.quote = hoodlefinanceExtractYahooQuoteMetaFromResponse_(
+        responses[i].response,
+        responses[i].request.job.tickerInput
+      );
+      cache.put(responses[i].request.cacheKey, JSON.stringify(responses[i].request.job.quote), 60);
+    } catch (error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+    }
+  }
+}
+
+function hoodlefinancePrefetchPseJobs_(jobs) {
+  const cache = CacheService.getScriptCache();
+  const searchRequests = [];
+  const stockRequests = [];
+  let i;
+  let cacheKey;
+  let cached;
+  let responses;
+  let listing;
+  let html;
+  let quote;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    cacheKey = "hoodlefinance:pse:" + jobs[i].plan.symbol;
+    cached = cache.get(cacheKey);
+
+    if (cached) {
+      jobs[i].quote = JSON.parse(cached);
+      continue;
+    }
+
+    searchRequests.push({
+      job: jobs[i],
+      url: HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(jobs[i].plan.symbol),
+    });
+  }
+
+  responses = hoodlefinanceFetchAllInChunks_("pse", searchRequests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      continue;
+    }
+
+    try {
+      listing = hoodlefinanceResolvePseListingFromHtml_(
+        responses[i].response.getResponseCode() === 200 ? responses[i].response.getContentText() : "",
+        responses[i].request.job.plan.symbol
+      );
+      responses[i].request.job.plan.listing = listing;
+      stockRequests.push({
+        cacheKey: "hoodlefinance:pse:" + responses[i].request.job.plan.symbol,
+        job: responses[i].request.job,
+        url:
+          HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+          "?cmpy_id=" +
+          encodeURIComponent(listing.companyId) +
+          "&security_id=" +
+          encodeURIComponent(listing.securityId),
+      });
+    } catch (error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+    }
+  }
+
+  responses = hoodlefinanceFetchAllInChunks_("pse", stockRequests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      continue;
+    }
+
+    try {
+      html = responses[i].response.getResponseCode() === 200 ? responses[i].response.getContentText() : "";
+      quote = hoodlefinanceExtractPseQuote_(html, responses[i].request.job.plan.listing);
+
+      if (!quote || !quote.symbol) {
+        throw new Error("No PSE quote data was found for " + responses[i].request.job.tickerInput + ".");
+      }
+
+      responses[i].request.job.quote = quote;
+      cache.put(responses[i].request.cacheKey, JSON.stringify(quote), 300);
+    } catch (error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+    }
+  }
+}
+
+function hoodlefinanceResolvePrefetchedTickerJobs_(jobs) {
+  let i;
+
+  for (i = 0; i < jobs.orderedJobs.length; i += 1) {
+    if (jobs.orderedJobs[i].error) {
+      throw new Error(jobs.orderedJobs[i].error);
+    }
+
+    jobs.orderedJobs[i].value = hoodlefinanceExtractAttribute_(
+      jobs.orderedJobs[i].quote,
+      jobs.orderedJobs[i].attribute,
+      { tickerInput: jobs.orderedJobs[i].tickerInput }
+    );
+    jobs.orderedJobs[i].valueResolved = true;
+  }
+}
+
+function hoodlefinanceBuildTickerResultGrid_(tickerGrid, jobByKey, attribute) {
+  const resultGrid = [];
+  let rowIndex;
+  let columnIndex;
+  let value;
+  let normalizedTicker;
+  let key;
+  let row;
+
+  for (rowIndex = 0; rowIndex < tickerGrid.length; rowIndex += 1) {
+    row = [];
+
+    for (columnIndex = 0; columnIndex < tickerGrid[rowIndex].length; columnIndex += 1) {
+      value = tickerGrid[rowIndex][columnIndex];
+      normalizedTicker = String(value == null ? "" : value).trim();
+
+      if (!normalizedTicker) {
+        row.push("");
+        continue;
+      }
+
+      key = hoodlefinanceBuildTickerJobKey_(normalizedTicker, attribute);
+      row.push(jobByKey[key].value);
+    }
+
+    resultGrid.push(row);
+  }
+
+  return resultGrid;
 }
 
 function hoodlefinanceIsPseTicker_(ticker) {
@@ -1863,14 +2245,105 @@ function hoodlefinanceNormalizeIbkrUrl_(url) {
   return "https://misc.interactivebrokers.com" + normalizedUrl;
 }
 
-function hoodlefinanceFetchText_(url) {
-  const response = UrlFetchApp.fetch(url, {
+function hoodlefinanceBuildFetchOptions_() {
+  return {
     headers: {
       "User-Agent": "Mozilla/5.0",
       "Accept-Language": "en-US,en;q=0.9"
     },
     muteHttpExceptions: true,
-  });
+  };
+}
+
+function hoodlefinanceBuildFetchRequest_(url) {
+  const request = hoodlefinanceBuildFetchOptions_();
+
+  request.url = url;
+  return request;
+}
+
+function hoodlefinanceFetchAllInChunks_(source, requests) {
+  const responses = [];
+  let i;
+  let chunk;
+  let chunkResponses;
+  let chunkIndex;
+
+  if (!requests.length) {
+    return responses;
+  }
+
+  for (i = 0; i < requests.length; i += HOODLEFINANCE_FETCHALL_BATCH_SIZE_) {
+    chunk = requests.slice(i, i + HOODLEFINANCE_FETCHALL_BATCH_SIZE_);
+    chunkResponses = hoodlefinanceFetchChunk_(chunk);
+
+    for (chunkIndex = 0; chunkIndex < chunk.length; chunkIndex += 1) {
+      responses.push({
+        error: chunkResponses[chunkIndex].error || null,
+        request: chunk[chunkIndex],
+        response: chunkResponses[chunkIndex].response || null,
+        source: source,
+      });
+    }
+  }
+
+  return responses;
+}
+
+function hoodlefinanceFetchChunk_(requests) {
+  let responses;
+  let i;
+
+  if (!UrlFetchApp.fetchAll) {
+    return requests.map(function (request) {
+      try {
+        return {
+          error: null,
+          response: UrlFetchApp.fetch(request.url, hoodlefinanceBuildFetchOptions_()),
+        };
+      } catch (error) {
+        return {
+          error: error,
+          response: null,
+        };
+      }
+    });
+  }
+
+  try {
+    responses = UrlFetchApp.fetchAll(requests.map(function (request) {
+      return hoodlefinanceBuildFetchRequest_(request.url);
+    }));
+
+    return responses.map(function (response) {
+      return {
+        error: null,
+        response: response,
+      };
+    });
+  } catch (error) {
+    responses = [];
+
+    for (i = 0; i < requests.length; i += 1) {
+      try {
+        responses.push({
+          error: null,
+          response: UrlFetchApp.fetch(requests[i].url, hoodlefinanceBuildFetchOptions_()),
+        });
+      } catch (requestError) {
+        responses.push({
+          error: requestError,
+          response: null,
+        });
+      }
+    }
+
+    return responses;
+  }
+}
+
+function hoodlefinanceFetchText_(url) {
+  const response = UrlFetchApp.fetch(url, hoodlefinanceBuildFetchOptions_());
 
   if (response.getResponseCode() !== 200) {
     return "";
@@ -1884,35 +2357,46 @@ function hoodlefinanceExtractIsin_(text) {
   return match ? match[1].toUpperCase() : "";
 }
 
-function hoodlefinanceResolveIsin_(isin) {
-  if (!hoodlefinanceLooksLikeIsin_(isin)) {
-    throw new Error('ISIN "' + isin + '" is invalid.');
+function hoodlefinanceBuildYahooChartUrl_(yahooSymbol) {
+  return "https://query1.finance.yahoo.com/v8/finance/chart/" +
+    encodeURIComponent(yahooSymbol) +
+    "?interval=1d&range=1d";
+}
+
+function hoodlefinanceBuildYahooIsinSearchUrl_(isin) {
+  return "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(isin) + "&quotesCount=10&newsCount=0";
+}
+
+function hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker) {
+  if (response.getResponseCode() !== 200) {
+    throw new Error("Quote lookup failed for " + ticker + " (" + response.getResponseCode() + ").");
   }
 
-  const cache = CacheService.getScriptCache();
-  const cacheKey = "hoodlefinance:isin:" + isin;
-  const cached = cache.get(cacheKey);
+  return hoodlefinanceExtractYahooQuoteMetaFromPayload_(JSON.parse(response.getContentText()), ticker);
+}
 
-  if (cached) {
-    return cached;
+function hoodlefinanceExtractYahooQuoteMetaFromPayload_(payload, ticker) {
+  const chart = payload && payload.chart;
+  const results = chart && chart.result;
+  const firstResult = results && results[0];
+  const meta = firstResult && firstResult.meta;
+
+  if (!meta) {
+    throw new Error("No quote data was found for " + ticker + ".");
   }
 
-  const response = UrlFetchApp.fetch(
-    "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(isin) + "&quotesCount=10&newsCount=0",
-    {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept-Language": "en-US,en;q=0.9"
-      },
-      muteHttpExceptions: true,
-    }
-  );
+  return meta;
+}
 
+function hoodlefinanceExtractYahooSymbolFromSearchResponse_(response, isin) {
   if (response.getResponseCode() !== 200) {
     throw new Error('ISIN lookup failed for "' + isin + '" (' + response.getResponseCode() + ").");
   }
 
-  const payload = JSON.parse(response.getContentText());
+  return hoodlefinanceExtractYahooSymbolFromSearchPayload_(JSON.parse(response.getContentText()), isin);
+}
+
+function hoodlefinanceExtractYahooSymbolFromSearchPayload_(payload, isin) {
   const quotes = payload && payload.quotes;
   let symbol = "";
   let i;
@@ -1930,8 +2414,45 @@ function hoodlefinanceResolveIsin_(isin) {
     throw new Error('No Yahoo Finance symbol was found for ISIN "' + isin + '".');
   }
 
+  return symbol;
+}
+
+function hoodlefinanceResolvePseListingFromHtml_(html, symbol) {
+  const listings = hoodlefinanceExtractPseListings_(html);
+  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  let i;
+
+  for (i = 0; i < listings.length; i += 1) {
+    if (listings[i].symbol === normalizedSymbol) {
+      return listings[i];
+    }
+  }
+
+  throw new Error('No PSE listing was found for "' + normalizedSymbol + '".');
+}
+
+function hoodlefinanceResolveIsin_(isin) {
+  if (!hoodlefinanceLooksLikeIsin_(isin)) {
+    throw new Error('ISIN "' + isin + '" is invalid.');
+  }
+
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "hoodlefinance:isin:" + isin;
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const response = UrlFetchApp.fetch(hoodlefinanceBuildYahooIsinSearchUrl_(isin), hoodlefinanceBuildFetchOptions_());
+  const symbol = hoodlefinanceExtractYahooSymbolFromSearchResponse_(response, isin);
+
   cache.put(cacheKey, symbol, 21600);
   return symbol;
+}
+
+function hoodlefinanceErrorMessage_(error) {
+  return String(error && error.message ? error.message : error);
 }
 
 function hoodlefinanceLooksLikeIsin_(value) {

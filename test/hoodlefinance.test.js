@@ -296,11 +296,20 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
       uiState.dialogs.push({ output, title });
     },
   };
+  const urlFetchApp = {
+    fetch() {
+      throw new Error("Unexpected fetch in test");
+    },
+    fetchAll(requests) {
+      return requests.map((request) => this.fetch(typeof request === "string" ? request : request.url, request));
+    },
+  };
   const sandbox = {
     console,
     Date,
     JSON,
     encodeURIComponent,
+    decodeURIComponent,
     Array,
     String,
     Object,
@@ -358,16 +367,46 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
         };
       },
     },
-    UrlFetchApp: {
-      fetch() {
-        throw new Error("Unexpected fetch in test");
-      },
-    },
+    UrlFetchApp: urlFetchApp,
   };
 
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: "hoodlefinance.js" });
   return sandbox;
+}
+
+function createHttpResponse(statusCode, content) {
+  return {
+    getResponseCode() {
+      return statusCode;
+    },
+    getContentText() {
+      return typeof content === "string" ? content : JSON.stringify(content);
+    },
+  };
+}
+
+function createYahooChartResponse(symbol, meta) {
+  return createHttpResponse(200, {
+    chart: {
+      result: [
+        {
+          meta: Object.assign({ symbol }, meta || {}),
+        },
+      ],
+    },
+  });
+}
+
+function createYahooIsinSearchResponse(symbol) {
+  return createHttpResponse(200, {
+    quotes: [
+      {
+        isYahooFinance: true,
+        symbol,
+      },
+    ],
+  });
 }
 
 test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
@@ -393,17 +432,233 @@ test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
   assert.equal(ctx.HOODLEFINANCE("CURRENCY:USDUSD", "currency"), "USD");
 });
 
+test("scalar calls use the shared batch fetch pipeline", () => {
+  const ctx = loadHoodlefinance();
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      assert.equal(
+        request.url,
+        "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d"
+      );
+      return createYahooChartResponse("GOOG", {
+        currency: "USD",
+        regularMarketPrice: 306.93,
+      });
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("NASDAQ:GOOG", "price"), 306.93);
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([[
+      "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+    ]])
+  );
+});
+
+test("blank scalar ticker input still throws", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(() => ctx.HOODLEFINANCE("", "price"), /Ticker is required\./);
+  assert.throws(() => ctx.HOODLEFINANCE([["  "]], "price"), /Ticker is required\./);
+});
+
+test("range calls preserve blanks and de-duplicate repeated quote lookups", () => {
+  const ctx = loadHoodlefinance();
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPrice: 306.93,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/IBM?interval=1d&range=1d") {
+        return createYahooChartResponse("IBM", {
+          currency: "USD",
+          regularMarketPrice: 250.2,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["NASDAQ:GOOG"], [""], ["NASDAQ:GOOG"], ["NYSE:IBM"]], "price")),
+    JSON.stringify([[306.93], [""], [306.93], [250.2]])
+  );
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([[
+      "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+      "https://query1.finance.yahoo.com/v8/finance/chart/IBM?interval=1d&range=1d",
+    ]])
+  );
+});
+
+test("range calls batch yahoo isin search before quote lookup", () => {
+  const ctx = loadHoodlefinance();
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query2.finance.yahoo.com/v1/finance/search?q=US02079K1079&quotesCount=10&newsCount=0") {
+        return createYahooIsinSearchResponse("GOOG");
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPrice: 306.93,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["ISIN:US02079K1079"], ["US02079K1079"]], "price")),
+    JSON.stringify([[306.93], [306.93]])
+  );
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([
+      [
+        "https://query2.finance.yahoo.com/v1/finance/search?q=US02079K1079&quotesCount=10&newsCount=0",
+        "https://query2.finance.yahoo.com/v1/finance/search?q=US02079K1079&quotesCount=10&newsCount=0",
+      ],
+      [
+        "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+        "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+      ],
+    ])
+  );
+});
+
+test("range calls abort with the first failing job in traversal order", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPrice: 306.93,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/HGEN?interval=1d&range=1d") {
+        return createHttpResponse(404, "not found");
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/IBM?interval=1d&range=1d") {
+        return createYahooChartResponse("IBM", {
+          currency: "USD",
+          regularMarketPrice: 250.2,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.throws(
+    () => ctx.HOODLEFINANCE([["NASDAQ:GOOG"], ["HGEN"], ["NYSE:IBM"]], "price"),
+    /Quote lookup failed for HGEN \(404\)\./
+  );
+});
+
+test("chunk-level fetchAll failures fall back to per-request errors", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("transport failed");
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+      return createYahooChartResponse("GOOG", {
+        currency: "USD",
+        regularMarketPrice: 306.93,
+      });
+    }
+
+    if (url === "https://query1.finance.yahoo.com/v8/finance/chart/HGEN?interval=1d&range=1d") {
+      return createHttpResponse(404, "not found");
+    }
+
+    if (url === "https://query1.finance.yahoo.com/v8/finance/chart/IBM?interval=1d&range=1d") {
+      return createYahooChartResponse("IBM", {
+        currency: "USD",
+        regularMarketPrice: 250.2,
+      });
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(
+    () => ctx.HOODLEFINANCE([["NASDAQ:GOOG"], ["HGEN"], ["NYSE:IBM"]], "price"),
+    /Quote lookup failed for HGEN \(404\)\./
+  );
+});
+
+test("shared batch fetches are chunked in groups of fifty", () => {
+  const ctx = loadHoodlefinance();
+  const batchSizes = [];
+  const tickerRange = Array.from({ length: 51 }, (_, index) => ["T" + index]);
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    batchSizes.push(requests.length);
+    return requests.map((request) => {
+      const match = request.url.match(/chart\/([^?]+)\?/);
+      const symbol = decodeURIComponent(match[1]);
+      return createYahooChartResponse(symbol, {
+        currency: "USD",
+        regularMarketPrice: 1,
+      });
+    });
+  };
+
+  assert.equal(JSON.stringify(ctx.HOODLEFINANCE(tickerRange, "price")), JSON.stringify(tickerRange.map(() => [1])));
+  assert.deepEqual(batchSizes, [50, 1]);
+});
+
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.1.1");
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.0");
 });
 
 test("compares semantic-style versions correctly", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.1.1", "0.1.0"), 1);
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.1.0", "0.1.1"), -1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.0", "0.1.1"), 1);
+  assert.equal(ctx.hoodlefinanceCompareVersions_("0.1.1", "0.2.0"), -1);
   assert.equal(ctx.hoodlefinanceCompareVersions_("1.0.0", "1.0"), 0);
 });
 
@@ -452,14 +707,14 @@ test("manual update checks show a dialog when a newer version exists", () => {
         return 200;
       },
       getContentText() {
-        return 'const HOODLEFINANCE_VERSION_ = "0.2.0";';
+        return 'const HOODLEFINANCE_VERSION_ = "0.2.1";';
       },
     };
   };
 
   assert.equal(
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
-    JSON.stringify({ latestVersion: "0.2.0", status: "outdated" })
+    JSON.stringify({ latestVersion: "0.2.1", status: "outdated" })
   );
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js"]);
   assert.equal(ctx.__uiState.dialogs.length, 1);

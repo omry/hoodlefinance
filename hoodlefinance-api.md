@@ -86,7 +86,7 @@ If any historical-data arguments are provided, the function throws an error.
 Current version:
 
 ```text
-0.1.1
+0.2.0
 ```
 
 Example:
@@ -390,31 +390,33 @@ This is intended to improve resolution when the same symbol exists on multiple e
 
 ## Array Usage in Google Sheets
 
-`HOODLEFINANCE` is scalar, so use `MAP` for spilled columns.
+`HOODLEFINANCE` accepts ticker ranges directly and spills a result grid with the same shape.
 
 Price:
 
 ```gs
-={"Price"; MAP(A3:A, LAMBDA(x, IF(x="","",HOODLEFINANCE(x,"price"))))}
+={"Price"; HOODLEFINANCE(A3:A, "price")}
 ```
 
 Currency:
 
 ```gs
-={"Currency"; MAP(A3:A, LAMBDA(x, IF(x="","",HOODLEFINANCE(x,"currency"))))}
+={"Currency"; HOODLEFINANCE(A3:A, "currency")}
 ```
 
 Name:
 
 ```gs
-={"Name"; MAP(A3:A, LAMBDA(x, IF(x="","",HOODLEFINANCE(x,"name"))))}
+={"Name"; HOODLEFINANCE(A3:A, "name")}
 ```
 
 ISIN:
 
 ```gs
-={"ISIN"; MAP(A3:A, LAMBDA(x, IF(x="","",HOODLEFINANCE(x,"isin"))))}
+={"ISIN"; HOODLEFINANCE(A3:A, "isin")}
 ```
+
+Blank ticker cells stay blank in the spilled output. If any populated cell fails, the whole formula surfaces one native Sheets error.
 
 ## Notes and Limitations
 
