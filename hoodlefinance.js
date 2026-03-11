@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.2.1";
+const HOODLEFINANCE_VERSION_ = "0.2.2";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
@@ -486,7 +486,9 @@ function hoodlefinanceRunVersionCheck_(options) {
     }
   }
 
-  latestInfo = hoodlefinanceFetchLatestVersionInfo_();
+  latestInfo = hoodlefinanceFetchLatestVersionInfo_({
+    useCache: !force,
+  });
   hoodlefinanceMarkUpdateCheckRun_(userProperties, now.getTime());
 
   if (!latestInfo.version) {
@@ -615,9 +617,10 @@ function hoodlefinanceCompareVersions_(left, right) {
   return 0;
 }
 
-function hoodlefinanceFetchLatestVersionInfo_() {
+function hoodlefinanceFetchLatestVersionInfo_(options) {
   const cache = CacheService.getScriptCache();
-  const cached = cache.get(HOODLEFINANCE_UPDATE_CACHE_KEY_);
+  const normalizedOptions = options || {};
+  const cached = normalizedOptions.useCache === false ? null : cache.get(HOODLEFINANCE_UPDATE_CACHE_KEY_);
   const urls = [
     HOODLEFINANCE_GITHUB_RAW_URL_,
     HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_,
