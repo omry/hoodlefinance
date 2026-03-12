@@ -1,0 +1,9 @@
+Use case	GOOGLEFINANCE formula	GOOGLEFINANCE result	HOODLEFINANCE formula	HOODLEFINANCE result	Why HOODLEFINANCE wins
+PSE direct quote	'=GOOGLEFINANCE("PSE:BDO","name")	=GOOGLEFINANCE("PSE:BDO","name")	'=HOODLEFINANCE("PSE:BDO","name")	=HOODLEFINANCE("PSE:BDO","name")	Dedicated PSE path instead of relying on Google coverage.
+Irish ETF access on LSE	'=GOOGLEFINANCE("SJPA.L","name")	=GOOGLEFINANCE("SJPA.L","name")	'=HOODLEFINANCE("SJPA.L","name")	=HOODLEFINANCE("SJPA.L","name")	Handles Irish UCITS ETFs that are awkward or unsupported in Google Sheets.
+Irish ETF access on Xetra	'=GOOGLEFINANCE("ZPRX.DE","name")	=GOOGLEFINANCE("ZPRX.DE","name")	'=HOODLEFINANCE("ZPRX.DE","name")	=HOODLEFINANCE("ZPRX.DE","name")	Handles Irish UCITS ETFs on non-U.S. exchanges and returns the name.
+US stock ISIN	'=GOOGLEFINANCE("GOOG","isin")	=GOOGLEFINANCE("GOOG","isin")	'=HOODLEFINANCE("GOOG","isin")	=HOODLEFINANCE("GOOG","isin")	Returns an ISIN directly.
+London ETF ISIN	'=GOOGLEFINANCE("LON:SJPA","isin")	=GOOGLEFINANCE("LON:SJPA","isin")	'=HOODLEFINANCE("LON:SJPA","isin")	=HOODLEFINANCE("LON:SJPA","isin")	Works for a foreign ETF and exposes the identifier.
+Xetra ETF ISIN	'=GOOGLEFINANCE("ETR:ZPRX","isin")	=GOOGLEFINANCE("ETR:ZPRX","isin")	'=HOODLEFINANCE("ETR:ZPRX","isin")	=HOODLEFINANCE("ETR:ZPRX","isin")	Supports UCITS-style ETF workflows that need ISINs.
+Singapore stock ISIN	'=GOOGLEFINANCE("SGX:D05","isin")	=GOOGLEFINANCE("SGX:D05","isin")	'=HOODLEFINANCE("SGX:D05","isin")	=HOODLEFINANCE("SGX:D05","isin")	Provides the identifier on a non-U.S. listing.
+Tel Aviv stock ISIN	'=GOOGLEFINANCE("TLV:POLI","isin")	=GOOGLEFINANCE("TLV:POLI","isin")	'=HOODLEFINANCE("TLV:POLI","isin")	=HOODLEFINANCE("TLV:POLI","isin")	Handles an exchange where Sheets users often need a broker-friendly identifier.

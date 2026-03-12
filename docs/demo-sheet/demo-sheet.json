@@ -39,6 +39,69 @@
       "formatting": {
         "autoResizeColumns": false,
         "columnPixelSizes": [
+          170,
+          360,
+          260,
+          360,
+          260,
+          280
+        ],
+        "columnBackgrounds": [
+          {
+            "column": 2,
+            "startRow": 2,
+            "endRow": 9,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 3,
+            "startRow": 2,
+            "endRow": 9,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 4,
+            "startRow": 2,
+            "endRow": 9,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 5,
+            "startRow": 2,
+            "endRow": 9,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          }
+        ],
+        "freezeRows": 1,
+        "formulaRows": [],
+        "headerRows": [
+          1
+        ]
+      },
+      "title": "Compared to GOOGLEFINANCE",
+      "path": "docs/demo-sheet/googlefinance-comparison.tsv",
+      "startCell": "A1"
+    },
+    {
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
           150,
           300,
           260,

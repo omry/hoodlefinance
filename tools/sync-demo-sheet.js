@@ -171,6 +171,7 @@ function validateTabFormatting(tab, issues, index) {
     });
   }
 
+  validateColumnBackgrounds_(formatting.columnBackgrounds, tabLabel, issues);
   validateFormattingSections_(formatting.headerSections, "headerSections", tabLabel, issues);
   validateFormattingSections_(formatting.formulaSections, "formulaSections", tabLabel, issues);
   validateNumberFormats_(formatting.numberFormats, tabLabel, issues);
@@ -275,6 +276,53 @@ function validateNumberFormats_(numberFormats, tabLabel, issues) {
   });
 }
 
+function validateColumnBackgrounds_(columnBackgrounds, tabLabel, issues) {
+  if (columnBackgrounds == null) {
+    return;
+  }
+
+  if (!Array.isArray(columnBackgrounds)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.columnBackgrounds\".");
+    return;
+  }
+
+  columnBackgrounds.forEach(function (entry) {
+    if (!entry || typeof entry !== "object") {
+      issues.push("Tab \"" + tabLabel + "\" has invalid column background entry.");
+      return;
+    }
+
+    if (!Number.isInteger(entry.column) || entry.column < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid column background column: " + entry.column);
+    }
+
+    if (entry.startRow != null && (!Number.isInteger(entry.startRow) || entry.startRow < 1)) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid column background startRow: " + entry.startRow);
+    }
+
+    if (entry.endRow != null && (!Number.isInteger(entry.endRow) || entry.endRow < 1)) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid column background endRow: " + entry.endRow);
+    }
+
+    validateRgbColor_(entry.backgroundColor, "column background", tabLabel, issues);
+  });
+}
+
+function validateRgbColor_(color, label, tabLabel, issues) {
+  const components = ["red", "green", "blue"];
+
+  if (!color || typeof color !== "object") {
+    issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " color.");
+    return;
+  }
+
+  components.forEach(function (name) {
+    if (typeof color[name] !== "number" || Number.isNaN(color[name]) || color[name] < 0 || color[name] > 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " color component \"" + name + "\".");
+    }
+  });
+}
+
 function validateMergedRanges_(mergedRanges, tabLabel, issues) {
   if (mergedRanges == null) {
     return;
@@ -350,6 +398,7 @@ async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
   let values;
   let sheetProperties;
   let maxColumns;
+  let sheetColumnCount;
   let sheetRowCount;
 
   for (i = 0; i < config.tabs.length; i += 1) {
@@ -365,12 +414,16 @@ async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
       const width = Array.isArray(row) ? row.length : 0;
       return Math.max(currentMax, width);
     }, 1);
+    sheetColumnCount = Math.max(
+      (sheetProperties.gridProperties && sheetProperties.gridProperties.columnCount) || maxColumns || 1,
+      maxColumns || 1
+    );
     sheetRowCount = Math.max(
       (sheetProperties.gridProperties && sheetProperties.gridProperties.rowCount) || values.length || 1,
       values.length || 1
     );
 
-    requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, maxColumns));
+    requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
   }
 
   if (!requests.length) {
@@ -517,6 +570,7 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
   let sheetProperties;
   let formatting;
   let maxColumns;
+  let sheetColumnCount;
   let sheetRowCount;
 
   for (i = 0; i < config.tabs.length; i += 1) {
@@ -532,6 +586,13 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
     maxColumns = values.reduce(function (currentMax, row) {
       return Math.max(currentMax, Array.isArray(row) ? row.length : 0);
     }, 0);
+    sheetColumnCount =
+      sheetProperties &&
+      sheetProperties.gridProperties &&
+      Number.isInteger(sheetProperties.gridProperties.columnCount) &&
+      sheetProperties.gridProperties.columnCount > 0
+        ? Math.max(sheetProperties.gridProperties.columnCount, maxColumns)
+        : maxColumns;
     sheetRowCount =
       sheetProperties &&
       sheetProperties.gridProperties &&
@@ -540,8 +601,8 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
         ? sheetProperties.gridProperties.rowCount
         : values.length;
 
-    if (values.length > 0 && maxColumns > 0) {
-      requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, maxColumns));
+    if (values.length > 0 && sheetColumnCount > 0) {
+      requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
     }
 
     if (formatting.freezeRows > 0) {
@@ -578,6 +639,10 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
     });
 
     requests.push.apply(requests, buildFormulaCellFormatRequests(sheetProperties.sheetId, values));
+    requests.push.apply(
+      requests,
+      buildColumnBackgroundRequests(sheetProperties.sheetId, formatting.columnBackgrounds, values.length)
+    );
     requests.push.apply(requests, buildNumberFormatRequests(sheetProperties.sheetId, formatting.numberFormats));
 
     if (formatting.columnPixelSizes.length) {
@@ -606,6 +671,9 @@ function normalizeTabFormatting(formatting) {
 
   return {
     autoResizeColumns: normalized.autoResizeColumns !== false,
+    columnBackgrounds: Array.isArray(normalized.columnBackgrounds)
+      ? normalized.columnBackgrounds.map(copyColumnBackground_)
+      : [],
     columnPixelSizes: Array.isArray(normalized.columnPixelSizes) ? normalized.columnPixelSizes.slice() : [],
     freezeRows: Number(normalized.freezeRows || 0),
     formulaColumns: Array.isArray(normalized.formulaColumns) ? normalized.formulaColumns.slice() : [],
@@ -627,6 +695,23 @@ function copyFormattingSection_(section) {
   return {
     columns: Number(section.columns),
     row: Number(section.row),
+  };
+}
+
+function copyColumnBackground_(entry) {
+  return {
+    backgroundColor: copyRgbColor_(entry.backgroundColor),
+    column: Number(entry.column),
+    endRow: entry.endRow == null ? null : Number(entry.endRow),
+    startRow: entry.startRow == null ? null : Number(entry.startRow),
+  };
+}
+
+function copyRgbColor_(color) {
+  return {
+    blue: Number(color.blue),
+    green: Number(color.green),
+    red: Number(color.red),
   };
 }
 
@@ -938,6 +1023,28 @@ function buildNumberFormatRequests(sheetId, numberFormats) {
         range: {
           startRowIndex: entry.startRow - 1,
           endRowIndex: entry.endRow,
+          startColumnIndex: entry.column - 1,
+          endColumnIndex: entry.column,
+          sheetId: sheetId,
+        },
+      },
+    };
+  });
+}
+
+function buildColumnBackgroundRequests(sheetId, columnBackgrounds, maxRows) {
+  return columnBackgrounds.map(function (entry) {
+    return {
+      repeatCell: {
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: copyRgbColor_(entry.backgroundColor),
+          },
+        },
+        fields: "userEnteredFormat.backgroundColor",
+        range: {
+          startRowIndex: Math.max(0, Number(entry.startRow || 1) - 1),
+          endRowIndex: Number(entry.endRow || maxRows),
           startColumnIndex: entry.column - 1,
           endColumnIndex: entry.column,
           sheetId: sheetId,
