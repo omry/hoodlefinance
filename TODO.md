@@ -1,2 +1,3 @@
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
 - Add CI-backed demo-sheet sync/deploy support so public demo updates do not depend only on local maintainer auth setup
+- add facility to dereference ISIN to stock at IBKR, allow filter by exchange and currency. Will return all matches. for a pointed ISIN,EXCHANGE,CURRENCY query - this must return output in a single cell. this is probably a different function (use https://pennies.interactivebrokers.com/cstools/contract_info/v3.10/index.php)
