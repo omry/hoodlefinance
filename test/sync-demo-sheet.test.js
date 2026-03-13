@@ -133,6 +133,7 @@ test("formatting helpers build the expected Sheets API requests", function () {
   assert.deepEqual(normalizeTabFormatting({ headerRows: [1, 7] }), {
     autoResizeColumns: true,
     calloutRows: [],
+    columnBackgrounds: [],
     columnPixelSizes: [],
     freezeRows: 0,
     formulaColumns: [],

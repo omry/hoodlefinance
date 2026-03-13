@@ -809,7 +809,7 @@ test("shared batch fetches are chunked in groups of fifty", () => {
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.3");
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.4");
 });
 
 test("compares semantic-style versions correctly", () => {
@@ -865,14 +865,14 @@ test("manual update checks show a dialog when a newer version exists", () => {
         return 200;
       },
       getContentText() {
-        return 'const HOODLEFINANCE_VERSION_ = "0.2.4";';
+        return 'const HOODLEFINANCE_VERSION_ = "9.9.9";';
       },
     };
   };
 
   assert.equal(
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
-    JSON.stringify({ latestVersion: "0.2.4", status: "outdated" })
+    JSON.stringify({ latestVersion: "9.9.9", status: "outdated" })
   );
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js"]);
   assert.equal(ctx.__uiState.dialogs.length, 1);
@@ -890,7 +890,7 @@ test("manual update checks bypass stale cached latest-version info", () => {
         return 200;
       },
       getContentText() {
-        return 'const HOODLEFINANCE_VERSION_ = "' + (seenUrls.length === 1 ? "0.2.0" : "0.2.4") + '";';
+        return 'const HOODLEFINANCE_VERSION_ = "' + (seenUrls.length === 1 ? "0.2.0" : "9.9.9") + '";';
       },
     };
   };
@@ -901,7 +901,7 @@ test("manual update checks bypass stale cached latest-version info", () => {
   );
   assert.equal(
     JSON.stringify(ctx.hoodlefinanceCheckForUpdates()),
-    JSON.stringify({ latestVersion: "0.2.4", status: "outdated" })
+    JSON.stringify({ latestVersion: "9.9.9", status: "outdated" })
   );
   assert.deepEqual(seenUrls, [
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js",

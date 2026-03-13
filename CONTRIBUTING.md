@@ -102,6 +102,8 @@ If a change adds a new source or exchange path, include both:
 - fixture-based tests in `test/hoodlefinance.test.js`
 - at least one real-world smoke-test example you actually verified
 
+For any new or changed functionality that depends on a live/public endpoint, live verification is mandatory before calling the change done. A mocked unit test is not enough on its own. Run at least one real check through the project tooling, usually `node tools/cli.js ...`, and if that is not possible in the current environment, state explicitly that the behavior is unverified.
+
 ## What to Be Careful About
 
 - Public endpoints are brittle. Prefer exact parsing of stable fields over loose scraping.
