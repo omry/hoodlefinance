@@ -12,6 +12,24 @@ This design note separates:
 - simple mapping / normalization updates that can improve the Israeli market experience without changing the upstream quote source
 - larger changes that require a new source for quote-backed attributes
 
+## Current Status
+
+The original scope of this note has now split into:
+
+- implemented work for symbol-based Israeli fund / ETF quotes
+- still-missing work for direct Israeli fund ISIN input
+
+Implemented since the first draft of this note:
+
+- canonical TLV / TASE fund normalization such as `TLV:KSM.F59 -> KSM.F59.TA`
+- narrow undotted alias normalization such as `TLV:KSMF59 -> KSM.F59.TA`
+- TradingView-backed fallback for Israeli fund `name`, `price`, and `currency` when Yahoo has no quote
+- `ILA -> ILS` money normalization similar to existing `GBp -> GBP` handling
+
+Still not implemented:
+
+- direct Israeli fund ISIN fallback such as `=HOODLEFINANCE("IL0011465700", "name")` when Yahoo ISIN search cannot resolve the symbol
+
 ## Current Behavior
 
 Current TLV quote behavior is:
@@ -240,6 +258,72 @@ If direct ISIN input fails through Yahoo search:
 
 This phase is more complex than Phase 2 because it needs symbol discovery, not just quote retrieval.
 
+## Research Update: The Missing `IL... -> Symbol` Resolver
+
+The remaining Israeli-market gap is no longer quote extraction. It is symbol discovery.
+
+We already have enough for:
+
+- `TLV:...` or `.TA` input -> canonical symbol normalization
+- canonical symbol -> TradingView-backed `name` / `price` / `currency`
+
+We do not yet have a stable public resolver for:
+
+- `IL...` ISIN -> canonical `TASE:<CODE>` or Yahoo-style `<CODE>.TA`
+
+### What current TradingView research supports
+
+TradingView public symbol pages are enough once the symbol is already known:
+
+- they expose `resolved_symbol`
+- they expose `isin_displayed`
+- they expose enough public page data to recover `name`, `price`, and currency for at least some Israeli funds / ETFs
+
+That makes TradingView a good quote fallback.
+
+It does not yet make TradingView a proven public ISIN-discovery source.
+
+Current public TradingView documentation found during this research covers screeners and filtering, but it does not document a public no-auth HTTP API for resolving an arbitrary ISIN to a symbol. So while TradingView may have an internal search flow that can do this, that path is not currently established enough to design around as a stable contract.
+
+Design implication:
+
+- TradingView is sufficient for `symbol -> quote`
+- TradingView is not yet sufficient evidence for robust public `ISIN -> symbol`
+
+### What current TASE research supports
+
+The strongest official candidate for the missing resolver is TASE Data Hub / Open API.
+
+The official guide states that:
+
+- the product catalog includes `securities`, `public companies`, `indices`, `mutual funds`, and more
+- the system provides `current` and `historical` capital-market data
+- usage requires developer registration, app setup, and an API key
+- some products are paid and require commercial approval before activation
+
+Design implication:
+
+- TASE Data Hub is the most credible long-term source for official Israeli `ISIN -> symbol` resolution
+- but it changes the project constraints because it introduces auth, app provisioning, and possible commercial dependency
+
+### Conclusion for the missing part
+
+For the current no-auth public-source design:
+
+- we have enough to support symbol-based Israeli fund failures
+- we do not yet have enough to implement direct Israeli fund ISIN input cleanly
+
+So the remaining `IL...` work should stay explicitly out of scope unless one of the following becomes true:
+
+1. we find a stable, documented, public TradingView discovery path that resolves Israeli ISINs to symbols
+2. we accept an authenticated TASE Data Hub dependency for Israeli ISIN resolution
+3. we identify another public source with stable Israeli `ISIN -> symbol` coverage
+
+Until then, the correct design stance is:
+
+- keep direct Israeli fund ISIN fallback as future work
+- do not overpromise it based only on the now-working TradingView quote fallback
+
 ## API / Behavior Proposal
 
 No public function signature changes are needed.
@@ -306,3 +390,14 @@ The practical minimum useful scope is:
 3. add TradingView-backed TLV fund quote fallback for `name` and `price`
 
 That is the smallest path that can plausibly turn current Israeli fund / ETF failures into working cases without overcommitting to a full exchange-native TASE scraping project.
+
+For direct Israeli fund ISIN input, the recommendation is narrower:
+
+1. do not implement a speculative public `IL... -> symbol` path yet
+2. treat TASE Data Hub as the leading official option if authenticated sources become acceptable
+3. revisit TradingView-based discovery only if a stable public symbol-search mechanism is confirmed
+
+## Research References
+
+- TradingView public symbol page example: `https://www.tradingview.com/symbols/TASE-KSM.F59/`
+- TASE Open API guide: `https://content.tase.co.il/media/l5xjhjmz/2000_api_guide_eng.pdf`

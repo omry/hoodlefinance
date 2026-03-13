@@ -22,21 +22,41 @@ EXCHANGES = [
         "code": "NYSE",
         "name": "New York Stock Exchange",
         "samples": ["NYSE:IBM", "NYSE:KO", "NYSE:DIS"],
+        "google_query_samples": ["NYSE:IBM", "NYSE:KO", "NYSE:DIS"],
+        "yahoo_query_samples": ["IBM", "KO", "DIS"],
+        "isin_lookup_samples": [
+            {"ticker": "US4592001014", "label": "US4592001014 (IBM)"},
+        ],
     },
     {
         "code": "NASDAQ",
         "name": "Nasdaq",
         "samples": ["GOOG", "AAPL", "MSFT"],
+        "google_query_samples": ["NASDAQ:GOOG", "NASDAQ:AAPL", "NASDAQ:MSFT"],
+        "yahoo_query_samples": ["GOOG", "AAPL", "MSFT"],
+        "isin_lookup_samples": [
+            {"ticker": "US02079K1079", "label": "US02079K1079 (GOOG)"},
+        ],
     },
     {
         "code": "LON",
         "name": "London Stock Exchange",
         "samples": ["SJPA.L", "CPXJ.L", "VUAG.L"],
+        "google_query_samples": ["LON:SJPA", "LON:CPXJ", "LON:VUAG"],
+        "yahoo_query_samples": ["SJPA.L", "CPXJ.L", "VUAG.L"],
+        "isin_lookup_samples": [
+            {"ticker": "IE00B4L5YX21", "label": "IE00B4L5YX21 (SJPA)"},
+        ],
     },
     {
         "code": "ETR",
         "name": "Xetra",
         "samples": ["ZPRV.DE", "ZPRX.DE", "5MVL.DE"],
+        "google_query_samples": ["ETR:ZPRV", "ETR:ZPRX", "ETR:5MVL"],
+        "yahoo_query_samples": ["ZPRV.DE", "ZPRX.DE", "5MVL.DE"],
+        "isin_lookup_samples": [
+            {"ticker": "IE00BSPLC298", "label": "IE00BSPLC298 (ZPRX)"},
+        ],
     },
     {
         "code": "HKG",
@@ -46,35 +66,97 @@ EXCHANGES = [
             "1299.HK",
             "1810.HK",
         ],
+        "google_query_samples": ["HKG:9988", "HKG:1299", "HKG:1810"],
+        "yahoo_query_samples": [
+            {"ticker": "9988.HK", "label": "9988.HK (Alibaba / BABA)"},
+            "1299.HK",
+            "1810.HK",
+        ],
+        "isin_lookup_samples": [
+            {"ticker": "KYG017191142", "label": "KYG017191142 (9988.HK / Alibaba)"},
+        ],
     },
     {
         "code": "TLV",
         "name": "Tel Aviv Stock Exchange",
         "samples": ["TASE.TA", "POLI.TA", "NICE.TA"],
+        "google_query_samples": ["TLV:POLI", "TLV:NICE", "TLV:TEVA"],
+        "yahoo_query_samples": ["POLI.TA", "NICE.TA", "TEVA.TA"],
+        "isin_lookup_samples": [
+            {"ticker": "IL0006625771", "label": "IL0006625771 (POLI)"},
+            {"ticker": "IL0011465700", "label": "IL0011465700 (KSM.F59 ETF)"},
+        ],
     },
     {
         "code": "TYO",
         "name": "Tokyo Stock Exchange",
         "samples": ["7203.T", "6758.T", "9984.T"],
+        "google_query_samples": ["TYO:7203", "TYO:6758", "TYO:9984"],
+        "yahoo_query_samples": ["7203.T", "6758.T", "9984.T"],
+        "isin_lookup_samples": [
+            {"ticker": "JP3633400001", "label": "JP3633400001 (7203.T / Toyota)"},
+        ],
     },
     {
         "code": "PSE",
         "name": "Philippine Stock Exchange",
         "samples": ["PSE:BDO", "PSE:AAA", "PSE:JFC"],
+        "google_query_samples": ["PSE:BDO", "PSE:AAA", "PSE:JFC"],
+        "yahoo_query_samples": ["BDO.PS", "AAA.PS", "JFC.PS"],
+        "isin_lookup_samples": [
+            {"ticker": "PHY077751022", "label": "PHY077751022 (PSE:BDO)"},
+        ],
     },
     {
         "code": "SGX",
         "name": "Singapore Exchange",
         "samples": ["SGX:D05", "SGX:U11", "SGX:O39"],
+        "google_query_samples": ["SGX:D05", "SGX:U11", "SGX:O39"],
+        "yahoo_query_samples": ["D05.SI", "U11.SI", "O39.SI"],
+        "isin_lookup_samples": [
+            {"ticker": "SG1L01001701", "label": "SG1L01001701 (SGX:D05)"},
+        ],
     },
     {
         "code": "OTCMKTS",
         "name": "OTC Markets",
         "samples": ["OTCMKTS:RYCEY", "OTCMKTS:NSRGY", "OTCMKTS:TCEHY"],
+        "google_query_samples": ["OTCMKTS:RYCEY", "OTCMKTS:NSRGY", "OTCMKTS:TCEHY"],
+        "yahoo_query_samples": ["RYCEY", "NSRGY", "TCEHY"],
+        "isin_lookup_samples": [
+            {"ticker": "US7757812067", "label": "US7757812067 (OTCMKTS:RYCEY)"},
+        ],
     },
 ]
 
 EXCHANGES = sorted(EXCHANGES, key=lambda exchange: str(exchange["name"]))
+
+QUERY_COLUMNS = [
+    {
+        "key": "google-query",
+        "label": "Google Finance query",
+        "attributes": ["name"],
+        "sample_key": "google_query_samples",
+        "tooltip": 'Representative exchange-prefixed inputs such as `LON:SJPA`, `TLV:POLI`, or `NASDAQ:GOOG`.',
+        "example": "LON:SJPA",
+    },
+    {
+        "key": "yahoo-query",
+        "label": "Yahoo style",
+        "attributes": ["name"],
+        "sample_key": "yahoo_query_samples",
+        "tooltip": 'Representative Yahoo-style inputs such as `SJPA.L`, `POLI.TA`, or `GOOG`.',
+        "example": "SJPA.L",
+    },
+    {
+        "key": "isin-query",
+        "label": "ISIN",
+        "attributes": ["name"],
+        "sample_key": "isin_lookup_samples",
+        "tooltip": 'Direct ISIN input such as `IE00...`, `IL00...`, or `US...`.',
+        "example": "IE00B4L5YX21",
+    },
+]
 
 FEATURES = [
     {
@@ -112,6 +194,12 @@ ICONS = {
     "none": "❌",
     "partial": "⚠️",
 }
+
+QUERY_SECTION_STYLE = "text-align:center;"
+FEATURE_SECTION_STYLE = "text-align:center;"
+SECTION_DIVIDER_STYLE = "border-left:3px solid #6b7280;"
+EXCHANGE_CELL_STYLE = "vertical-align:top;"
+SAMPLES_CELL_STYLE = "text-align:center;vertical-align:top;"
 
 DEFAULT_MAX_WORKERS = min(32, max(4, (os.cpu_count() or 4) * 4))
 
@@ -167,7 +255,6 @@ def format_header_cell(label: str, tooltip: str) -> str:
     escaped_tooltip = html.escape(tooltip, quote=True)
     return f'<span title="{escaped_tooltip}">{label}</span>'
 
-
 def format_status_cell(icon: str, tooltip: str) -> str:
     escaped_tooltip = html.escape(tooltip, quote=True)
     return f'<span title="{escaped_tooltip}">{icon}</span>'
@@ -178,6 +265,18 @@ def format_feature_header_cell(feature: dict[str, object]) -> str:
     attributes = "<br>".join(f"<code>{html.escape(attribute)}</code>" for attribute in feature["attributes"])
     tooltip = html.escape("Grouped attributes: " + ", ".join(feature["attributes"]), quote=True)
     return f'<span title="{tooltip}">{label}<br><sub>{attributes}</sub></span>'
+
+
+def format_query_header_cell(column: dict[str, object]) -> str:
+    label = str(column["label"])
+    example = html.escape(str(column["example"]))
+    tooltip = html.escape(str(column["tooltip"]), quote=True)
+    return f'<span title="{tooltip}">{label}<br><sub><code>{example}</code></sub></span>'
+
+
+def column_samples(exchange: dict[str, object], column: dict[str, object]) -> list[str | dict[str, str]]:
+    sample_key = str(column.get("sample_key") or "samples")
+    return list(exchange[sample_key])
 
 
 def lookup_reliability_override(exchange_code: str, feature_key: str):
@@ -237,10 +336,10 @@ def build_probe_plan() -> list[tuple[str, str, str, str]]:
 
     for exchange in EXCHANGES:
         exchange_code = str(exchange["code"])
-        for feature in FEATURES:
-            feature_key = str(feature["key"])
-            for sample in exchange["samples"]:
-                for attribute in feature["attributes"]:
+        for column in QUERY_COLUMNS + FEATURES:
+            feature_key = str(column["key"])
+            for sample in column_samples(exchange, column):
+                for attribute in column["attributes"]:
                     plan.append((exchange_code, feature_key, sample_ticker(sample), attribute))
 
     return plan
@@ -264,18 +363,18 @@ def execute_probe_plan(
     return results
 
 
-def evaluate_feature(
+def evaluate_column(
     exchange: dict[str, object],
-    feature: dict[str, object],
+    column: dict[str, object],
     details: list[str],
     reliability_notes: list[str],
     probe_results: dict[tuple[str, str, str, str], dict[str, str | bool]],
 ) -> str:
-    samples = list(exchange["samples"])
-    attributes = list(feature["attributes"])
+    samples = column_samples(exchange, column)
+    attributes = list(column["attributes"])
     exchange_code = str(exchange["code"])
-    feature_key = str(feature["key"])
-    feature_label = str(feature["label"])
+    feature_key = str(column["key"])
+    feature_label = str(column["label"])
     override = lookup_reliability_override(exchange_code, feature_key)
     ok_count = 0
     total = 0
@@ -329,43 +428,89 @@ def evaluate_feature(
     if override:
         tooltip += f" Reliability note: {override['note']}"
 
+    tooltip += f" Samples: {format_samples(samples)}"
+
     return format_status_cell(ICONS[status], tooltip)
 
 
 def generate_matrix_body(show_details: bool) -> tuple[str, str]:
     probe_results = execute_probe_plan(build_probe_plan())
     lines = [
-        "| "
-        + " | ".join(
-            [
-                format_header_cell("Exchange", "Code and full venue name."),
-                format_header_cell("Samples", "Hover the info icon to see the sample tickers used for probes."),
-            ]
-            + [format_feature_header_cell(feature) for feature in FEATURES]
-        )
-        + " |",
-        "| --- | --- | " + " | ".join("---" for _ in FEATURES) + " |",
+        "<table>",
+        "  <thead>",
+        "    <tr>",
+        '      <th rowspan="2" style="{}">{}</th>'.format(
+            EXCHANGE_CELL_STYLE,
+            format_header_cell("Exchange", "Code and full venue name."),
+        ),
+        '      <th rowspan="2" style="{}">{}</th>'.format(
+            SAMPLES_CELL_STYLE,
+            format_header_cell("Samples", "Hover the info icon to see the sample tickers used for the feature columns."),
+        ),
+        '      <th colspan="{}" style="{}">Query</th>'.format(len(QUERY_COLUMNS), QUERY_SECTION_STYLE),
+        '      <th colspan="{}" style="{}{}">Attributes</th>'.format(
+            len(FEATURES), FEATURE_SECTION_STYLE, SECTION_DIVIDER_STYLE
+        ),
+        "    </tr>",
+        "    <tr>",
+        *[
+            '      <th style="{}vertical-align:top;">{}</th>'.format(QUERY_SECTION_STYLE, format_query_header_cell(column))
+            for column in QUERY_COLUMNS
+        ],
+        '      <th style="{}{}vertical-align:top;">{}</th>'.format(
+            FEATURE_SECTION_STYLE, SECTION_DIVIDER_STYLE, format_feature_header_cell(FEATURES[0])
+        ),
+        *[
+            '      <th style="{}vertical-align:top;">{}</th>'.format(
+                FEATURE_SECTION_STYLE, format_feature_header_cell(feature)
+            )
+            for feature in FEATURES[1:]
+        ],
+        "    </tr>",
+        "  </thead>",
+        "  <tbody>",
     ]
     detail_lines: list[str] = []
     reliability_notes: list[str] = []
 
     for exchange in EXCHANGES:
-        cells = [
-            format_exchange_cell(exchange),
-            format_samples_cell(list(exchange["samples"])),
+        row_lines = [
+            "    <tr>",
+            '      <td style="{}">{}</td>'.format(EXCHANGE_CELL_STYLE, format_exchange_cell(exchange)),
+            '      <td style="{}">{}</td>'.format(SAMPLES_CELL_STYLE, format_samples_cell(list(exchange["samples"]))),
         ]
-        for feature in FEATURES:
-            cells.append(
-                evaluate_feature(
-                    exchange,
-                    feature,
-                    detail_lines if show_details else [],
-                    reliability_notes,
-                    probe_results,
+        for column in QUERY_COLUMNS:
+            row_lines.append(
+                '      <td style="{}">{}</td>'.format(
+                    QUERY_SECTION_STYLE,
+                    evaluate_column(
+                        exchange,
+                        column,
+                        detail_lines if show_details else [],
+                        reliability_notes,
+                        probe_results,
+                    ),
                 )
             )
-        lines.append("| " + " | ".join(cells) + " |")
+        for index, feature in enumerate(FEATURES):
+            row_lines.append(
+                '      <td style="{}{}">{}</td>'.format(
+                    FEATURE_SECTION_STYLE,
+                    SECTION_DIVIDER_STYLE if index == 0 else "",
+                    evaluate_column(
+                        exchange,
+                        feature,
+                        detail_lines if show_details else [],
+                        reliability_notes,
+                        probe_results,
+                    ),
+                )
+            )
+        row_lines.append("    </tr>")
+        lines.extend(row_lines)
 
+    lines.append("  </tbody>")
+    lines.append("</table>")
     lines.append("")
     lines.append("Legend: `✅` all probes passed, `⚠️` mixed results, `❌` no probes passed or no implementation is configured.")
 
