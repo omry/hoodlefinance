@@ -1,0 +1,10 @@
+Use case	GOOGLEFINANCE formula	GOOGLEFINANCE result	HOODLEFINANCE formula	HOODLEFINANCE result	Notes
+TLV stock name: POLI	'=GOOGLEFINANCE("TLV:POLI","name")	=GOOGLEFINANCE("TLV:POLI","name")	'=HOODLEFINANCE("TLV:POLI","name")	=HOODLEFINANCE("TLV:POLI","name")	Direct Tel Aviv stock name lookup with exchange-prefix form.
+TLV stock price: POLI	'=GOOGLEFINANCE("TLV:POLI","price")	=GOOGLEFINANCE("TLV:POLI","price")	'=HOODLEFINANCE("TLV:POLI","price")	=HOODLEFINANCE("TLV:POLI","price")	Direct Tel Aviv stock price lookup with exchange-prefix form.
+TLV stock name: NICE	'=GOOGLEFINANCE("TLV:NICE","name")	=GOOGLEFINANCE("TLV:NICE","name")	'=HOODLEFINANCE("TLV:NICE","name")	=HOODLEFINANCE("TLV:NICE","name")	Another large Israeli listing on TLV.
+TLV stock name: TEVA	'=GOOGLEFINANCE("TLV:TEVA","name")	=GOOGLEFINANCE("TLV:TEVA","name")	'=HOODLEFINANCE("TLV:TEVA","name")	=HOODLEFINANCE("TLV:TEVA","name")	Useful for checking ordinary TLV equity coverage.
+Yahoo-style TLV ticker	'=GOOGLEFINANCE("POLI.TA","name")	=GOOGLEFINANCE("POLI.TA","name")	'=HOODLEFINANCE("POLI.TA","name")	=HOODLEFINANCE("POLI.TA","name")	Checks Yahoo-style `.TA` ticker handling.
+Israeli ETF name: KSM S&P 500	'=GOOGLEFINANCE("TLV:KSMF59","name")	=GOOGLEFINANCE("TLV:KSMF59","name")	'=HOODLEFINANCE("TLV:KSMF59","name")	=HOODLEFINANCE("TLV:KSMF59","name")	Manual ETF/fund candidate from TASE documents for KSM S&P 500 ETF.
+Israeli ETF price: KSM S&P 500	'=GOOGLEFINANCE("TLV:KSMF59","price")	=GOOGLEFINANCE("TLV:KSMF59","price")	'=HOODLEFINANCE("TLV:KSMF59","price")	=HOODLEFINANCE("TLV:KSMF59","price")	Checks whether Google and Hoodle treat the Israeli ETF as a quote-backed TLV security.
+Israeli ETF ISIN input	'=GOOGLEFINANCE("IL0011511405","name")	=GOOGLEFINANCE("IL0011511405","name")	'=HOODLEFINANCE("IL0011511405","name")	=HOODLEFINANCE("IL0011511405","name")	Direct ISIN-input test for the same Israeli ETF.
+Israeli stock ISIN input	'=GOOGLEFINANCE("IL0006625771","name")	=GOOGLEFINANCE("IL0006625771","name")	'=HOODLEFINANCE("IL0006625771","name")	=HOODLEFINANCE("IL0006625771","name")	Checks direct ISIN-input lookup for an Israeli security.

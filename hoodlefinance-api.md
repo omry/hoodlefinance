@@ -35,6 +35,7 @@ This does **not** mean `HOODLEFINANCE` is universally better:
 - `tradingview:isin` depends on TradingView public symbol pages and their page-bootstrap data, which may change without notice.
 - Generic `isin` only works for exchanges that have an implemented exchange-specific source.
 - `PSE:` support depends on public PSE EDGE HTML pages, so it is more brittle than the Yahoo quote path.
+- Israeli fund / ETF support is still incomplete; see `docs/design/israeli-market-fund-support.md` for the current design direction.
 - Not every Yahoo exchange code has a defensible IBKR mapping; unknown exchanges are left unmapped rather than guessed.
 - The function is custom Apps Script code, so it is not as portable across spreadsheets as built-in `GOOGLEFINANCE`.
 - The quote path depends on Yahoo public endpoints, which may change behavior without notice.
