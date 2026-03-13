@@ -772,7 +772,23 @@ function hoodlefinanceFetchQuote_(ticker) {
   }
 
   response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
-  const meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
+  let meta;
+  let fallbackInfo;
+
+  try {
+    meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
+  } catch (error) {
+    if (!hoodlefinanceShouldUseIsraeliFundTradingviewFallback_({ plan: { yahooSymbol: yahooSymbol } }, error)) {
+      throw error;
+    }
+
+    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(normalizedTicker, yahooSymbol);
+    meta = hoodlefinanceExtractTradingviewFundQuote_(
+      hoodlefinanceFetchText_(fallbackInfo.url),
+      yahooSymbol,
+      fallbackInfo.expectedSymbol
+    );
+  }
 
   cache.put(cacheKey, JSON.stringify(meta), 60);
   return meta;
@@ -828,9 +844,10 @@ function hoodlefinanceNormalizeTicker_(ticker) {
 function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
   const value = String(ticker).trim();
   const parts = value.split(":");
+  let normalizedSymbol;
 
   if (parts.length < 2) {
-    return value;
+    return hoodlefinanceNormalizeYahooStyleIsraeliFundTicker_(value);
   }
 
   const exchange = parts[0].trim().toUpperCase();
@@ -853,7 +870,8 @@ function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
   }
 
   if (HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange]) {
-    return symbol + HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange];
+    normalizedSymbol = hoodlefinanceNormalizeExchangeSymbol_(exchange, symbol);
+    return normalizedSymbol + HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange];
   }
 
   if (hoodlefinanceNormalizeExplicitIbkrExchange_(exchange)) {
@@ -861,6 +879,48 @@ function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
   }
 
   throw new Error('Unsupported exchange prefix "' + exchange + '" in ticker "' + ticker + '".');
+}
+
+function hoodlefinanceNormalizeExchangeSymbol_(exchange, symbol) {
+  if (exchange === "TLV" || exchange === "TASE") {
+    return hoodlefinanceNormalizeIsraeliFundCode_(symbol);
+  }
+
+  return symbol;
+}
+
+function hoodlefinanceNormalizeYahooStyleIsraeliFundTicker_(ticker) {
+  const match = String(ticker || "").trim().match(/^(.+)\.TA$/i);
+
+  if (!match) {
+    return ticker;
+  }
+
+  return hoodlefinanceNormalizeIsraeliFundCode_(match[1]) + ".TA";
+}
+
+function hoodlefinanceNormalizeIsraeliFundCode_(code) {
+  const value = String(code || "").trim().toUpperCase();
+  const undottedMatch = value.match(/^([A-Z]+)F([0-9]+)$/);
+  const dottedMatch = value.match(/^([A-Z]+)\.F([0-9]+)$/);
+
+  if (undottedMatch) {
+    return undottedMatch[1] + ".F" + undottedMatch[2];
+  }
+
+  if (dottedMatch) {
+    return dottedMatch[1] + ".F" + dottedMatch[2];
+  }
+
+  return code;
+}
+
+function hoodlefinanceLooksLikeIsraeliFundCode_(code) {
+  return /^[A-Z]+(?:\.?F[0-9]+)$/i.test(String(code || "").trim());
+}
+
+function hoodlefinanceLooksLikeIsraeliFundYahooSymbol_(symbol) {
+  return /^[A-Z]+\.F[0-9]+\.TA$/i.test(String(symbol || "").trim());
 }
 
 function hoodlefinanceCoerceScalar_(value, label) {
@@ -1131,6 +1191,7 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
 function hoodlefinancePrefetchYahooChartJobs_(jobs) {
   const cache = CacheService.getScriptCache();
   const requests = [];
+  const fallbackJobs = [];
   let i;
   let cacheKey;
   let cached;
@@ -1171,9 +1232,15 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
       );
       cache.put(responses[i].request.cacheKey, JSON.stringify(responses[i].request.job.quote), 60);
     } catch (error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+      if (hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(responses[i].request.job, error)) {
+        fallbackJobs.push(responses[i].request.job);
+      } else {
+        responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+      }
     }
   }
+
+  hoodlefinancePrefetchIsraeliTradingviewFundJobs_(fallbackJobs);
 }
 
 function hoodlefinancePrefetchPseJobs_(jobs) {
@@ -1407,18 +1474,99 @@ function hoodlefinanceChange_(quote) {
 }
 
 function hoodlefinanceNormalizeCurrency_(currency) {
-  return currency === "GBp" ? "GBP" : currency;
+  return currency === "GBp" ? "GBP" : currency === "ILA" ? "ILS" : currency;
 }
 
 function hoodlefinanceNormalizeMoney_(quote, value) {
+  const rawCurrency = quote.currency || quote.financialCurrency || "";
+  const normalizedCurrency = hoodlefinanceNormalizeCurrency_(rawCurrency);
+
   if (value == null) {
     throw new Error("No value is available for this ticker.");
   }
 
-  return hoodlefinanceNormalizeCurrency_(quote.currency || quote.financialCurrency || "") === "GBP" &&
-    (quote.currency === "GBp" || quote.financialCurrency === "GBp")
+  return (normalizedCurrency === "GBP" && (quote.currency === "GBp" || quote.financialCurrency === "GBp")) ||
+    (normalizedCurrency === "ILS" && (quote.currency === "ILA" || quote.financialCurrency === "ILA"))
     ? value / 100
     : value;
+}
+
+function hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(job, error) {
+  const yahooSymbol = job && job.plan && job.plan.yahooSymbol ? String(job.plan.yahooSymbol).trim().toUpperCase() : "";
+  const message = hoodlefinanceErrorMessage_(error);
+
+  if (!hoodlefinanceLooksLikeIsraeliFundYahooSymbol_(yahooSymbol)) {
+    return false;
+  }
+
+  return /No quote data was found|Quote lookup failed/i.test(message);
+}
+
+function hoodlefinancePrefetchIsraeliTradingviewFundJobs_(jobs) {
+  const cache = CacheService.getScriptCache();
+  const requests = [];
+  let i;
+  let fallbackInfo;
+  let cacheKey;
+  let primaryCacheKey;
+  let cached;
+  let responses;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(jobs[i].tickerInput, jobs[i].plan.yahooSymbol);
+    cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
+    primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
+    cached = cache.get(cacheKey);
+
+    if (cached) {
+      jobs[i].quote = JSON.parse(cached);
+      jobs[i].error = null;
+      cache.put(primaryCacheKey, cached, 60);
+      continue;
+    }
+
+    requests.push({
+      cacheKey: cacheKey,
+      expectedSymbol: fallbackInfo.expectedSymbol,
+      job: jobs[i],
+      primaryCacheKey: primaryCacheKey,
+      url: fallbackInfo.url,
+      yahooSymbol: fallbackInfo.yahooSymbol,
+    });
+  }
+
+  responses = hoodlefinanceFetchAllInChunks_("tradingview-quote", requests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      continue;
+    }
+
+    try {
+      responses[i].request.job.quote = hoodlefinanceExtractTradingviewFundQuoteFromResponse_(
+        responses[i].response,
+        responses[i].request.yahooSymbol,
+        responses[i].request.expectedSymbol
+      );
+      responses[i].request.job.error = null;
+      cache.put(responses[i].request.cacheKey, JSON.stringify(responses[i].request.job.quote), 60);
+      cache.put(responses[i].request.primaryCacheKey, JSON.stringify(responses[i].request.job.quote), 60);
+    } catch (error) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+    }
+  }
+}
+
+function hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(tickerInput, yahooSymbol) {
+  const normalizedYahooSymbol = String(yahooSymbol || "").trim().toUpperCase();
+  const code = normalizedYahooSymbol.replace(/\.TA$/i, "");
+
+  return {
+    expectedSymbol: "TASE:" + code,
+    url: HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ + "TASE-" + code + "/",
+    yahooSymbol: normalizedYahooSymbol,
+  };
 }
 
 function hoodlefinanceResolvePseListing_(symbol) {
@@ -1806,19 +1954,30 @@ function hoodlefinanceExtractTradingviewCode_(quote, context) {
     if (candidate.indexOf(":") >= 0) {
       parts = candidate.split(":");
       if (parts.length > 1) {
-        return parts.slice(1).join(":").trim().toUpperCase();
+        return hoodlefinanceNormalizeTradingviewCodeForExchange_(parts[0], parts.slice(1).join(":"));
       }
     }
 
-    match = candidate.match(/^([A-Z0-9]+)\.[A-Z0-9]+$/);
+    match = candidate.match(/^(.+)\.[A-Z0-9]+$/);
     if (match) {
-      return match[1];
+      return hoodlefinanceNormalizeTradingviewCodeForExchange_("", match[1]);
     }
 
     return candidate;
   }
 
   return "";
+}
+
+function hoodlefinanceNormalizeTradingviewCodeForExchange_(exchange, code) {
+  const normalizedExchange = String(exchange || "").trim().toUpperCase();
+  const normalizedCode = String(code || "").trim().toUpperCase();
+
+  if (normalizedExchange === "TLV" || normalizedExchange === "TASE" || /\.TA$/i.test(normalizedCode)) {
+    return hoodlefinanceNormalizeIsraeliFundCode_(normalizedCode.replace(/\.TA$/i, ""));
+  }
+
+  return normalizedCode;
 }
 
 function hoodlefinanceExtractLonCode_(quote, context) {
@@ -2019,6 +2178,73 @@ function hoodlefinanceExtractTradingviewResolvedSymbol_(html) {
 function hoodlefinanceExtractTradingviewIsin_(html) {
   const match = String(html || "").match(/"isin_displayed":"([A-Z]{2}[A-Z0-9]{9}[0-9])"/i);
   return match ? match[1].toUpperCase() : "";
+}
+
+function hoodlefinanceExtractTradingviewSymbolInfo_(html) {
+  const match = String(html || "").match(/window\.initData\.symbolInfo\s*=\s*(\{[\s\S]*?\});/i);
+
+  if (!match) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(match[1]);
+  } catch (error) {
+    return null;
+  }
+}
+
+function hoodlefinanceExtractTradingviewQuotePrice_(html) {
+  const match = String(html || "").match(/\btrades at\s+([0-9.,\u00A0\u202F ]+)\s*([A-Z]{3})\s+today\b/i);
+  return match ? hoodlefinanceParseNumber_(match[1]) : null;
+}
+
+function hoodlefinanceExtractTradingviewFundQuoteFromResponse_(response, yahooSymbol, expectedSymbol) {
+  if (response.getResponseCode() !== 200) {
+    throw new Error('TradingView quote lookup failed for "' + expectedSymbol + '" (' + response.getResponseCode() + ").");
+  }
+
+  return hoodlefinanceExtractTradingviewFundQuote_(response.getContentText(), yahooSymbol, expectedSymbol);
+}
+
+function hoodlefinanceExtractTradingviewFundQuote_(html, yahooSymbol, expectedSymbol) {
+  const symbolInfo = hoodlefinanceExtractTradingviewSymbolInfo_(html);
+  const resolvedSymbol = symbolInfo && symbolInfo.resolved_symbol
+    ? String(symbolInfo.resolved_symbol).toUpperCase()
+    : hoodlefinanceExtractTradingviewResolvedSymbol_(html);
+  const price = hoodlefinanceExtractTradingviewQuotePrice_(html);
+  const currency = symbolInfo && (symbolInfo.currency || symbolInfo.currency_code)
+    ? String(symbolInfo.currency || symbolInfo.currency_code).toUpperCase()
+    : "";
+  const name = symbolInfo
+    ? symbolInfo.description || symbolInfo.short_description || symbolInfo.local_description || symbolInfo.short_name || ""
+    : "";
+  const isin = symbolInfo && symbolInfo.isin_displayed ? String(symbolInfo.isin_displayed).toUpperCase() : hoodlefinanceExtractTradingviewIsin_(html);
+
+  if (resolvedSymbol && expectedSymbol && resolvedSymbol !== expectedSymbol) {
+    throw new Error(
+      'TradingView resolved "' + expectedSymbol + '" to "' + resolvedSymbol + '" instead of an exact symbol match.'
+    );
+  }
+
+  if (!name) {
+    throw new Error('No TradingView quote name is available for "' + expectedSymbol + '".');
+  }
+
+  if (price == null) {
+    throw new Error('No TradingView quote price is available for "' + expectedSymbol + '".');
+  }
+
+  return {
+    currency: currency,
+    exchangeName: "TASE",
+    financialCurrency: currency,
+    isin: isin,
+    longName: String(name),
+    regularMarketPrice: price,
+    shortName: symbolInfo && symbolInfo.short_name ? String(symbolInfo.short_name) : "",
+    symbol: String(yahooSymbol || "").trim().toUpperCase(),
+  };
 }
 
 function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {

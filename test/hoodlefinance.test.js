@@ -216,6 +216,16 @@ window.initData.symbolInfo = {"resolved_symbol":"TASE:POLI","isin_displayed":"IL
 </script>
 `;
 
+const TRADINGVIEW_TASE_KSM_F59_HTML = `
+<script>
+window.initData = {};
+window.initData.symbolInfo = {"resolved_symbol":"TASE:KSM.F59","isin_displayed":"IL0011465700","exchange":"TASE","short_name":"KSM.F59","description":"KSM ETF (4A) TA-35 Units","currency":"ILA","currency_code":"ILA"};
+</script>
+<script type="application/ld+json">
+{"mainEntity":[{"name":"What is KSM.F59 price?","acceptedAnswer":{"text":"KSM.F59 trades at 40,560 ILA today, its price has fallen -1.43% in the past 24 hours."}}]}
+</script>
+`;
+
 const TRADINGVIEW_SGX_D05_HTML = `
 <script>
 window.initData = {};
@@ -424,9 +434,19 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NEO:ZTL"), "ZTL.NE");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("SGX:D05"), "D05.SI");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:KSM.F59"), "KSM.F59.TA");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:KSMF59"), "KSM.F59.TA");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TASE:KSMF59"), "KSM.F59.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:USDUSD"), "USDUSD=X");
+});
+
+test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSMF59.TA"), "KSM.F59.TA");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSM.F59.TA"), "KSM.F59.TA");
 });
 
 test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
@@ -467,6 +487,67 @@ test("scalar calls use the shared batch fetch pipeline", () => {
     JSON.stringify([[
       "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
     ]])
+  );
+});
+
+test("TLV fund aliases normalize to dotted Yahoo symbols in quote lookups", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenUrls.push(requests[0].url);
+    return [
+      createYahooChartResponse("KSM.F59.TA", {
+        currency: "ILA",
+        regularMarketPrice: 12345,
+      }),
+    ];
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "price"), 123.45);
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "currency"), "ILS");
+  assert.equal(
+    JSON.stringify(seenUrls),
+    JSON.stringify([
+      "https://query1.finance.yahoo.com/v8/finance/chart/KSM.F59.TA?interval=1d&range=1d",
+    ])
+  );
+});
+
+test("TLV fund quotes fall back to TradingView when Yahoo has no quote", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenUrls.push.apply(seenUrls, requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/KSM.F59.TA?interval=1d&range=1d") {
+        return createHttpResponse(404, {});
+      }
+
+      if (request.url === "https://www.tradingview.com/symbols/TASE-KSM.F59/") {
+        return createHttpResponse(200, TRADINGVIEW_TASE_KSM_F59_HTML);
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "name"), "KSM ETF (4A) TA-35 Units");
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "price"), 405.6);
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "currency"), "ILS");
+  assert.equal(
+    JSON.stringify(seenUrls),
+    JSON.stringify([
+      "https://query1.finance.yahoo.com/v8/finance/chart/KSM.F59.TA?interval=1d&range=1d",
+      "https://www.tradingview.com/symbols/TASE-KSM.F59/",
+    ])
   );
 });
 
@@ -1045,6 +1126,14 @@ test("money normalization converts GBp prices to GBP", () => {
   assert.equal(ctx.hoodlefinanceNormalizeCurrency_("GBp"), "GBP");
 });
 
+test("money normalization converts ILA prices to ILS", () => {
+  const ctx = loadHoodlefinance();
+  const quote = { currency: "ILA" };
+
+  assert.equal(ctx.hoodlefinanceNormalizeMoney_(quote, 12345), 123.45);
+  assert.equal(ctx.hoodlefinanceNormalizeCurrency_("ILA"), "ILS");
+});
+
 test("attribute extraction uses context-aware ibkr:isin resolver", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
@@ -1576,6 +1665,30 @@ test("tradingview:isin resolves for TLV tickers", () => {
   assert.equal(
     ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "tradingview:isin", { tickerInput: "POLI.TA" }),
     "IL0006625771"
+  );
+});
+
+test("tradingview:isin normalizes TLV fund aliases before TradingView lookup", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.tradingview.com/symbols/TASE-KSM.F59/") {
+      return {
+        getResponseCode() {
+          return 200;
+        },
+        getContentText() {
+          return TRADINGVIEW_TASE_KSM_F59_HTML;
+        },
+      };
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "KSM.F59.TA" }, "tradingview:isin", { tickerInput: "TLV:KSMF59" }),
+    "IL0011465700"
   );
 });
 
