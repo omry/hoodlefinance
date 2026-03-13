@@ -39,18 +39,18 @@
       "formatting": {
         "autoResizeColumns": false,
         "columnPixelSizes": [
-          170,
-          360,
           260,
           360,
           260,
-          280
+          360,
+          320,
+          360
         ],
         "columnBackgrounds": [
           {
             "column": 2,
             "startRow": 2,
-            "endRow": 9,
+            "endRow": 12,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -60,7 +60,7 @@
           {
             "column": 3,
             "startRow": 2,
-            "endRow": 9,
+            "endRow": 12,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -70,7 +70,7 @@
           {
             "column": 4,
             "startRow": 2,
-            "endRow": 9,
+            "endRow": 12,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -80,7 +80,7 @@
           {
             "column": 5,
             "startRow": 2,
-            "endRow": 9,
+            "endRow": 12,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
