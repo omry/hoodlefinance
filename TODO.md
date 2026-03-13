@@ -5,3 +5,4 @@
 - Evaluate Israeli fund / ETF support improvements following `docs/design/israeli-market-fund-support.md`
 - Normalize Israeli prices from `ILA` to `ILS` similarly to the existing `GBp` -> `GBP` handling
 - Consider adding a new parameter to control the output price currency and perform the FX conversion internally
+- Add direct Philippine ISIN-input support for cases like `=HOODLEFINANCE("PHY077751022","name")` when Yahoo ISIN search does not resolve the PSE symbol

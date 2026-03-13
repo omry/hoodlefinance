@@ -7,5 +7,6 @@ These files are separate from the managed public demo-sheet tabs under [`docs/de
 Current files:
 
 - [`israel-stock-queries.tsv`](./israel-stock-queries.tsv)
+- [`pse-stock-queries.tsv`](./pse-stock-queries.tsv)
 
-Future market-specific sheets such as PSE can live here too.
+Future market-specific sheets can live here too.

@@ -1,0 +1,8 @@
+Use case	GOOGLEFINANCE formula	GOOGLEFINANCE result	HOODLEFINANCE formula	HOODLEFINANCE result	Notes
+PSE stock name: BDO	'=GOOGLEFINANCE("PSE:BDO","name")	=GOOGLEFINANCE("PSE:BDO","name")	'=HOODLEFINANCE("PSE:BDO","name")	=HOODLEFINANCE("PSE:BDO","name")	Checks direct PSE stock name lookup.
+PSE stock price: BDO	'=GOOGLEFINANCE("PSE:BDO","price")	=GOOGLEFINANCE("PSE:BDO","price")	'=HOODLEFINANCE("PSE:BDO","price")	=HOODLEFINANCE("PSE:BDO","price")	Checks direct PSE stock price lookup.
+PSE stock ISIN: BDO	'=GOOGLEFINANCE("PSE:BDO","isin")	=GOOGLEFINANCE("PSE:BDO","isin")	'=HOODLEFINANCE("PSE:BDO","isin")	=HOODLEFINANCE("PSE:BDO","isin")	Tests explicit PSE listing with ISIN lookup.
+PSE stock name: JFC	'=GOOGLEFINANCE("PSE:JFC","name")	=GOOGLEFINANCE("PSE:JFC","name")	'=HOODLEFINANCE("PSE:JFC","name")	=HOODLEFINANCE("PSE:JFC","name")	Another common PSE stock for manual comparison.
+PSE stock name: AAA	'=GOOGLEFINANCE("PSE:AAA","name")	=GOOGLEFINANCE("PSE:AAA","name")	'=HOODLEFINANCE("PSE:AAA","name")	=HOODLEFINANCE("PSE:AAA","name")	Useful because thinly traded PSE names can expose data-shape differences.
+PSE stock price: AAA	'=GOOGLEFINANCE("PSE:AAA","price")	=GOOGLEFINANCE("PSE:AAA","price")	'=HOODLEFINANCE("PSE:AAA","price")	=HOODLEFINANCE("PSE:AAA","price")	Checks whether both functions expose current price for a smaller PSE listing.
+PSE stock direct ISIN input	'=GOOGLEFINANCE("PHY077751022","name")	=GOOGLEFINANCE("PHY077751022","name")	'=HOODLEFINANCE("PHY077751022","name")	=HOODLEFINANCE("PHY077751022","name")	Checks direct ISIN-input lookup for a Philippine security.
