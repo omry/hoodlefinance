@@ -9,3 +9,4 @@
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
 - Consider adding an exchange-code attribute (for example resolved Yahoo exchange / normalized exchange code) to make ISIN-input resolution and debugging more transparent
 - Consider versioning `CacheService` keys with `HOODLEFINANCE_VERSION_` so cached results from older script versions do not leak across upgrades
+- Create a release-notes page; each version bump should record runtime behavior changes, and the “update available” version-check message should link to that page.
