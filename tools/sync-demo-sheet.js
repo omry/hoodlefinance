@@ -29,6 +29,11 @@ const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/script.projects",
 ];
+const DEFAULT_ERROR_BACKGROUND_COLOR = {
+  red: 1,
+  green: 0.92,
+  blue: 0.92,
+};
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -686,9 +691,14 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
       buildColumnBackgroundRequests(sheetProperties.sheetId, formatting.columnBackgrounds, values.length)
     );
     requests.push.apply(requests, buildNumberFormatRequests(sheetProperties.sheetId, formatting.numberFormats));
+
+    if (sheetRowCount > 0 && sheetColumnCount > 0) {
+      requests.push(buildSheetErrorConditionalFormatRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
+    }
+
     requests.push.apply(
       requests,
-      buildErrorConditionalFormatRequests(sheetProperties.sheetId, formatting.errorConditionalFormats)
+      buildErrorConditionalFormatRequests(sheetProperties.sheetId, formatting.errorConditionalFormats, 1)
     );
 
     if (formatting.columnPixelSizes.length) {
@@ -858,6 +868,7 @@ function buildBodyAlignmentRequest(sheetId, maxRows, maxColumns) {
             bold: false,
             italic: false,
           },
+          wrapStrategy: "CLIP",
         },
       },
       fields: "userEnteredFormat",
@@ -1010,19 +1021,14 @@ function buildFormulaCellFormatRequest(sheetId, rowNumber, columnNumber) {
     repeatCell: {
       cell: {
         userEnteredFormat: {
-          backgroundColor: {
-            red: 0.96,
-            green: 0.94,
-            blue: 0.88,
-          },
           horizontalAlignment: "LEFT",
           textFormat: {
             italic: true,
           },
-          wrapStrategy: "WRAP",
+          wrapStrategy: "CLIP",
         },
       },
-      fields: "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat,wrapStrategy)",
+      fields: "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)",
       range: {
         startRowIndex: rowNumber - 1,
         endRowIndex: rowNumber,
@@ -1129,11 +1135,45 @@ function buildDeleteConditionalFormatRuleRequests(sheetId, count) {
   return requests;
 }
 
-function buildErrorConditionalFormatRequests(sheetId, entries) {
+function buildSheetErrorConditionalFormatRequest(sheetId, maxRows, maxColumns) {
+  return {
+    addConditionalFormatRule: {
+      index: 0,
+      rule: {
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [
+              {
+                userEnteredValue: "=ISERROR(A1)",
+              },
+            ],
+          },
+          format: {
+            backgroundColor: copyRgbColor_(DEFAULT_ERROR_BACKGROUND_COLOR),
+          },
+        },
+        ranges: [
+          {
+            startRowIndex: 0,
+            endRowIndex: maxRows,
+            startColumnIndex: 0,
+            endColumnIndex: maxColumns,
+            sheetId: sheetId,
+          },
+        ],
+      },
+    },
+  };
+}
+
+function buildErrorConditionalFormatRequests(sheetId, entries, startIndex) {
+  const baseIndex = Number.isInteger(startIndex) ? startIndex : 0;
+
   return entries.map(function (entry, index) {
     return {
       addConditionalFormatRule: {
-        index: index,
+        index: baseIndex + index,
         rule: {
           booleanRule: {
             condition: {
@@ -1595,6 +1635,7 @@ module.exports = {
   buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
   buildErrorConditionalFormatRequests,
+  buildSheetErrorConditionalFormatRequest,
   buildFormulaCellFormatRequests,
   buildFreezeRowsRequest,
   buildFormulaColumnFormatRequest,

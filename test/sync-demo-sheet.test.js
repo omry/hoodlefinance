@@ -10,6 +10,7 @@ const {
   buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
   buildErrorConditionalFormatRequests,
+  buildSheetErrorConditionalFormatRequest,
   buildFormulaCellFormatRequests,
   buildFreezeRowsRequest,
   buildFormulaColumnFormatRequest,
@@ -105,6 +106,7 @@ test("formatting helpers build the expected Sheets API requests", function () {
             bold: false,
             italic: false,
           },
+          wrapStrategy: "CLIP",
         },
       },
       fields: "userEnteredFormat",
@@ -168,6 +170,39 @@ test("formatting helpers build the expected Sheets API requests", function () {
       },
     },
   ]);
+  assert.deepEqual(buildSheetErrorConditionalFormatRequest(12, 1000, 5), {
+    addConditionalFormatRule: {
+      index: 0,
+      rule: {
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [
+              {
+                userEnteredValue: "=ISERROR(A1)",
+              },
+            ],
+          },
+          format: {
+            backgroundColor: {
+              red: 1,
+              green: 0.92,
+              blue: 0.92,
+            },
+          },
+        },
+        ranges: [
+          {
+            startRowIndex: 0,
+            endRowIndex: 1000,
+            startColumnIndex: 0,
+            endColumnIndex: 5,
+            sheetId: 12,
+          },
+        ],
+      },
+    },
+  });
   assert.deepEqual(buildErrorConditionalFormatRequests(12, [{
     startRow: 2,
     endRow: 1000,
@@ -211,6 +246,17 @@ test("formatting helpers build the expected Sheets API requests", function () {
       },
     },
   });
+  assert.equal(buildErrorConditionalFormatRequests(12, [{
+    startRow: 2,
+    endRow: 1000,
+    startColumn: 3,
+    endColumn: 3,
+    backgroundColor: {
+      red: 1,
+      green: 0.92,
+      blue: 0.92,
+    },
+  }], 1)[0].addConditionalFormatRule.index, 1);
   assert.equal(buildFormulaRowFormatRequest(12, 2, 5).repeatCell.range.endRowIndex, 2);
   assert.equal(buildFormulaColumnFormatRequest(12, 2, 6).repeatCell.range.startColumnIndex, 1);
   assert.deepEqual(buildNumberFormatRequests(12, [{
@@ -246,7 +292,15 @@ test("formatting helpers build the expected Sheets API requests", function () {
   ]);
   assert.equal(
     buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.cell.userEnteredFormat.wrapStrategy,
-    "WRAP"
+    "CLIP"
+  );
+  assert.equal(
+    Object.hasOwn(buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.cell.userEnteredFormat, "backgroundColor"),
+    false
+  );
+  assert.equal(
+    buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.fields,
+    "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)"
   );
 });
 
