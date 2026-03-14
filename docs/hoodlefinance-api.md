@@ -199,6 +199,41 @@ If the identifier itself is an ISIN, `HOODLEFINANCE` resolves it automatically b
 =HOODLEFINANCE("PHY077751022", "name")
 ```
 
+## Currency Conversion
+
+`HOODLEFINANCE` also supports spot currency conversion through the same function.
+
+Accepted FX input forms include:
+
+- bare pairs such as `EURUSD` or `USDPHP`
+- prefixed pairs such as `CURRENCY:EURUSD`
+- same-currency pairs such as `USDUSD`
+
+For FX pairs, the most useful attributes are:
+
+- `price` as the current conversion rate
+- `name` as the currency-pair label
+- `currency` as the quote currency or quote unit
+- `high`, `low`, `close`, `change`, and `changepct`
+- `tradetime` and `datadelay` when the upstream source provides them
+
+Compared with typical `GOOGLEFINANCE` FX usage, `HOODLEFINANCE` adds a few practical improvements:
+
+- Same-currency pairs such as `USDUSD` return `1`, which simplifies normalization formulas.
+- Upstream quote-unit aliases such as `GBp` and `ILA` are accepted, while returned values and `currency` still reflect the requested units.
+- In practice, FX pairs expose the same current-quote attribute surface used elsewhere in `HOODLEFINANCE`, instead of being limited to a narrow price-only workflow.
+
+Examples:
+
+```gs
+=HOODLEFINANCE("EURUSD", "price")
+=HOODLEFINANCE("EURUSD", "name")
+=HOODLEFINANCE("EURUSD", "high")
+=HOODLEFINANCE("EURUSD", "changepct")
+=HOODLEFINANCE("USDUSD", "price")
+=HOODLEFINANCE("USDGBp", "currency")
+```
+
 ## How `isin` Works
 
 `isin` is the generic ISIN attribute. It tries to infer the exchange from the input identifier, Yahoo suffix, or quote metadata, then dispatches to an exchange-specific resolver.

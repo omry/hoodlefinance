@@ -24,6 +24,8 @@ This is most useful if your sheet is ETF-heavy, non-U.S.-heavy, or needs identif
 - Better practical support for many foreign ETFs, especially Yahoo-style symbols such as `.L` and `.DE`
 - Dedicated support for the Philippine Stock Exchange (`PSE`)
 - Support for direct ISIN lookups and the `isin` output attribute
+- More flexible currency conversion, including same-currency pairs such as `USDUSD` and quote-unit handling for subunit-style inputs such as `GBp` and `ILA`, where the returned rate and `currency` still reflect the requested units
+- A broader practical FX surface than typical `GOOGLEFINANCE` usage, including fields such as `name`, `high`, `low`, `close`, `change`, and `changepct`
 - Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `NEO:ZTL`, `HKG:9988`, and `SGX:D05`
 
 ## Quick Start
@@ -62,6 +64,7 @@ To update the script, review the release notes, then replace the current code in
 Supported identifiers:
 
 - Bare tickers such as `GOOG`, `AAPL`, `MSFT`, and `IBM`
+- Currency pairs such as `EURUSD`, `USDPHP`, and `CURRENCY:EURUSD`
 - `GOOGLEFINANCE`-style tickers such as `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, and `TLV:POLI`
 - Yahoo-style symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
 - Direct ISIN input such as `US02079K1079`, `IE00B4L5YX21`, or `PHY077751022`
