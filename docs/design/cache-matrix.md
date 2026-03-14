@@ -6,17 +6,17 @@ Use it as a design reference when deciding whether a new fetch path should reuse
 
 ## Current Caches
 
-| Area | Artifact | TTL | Neg | Status | Notes |
-| --- | --- | --- | --- | --- | --- |
-| Update checks | GitHub latest version | 6h | `🚫` | `✅` | Auto checks use cache; manual checks bypass it. |
-| Yahoo quotes | Yahoo chart `meta` | 60s | `🚫` | `✅` | Shared by scalar and range paths. |
-| PSE quotes | Parsed PSE quote | 5m | `🚫` | `✅` | Final quote only, not listing metadata. |
-| PSE ISIN map | GitHub-hosted `pse-isin-map.properties` text | 6h fast / 24h refresh | `🚫` | `✅` | `CacheService` holds the hot copy for 6h; `ScriptProperties` keeps the last downloaded body for up to 24h before the next redownload attempt. |
-| Yahoo ISIN | ISIN -> Yahoo symbol | 6h | `🚫` | `✅` | Used by scalar and range ISIN paths. |
-| ARIVA ISIN | ETR code -> ISIN | 6h | `🚫` | `✅` | Positive-result cache only. |
-| LON ISIN | LON code -> ISIN | 6h | `🚫` | `✅` | Positive-result cache only. |
-| TradingView ISIN | TV symbol -> ISIN | 6h | `🚫` | `✅` | Positive-result cache only. |
-| IBKR ISIN | Symbol/exchange -> final ISIN | 6h | `🚫` | `⚠️` | Final result only; search/detail fetches are uncached. |
+| Area | Artifact | TTL | Priority | Neg | Status | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| IBKR ISIN | Symbol/exchange -> final ISIN | 6h | Medium | `🚫` | `⚠️` | Final result only; search/detail fetches are uncached. |
+| ARIVA ISIN | ETR code -> ISIN | 6h | Done | `🚫` | `✅` | Positive-result cache only. |
+| LON ISIN | LON code -> ISIN | 6h | Done | `🚫` | `✅` | Positive-result cache only. |
+| PSE ISIN map | GitHub-hosted `pse-isin-map.properties` text | 6h fast / 24h refresh | Done | `🚫` | `✅` | `CacheService` holds the hot copy for 6h; `ScriptProperties` keeps the last downloaded body for up to 24h before the next redownload attempt. |
+| PSE quotes | Parsed PSE quote | 5m | Done | `🚫` | `✅` | Final quote only, not listing metadata. |
+| TradingView ISIN | TV symbol -> ISIN | 6h | Done | `🚫` | `✅` | Positive-result cache only. |
+| Update checks | GitHub latest version | 6h | Done | `🚫` | `✅` | Auto checks use cache; manual checks bypass it. |
+| Yahoo ISIN | ISIN -> Yahoo symbol | 6h | Done | `🚫` | `✅` | Used by scalar and range ISIN paths. |
+| Yahoo quotes | Yahoo chart `meta` | 60s | Done | `🚫` | `✅` | Shared by scalar and range paths. |
 
 Legend:
 
@@ -26,15 +26,16 @@ Legend:
 - `🚫` no negative cache
 - `🤔` maybe, depending on design
 - `✅` negative cache is part of the candidate
+- `Priority` is the implementation priority for cache work in this area: `High`, `Medium`, `Low`, or `Done`
 
-## Candidate Additions
+## Potential New Caches
 
-| Area | Candidate | TTL | Neg | Impact | Risk | Status | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| PSE listing | Symbol -> listing ids/meta | 6h-24h | `🤔` | Med | Low | `❌` | Safest next cache; helps after quote cache expiry. |
-| IBKR search | Parsed search entries | 1h-6h | `🤔` | Med-High | Med | `❌` | Prefer parsed entries over raw HTML. |
-| IBKR details | Detail URL -> ISIN | ~6h | `🤔` | Med | Med | `❌` | Avoids repeated detail-page fetches. |
-| Stable failures | Short-lived error markers | 5m-30m | `✅` | Med-High | High | `❌` | Only for narrow cases like not-found or captcha-blocked. |
+| Area | Candidate | TTL | Priority | Neg | Impact | Risk | Status | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| IBKR search | Parsed search entries | 1h-6h | High | `🤔` | Med-High | Med | `❌` | Prefer parsed entries over raw HTML. |
+| IBKR details | Detail URL -> ISIN | ~6h | Medium | `🤔` | Med | Med | `❌` | Avoids repeated detail-page fetches. |
+| Stable failures | Short-lived error markers | 5m-30m | Medium | `✅` | Med-High | High | `❌` | Only for narrow cases like not-found or captcha-blocked. |
+| PSE listing | Symbol -> listing ids/meta | 6h-24h | Low | `🤔` | Med | Low | `❌` | Safest next cache; helps after quote cache expiry. |
 
 ## Explicit Non-Goals
 
