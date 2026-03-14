@@ -482,16 +482,12 @@ test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", ()
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSM.F59.TA"), "KSM.F59.TA");
 });
 
-test("resolves Philippine ISIN input to a mapped PSE ticker when Yahoo search has no symbol", () => {
+test("resolves Philippine ISIN input directly to a mapped PSE ticker without Yahoo search", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
 
   ctx.UrlFetchApp.fetch = function (url) {
     seenUrls.push(url);
-
-    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
-      return createHttpResponse(200, { quotes: [] });
-    }
 
     if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
       return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
@@ -501,10 +497,7 @@ test("resolves Philippine ISIN input to a mapped PSE ticker when Yahoo search ha
   };
 
   assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
-  assert.deepEqual(seenUrls, [
-    "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
-  ]);
+  assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"]);
   assert.equal(
     ctx.__scriptPropertiesStore.get("hoodlefinance.pseIsinMap") != null,
     true
@@ -523,10 +516,6 @@ test("reuses the cached GitHub PSE ISIN map without downloading it again while f
   );
 
   ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
-      return createHttpResponse(200, { quotes: [] });
-    }
-
     throw new Error("Unexpected URL " + url);
   };
 
@@ -548,10 +537,6 @@ test("redownloads the GitHub PSE ISIN map after the 24-hour refresh window expir
   ctx.UrlFetchApp.fetch = function (url) {
     seenUrls.push(url);
 
-    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
-      return createHttpResponse(200, { quotes: [] });
-    }
-
     if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
       return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
     }
@@ -560,10 +545,7 @@ test("redownloads the GitHub PSE ISIN map after the 24-hour refresh window expir
   };
 
   assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
-  assert.deepEqual(seenUrls, [
-    "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
-  ]);
+  assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"]);
 });
 
 test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
@@ -807,17 +789,13 @@ test("range calls batch yahoo isin search before quote lookup", () => {
   );
 });
 
-test("direct Philippine ISIN input falls back to mapped PSE ticker in the shared batch pipeline", () => {
+test("direct Philippine ISIN input uses the mapped PSE ticker directly in the shared batch pipeline", () => {
   const ctx = loadHoodlefinance();
   const seenBatches = [];
   const seenUrls = [];
 
   function respond(url) {
     seenUrls.push(url);
-
-    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
-      return createHttpResponse(200, { quotes: [] });
-    }
 
     if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
       return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
@@ -849,7 +827,6 @@ test("direct Philippine ISIN input falls back to mapped PSE ticker in the shared
   assert.equal(
     JSON.stringify(seenUrls),
     JSON.stringify([
-      "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
       "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
       "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
       "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
@@ -860,9 +837,6 @@ test("direct Philippine ISIN input falls back to mapped PSE ticker in the shared
     assert.equal(
       JSON.stringify(seenBatches),
       JSON.stringify([
-        [
-          "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
-        ],
         [
           "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
         ],

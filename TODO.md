@@ -4,6 +4,7 @@
 - Document direct ISIN-input lookup in `README.md` and add a public demo-sheet example such as `=HOODLEFINANCE("IL0006625771","name")`
 - Evaluate Israeli fund / ETF support improvements following `docs/design/israeli-market-fund-support.md`
 - Normalize Israeli prices from `ILA` to `ILS` similarly to the existing `GBp` -> `GBP` handling
+- Support bare currency-pair identifiers such as `USDPHP` in addition to the current `CURRENCY:USDPHP` form
 - Consider adding a new parameter to control the output price currency and perform the FX conversion internally
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
 - Consider adding an exchange-code attribute (for example resolved Yahoo exchange / normalized exchange code) to make ISIN-input resolution and debugging more transparent

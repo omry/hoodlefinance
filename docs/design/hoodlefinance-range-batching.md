@@ -52,7 +52,7 @@ Chosen defaults:
   - multi-cell `attribute` remains unsupported in v1 and throws one clear call-level error
   - blank or omitted scalar `attribute` still defaults to `"price"` exactly as it does today
   - if any populated cell fails, the whole formula throws one native Sheets error using the first error encountered under the source/batch processing order
-- Update docs in `hoodlefinance-api.md` and `README.md`:
+- Update docs in `docs/hoodlefinance-api.md` and `README.md`:
   - replace `MAP` guidance with native range examples
   - document shape preservation, blank preservation, scalar-only `attribute`, and whole-formula native error behavior in range mode
 

@@ -11,7 +11,7 @@ The codebase is intentionally simple:
 - [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
 - [`support-matrix.md`](./support-matrix.md): generated exchange coverage matrix
 - [`docs/demo-sheet/`](./docs/demo-sheet/): tracked demo sheet config and TSV tab data
-- [`hoodlefinance-api.md`](./hoodlefinance-api.md): detailed user-facing reference
+- [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md): detailed user-facing reference
 
 ## License
 
@@ -99,7 +99,7 @@ The generator is intentionally user-facing: it reports exchange coverage for the
 Changes should usually include:
 
 1. Unit tests for any new parsing, routing, or normalization logic.
-2. Documentation updates in [`hoodlefinance-api.md`](./hoodlefinance-api.md) and, when appropriate, [`README.md`](./README.md).
+2. Documentation updates in [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md) and, when appropriate, [`README.md`](./README.md).
 3. Live CLI checks for any source-backed change, especially new ISIN resolvers.
 4. A version bump in `HOODLEFINANCE_VERSION_` for substantive user-facing changes.
 5. Demo-sheet TSV and config updates when the public demo should reflect the new behavior.

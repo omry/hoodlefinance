@@ -1354,6 +1354,7 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
   let i;
   let cacheKey;
   let cached;
+  let pseTicker;
   let responses;
 
   for (i = 0; i < jobs.length; i += 1) {
@@ -1365,6 +1366,15 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
       if (hoodlefinanceIsPseTicker_(cached)) {
         jobs[i].plan.symbol = hoodlefinanceParsePseSymbol_(cached);
       }
+      continue;
+    }
+
+    pseTicker = hoodlefinanceResolvePseTickerFromIsinMap_(jobs[i].plan.isin);
+
+    if (pseTicker) {
+      jobs[i].plan.yahooSymbol = pseTicker;
+      jobs[i].plan.symbol = hoodlefinanceParsePseSymbol_(pseTicker);
+      cache.put(cacheKey, pseTicker, 21600);
       continue;
     }
 
@@ -2954,9 +2964,15 @@ function hoodlefinanceResolveIsin_(isin) {
   const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:isin:" + isin;
   const cached = cache.get(cacheKey);
+  const pseTicker = hoodlefinanceResolvePseTickerFromIsinMap_(isin);
 
   if (cached) {
     return cached;
+  }
+
+  if (pseTicker) {
+    cache.put(cacheKey, pseTicker, 21600);
+    return pseTicker;
   }
 
   const response = UrlFetchApp.fetch(hoodlefinanceBuildYahooIsinSearchUrl_(isin), hoodlefinanceBuildFetchOptions_());
