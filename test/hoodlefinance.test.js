@@ -589,6 +589,29 @@ test("scalar calls use the shared batch fetch pipeline", () => {
   );
 });
 
+test("direct Yahoo quote fetches reuse the cached JSON meta payload", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+    assert.equal(
+      url,
+      "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d"
+    );
+    return createYahooChartResponse("GOOG", {
+      currency: "USD",
+      regularMarketPrice: 306.93,
+    });
+  };
+
+  assert.equal(ctx.hoodlefinanceFetchQuote_("NASDAQ:GOOG").regularMarketPrice, 306.93);
+  assert.equal(ctx.hoodlefinanceFetchQuote_("NASDAQ:GOOG").regularMarketPrice, 306.93);
+  assert.deepEqual(seenUrls, [
+    "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+  ]);
+});
+
 test("TLV fund aliases normalize to dotted Yahoo symbols in quote lookups", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
@@ -1454,6 +1477,38 @@ test("ariva:isin resolves from ARIVA search and detail pages", () => {
     ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
     "IE00BSPLC413"
   );
+});
+
+test("ariva:isin reuses the cached string result without repeating the upstream fetches", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://www.ariva.de/search/livesearch.m?searchname=ZPRV") {
+      return createHttpResponse(200, ARIVA_SEARCH_ZPRV_HTML);
+    }
+
+    if (url === "https://www.ariva.de/fonds/spdr-msci-usa-small-cap-value-weighted-ucits-etf") {
+      return createHttpResponse(200, ARIVA_DETAIL_ZPRV_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
+    "IE00BSPLC413"
+  );
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
+    "IE00BSPLC413"
+  );
+  assert.deepEqual(seenUrls, [
+    "https://www.ariva.de/search/livesearch.m?searchname=ZPRV",
+    "https://www.ariva.de/fonds/spdr-msci-usa-small-cap-value-weighted-ucits-etf",
+  ]);
 });
 
 test("isin dispatches to tradingview:isin for ETR tickers", () => {
