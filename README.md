@@ -6,16 +6,7 @@ It uses multiple data sources to cover data, identifiers, and markets that `GOOG
 
 Current script version: `0.2.5`
 
-Quote freshness depends on the upstream source used for a given symbol and attribute. In practice, price data may be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
-
 There are also some limitations; see [Limits](#limits).
-
-## What It Does
-
-- Fetches scalar quote fields such as `price`, `name`, `currency`, `tradetime`, `volume`, `high`, `low`, `close`, `changepct`, and `change`
-- Accepts either a single ticker or a ticker range and spills results with the same shape
-- Supports Yahoo-style symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
-- Supports `GOOGLEFINANCE`-style tickers such as `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, and `TLV:POLI`
 
 ## Live Demo
 
@@ -25,117 +16,70 @@ See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621
 
 ## Why Use It Instead Of GOOGLEFINANCE?
 
-The short version: this is most useful if your sheet is ETF-heavy, non-U.S.-heavy, or needs identifiers that `GOOGLEFINANCE` does not expose.
+This is most useful if your sheet is ETF-heavy, non-U.S.-heavy, or needs identifiers that `GOOGLEFINANCE` does not expose.
 
 - Better practical support for many foreign ETFs, especially Yahoo-style symbols such as `.L` and `.DE`
 - Dedicated support for the Philippine Stock Exchange (`PSE`)
-- Support for `isin` lookups
+- Support for direct ISIN lookups and the `isin` output attribute
 - Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `NEO:ZTL`, `HKG:9988`, and `SGX:D05`
-
-If you only need basic U.S. large-cap quotes and do not care about ISINs, `GOOGLEFINANCE` may already be sufficient. This is not a full drop-in replacement because historical arguments are unsupported. The main value here is better behavior for cross-market portfolios and more predictable spreadsheet formulas around them.
-
-If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier lookup you care about, please file an issue with a concrete example for evaluation, or send a contribution following [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Quick Start
 
 1. Open a Google Sheet.
 2. Go to `Extensions -> Apps Script`.
-3. Open the raw source file: [hoodlefinance.js (raw)](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js)
-4. Create a new script file named `HoodleFinance`.
-5. Paste the file contents into the new `HoodleFinance` file.
-6. Save the project and reload the spreadsheet.
+3. Copy the contents of [hoodlefinance.js (raw)](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js) into a new script file named `HoodleFinance`.
+4. Save the project and reload the spreadsheet.
 
-Start with:
+Start with a simple quote:
 
 ```gs
-=HOODLEFINANCE("NASDAQ:GOOG", "price")
-```
-Then try a few more examples:
-
-```gs
-=HOODLEFINANCE("SJPA.L", "isin")
-=HOODLEFINANCE("PSE:BDO", "isin")
-=HOODLEFINANCE("9988.HK", "isin")
-=HOODLEFINANCE("SGX:D05", "isin")
-=HOODLEFINANCE("POLI.TA", "isin")
-=HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
-=HOODLEFINANCE("PHY077751022", "name")
+=HOODLEFINANCE("GOOG", "price")
 ```
 
-To confirm which pasted version is in your sheet:
+Bare tickers such as `GOOG`, `AAPL`, `MSFT`, and `IBM` are usually the most familiar place to start. If a bare ticker does not resolve the way you want, especially for international markets or ambiguous symbols, add the exchange explicitly, for example `NASDAQ:GOOG`, or use a Yahoo-style symbol such as `SJPA.L`.
+
+Then try a few representative lookups:
 
 ```gs
-=HOODLEFINANCE_VERSION()
-```
-
-The bound script also adds a `Hoodlefinance` menu in Sheets with:
-
-- `Check for updates`
-- `Show installed version`
-- automatic once-per-day version checks on open
-- per-user suppression for automatic update checks
-
-## Examples
-
-```gs
-=HOODLEFINANCE("NASDAQ:GOOG")
+=HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
-=HOODLEFINANCE("CURRENCY:USDUSD", "price")
-=HOODLEFINANCE("ZPRX.DE", "isin")
-=HOODLEFINANCE("SJPA.L", "isin")
-=HOODLEFINANCE("9988.HK", "isin")
-=HOODLEFINANCE("SGX:D05", "isin")
-=HOODLEFINANCE("POLI.TA", "isin")
+=HOODLEFINANCE("SGX:D05", "name")
 =HOODLEFINANCE("PSE:BDO", "isin")
-=HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
 =HOODLEFINANCE("PHY077751022", "name")
 ```
 
-## ISIN Support
+The script also adds a `Hoodlefinance` menu in Sheets for update-related actions.
 
-`HOODLEFINANCE` supports both generic and explicit ISIN lookups.
+## Supported Inputs
 
-- `isin`: deduce the exchange and dispatch to the configured resolver
-- exchange-specific source attributes are also available for debugging or forced-source lookups
-- Philippine `PH...` ISIN input downloads the repo's GitHub-hosted PSE map on demand, then caches it for reuse when Yahoo ISIN search does not resolve a symbol
+`HOODLEFINANCE` takes an identifier plus an attribute.
 
-Current generic `isin` routing:
+Supported identifiers:
 
-- `ETR` -> `tradingview:isin`
-- `HKG` -> `tradingview:isin`
-- `LON` -> `lon:isin`
-- `NASDAQ` -> `tradingview:isin`
-- `NYSE` -> `tradingview:isin`
-- `OTCMKTS` -> `tradingview:isin`
-- `PSE` -> `pse:isin`
-- `SGX` -> `tradingview:isin`
-- `TLV` -> `tradingview:isin`
+- Bare tickers such as `GOOG`, `AAPL`, `MSFT`, and `IBM`
+- `GOOGLEFINANCE`-style tickers such as `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, and `TLV:POLI`
+- Yahoo-style symbols such as `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
+- Direct ISIN input such as `US02079K1079`, `IE00B4L5YX21`, or `PHY077751022`
 
-This means these work as plain `isin` lookups today:
+Supported input shapes:
 
-```gs
-=HOODLEFINANCE("ZPRX.DE", "isin")
-=HOODLEFINANCE("5MVL.DE", "isin")
-=HOODLEFINANCE("SJPA.L", "isin")
-=HOODLEFINANCE("9988.HK", "isin")
-=HOODLEFINANCE("SGX:D05", "isin")
-=HOODLEFINANCE("POLI.TA", "isin")
-=HOODLEFINANCE("GOOG", "isin")
-=HOODLEFINANCE("NYSE:IBM", "isin")
-=HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
-=HOODLEFINANCE("PSE:BDO", "isin")
-```
+- Either a single identifier or an identifier range, with spilled results in the same shape
 
-For the explicit source-backed ISIN attributes, see [`hoodlefinance-api.md`](./hoodlefinance-api.md).
+Supported attributes:
 
-## Support Matrix
+- Standard quote outputs such as `price`, `name`, `currency`, `high`, `low`, `close`, `tradetime`, `volume`, `change`, `changepct`, and `datadelay`
+- Additional outputs such as `isin`, which `GOOGLEFINANCE` does not provide directly
 
-See [`support-matrix.md`](./support-matrix.md) for the full sample-based exchange coverage matrix.
+## Reference And Coverage
 
-## Development
+- Full API, ticker forms, array formulas, and source-specific notes: [`hoodlefinance-api.md`](./hoodlefinance-api.md)
+- Sample-based exchange coverage matrix: [`support-matrix.md`](./support-matrix.md)
+- Local development, tests, CLI smoke checks, demo-sheet maintenance, and support-matrix maintenance: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 
-For local development, tests, CLI smoke checks, demo-sheet maintenance, and support-matrix maintenance, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+## Need More Coverage?
+
+If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier lookup you care about, please file an issue with a concrete example for evaluation, or send a contribution following [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Limits
 
@@ -147,11 +91,3 @@ For local development, tests, CLI smoke checks, demo-sheet maintenance, and supp
 ## License
 
 This project is MIT-licensed.
-
-## Detailed Reference
-
-For the full API, ticker forms, array formulas, and source-specific notes, see [`hoodlefinance-api.md`](./hoodlefinance-api.md).
-
-## Contributing
-
-If you want to contribute, start with [`CONTRIBUTING.md`](./CONTRIBUTING.md).
