@@ -172,6 +172,7 @@ function validateTabFormatting(tab, issues, index) {
   }
 
   validateColumnBackgrounds_(formatting.columnBackgrounds, tabLabel, issues);
+  validateErrorConditionalFormats_(formatting.errorConditionalFormats, tabLabel, issues);
   validateFormattingSections_(formatting.headerSections, "headerSections", tabLabel, issues);
   validateFormattingSections_(formatting.formulaSections, "formulaSections", tabLabel, issues);
   validateNumberFormats_(formatting.numberFormats, tabLabel, issues);
@@ -308,6 +309,42 @@ function validateColumnBackgrounds_(columnBackgrounds, tabLabel, issues) {
   });
 }
 
+function validateErrorConditionalFormats_(entries, tabLabel, issues) {
+  if (entries == null) {
+    return;
+  }
+
+  if (!Array.isArray(entries)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.errorConditionalFormats\".");
+    return;
+  }
+
+  entries.forEach(function (entry) {
+    if (!entry || typeof entry !== "object") {
+      issues.push("Tab \"" + tabLabel + "\" has invalid error conditional format entry.");
+      return;
+    }
+
+    if (!Number.isInteger(entry.startRow) || entry.startRow < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid error conditional format startRow: " + entry.startRow);
+    }
+
+    if (!Number.isInteger(entry.endRow) || entry.endRow < entry.startRow) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid error conditional format endRow: " + entry.endRow);
+    }
+
+    if (!Number.isInteger(entry.startColumn) || entry.startColumn < 1) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid error conditional format startColumn: " + entry.startColumn);
+    }
+
+    if (!Number.isInteger(entry.endColumn) || entry.endColumn < entry.startColumn) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid error conditional format endColumn: " + entry.endColumn);
+    }
+
+    validateRgbColor_(entry.backgroundColor, "error conditional format", tabLabel, issues);
+  });
+}
+
 function validateRgbColor_(color, label, tabLabel, issues) {
   const components = ["red", "green", "blue"];
 
@@ -424,6 +461,10 @@ async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
     );
 
     requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
+    requests.push.apply(
+      requests,
+      buildDeleteConditionalFormatRuleRequests(sheetProperties.sheetId, Number(sheetProperties.conditionalFormatCount || 0))
+    );
   }
 
   if (!requests.length) {
@@ -509,7 +550,7 @@ async function fetchSpreadsheetSheetMap(accessToken, spreadsheetId) {
     "GET",
     "https://sheets.googleapis.com/v4/spreadsheets/" +
       encodeURIComponent(spreadsheetId) +
-      "?fields=sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))"
+      "?fields=sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),conditionalFormats)"
   );
   const sheetMap = {};
 
@@ -518,6 +559,7 @@ async function fetchSpreadsheetSheetMap(accessToken, spreadsheetId) {
     const title = properties && properties.title ? properties.title : "";
 
     if (title) {
+      properties.conditionalFormatCount = Array.isArray(sheet.conditionalFormats) ? sheet.conditionalFormats.length : 0;
       sheetMap[title] = properties;
     }
   });
@@ -644,6 +686,10 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
       buildColumnBackgroundRequests(sheetProperties.sheetId, formatting.columnBackgrounds, values.length)
     );
     requests.push.apply(requests, buildNumberFormatRequests(sheetProperties.sheetId, formatting.numberFormats));
+    requests.push.apply(
+      requests,
+      buildErrorConditionalFormatRequests(sheetProperties.sheetId, formatting.errorConditionalFormats)
+    );
 
     if (formatting.columnPixelSizes.length) {
       requests.push.apply(requests, buildColumnWidthRequests(sheetProperties.sheetId, formatting.columnPixelSizes));
@@ -675,6 +721,9 @@ function normalizeTabFormatting(formatting) {
       ? normalized.columnBackgrounds.map(copyColumnBackground_)
       : [],
     columnPixelSizes: Array.isArray(normalized.columnPixelSizes) ? normalized.columnPixelSizes.slice() : [],
+    errorConditionalFormats: Array.isArray(normalized.errorConditionalFormats)
+      ? normalized.errorConditionalFormats.map(copyErrorConditionalFormat_)
+      : [],
     freezeRows: Number(normalized.freezeRows || 0),
     formulaColumns: Array.isArray(normalized.formulaColumns) ? normalized.formulaColumns.slice() : [],
     formulaSections: Array.isArray(normalized.formulaSections)
@@ -712,6 +761,16 @@ function copyRgbColor_(color) {
     blue: Number(color.blue),
     green: Number(color.green),
     red: Number(color.red),
+  };
+}
+
+function copyErrorConditionalFormat_(entry) {
+  return {
+    backgroundColor: copyRgbColor_(entry.backgroundColor),
+    endColumn: Number(entry.endColumn),
+    endRow: Number(entry.endRow),
+    startColumn: Number(entry.startColumn),
+    startRow: Number(entry.startRow),
   };
 }
 
@@ -1052,6 +1111,68 @@ function buildColumnBackgroundRequests(sheetId, columnBackgrounds, maxRows) {
       },
     };
   });
+}
+
+function buildDeleteConditionalFormatRuleRequests(sheetId, count) {
+  const requests = [];
+  let index;
+
+  for (index = count - 1; index >= 0; index -= 1) {
+    requests.push({
+      deleteConditionalFormatRule: {
+        index: index,
+        sheetId: sheetId,
+      },
+    });
+  }
+
+  return requests;
+}
+
+function buildErrorConditionalFormatRequests(sheetId, entries) {
+  return entries.map(function (entry, index) {
+    return {
+      addConditionalFormatRule: {
+        index: index,
+        rule: {
+          booleanRule: {
+            condition: {
+              type: "CUSTOM_FORMULA",
+              values: [
+                {
+                  userEnteredValue: "=ISERROR(" + buildA1Reference_(entry.startColumn, entry.startRow) + ")",
+                },
+              ],
+            },
+            format: {
+              backgroundColor: copyRgbColor_(entry.backgroundColor),
+            },
+          },
+          ranges: [
+            {
+              startRowIndex: entry.startRow - 1,
+              endRowIndex: entry.endRow,
+              startColumnIndex: entry.startColumn - 1,
+              endColumnIndex: entry.endColumn,
+              sheetId: sheetId,
+            },
+          ],
+        },
+      },
+    };
+  });
+}
+
+function buildA1Reference_(columnNumber, rowNumber) {
+  let value = Number(columnNumber);
+  let letters = "";
+
+  while (value > 0) {
+    letters = String.fromCharCode(65 + ((value - 1) % 26)) + letters;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return letters + String(rowNumber);
 }
 
 async function ensurePublicReadPermission(accessToken, spreadsheetId) {
@@ -1471,7 +1592,9 @@ module.exports = {
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
   buildCalloutRowFormatRequest,
+  buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
+  buildErrorConditionalFormatRequests,
   buildFormulaCellFormatRequests,
   buildFreezeRowsRequest,
   buildFormulaColumnFormatRequest,

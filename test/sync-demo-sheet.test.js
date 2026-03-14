@@ -7,7 +7,9 @@ const {
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
   buildCalloutRowFormatRequest,
+  buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
+  buildErrorConditionalFormatRequests,
   buildFormulaCellFormatRequests,
   buildFreezeRowsRequest,
   buildFormulaColumnFormatRequest,
@@ -135,6 +137,7 @@ test("formatting helpers build the expected Sheets API requests", function () {
     calloutRows: [],
     columnBackgrounds: [],
     columnPixelSizes: [],
+    errorConditionalFormats: [],
     freezeRows: 0,
     formulaColumns: [],
     formulaSections: [],
@@ -151,6 +154,63 @@ test("formatting helpers build the expected Sheets API requests", function () {
 
   assert.equal(buildHeaderRowFormatRequest(12, 7, 3).repeatCell.range.startRowIndex, 6);
   assert.equal(buildColumnWidthRequests(12, [120, 240])[1].updateDimensionProperties.properties.pixelSize, 240);
+  assert.deepEqual(buildDeleteConditionalFormatRuleRequests(12, 2), [
+    {
+      deleteConditionalFormatRule: {
+        index: 1,
+        sheetId: 12,
+      },
+    },
+    {
+      deleteConditionalFormatRule: {
+        index: 0,
+        sheetId: 12,
+      },
+    },
+  ]);
+  assert.deepEqual(buildErrorConditionalFormatRequests(12, [{
+    startRow: 2,
+    endRow: 1000,
+    startColumn: 3,
+    endColumn: 3,
+    backgroundColor: {
+      red: 1,
+      green: 0.92,
+      blue: 0.92,
+    },
+  }])[0], {
+    addConditionalFormatRule: {
+      index: 0,
+      rule: {
+        booleanRule: {
+          condition: {
+            type: "CUSTOM_FORMULA",
+            values: [
+              {
+                userEnteredValue: "=ISERROR(C2)",
+              },
+            ],
+          },
+          format: {
+            backgroundColor: {
+              red: 1,
+              green: 0.92,
+              blue: 0.92,
+            },
+          },
+        },
+        ranges: [
+          {
+            startRowIndex: 1,
+            endRowIndex: 1000,
+            startColumnIndex: 2,
+            endColumnIndex: 3,
+            sheetId: 12,
+          },
+        ],
+      },
+    },
+  });
   assert.equal(buildFormulaRowFormatRequest(12, 2, 5).repeatCell.range.endRowIndex, 2);
   assert.equal(buildFormulaColumnFormatRequest(12, 2, 6).repeatCell.range.startColumnIndex, 1);
   assert.deepEqual(buildNumberFormatRequests(12, [{

@@ -37,15 +37,7 @@
     },
     {
       "formatting": {
-        "autoResizeColumns": false,
-        "columnPixelSizes": [
-          260,
-          360,
-          260,
-          360,
-          320,
-          360
-        ],
+        "autoResizeColumns": true,
         "columnBackgrounds": [
           {
             "column": 2,
@@ -85,6 +77,30 @@
               "red": 0.9,
               "green": 0.95,
               "blue": 1
+            }
+          }
+        ],
+        "errorConditionalFormats": [
+          {
+            "startRow": 2,
+            "endRow": 1000,
+            "startColumn": 3,
+            "endColumn": 3,
+            "backgroundColor": {
+              "red": 1,
+              "green": 0.92,
+              "blue": 0.92
+            }
+          },
+          {
+            "startRow": 2,
+            "endRow": 1000,
+            "startColumn": 5,
+            "endColumn": 5,
+            "backgroundColor": {
+              "red": 1,
+              "green": 0.92,
+              "blue": 0.92
             }
           }
         ],
