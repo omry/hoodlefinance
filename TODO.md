@@ -1,6 +1,8 @@
+- move version to an explicit version file.
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
 - Add CI-backed demo-sheet sync/deploy support so public demo updates do not depend only on local maintainer auth setup
-- Consider adding a new parameter to control the output price currency and perform the FX conversion internally
+- Consider adding a new parameter to control the output price currency and perform the FX conversion internally; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
+- Gather follow-up feedback on bare FX and alias-unit behavior before broadening the alias table beyond the currently observed upstream units
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
 - Consider adding an exchange-code attribute (for example resolved Yahoo exchange / normalized exchange code) to make ISIN-input resolution and debugging more transparent
 - Add a periodic automated refresh for `data/pse-isin-map.properties`, ideally as a reviewable scheduled job that keeps the GitHub-hosted PH ISIN fallback current
