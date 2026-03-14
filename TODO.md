@@ -1,9 +1,7 @@
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
 - Add CI-backed demo-sheet sync/deploy support so public demo updates do not depend only on local maintainer auth setup
 - add facility to dereference ISIN to stock at IBKR, allow filter by exchange and currency. Will return all matches. for a pointed ISIN,EXCHANGE,CURRENCY query - this must return output in a single cell. this is probably a different function (use https://pennies.interactivebrokers.com/cstools/contract_info/v3.10/index.php)
-- Document direct ISIN-input lookup in `README.md` and add a public demo-sheet example such as `=HOODLEFINANCE("IL0006625771","name")`
-- Evaluate Israeli fund / ETF support improvements following `docs/design/israeli-market-fund-support.md`
-- Normalize Israeli prices from `ILA` to `ILS` similarly to the existing `GBp` -> `GBP` handling
+- Consider a dedicated Israeli `ISIN -> symbol` resolver instead of relying only on the generic direct-ISIN path
 - Support bare currency-pair identifiers such as `USDPHP` in addition to the current `CURRENCY:USDPHP` form
 - Consider adding a new parameter to control the output price currency and perform the FX conversion internally
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
