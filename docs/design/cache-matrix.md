@@ -8,8 +8,8 @@ Use it as a design reference when deciding whether a new fetch path should reuse
 
 | Area | Artifact | TTL | Priority | Neg | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| IBKR ISIN | Symbol/exchange -> final ISIN | 6h | Medium | `🚫` | `⚠️` | Final result only; search/detail fetches are uncached. |
 | ARIVA ISIN | ETR code -> ISIN | 6h | Done | `🚫` | `✅` | Positive-result cache only. |
+| IBKR ISIN | Symbol/exchange -> final ISIN | 6h | Low | `🚫` | `⚠️` | Final result only; search/detail fetches are uncached, and the upstream path is captcha-prone. |
 | LON ISIN | LON code -> ISIN | 6h | Done | `🚫` | `✅` | Positive-result cache only. |
 | PSE ISIN map | GitHub-hosted `pse-isin-map.properties` text | 6h fast / 24h refresh | Done | `🚫` | `✅` | `CacheService` holds the hot copy for 6h; `ScriptProperties` keeps the last downloaded body for up to 24h before the next redownload attempt. |
 | PSE quotes | Parsed PSE quote | 5m | Done | `🚫` | `✅` | Final quote only, not listing metadata. |
@@ -32,9 +32,9 @@ Legend:
 
 | Area | Candidate | TTL | Priority | Neg | Impact | Risk | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| IBKR search | Parsed search entries | 1h-6h | High | `🤔` | Med-High | Med | `❌` | Prefer parsed entries over raw HTML. |
-| IBKR details | Detail URL -> ISIN | ~6h | Medium | `🤔` | Med | Med | `❌` | Avoids repeated detail-page fetches. |
 | Stable failures | Short-lived error markers | 5m-30m | Medium | `✅` | Med-High | High | `❌` | Only for narrow cases like not-found or captcha-blocked. |
+| IBKR search | Parsed search entries | 1h-6h | Low | `🤔` | Med-High | Med | `❌` | Prefer parsed entries over raw HTML, but upstream captcha challenges make this hard to rely on. |
+| IBKR details | Detail URL -> ISIN | ~6h | Low | `🤔` | Med | Med | `❌` | Avoids repeated detail-page fetches, but only on a path that is already captcha-prone. |
 | PSE listing | Symbol -> listing ids/meta | 6h-24h | Low | `🤔` | Med | Low | `❌` | Safest next cache; helps after quote cache expiry. |
 
 ## Explicit Non-Goals
