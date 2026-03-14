@@ -810,6 +810,63 @@ function hoodlefinanceParsePseIsinMapPayload_(payloadText) {
   return payload;
 }
 
+function hoodlefinanceGetCachedString_(cacheKey) {
+  return cacheKey ? (CacheService.getScriptCache().get(cacheKey) || "") : "";
+}
+
+function hoodlefinancePutCachedString_(cacheKey, value, ttlSeconds) {
+  if (!cacheKey || !value) {
+    return value;
+  }
+
+  CacheService.getScriptCache().put(cacheKey, value, ttlSeconds);
+  return value;
+}
+
+function hoodlefinanceResolveCachedString_(cacheKey, ttlSeconds, resolveValue) {
+  const cached = hoodlefinanceGetCachedString_(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  return hoodlefinancePutCachedString_(cacheKey, resolveValue(), ttlSeconds);
+}
+
+function hoodlefinanceGetCachedJson_(cacheKey, parseValue) {
+  const cached = hoodlefinanceGetCachedString_(cacheKey);
+
+  if (!cached) {
+    return null;
+  }
+
+  return (typeof parseValue === "function" ? parseValue : JSON.parse)(cached);
+}
+
+function hoodlefinancePutCachedJson_(cacheKey, value, ttlSeconds, serializeValue) {
+  if (!cacheKey || !value) {
+    return value;
+  }
+
+  hoodlefinancePutCachedString_(
+    cacheKey,
+    typeof serializeValue === "function" ? serializeValue(value) : JSON.stringify(value),
+    ttlSeconds
+  );
+
+  return value;
+}
+
+function hoodlefinanceResolveCachedJson_(cacheKey, ttlSeconds, resolveValue, parseValue, serializeValue) {
+  const cached = hoodlefinanceGetCachedJson_(cacheKey, parseValue);
+
+  if (cached != null) {
+    return cached;
+  }
+
+  return hoodlefinancePutCachedJson_(cacheKey, resolveValue(), ttlSeconds, serializeValue);
+}
+
 function hoodlefinanceBuildPseListingCacheKey_(symbol) {
   return HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ + String(symbol || "").trim().toUpperCase();
 }
@@ -835,31 +892,29 @@ function hoodlefinanceParsePseListingPayload_(payloadText) {
   };
 }
 
+function hoodlefinanceSerializePseListingPayload_(listing) {
+  return JSON.stringify({
+    companyId: String(listing.companyId),
+    name: String(listing.name || ""),
+    securityId: String(listing.securityId),
+    symbol: String(listing.symbol).trim().toUpperCase(),
+  });
+}
+
 function hoodlefinanceGetCachedPseListing_(symbol) {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get(hoodlefinanceBuildPseListingCacheKey_(symbol));
-
-  if (!cached) {
-    return null;
-  }
-
-  return hoodlefinanceParsePseListingPayload_(cached);
+  return hoodlefinanceGetCachedJson_(hoodlefinanceBuildPseListingCacheKey_(symbol), hoodlefinanceParsePseListingPayload_);
 }
 
 function hoodlefinanceCachePseListing_(listing) {
   if (!listing || !listing.companyId || !listing.securityId || !listing.symbol) {
-    return;
+    return listing;
   }
 
-  CacheService.getScriptCache().put(
+  return hoodlefinancePutCachedJson_(
     hoodlefinanceBuildPseListingCacheKey_(listing.symbol),
-    JSON.stringify({
-      companyId: String(listing.companyId),
-      name: String(listing.name || ""),
-      securityId: String(listing.securityId),
-      symbol: String(listing.symbol).trim().toUpperCase(),
-    }),
-    HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_
+    listing,
+    HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_,
+    hoodlefinanceSerializePseListingPayload_
   );
 }
 
@@ -999,10 +1054,8 @@ function hoodlefinanceEscapeHtml_(text) {
 function hoodlefinanceFetchQuote_(ticker) {
   const normalizedTicker = String(ticker).trim();
   const sameCurrencyPair = hoodlefinanceExtractSameCurrencyPair_(normalizedTicker);
-  const cache = CacheService.getScriptCache();
   let yahooSymbol;
   let cacheKey;
-  let cached;
   let response;
 
   if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
@@ -1020,65 +1073,58 @@ function hoodlefinanceFetchQuote_(ticker) {
   }
 
   cacheKey = "hoodlefinance:" + yahooSymbol;
-  cached = cache.get(cacheKey);
 
-  if (cached) {
-    return JSON.parse(cached);
-  }
+  return hoodlefinanceResolveCachedJson_(cacheKey, 60, function () {
+    let meta;
+    let fallbackInfo;
 
-  response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
-  let meta;
-  let fallbackInfo;
+    response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
 
-  try {
-    meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
-  } catch (error) {
-    if (!hoodlefinanceShouldUseIsraeliFundTradingviewFallback_({ plan: { yahooSymbol: yahooSymbol } }, error)) {
-      throw error;
+    try {
+      meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
+    } catch (error) {
+      if (!hoodlefinanceShouldUseIsraeliFundTradingviewFallback_({ plan: { yahooSymbol: yahooSymbol } }, error)) {
+        throw error;
+      }
+
+      fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(normalizedTicker, yahooSymbol);
+      meta = hoodlefinanceExtractTradingviewFundQuote_(
+        hoodlefinanceFetchText_(fallbackInfo.url),
+        yahooSymbol,
+        fallbackInfo.expectedSymbol
+      );
     }
 
-    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(normalizedTicker, yahooSymbol);
-    meta = hoodlefinanceExtractTradingviewFundQuote_(
-      hoodlefinanceFetchText_(fallbackInfo.url),
-      yahooSymbol,
-      fallbackInfo.expectedSymbol
-    );
-  }
-
-  cache.put(cacheKey, JSON.stringify(meta), 60);
-  return meta;
+    return meta;
+  });
 }
 
 function hoodlefinanceFetchPseQuote_(ticker) {
   const symbol = hoodlefinanceParsePseSymbol_(ticker);
-  const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:pse:" + symbol;
-  const cached = cache.get(cacheKey);
   let listing;
   let html;
-  let quote;
 
-  if (cached) {
-    return JSON.parse(cached);
-  }
+  return hoodlefinanceResolveCachedJson_(cacheKey, 300, function () {
+    const quote = (function () {
+      listing = hoodlefinanceResolvePseListing_(symbol);
+      html = hoodlefinanceFetchText_(
+        HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+          "?cmpy_id=" +
+          encodeURIComponent(listing.companyId) +
+          "&security_id=" +
+          encodeURIComponent(listing.securityId)
+      );
 
-  listing = hoodlefinanceResolvePseListing_(symbol);
-  html = hoodlefinanceFetchText_(
-    HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-      "?cmpy_id=" +
-      encodeURIComponent(listing.companyId) +
-      "&security_id=" +
-      encodeURIComponent(listing.securityId)
-  );
+      return hoodlefinanceExtractPseQuote_(html, listing);
+    }());
 
-  quote = hoodlefinanceExtractPseQuote_(html, listing);
+    if (!quote || !quote.symbol) {
+      throw new Error("No PSE quote data was found for " + ticker + ".");
+    }
 
-  if (!quote || !quote.symbol) {
-    throw new Error("No PSE quote data was found for " + ticker + ".");
-  }
-
-  cache.put(cacheKey, JSON.stringify(quote), 300);
-  return quote;
+    return quote;
+  });
 }
 
 function hoodlefinanceNormalizeTicker_(ticker) {
@@ -1404,7 +1450,6 @@ function hoodlefinanceClassifyTickerJob_(ticker) {
 }
 
 function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
-  const cache = CacheService.getScriptCache();
   const requests = [];
   let i;
   let cacheKey;
@@ -1414,7 +1459,7 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
 
   for (i = 0; i < jobs.length; i += 1) {
     cacheKey = "hoodlefinance:isin:" + jobs[i].plan.isin;
-    cached = cache.get(cacheKey);
+    cached = hoodlefinanceGetCachedString_(cacheKey);
 
     if (cached) {
       jobs[i].plan.yahooSymbol = cached;
@@ -1429,7 +1474,7 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
     if (pseTicker) {
       jobs[i].plan.yahooSymbol = pseTicker;
       jobs[i].plan.symbol = hoodlefinanceParsePseSymbol_(pseTicker);
-      cache.put(cacheKey, pseTicker, 21600);
+      hoodlefinancePutCachedString_(cacheKey, pseTicker, 21600);
       continue;
     }
 
@@ -1456,7 +1501,7 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
       if (hoodlefinanceIsPseTicker_(responses[i].request.job.plan.yahooSymbol)) {
         responses[i].request.job.plan.symbol = hoodlefinanceParsePseSymbol_(responses[i].request.job.plan.yahooSymbol);
       }
-      cache.put(responses[i].request.cacheKey, responses[i].request.job.plan.yahooSymbol, 21600);
+      hoodlefinancePutCachedString_(responses[i].request.cacheKey, responses[i].request.job.plan.yahooSymbol, 21600);
     } catch (error) {
       responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
     }
@@ -1464,7 +1509,6 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
 }
 
 function hoodlefinancePrefetchYahooChartJobs_(jobs) {
-  const cache = CacheService.getScriptCache();
   const requests = [];
   const fallbackJobs = [];
   let i;
@@ -1478,10 +1522,10 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
     }
 
     cacheKey = "hoodlefinance:" + jobs[i].plan.yahooSymbol;
-    cached = cache.get(cacheKey);
+    cached = hoodlefinanceGetCachedJson_(cacheKey);
 
     if (cached) {
-      jobs[i].quote = JSON.parse(cached);
+      jobs[i].quote = cached;
       continue;
     }
 
@@ -1505,7 +1549,7 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
         responses[i].response,
         responses[i].request.job.tickerInput
       );
-      cache.put(responses[i].request.cacheKey, JSON.stringify(responses[i].request.job.quote), 60);
+      hoodlefinancePutCachedJson_(responses[i].request.cacheKey, responses[i].request.job.quote, 60);
     } catch (error) {
       if (hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(responses[i].request.job, error)) {
         fallbackJobs.push(responses[i].request.job);
@@ -1519,7 +1563,6 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
 }
 
 function hoodlefinancePrefetchPseJobs_(jobs) {
-  const cache = CacheService.getScriptCache();
   const searchRequests = [];
   const stockRequests = [];
   let i;
@@ -1532,10 +1575,10 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
 
   for (i = 0; i < jobs.length; i += 1) {
     cacheKey = "hoodlefinance:pse:" + jobs[i].plan.symbol;
-    cached = cache.get(cacheKey);
+    cached = hoodlefinanceGetCachedJson_(cacheKey);
 
     if (cached) {
-      jobs[i].quote = JSON.parse(cached);
+      jobs[i].quote = cached;
       continue;
     }
 
@@ -1609,7 +1652,7 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
       }
 
       responses[i].request.job.quote = quote;
-      cache.put(responses[i].request.cacheKey, JSON.stringify(quote), 300);
+      hoodlefinancePutCachedJson_(responses[i].request.cacheKey, quote, 300);
     } catch (error) {
       responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
     }
@@ -1796,7 +1839,6 @@ function hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(job, error) {
 }
 
 function hoodlefinancePrefetchIsraeliTradingviewFundJobs_(jobs) {
-  const cache = CacheService.getScriptCache();
   const requests = [];
   let i;
   let fallbackInfo;
@@ -1809,12 +1851,12 @@ function hoodlefinancePrefetchIsraeliTradingviewFundJobs_(jobs) {
     fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(jobs[i].tickerInput, jobs[i].plan.yahooSymbol);
     cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
     primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
-    cached = cache.get(cacheKey);
+    cached = hoodlefinanceGetCachedJson_(cacheKey);
 
     if (cached) {
-      jobs[i].quote = JSON.parse(cached);
+      jobs[i].quote = cached;
       jobs[i].error = null;
-      cache.put(primaryCacheKey, cached, 60);
+      hoodlefinancePutCachedJson_(primaryCacheKey, cached, 60);
       continue;
     }
 
@@ -1843,8 +1885,8 @@ function hoodlefinancePrefetchIsraeliTradingviewFundJobs_(jobs) {
         responses[i].request.expectedSymbol
       );
       responses[i].request.job.error = null;
-      cache.put(responses[i].request.cacheKey, JSON.stringify(responses[i].request.job.quote), 60);
-      cache.put(responses[i].request.primaryCacheKey, JSON.stringify(responses[i].request.job.quote), 60);
+      hoodlefinancePutCachedJson_(responses[i].request.cacheKey, responses[i].request.job.quote, 60);
+      hoodlefinancePutCachedJson_(responses[i].request.primaryCacheKey, responses[i].request.job.quote, 60);
     } catch (error) {
       responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
     }
@@ -1864,18 +1906,19 @@ function hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(tickerInput, yaho
 
 function hoodlefinanceResolvePseListing_(symbol) {
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();
-  const cached = hoodlefinanceGetCachedPseListing_(normalizedSymbol);
-  let listing;
-  let html;
 
-  if (cached) {
-    return cached;
-  }
-
-  html = hoodlefinanceFetchText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol));
-  listing = hoodlefinanceResolvePseListingFromHtml_(html, normalizedSymbol);
-  hoodlefinanceCachePseListing_(listing);
-  return listing;
+  return hoodlefinanceResolveCachedJson_(
+    hoodlefinanceBuildPseListingCacheKey_(normalizedSymbol),
+    HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_,
+    function () {
+      return hoodlefinanceResolvePseListingFromHtml_(
+        hoodlefinanceFetchText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol)),
+        normalizedSymbol
+      );
+    },
+    hoodlefinanceParsePseListingPayload_,
+    hoodlefinanceSerializePseListingPayload_
+  );
 }
 
 function hoodlefinanceResolveLonListing_(code) {
@@ -2103,10 +2146,7 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
 function hoodlefinanceResolveArivaIsin_(quote, context) {
   const exchange = hoodlefinanceInferIsinExchange_(quote, context);
   const code = hoodlefinanceExtractArivaCode_(quote, context);
-  const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:ariva:isin:" + code;
-  const cached = code ? cache.get(cacheKey) : "";
-  let listing;
 
   if (exchange !== "ETR") {
     throw new Error("ariva:isin is only implemented for ETR tickers.");
@@ -2116,22 +2156,19 @@ function hoodlefinanceResolveArivaIsin_(quote, context) {
     throw new Error("Could not determine the ARIVA search code for this ticker.");
   }
 
-  if (cached) {
-    return cached;
-  }
+  return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
+    const listing = hoodlefinanceResolveArivaListing_(code);
 
-  listing = hoodlefinanceResolveArivaListing_(code);
+    if (!listing.isin) {
+      throw new Error('No ARIVA ISIN is available for "' + code + '".');
+    }
 
-  if (!listing.isin) {
-    throw new Error('No ARIVA ISIN is available for "' + code + '".');
-  }
+    if (!listing.hasXetra) {
+      throw new Error('ARIVA did not expose a Xetra listing for "' + code + '".');
+    }
 
-  if (!listing.hasXetra) {
-    throw new Error('ARIVA did not expose a Xetra listing for "' + code + '".');
-  }
-
-  cache.put(cacheKey, listing.isin, 21600);
-  return listing.isin;
+    return listing.isin;
+  });
 }
 
 function hoodlefinanceResolvePseIsin_(quote, context) {
@@ -2151,10 +2188,7 @@ function hoodlefinanceResolvePseIsin_(quote, context) {
 function hoodlefinanceResolveLonIsin_(quote, context) {
   const exchange = hoodlefinanceInferIsinExchange_(quote, context);
   const code = hoodlefinanceExtractLonCode_(quote, context);
-  const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:lon:isin:" + code;
-  const cached = code ? cache.get(cacheKey) : "";
-  let listing;
 
   if (exchange !== "LON") {
     throw new Error("lon:isin is only implemented for LON tickers.");
@@ -2164,31 +2198,23 @@ function hoodlefinanceResolveLonIsin_(quote, context) {
     throw new Error("Could not determine the LON code for this ticker.");
   }
 
-  if (cached) {
-    return cached;
-  }
+  return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
+    const listing = hoodlefinanceResolveLonListing_(code);
 
-  listing = hoodlefinanceResolveLonListing_(code);
+    if (!listing.isin) {
+      throw new Error('No LON ISIN is available for "' + code + '".');
+    }
 
-  if (!listing.isin) {
-    throw new Error('No LON ISIN is available for "' + code + '".');
-  }
-
-  cache.put(cacheKey, listing.isin, 21600);
-  return listing.isin;
+    return listing.isin;
+  });
 }
 
 function hoodlefinanceResolveTradingviewIsin_(quote, context) {
   const yahooExchange = hoodlefinanceInferIsinExchange_(quote, context);
   const tradingviewExchange = hoodlefinanceInferTradingviewExchange_(quote, context);
   const code = hoodlefinanceExtractTradingviewCode_(quote, context);
-  const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:tradingview:isin:" + tradingviewExchange + ":" + code;
-  const cached = tradingviewExchange && code ? cache.get(cacheKey) : "";
   const expectedSymbol = tradingviewExchange && code ? tradingviewExchange + ":" + code : "";
-  let html;
-  let resolvedSymbol;
-  let isin;
 
   if (!tradingviewExchange) {
     if (yahooExchange) {
@@ -2201,26 +2227,23 @@ function hoodlefinanceResolveTradingviewIsin_(quote, context) {
     throw new Error("Could not determine the TradingView symbol code for this ticker.");
   }
 
-  if (cached) {
-    return cached;
-  }
+  return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
+    const html = hoodlefinanceFetchText_(HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ + tradingviewExchange + "-" + code + "/");
+    const resolvedSymbol = hoodlefinanceExtractTradingviewResolvedSymbol_(html);
+    const isin = hoodlefinanceExtractTradingviewIsin_(html);
 
-  html = hoodlefinanceFetchText_(HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ + tradingviewExchange + "-" + code + "/");
-  resolvedSymbol = hoodlefinanceExtractTradingviewResolvedSymbol_(html);
-  isin = hoodlefinanceExtractTradingviewIsin_(html);
+    if (resolvedSymbol && resolvedSymbol !== expectedSymbol) {
+      throw new Error(
+        'TradingView resolved "' + expectedSymbol + '" to "' + resolvedSymbol + '" instead of an exact symbol match.'
+      );
+    }
 
-  if (resolvedSymbol && resolvedSymbol !== expectedSymbol) {
-    throw new Error(
-      'TradingView resolved "' + expectedSymbol + '" to "' + resolvedSymbol + '" instead of an exact symbol match.'
-    );
-  }
+    if (!isin) {
+      throw new Error('No TradingView ISIN is available for "' + expectedSymbol + '".');
+    }
 
-  if (!isin) {
-    throw new Error('No TradingView ISIN is available for "' + expectedSymbol + '".');
-  }
-
-  cache.put(cacheKey, isin, 21600);
-  return isin;
+    return isin;
+  });
 }
 
 function hoodlefinanceExtractQuoteSymbol_(quote) {
@@ -2545,9 +2568,7 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();
   const baseSymbol = normalizedSymbol.replace(/\.[A-Z0-9]+$/, "");
   const lookupSymbol = baseSymbol || normalizedSymbol;
-  const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:ibkr:isin:" + lookupSymbol + ":" + (preferredExchange || "");
-  const cached = cache.get(cacheKey);
   let searchUrls;
   let detailEntries;
   let searchHtml;
@@ -2562,10 +2583,12 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
     };
   }
 
-  if (cached) {
+  isin = hoodlefinanceGetCachedString_(cacheKey);
+
+  if (isin) {
     return {
       error: "",
-      isin: cached,
+      isin: isin,
     };
   }
 
@@ -2587,7 +2610,7 @@ function hoodlefinanceResolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
 
     isin = hoodlefinanceResolveIbkrIsinFromDetailEntries_(detailEntries);
     if (isin) {
-      cache.put(cacheKey, isin, 21600);
+      hoodlefinancePutCachedString_(cacheKey, isin, 21600);
       return {
         error: "",
         isin: isin,
@@ -3035,25 +3058,19 @@ function hoodlefinanceResolveIsin_(isin) {
     throw new Error('ISIN "' + isin + '" is invalid.');
   }
 
-  const cache = CacheService.getScriptCache();
   const cacheKey = "hoodlefinance:isin:" + isin;
-  const cached = cache.get(cacheKey);
   const pseTicker = hoodlefinanceResolvePseTickerFromIsinMap_(isin);
 
-  if (cached) {
-    return cached;
-  }
+  return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
+    if (pseTicker) {
+      return pseTicker;
+    }
 
-  if (pseTicker) {
-    cache.put(cacheKey, pseTicker, 21600);
-    return pseTicker;
-  }
-
-  const response = UrlFetchApp.fetch(hoodlefinanceBuildYahooIsinSearchUrl_(isin), hoodlefinanceBuildFetchOptions_());
-  const symbol = hoodlefinanceResolveIsinFromSearchResponse_(response, isin);
-
-  cache.put(cacheKey, symbol, 21600);
-  return symbol;
+    return hoodlefinanceResolveIsinFromSearchResponse_(
+      UrlFetchApp.fetch(hoodlefinanceBuildYahooIsinSearchUrl_(isin), hoodlefinanceBuildFetchOptions_()),
+      isin
+    );
+  });
 }
 
 function hoodlefinanceErrorMessage_(error) {
