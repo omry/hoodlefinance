@@ -8,7 +8,7 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
     return hoodlefinanceResolveIbkrIsin_(quote, context);
   },
   currency: function (quote) {
-    return hoodlefinanceNormalizeCurrency_(quote.currency || quote.financialCurrency || "");
+    return hoodlefinanceExtractCurrencyValue_(quote);
   },
   datadelay: function (quote) {
     return quote.exchangeDataDelayedBy != null ? quote.exchangeDataDelayedBy : 0;
@@ -63,15 +63,19 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
 
 const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
-const HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
 const HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/RELEASE_NOTES.md";
 const HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/";
+const HOODLEFINANCE_GITHUB_CURRENCY_CODES_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
 const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
-const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/data/pse-isin-map.properties";
+const HOODLEFINANCE_CURRENCY_CODES_PROPERTY_ = "hoodlefinance.currencyCodes";
+const HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_ = "hoodlefinance.currencyCodesFetchedAtMs";
 const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
 const HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_ = "hoodlefinance.pseIsinMap";
 const HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_ = "hoodlefinance.suppressUpdateChecks";
+const HOODLEFINANCE_CURRENCY_CODES_REFRESH_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
+const HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_ = "hoodlefinance:currencyCodes";
+const HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_ = "hoodlefinance:pseIsinMap";
@@ -153,6 +157,7 @@ const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/
 const HOODLEFINANCE_PSE_STOCK_DATA_URL_ = "https://edge.pse.com.ph/companyPage/stockData.do";
 
 let HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = null;
+let HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = null;
 
 const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   AMEX: "AMEX",
@@ -640,61 +645,51 @@ function hoodlefinanceFetchLatestVersionInfo_(options) {
   const cache = CacheService.getScriptCache();
   const normalizedOptions = options || {};
   const cached = normalizedOptions.useCache === false ? null : cache.get(HOODLEFINANCE_UPDATE_CACHE_KEY_);
-  const urls = [
-    HOODLEFINANCE_GITHUB_RAW_URL_,
-    HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_,
-  ];
-  const errors = [];
   let response;
   let version;
-  let i;
-  let url;
 
   if (cached) {
     return JSON.parse(cached);
   }
 
-  for (i = 0; i < urls.length; i += 1) {
-    url = urls[i];
-
-    try {
-      response = UrlFetchApp.fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          "Accept-Language": "en-US,en;q=0.9"
-        },
-        muteHttpExceptions: true,
-      });
-    } catch (error) {
-      errors.push(url + " -> " + String(error && error.message ? error.message : error));
-      continue;
-    }
-
-    if (response.getResponseCode() !== 200) {
-      errors.push(url + " -> HTTP " + response.getResponseCode());
-      continue;
-    }
-
-    version = hoodlefinanceExtractVersionFromSource_(response.getContentText());
-
-    if (!version) {
-      errors.push(url + " -> version string not found");
-      continue;
-    }
-
-    cache.put(
-      HOODLEFINANCE_UPDATE_CACHE_KEY_,
-      JSON.stringify({ version: version }),
-      HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
-    );
-
-    return { version: version };
+  try {
+    response = UrlFetchApp.fetch(HOODLEFINANCE_GITHUB_RAW_URL_, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "en-US,en;q=0.9"
+      },
+      muteHttpExceptions: true,
+    });
+  } catch (error) {
+    return {
+      error: HOODLEFINANCE_GITHUB_RAW_URL_ + " -> " + String(error && error.message ? error.message : error),
+      version: "",
+    };
   }
 
-  return {
-    error: errors.join("\n"),
-    version: "",
-  };
+  if (response.getResponseCode() !== 200) {
+    return {
+      error: HOODLEFINANCE_GITHUB_RAW_URL_ + " -> HTTP " + response.getResponseCode(),
+      version: "",
+    };
+  }
+
+  version = hoodlefinanceExtractVersionFromSource_(response.getContentText());
+
+  if (!version) {
+    return {
+      error: HOODLEFINANCE_GITHUB_RAW_URL_ + " -> version string not found",
+      version: "",
+    };
+  }
+
+  cache.put(
+    HOODLEFINANCE_UPDATE_CACHE_KEY_,
+    JSON.stringify({ version: version }),
+    HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
+  );
+
+  return { version: version };
 }
 
 function hoodlefinanceExtractVersionFromSource_(sourceText) {
@@ -718,49 +713,47 @@ function hoodlefinanceGetPersistentProperties_() {
   return null;
 }
 
-function hoodlefinanceDownloadPseIsinMapText_() {
-  const urls = [
-    HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_,
-    HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_FALLBACK_URL_,
-  ];
-  const errors = [];
+function hoodlefinanceDownloadGitHubText_(url) {
   let response;
   let text;
-  let i;
-  let url;
 
-  for (i = 0; i < urls.length; i += 1) {
-    url = urls[i];
-
-    try {
-      response = UrlFetchApp.fetch(url, hoodlefinanceBuildFetchOptions_());
-    } catch (error) {
-      errors.push(url + " -> " + hoodlefinanceErrorMessage_(error));
-      continue;
-    }
-
-    if (response.getResponseCode() !== 200) {
-      errors.push(url + " -> HTTP " + response.getResponseCode());
-      continue;
-    }
-
-    text = response.getContentText();
-
-    if (!String(text || "").trim()) {
-      errors.push(url + " -> empty response");
-      continue;
-    }
-
+  try {
+    response = UrlFetchApp.fetch(url, hoodlefinanceBuildFetchOptions_());
+  } catch (error) {
     return {
-      error: "",
-      text: text,
+      error: url + " -> " + hoodlefinanceErrorMessage_(error),
+      text: "",
+    };
+  }
+
+  if (response.getResponseCode() !== 200) {
+    return {
+      error: url + " -> HTTP " + response.getResponseCode(),
+      text: "",
+    };
+  }
+
+  text = response.getContentText();
+
+  if (!String(text || "").trim()) {
+    return {
+      error: url + " -> empty response",
+      text: "",
     };
   }
 
   return {
-    error: errors.join("\n"),
-    text: "",
+    error: "",
+    text: text,
   };
+}
+
+function hoodlefinanceDownloadPseIsinMapText_() {
+  return hoodlefinanceDownloadGitHubText_(HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_);
+}
+
+function hoodlefinanceDownloadCurrencyCodeDataText_() {
+  return hoodlefinanceDownloadGitHubText_(HOODLEFINANCE_GITHUB_CURRENCY_CODES_URL_);
 }
 
 function hoodlefinanceParsePseIsinMapProperties_(sourceText) {
@@ -920,6 +913,74 @@ function hoodlefinanceCachePseListing_(listing) {
   );
 }
 
+function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
+  const payload = JSON.parse(sourceText);
+  const unitsByCode = {};
+  const aliasPayload = payload && payload.aliases && typeof payload.aliases === "object" ? payload.aliases : {};
+  let canonicalCodeList;
+  let i;
+  let canonicalCode;
+  let aliasCode;
+  let aliasEntry;
+  let normalizedAliasCode;
+  let aliasCanonicalCode;
+  let upperAliasCode;
+  let factor;
+
+  if (!payload || typeof payload !== "object" || !Array.isArray(payload.canonicalCodes)) {
+    throw new Error("Currency code data is invalid.");
+  }
+
+  canonicalCodeList = payload.canonicalCodes;
+
+  for (i = 0; i < canonicalCodeList.length; i += 1) {
+    canonicalCode = String(canonicalCodeList[i] || "").trim().toUpperCase();
+
+    if (!/^[A-Z]{3}$/.test(canonicalCode)) {
+      continue;
+    }
+
+    unitsByCode[canonicalCode] = {
+      canonicalCode: canonicalCode,
+      displayCode: canonicalCode,
+      factor: 1,
+    };
+  }
+
+  if (!Object.keys(unitsByCode).length) {
+    throw new Error("No canonical currency codes were found in the downloaded data.");
+  }
+
+  for (aliasCode in aliasPayload) {
+    if (!Object.prototype.hasOwnProperty.call(aliasPayload, aliasCode)) {
+      continue;
+    }
+
+    normalizedAliasCode = String(aliasCode || "").trim();
+    aliasEntry = aliasPayload[aliasCode];
+    aliasCanonicalCode = String(aliasEntry && aliasEntry.canonicalCode || "").trim().toUpperCase();
+    factor = Number(aliasEntry && aliasEntry.factor);
+
+    if (!/^[A-Za-z]{3}$/.test(normalizedAliasCode) || !unitsByCode[aliasCanonicalCode] || !isFinite(factor) || factor <= 0) {
+      throw new Error('Currency alias "' + aliasCode + '" is invalid.');
+    }
+
+    unitsByCode[normalizedAliasCode] = {
+      canonicalCode: aliasCanonicalCode,
+      displayCode: normalizedAliasCode,
+      factor: factor,
+    };
+
+    upperAliasCode = normalizedAliasCode.toUpperCase();
+
+    if (!unitsByCode[upperAliasCode]) {
+      unitsByCode[upperAliasCode] = unitsByCode[normalizedAliasCode];
+    }
+  }
+
+  return unitsByCode;
+}
+
 function hoodlefinanceGetPseIsinMap_() {
   const cache = CacheService.getScriptCache();
   const properties = hoodlefinanceGetPersistentProperties_();
@@ -997,6 +1058,74 @@ function hoodlefinanceGetPseIsinMap_() {
   throw new Error("Failed to download the PSE ISIN map from GitHub.\n" + downloadResult.error);
 }
 
+function hoodlefinanceGetCurrencyCodeData_() {
+  const cache = CacheService.getScriptCache();
+  const properties = hoodlefinanceGetPersistentProperties_();
+  const cached = cache.get(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_);
+  const nowMs = new Date().getTime();
+  let storedPayloadText;
+  let storedFetchedAtMs;
+  let downloadResult;
+
+  if (HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_) {
+    return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
+  }
+
+  if (cached) {
+    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hoodlefinanceParseCurrencyCodeDataResource_(cached);
+    return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
+  }
+
+  storedPayloadText = properties ? properties.getProperty(HOODLEFINANCE_CURRENCY_CODES_PROPERTY_) : null;
+  storedFetchedAtMs = properties ? Number(properties.getProperty(HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_)) : NaN;
+
+  if (storedPayloadText) {
+    try {
+      if (isFinite(storedFetchedAtMs) && nowMs - storedFetchedAtMs <= HOODLEFINANCE_CURRENCY_CODES_REFRESH_INTERVAL_MS_) {
+        cache.put(
+          HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_,
+          storedPayloadText,
+          HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
+        );
+        HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hoodlefinanceParseCurrencyCodeDataResource_(storedPayloadText);
+        return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
+      }
+    } catch (error) {
+      storedPayloadText = "";
+    }
+  }
+
+  downloadResult = hoodlefinanceDownloadCurrencyCodeDataText_();
+
+  if (downloadResult.text) {
+    cache.put(
+      HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_,
+      downloadResult.text,
+      HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
+    );
+
+    if (properties) {
+      properties.setProperty(HOODLEFINANCE_CURRENCY_CODES_PROPERTY_, downloadResult.text);
+      properties.setProperty(HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_, String(nowMs));
+    }
+
+    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hoodlefinanceParseCurrencyCodeDataResource_(downloadResult.text);
+    return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
+  }
+
+  if (storedPayloadText) {
+    cache.put(
+      HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_,
+      storedPayloadText,
+      HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
+    );
+    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hoodlefinanceParseCurrencyCodeDataResource_(storedPayloadText);
+    return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
+  }
+
+  throw new Error("Failed to download the currency code data from GitHub.\n" + downloadResult.error);
+}
+
 function hoodlefinanceShowUpdateDialog_(latestVersion) {
   const ui = hoodlefinanceGetUi_();
   const releaseNotesUrl = hoodlefinanceBuildGitHubReleaseNotesUrl_(latestVersion);
@@ -1071,50 +1200,54 @@ function hoodlefinanceEscapeHtml_(text) {
 
 function hoodlefinanceFetchQuote_(ticker) {
   const normalizedTicker = String(ticker).trim();
-  const sameCurrencyPair = hoodlefinanceExtractSameCurrencyPair_(normalizedTicker);
+  const fxPair = hoodlefinanceParseFxTicker_(normalizedTicker);
   let yahooSymbol;
   let cacheKey;
+  let cached;
   let response;
+  let meta;
+  let fallbackInfo;
 
   if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
     return hoodlefinanceFetchPseQuote_(normalizedTicker);
   }
 
-  if (sameCurrencyPair) {
-    return hoodlefinanceBuildSameCurrencyQuote_(sameCurrencyPair);
+  if (fxPair && fxPair.isSameCurrency) {
+    return hoodlefinanceBuildSameCurrencyQuote_(fxPair);
   }
 
-  yahooSymbol = hoodlefinanceNormalizeTicker_(normalizedTicker);
+  yahooSymbol = fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTicker_(normalizedTicker);
 
   if (hoodlefinanceIsPseTicker_(yahooSymbol)) {
     return hoodlefinanceFetchPseQuote_(yahooSymbol);
   }
 
   cacheKey = "hoodlefinance:" + yahooSymbol;
+  cached = hoodlefinanceGetCachedJson_(cacheKey);
 
-  return hoodlefinanceResolveCachedJson_(cacheKey, 60, function () {
-    let meta;
-    let fallbackInfo;
+  if (cached) {
+    return hoodlefinanceDecorateFxQuote_(cached, fxPair);
+  }
 
-    response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
+  response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
 
-    try {
-      meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
-    } catch (error) {
-      if (!hoodlefinanceShouldUseIsraeliFundTradingviewFallback_({ plan: { yahooSymbol: yahooSymbol } }, error)) {
-        throw error;
-      }
-
-      fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(normalizedTicker, yahooSymbol);
-      meta = hoodlefinanceExtractTradingviewFundQuote_(
-        hoodlefinanceFetchText_(fallbackInfo.url),
-        yahooSymbol,
-        fallbackInfo.expectedSymbol
-      );
+  try {
+    meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
+  } catch (error) {
+    if (!hoodlefinanceShouldUseIsraeliFundTradingviewFallback_({ plan: { yahooSymbol: yahooSymbol } }, error)) {
+      throw error;
     }
 
-    return meta;
-  });
+    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(normalizedTicker, yahooSymbol);
+    meta = hoodlefinanceExtractTradingviewFundQuote_(
+      hoodlefinanceFetchText_(fallbackInfo.url),
+      yahooSymbol,
+      fallbackInfo.expectedSymbol
+    );
+  }
+
+  hoodlefinancePutCachedJson_(cacheKey, meta, 60);
+  return hoodlefinanceDecorateFxQuote_(meta, fxPair);
 }
 
 function hoodlefinanceFetchPseQuote_(ticker) {
@@ -1160,10 +1293,63 @@ function hoodlefinanceNormalizeTicker_(ticker) {
   return hoodlefinanceNormalizeTickerWithoutIsin_(value);
 }
 
+function hoodlefinanceResolveCurrencyUnit_(code) {
+  const value = String(code || "").trim();
+  const unitsByCode = hoodlefinanceGetCurrencyCodeData_();
+
+  return unitsByCode[value] || unitsByCode[value.toUpperCase()] || null;
+}
+
+function hoodlefinanceParseFxTicker_(ticker) {
+  const value = String(ticker || "").trim();
+  const explicitMatch = value.match(/^([^:]+):(.*)$/);
+  const exchange = explicitMatch ? explicitMatch[1].trim().toUpperCase() : "";
+  const pairText = explicitMatch ? explicitMatch[2].trim() : value;
+  const looksLikePair = /^[A-Za-z]{6}$/.test(pairText);
+  let baseUnit;
+  let quoteUnit;
+
+  if (explicitMatch && exchange !== "CURRENCY") {
+    return null;
+  }
+
+  if (explicitMatch && !looksLikePair) {
+    throw new Error('Currency ticker "' + ticker + '" must look like CURRENCY:USDEUR.');
+  }
+
+  if (!looksLikePair) {
+    return null;
+  }
+
+  baseUnit = hoodlefinanceResolveCurrencyUnit_(pairText.slice(0, 3));
+  quoteUnit = hoodlefinanceResolveCurrencyUnit_(pairText.slice(3, 6));
+
+  if (!baseUnit || !quoteUnit) {
+    if (explicitMatch) {
+      throw new Error('Currency ticker "' + ticker + '" must use supported 3-character currency codes.');
+    }
+
+    return null;
+  }
+
+  return {
+    displayQuoteCode: quoteUnit.displayCode,
+    isSameCurrency: baseUnit.canonicalCode === quoteUnit.canonicalCode,
+    pairDisplay: baseUnit.displayCode + quoteUnit.displayCode,
+    scale: baseUnit.factor / quoteUnit.factor,
+    yahooSymbol: baseUnit.canonicalCode + quoteUnit.canonicalCode + "=X",
+  };
+}
+
 function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
   const value = String(ticker).trim();
+  const fxPair = hoodlefinanceParseFxTicker_(value);
   const parts = value.split(":");
   let normalizedSymbol;
+
+  if (fxPair) {
+    return fxPair.yahooSymbol;
+  }
 
   if (parts.length < 2) {
     return hoodlefinanceNormalizeYahooStyleIsraeliFundTicker_(value);
@@ -1174,14 +1360,6 @@ function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
 
   if (!symbol) {
     throw new Error('Ticker "' + ticker + '" is invalid.');
-  }
-
-  if (exchange === "CURRENCY") {
-    const currencyPair = symbol.replace(/[^A-Za-z]/g, "").toUpperCase();
-    if (currencyPair.length !== 6) {
-      throw new Error('Currency ticker "' + ticker + '" must look like CURRENCY:USDEUR.');
-    }
-    return currencyPair + "=X";
   }
 
   if (HOODLEFINANCE_PREFIXLESS_EXCHANGES_[exchange]) {
@@ -1390,7 +1568,7 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
       orderedJobs[i].plan = plan;
 
       if (plan.source === "local-fx") {
-        orderedJobs[i].quote = hoodlefinanceBuildSameCurrencyQuote_(plan.sameCurrencyPair);
+        orderedJobs[i].quote = hoodlefinanceBuildSameCurrencyQuote_(plan.fxPair);
         continue;
       }
 
@@ -1431,7 +1609,7 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
 function hoodlefinanceClassifyTickerJob_(ticker) {
   const normalizedTicker = String(ticker).trim();
   const upperTicker = normalizedTicker.toUpperCase();
-  const sameCurrencyPair = hoodlefinanceExtractSameCurrencyPair_(normalizedTicker);
+  const fxPair = hoodlefinanceParseFxTicker_(normalizedTicker);
 
   if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
     return {
@@ -1440,9 +1618,9 @@ function hoodlefinanceClassifyTickerJob_(ticker) {
     };
   }
 
-  if (sameCurrencyPair) {
+  if (fxPair && fxPair.isSameCurrency) {
     return {
-      sameCurrencyPair: sameCurrencyPair,
+      fxPair: fxPair,
       source: "local-fx",
     };
   }
@@ -1462,8 +1640,9 @@ function hoodlefinanceClassifyTickerJob_(ticker) {
   }
 
   return {
+    fxPair: fxPair,
     source: "yahoo-chart",
-    yahooSymbol: hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker),
+    yahooSymbol: fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker),
   };
 }
 
@@ -1545,7 +1724,7 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
     cached = hoodlefinanceGetCachedJson_(cacheKey);
 
     if (cached) {
-      jobs[i].quote = cached;
+      jobs[i].quote = hoodlefinanceDecorateFxQuote_(cached, jobs[i].plan.fxPair);
       continue;
     }
 
@@ -1567,11 +1746,18 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
     }
 
     try {
-      responses[i].request.job.quote = hoodlefinanceExtractYahooQuoteMetaFromResponse_(
-        responses[i].response,
-        responses[i].request.job.tickerInput
+      responses[i].request.job.quote = hoodlefinanceDecorateFxQuote_(
+        hoodlefinanceExtractYahooQuoteMetaFromResponse_(
+          responses[i].response,
+          responses[i].request.job.tickerInput
+        ),
+        responses[i].request.job.plan.fxPair
       );
-      hoodlefinancePutCachedJson_(responses[i].request.cacheKey, responses[i].request.job.quote, 60);
+      hoodlefinancePutCachedJson_(
+        responses[i].request.cacheKey,
+        hoodlefinanceExtractRawQuote_(responses[i].request.job.quote),
+        60
+      );
     } catch (error) {
       if (hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(responses[i].request.job, error)) {
         fallbackJobs.push(responses[i].request.job);
@@ -1767,40 +1953,53 @@ function hoodlefinanceParsePseSymbol_(ticker) {
   return symbol;
 }
 
-function hoodlefinanceExtractSameCurrencyPair_(ticker) {
-  const value = String(ticker || "").trim().toUpperCase();
-  const parts = value.split(":");
-  const exchange = parts.length > 1 ? parts[0] : "";
-  const symbol = parts.length > 1 ? parts.slice(1).join(":").trim() : "";
-  const currencyPair = exchange === "CURRENCY" ? symbol.replace(/[^A-Z]/g, "") : "";
-  const baseCurrency = currencyPair.slice(0, 3);
-  const quoteCurrency = currencyPair.slice(3, 6);
-
-  if (currencyPair.length !== 6) {
-    return "";
-  }
-
-  return baseCurrency === quoteCurrency ? currencyPair : "";
-}
-
-function hoodlefinanceBuildSameCurrencyQuote_(currencyPair) {
-  const normalizedPair = String(currencyPair || "").trim().toUpperCase();
-  const quoteCurrency = normalizedPair.slice(3, 6);
+function hoodlefinanceBuildSameCurrencyQuote_(fxPair) {
+  const canonicalPair = fxPair.yahooSymbol.slice(0, -2);
+  const quoteCurrency = fxPair.yahooSymbol.slice(3, 6);
   const nowSeconds = Math.floor(new Date().getTime() / 1000);
 
   return {
     currency: quoteCurrency,
     exchangeDataDelayedBy: 0,
     financialCurrency: quoteCurrency,
+    hoodlefinanceFxDisplayCurrency: fxPair.displayQuoteCode,
+    hoodlefinanceFxUnitScale: fxPair.scale,
     previousClose: 1,
     regularMarketDayHigh: 1,
     regularMarketDayLow: 1,
     regularMarketPreviousClose: 1,
     regularMarketPrice: 1,
     regularMarketTime: nowSeconds,
-    shortName: normalizedPair,
-    symbol: normalizedPair + "=X",
+    shortName: fxPair.pairDisplay,
+    symbol: canonicalPair + "=X",
   };
+}
+
+function hoodlefinanceDecorateFxQuote_(quote, fxPair) {
+  if (!fxPair) {
+    return quote;
+  }
+
+  const nextQuote = Object.assign({}, quote);
+
+  nextQuote.hoodlefinanceFxDisplayCurrency = fxPair.displayQuoteCode;
+  nextQuote.hoodlefinanceFxUnitScale = fxPair.scale;
+  nextQuote.shortName = fxPair.pairDisplay;
+
+  return nextQuote;
+}
+
+function hoodlefinanceExtractRawQuote_(quote) {
+  if (!quote || (quote.hoodlefinanceFxDisplayCurrency == null && quote.hoodlefinanceFxUnitScale == null)) {
+    return quote;
+  }
+
+  const rawQuote = Object.assign({}, quote);
+
+  delete rawQuote.hoodlefinanceFxDisplayCurrency;
+  delete rawQuote.hoodlefinanceFxUnitScale;
+
+  return rawQuote;
 }
 
 function hoodlefinanceExtractAttribute_(quote, attribute, context) {
@@ -1853,6 +2052,14 @@ function hoodlefinanceChange_(quote) {
   return hoodlefinancePickPrice_(quote) - hoodlefinancePreviousClose_(quote);
 }
 
+function hoodlefinanceExtractCurrencyValue_(quote) {
+  if (quote && quote.hoodlefinanceFxDisplayCurrency) {
+    return String(quote.hoodlefinanceFxDisplayCurrency);
+  }
+
+  return hoodlefinanceNormalizeCurrency_(quote.currency || quote.financialCurrency || "");
+}
+
 function hoodlefinanceNormalizeCurrency_(currency) {
   return currency === "GBp" ? "GBP" : currency === "ILA" ? "ILS" : currency;
 }
@@ -1860,9 +2067,14 @@ function hoodlefinanceNormalizeCurrency_(currency) {
 function hoodlefinanceNormalizeMoney_(quote, value) {
   const rawCurrency = quote.currency || quote.financialCurrency || "";
   const normalizedCurrency = hoodlefinanceNormalizeCurrency_(rawCurrency);
+  const fxScale = quote && quote.hoodlefinanceFxUnitScale != null ? Number(quote.hoodlefinanceFxUnitScale) : null;
 
   if (value == null) {
     throw new Error("No value is available for this ticker.");
+  }
+
+  if (fxScale != null && isFinite(fxScale)) {
+    return value * fxScale;
   }
 
   return (normalizedCurrency === "GBP" && (quote.currency === "GBp" || quote.financialCurrency === "GBp")) ||

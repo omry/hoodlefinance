@@ -141,6 +141,29 @@ const PSE_ISIN_MAP_PROPERTIES = `
 PHY077751022=PSE:BDO
 `;
 
+const CURRENCY_CODES_JSON = JSON.stringify({
+  source: {
+    name: "ISO 4217 List One",
+    publisher: "SIX Group",
+    published: "2026-01-01",
+  },
+  canonicalCodes: ["CHF", "EUR", "GBP", "ILS", "PHP", "USD"],
+  aliases: {
+    GBX: {
+      canonicalCode: "GBP",
+      factor: 0.01,
+    },
+    GBp: {
+      canonicalCode: "GBP",
+      factor: 0.01,
+    },
+    ILA: {
+      canonicalCode: "ILS",
+      factor: 0.01,
+    },
+  },
+}, null, 2);
+
 const LON_SEARCH_SJPA_HTML = `
 <tbody>
   <tr class="medium-font-weight slide-panel">
@@ -461,8 +484,17 @@ function createYahooIsinSearchResponse(symbol) {
   });
 }
 
+function primeCurrencyCodeData(ctx, fetchedAtMs) {
+  ctx.__scriptPropertiesStore.set("hoodlefinance.currencyCodes", CURRENCY_CODES_JSON);
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.currencyCodesFetchedAtMs",
+    String(fetchedAtMs == null ? new Date().getTime() : fetchedAtMs)
+  );
+}
+
 test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
 
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("LON:ISJP"), "ISJP.L");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("ETR:ZPRX"), "ZPRX.DE");
@@ -473,8 +505,12 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:KSMF59"), "KSM.F59.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TASE:KSMF59"), "KSM.F59.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDPHP"), "USDPHP=X");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("GBpUSD"), "GBPUSD=X");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDILA"), "USDILS=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:USDUSD"), "USDUSD=X");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("FOOUSD"), "FOOUSD");
 });
 
 test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {
@@ -550,15 +586,63 @@ test("redownloads the GitHub PSE ISIN map after the 24-hour refresh window expir
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"]);
 });
 
+test("downloads and caches currency code data from GitHub", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json") {
+      return createHttpResponse(200, CURRENCY_CODES_JSON);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("USD").canonicalCode, "USD");
+  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("GBp").canonicalCode, "GBP");
+  assert.deepEqual(
+    seenUrls,
+    ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json"]
+  );
+  assert.equal(
+    ctx.__scriptPropertiesStore.get("hoodlefinance.currencyCodes") != null,
+    true
+  );
+  assert.equal(
+    ctx.__scriptPropertiesStore.get("hoodlefinance.currencyCodesFetchedAtMs") != null,
+    true
+  );
+});
+
+test("reuses the cached GitHub currency code data without downloading it again while fresh", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("USD").canonicalCode, "USD");
+  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("ILA").canonicalCode, "ILS");
+});
+
 test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
   const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
 
   ctx.UrlFetchApp.fetch = function () {
     throw new Error("Fetch should not run for same-currency FX pairs");
   };
 
+  assert.equal(ctx.HOODLEFINANCE("USDUSD", "price"), 1);
   assert.equal(ctx.HOODLEFINANCE("CURRENCY:USDUSD", "price"), 1);
   assert.equal(ctx.HOODLEFINANCE("CURRENCY:USDUSD", "currency"), "USD");
+  assert.equal(ctx.HOODLEFINANCE("GBPGBp", "price"), 100);
+  assert.equal(ctx.HOODLEFINANCE("GBPGBp", "currency"), "GBp");
+  assert.equal(ctx.HOODLEFINANCE("GBpGBP", "price"), 0.01);
+  assert.equal(ctx.HOODLEFINANCE("GBpGBP", "currency"), "GBP");
 });
 
 test("scalar calls use the shared batch fetch pipeline", () => {
@@ -677,6 +761,7 @@ test("TLV fund quotes fall back to TradingView when Yahoo has no quote", () => {
 
 test("blank scalar ticker input still throws", () => {
   const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
 
   assert.throws(() => ctx.HOODLEFINANCE("", "price"), /Ticker is required\./);
   assert.throws(() => ctx.HOODLEFINANCE([["  "]], "price"), /Ticker is required\./);
@@ -684,11 +769,16 @@ test("blank scalar ticker input still throws", () => {
     () => ctx.HOODLEFINANCE("CURRENCY:USD", "price"),
     /Currency ticker "CURRENCY:USD" must look like CURRENCY:USDEUR\./
   );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("CURRENCY:FOOUSD", "price"),
+    /must use supported 3-character currency codes/
+  );
 });
 
 test("range-built currency tickers ignore trailing blank-built rows", () => {
   const ctx = loadHoodlefinance();
   const seenBatches = [];
+  primeCurrencyCodeData(ctx);
 
   ctx.UrlFetchApp.fetch = function () {
     throw new Error("Unexpected direct fetch");
@@ -725,6 +815,60 @@ test("range-built currency tickers ignore trailing blank-built rows", () => {
     JSON.stringify([[
       "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d",
       "https://query1.finance.yahoo.com/v8/finance/chart/CHFUSD%3DX?interval=1d&range=1d",
+    ]])
+  );
+});
+
+test("bare FX pairs use canonical Yahoo quotes with alias-aware scaling", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GBPUSD%3DX?interval=1d&range=1d") {
+        return createYahooChartResponse("GBPUSD=X", {
+          currency: "USD",
+          previousClose: 1.3,
+          regularMarketDayHigh: 1.4,
+          regularMarketDayLow: 1.2,
+          regularMarketPrice: 1.3223,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/USDGBP%3DX?interval=1d&range=1d") {
+        return createYahooChartResponse("USDGBP=X", {
+          currency: "GBP",
+          previousClose: 0.75,
+          regularMarketDayHigh: 0.76,
+          regularMarketDayLow: 0.74,
+          regularMarketPrice: 0.7563,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "price"), 0.013223);
+  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "close"), 0.013000000000000001);
+  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "high"), 0.013999999999999999);
+  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "low"), 0.012);
+  assert.ok(Math.abs(ctx.HOODLEFINANCE("GBpUSD", "change") - 0.000223) < 1e-12);
+  assert.ok(Math.abs(ctx.HOODLEFINANCE("GBpUSD", "changepct") - 0.017153846153846186) < 1e-12);
+  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "currency"), "USD");
+  assert.equal(ctx.HOODLEFINANCE("USDGBp", "price"), 75.63);
+  assert.equal(ctx.HOODLEFINANCE("USDGBp", "currency"), "GBp");
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([[
+      "https://query1.finance.yahoo.com/v8/finance/chart/GBPUSD%3DX?interval=1d&range=1d",
+    ], [
+      "https://query1.finance.yahoo.com/v8/finance/chart/USDGBP%3DX?interval=1d&range=1d",
     ]])
   );
 });
@@ -1120,7 +1264,6 @@ test("manual update checks include fetch diagnostics when version lookup fails",
   );
   assert.deepEqual(urls, [
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js",
-    "https://github.com/omry/hoodlefinance/raw/main/hoodlefinance.js",
   ]);
   assert.equal(ctx.__uiState.alerts.length, 1);
   assert.match(ctx.__uiState.alerts[0][1], /HTTP 503/);

@@ -157,17 +157,21 @@ Yahoo-style symbols are also accepted:
 
 ### Currency Pairs
 
-Currency pairs use the `CURRENCY:` prefix:
+Currency pairs can be passed either as bare pairs or with the `CURRENCY:` prefix:
 
 ```gs
+=HOODLEFINANCE("EURUSD", "price")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
 ```
 
-Unlike `GOOGLEFINANCE`, which may recognize some bare currency pairs such as `USDPHP`, `HOODLEFINANCE` expects the explicit `CURRENCY:` form for now.
+Canonical 3-letter codes such as `USD`, `EUR`, `GBP`, `ILS`, and `PHP` are the preferred form.
+
+Some upstream quote-unit aliases are also accepted. For example, `GBpUSD`, `USDGBp`, `ILAUSD`, and `USDILA` are normalized through the corresponding canonical Yahoo FX symbol, while the returned value and `currency` still reflect the requested units.
 
 If the base and quote currency are the same, `HOODLEFINANCE` short-circuits locally and returns `1`:
 
 ```gs
+=HOODLEFINANCE("USDUSD", "price")
 =HOODLEFINANCE("CURRENCY:USDUSD", "price")
 ```
 

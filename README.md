@@ -46,7 +46,7 @@ Then try a few representative lookups:
 ```gs
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("NYSE:IBM", "name")
-=HOODLEFINANCE("CURRENCY:EURUSD", "price")
+=HOODLEFINANCE("EURUSD", "price")
 =HOODLEFINANCE("SGX:D05", "name")
 =HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("PHY077751022", "name")
