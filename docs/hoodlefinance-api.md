@@ -281,5 +281,4 @@ Suppressing update checks only disables the automatic once-per-day check. Manual
 - `ibkr:isin`, `tradingview:isin`, `lon:isin`, `ariva:isin`, and the `PSE:` path all depend on public websites or unofficial endpoints and may break if those sites change.
 - `ibkr:isin` can fail when IBKR presents a captcha challenge.
 - Some attributes may be unavailable for a specific listing even when the exchange is generally supported.
-- Israeli fund and ETF support is still incomplete; see [docs/design/israeli-market-fund-support.md](./design/israeli-market-fund-support.md).
 - The function is pasted Apps Script code, so it is less portable than built-in `GOOGLEFINANCE`.
