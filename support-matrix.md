@@ -90,7 +90,7 @@ Use it as a quick reference for current live probe results by exchange and featu
       <td style="text-align:center;vertical-align:top;"><span title="PSE:BDO, PSE:AAA, PSE:JFC">ⓘ</span></td>
       <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: PSE:BDO, PSE:AAA, PSE:JFC">✅</span></td>
       <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: BDO.PS, AAA.PS, JFC.PS">✅</span></td>
-      <td style="text-align:center;"><span title="Failing probes: name (PHY077751022 (PSE:BDO)). Samples: PHY077751022 (PSE:BDO)">❌</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: PHY077751022 (PSE:BDO)">✅</span></td>
       <td style="text-align:center;border-left:3px solid #6b7280;"><span title="All probes passed. Attributes: price, name, currency. Samples: PSE:BDO, PSE:AAA, PSE:JFC">✅</span></td>
       <td style="text-align:center;"><span title="Failing probes: high (PSE:AAA); low (PSE:AAA). Samples: PSE:BDO, PSE:AAA, PSE:JFC">⚠️</span></td>
       <td style="text-align:center;"><span title="Failing probes: volume (PSE:AAA). Samples: PSE:BDO, PSE:AAA, PSE:JFC">⚠️</span></td>

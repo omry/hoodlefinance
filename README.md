@@ -4,7 +4,7 @@
 
 It uses multiple data sources to cover data, identifiers, and markets that `GOOGLEFINANCE` does not provide or does not support well.
 
-Current script version: `0.2.4`
+Current script version: `0.2.5`
 
 Quote freshness depends on the upstream source used for a given symbol and attribute. In practice, price data may be delayed by an unspecified amount of time, and the delay is not guaranteed to be consistent across exchanges or resolvers.
 
@@ -59,6 +59,7 @@ Then try a few more examples:
 =HOODLEFINANCE("SGX:D05", "isin")
 =HOODLEFINANCE("POLI.TA", "isin")
 =HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
+=HOODLEFINANCE("PHY077751022", "name")
 ```
 
 To confirm which pasted version is in your sheet:
@@ -88,6 +89,7 @@ The bound script also adds a `Hoodlefinance` menu in Sheets with:
 =HOODLEFINANCE("POLI.TA", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("OTCMKTS:RYCEY", "isin")
+=HOODLEFINANCE("PHY077751022", "name")
 ```
 
 ## ISIN Support
@@ -96,6 +98,7 @@ The bound script also adds a `Hoodlefinance` menu in Sheets with:
 
 - `isin`: deduce the exchange and dispatch to the configured resolver
 - exchange-specific source attributes are also available for debugging or forced-source lookups
+- Philippine `PH...` ISIN input downloads the repo's GitHub-hosted PSE map on demand, then caches it for reuse when Yahoo ISIN search does not resolve a symbol
 
 Current generic `isin` routing:
 

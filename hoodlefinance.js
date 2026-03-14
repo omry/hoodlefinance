@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.2.4";
+const HOODLEFINANCE_VERSION_ = "0.2.5";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
@@ -65,9 +65,15 @@ const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
+const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
+const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/data/pse-isin-map.properties";
 const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
+const HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_ = "hoodlefinance.pseIsinMap";
 const HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_ = "hoodlefinance.suppressUpdateChecks";
+const HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_ = 30 * 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
+const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_ = "hoodlefinance:pseIsinMap";
+const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_UPDATE_CACHE_KEY_ = "hoodlefinance:update:latestVersion";
 const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
@@ -141,6 +147,8 @@ const HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ = "https://www.tradingview.com/symbo
 
 const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const HOODLEFINANCE_PSE_STOCK_DATA_URL_ = "https://edge.pse.com.ph/companyPage/stockData.do";
+
+let HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = null;
 
 const HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   AMEX: "AMEX",
@@ -690,6 +698,193 @@ function hoodlefinanceExtractVersionFromSource_(sourceText) {
   return match ? match[1] : "";
 }
 
+function hoodlefinanceGetPersistentProperties_() {
+  if (typeof PropertiesService === "undefined" || !PropertiesService) {
+    return null;
+  }
+
+  if (PropertiesService.getScriptProperties) {
+    return PropertiesService.getScriptProperties();
+  }
+
+  if (PropertiesService.getUserProperties) {
+    return PropertiesService.getUserProperties();
+  }
+
+  return null;
+}
+
+function hoodlefinanceDownloadPseIsinMapText_() {
+  const urls = [
+    HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_,
+    HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_FALLBACK_URL_,
+  ];
+  const errors = [];
+  let response;
+  let text;
+  let i;
+  let url;
+
+  for (i = 0; i < urls.length; i += 1) {
+    url = urls[i];
+
+    try {
+      response = UrlFetchApp.fetch(url, hoodlefinanceBuildFetchOptions_());
+    } catch (error) {
+      errors.push(url + " -> " + hoodlefinanceErrorMessage_(error));
+      continue;
+    }
+
+    if (response.getResponseCode() !== 200) {
+      errors.push(url + " -> HTTP " + response.getResponseCode());
+      continue;
+    }
+
+    text = response.getContentText();
+
+    if (!String(text || "").trim()) {
+      errors.push(url + " -> empty response");
+      continue;
+    }
+
+    return {
+      error: "",
+      text: text,
+    };
+  }
+
+  return {
+    error: errors.join("\n"),
+    text: "",
+  };
+}
+
+function hoodlefinanceParsePseIsinMapProperties_(sourceText) {
+  const lines = String(sourceText || "").split(/\r?\n/);
+  const map = {};
+  let i;
+  let line;
+  let separatorIndex;
+  let isin;
+  let ticker;
+
+  for (i = 0; i < lines.length; i += 1) {
+    line = lines[i].trim();
+
+    if (!line || line.charAt(0) === "#") {
+      continue;
+    }
+
+    separatorIndex = line.indexOf("=");
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    isin = line.slice(0, separatorIndex).trim().toUpperCase();
+    ticker = line.slice(separatorIndex + 1).trim().toUpperCase();
+
+    if (!isin || !ticker) {
+      continue;
+    }
+
+    map[isin] = ticker;
+  }
+
+  if (!Object.keys(map).length) {
+    throw new Error("No PSE ISIN mappings were found in the downloaded map.");
+  }
+
+  return map;
+}
+
+function hoodlefinanceParsePseIsinMapPayload_(payloadText) {
+  const payload = JSON.parse(payloadText);
+
+  if (!payload || typeof payload !== "object" || typeof payload.text !== "string") {
+    throw new Error("Cached PSE ISIN map payload is invalid.");
+  }
+
+  return payload;
+}
+
+function hoodlefinanceGetPseIsinMap_() {
+  const cache = CacheService.getScriptCache();
+  const properties = hoodlefinanceGetPersistentProperties_();
+  const cached = cache.get(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_);
+  const nowMs = new Date().getTime();
+  let storedPayloadText;
+  let storedPayload;
+  let downloadResult;
+  let nextPayloadText;
+
+  if (HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_) {
+    return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
+  }
+
+  if (cached) {
+    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hoodlefinanceParsePseIsinMapProperties_(cached);
+    return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
+  }
+
+  storedPayloadText = properties ? properties.getProperty(HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_) : null;
+
+  if (storedPayloadText) {
+    try {
+      storedPayload = hoodlefinanceParsePseIsinMapPayload_(storedPayloadText);
+
+      if (
+        storedPayload.fetchedAtMs != null &&
+        nowMs - Number(storedPayload.fetchedAtMs) <= HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_
+      ) {
+        cache.put(
+          HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_,
+          storedPayload.text,
+          HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
+        );
+        HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hoodlefinanceParsePseIsinMapProperties_(storedPayload.text);
+        return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
+      }
+    } catch (error) {
+      storedPayload = null;
+    }
+  }
+
+  downloadResult = hoodlefinanceDownloadPseIsinMapText_();
+
+  if (downloadResult.text) {
+    nextPayloadText = JSON.stringify({
+      fetchedAtMs: nowMs,
+      text: downloadResult.text,
+    });
+
+    cache.put(
+      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_,
+      downloadResult.text,
+      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
+    );
+
+    if (properties) {
+      properties.setProperty(HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_, nextPayloadText);
+    }
+
+    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hoodlefinanceParsePseIsinMapProperties_(downloadResult.text);
+    return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
+  }
+
+  if (storedPayload && storedPayload.text) {
+    cache.put(
+      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_,
+      storedPayload.text,
+      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
+    );
+    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hoodlefinanceParsePseIsinMapProperties_(storedPayload.text);
+    return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
+  }
+
+  throw new Error("Failed to download the PSE ISIN map from GitHub.\n" + downloadResult.error);
+}
+
 function hoodlefinanceShowUpdateDialog_(latestVersion) {
   const ui = hoodlefinanceGetUi_();
   let output;
@@ -764,6 +959,11 @@ function hoodlefinanceFetchQuote_(ticker) {
   }
 
   yahooSymbol = hoodlefinanceNormalizeTicker_(normalizedTicker);
+
+  if (hoodlefinanceIsPseTicker_(yahooSymbol)) {
+    return hoodlefinanceFetchPseQuote_(yahooSymbol);
+  }
+
   cacheKey = "hoodlefinance:" + yahooSymbol;
   cached = cache.get(cacheKey);
 
@@ -1097,7 +1297,11 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
 
   for (i = 0; i < yahooIsinJobs.length; i += 1) {
     if (!yahooIsinJobs[i].error && yahooIsinJobs[i].plan && yahooIsinJobs[i].plan.yahooSymbol) {
-      yahooChartJobs.push(yahooIsinJobs[i]);
+      if (hoodlefinanceIsPseTicker_(yahooIsinJobs[i].plan.yahooSymbol)) {
+        pseJobs.push(yahooIsinJobs[i]);
+      } else {
+        yahooChartJobs.push(yahooIsinJobs[i]);
+      }
     }
   }
 
@@ -1158,6 +1362,9 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
 
     if (cached) {
       jobs[i].plan.yahooSymbol = cached;
+      if (hoodlefinanceIsPseTicker_(cached)) {
+        jobs[i].plan.symbol = hoodlefinanceParsePseSymbol_(cached);
+      }
       continue;
     }
 
@@ -1177,10 +1384,13 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
     }
 
     try {
-      responses[i].request.job.plan.yahooSymbol = hoodlefinanceExtractYahooSymbolFromSearchResponse_(
+      responses[i].request.job.plan.yahooSymbol = hoodlefinanceResolveIsinFromSearchResponse_(
         responses[i].response,
         responses[i].request.job.plan.isin
       );
+      if (hoodlefinanceIsPseTicker_(responses[i].request.job.plan.yahooSymbol)) {
+        responses[i].request.job.plan.symbol = hoodlefinanceParsePseSymbol_(responses[i].request.job.plan.yahooSymbol);
+      }
       cache.put(responses[i].request.cacheKey, responses[i].request.job.plan.yahooSymbol, 21600);
     } catch (error) {
       responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
@@ -2712,6 +2922,30 @@ function hoodlefinanceResolvePseListingFromHtml_(html, symbol) {
   throw new Error('No PSE listing was found for "' + normalizedSymbol + '".');
 }
 
+function hoodlefinanceResolvePseTickerFromIsinMap_(isin) {
+  const normalizedIsin = String(isin || "").trim().toUpperCase();
+
+  if (normalizedIsin.indexOf("PH") !== 0) {
+    return "";
+  }
+
+  return hoodlefinanceGetPseIsinMap_()[normalizedIsin] || "";
+}
+
+function hoodlefinanceResolveIsinFromSearchResponse_(response, isin) {
+  try {
+    return hoodlefinanceExtractYahooSymbolFromSearchResponse_(response, isin);
+  } catch (error) {
+    const pseTicker = hoodlefinanceResolvePseTickerFromIsinMap_(isin);
+
+    if (pseTicker) {
+      return pseTicker;
+    }
+
+    throw error;
+  }
+}
+
 function hoodlefinanceResolveIsin_(isin) {
   if (!hoodlefinanceLooksLikeIsin_(isin)) {
     throw new Error('ISIN "' + isin + '" is invalid.');
@@ -2726,7 +2960,7 @@ function hoodlefinanceResolveIsin_(isin) {
   }
 
   const response = UrlFetchApp.fetch(hoodlefinanceBuildYahooIsinSearchUrl_(isin), hoodlefinanceBuildFetchOptions_());
-  const symbol = hoodlefinanceExtractYahooSymbolFromSearchResponse_(response, isin);
+  const symbol = hoodlefinanceResolveIsinFromSearchResponse_(response, isin);
 
   cache.put(cacheKey, symbol, 21600);
   return symbol;

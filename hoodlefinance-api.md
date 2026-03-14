@@ -221,9 +221,12 @@ If the input itself is an ISIN, `HOODLEFINANCE` resolves it to a Yahoo symbol fi
 ```gs
 =HOODLEFINANCE("ISIN:IE00B4L5YX21", "price")
 =HOODLEFINANCE("IE00B4L5YX21", "name")
+=HOODLEFINANCE("PHY077751022", "name")
 ```
 
 This resolution uses Yahoo search and is less robust than direct symbol lookup.
+
+For Philippine `PH...` ISINs, there is one extra fallback: if Yahoo search does not return a symbol, `HOODLEFINANCE` downloads the repo's GitHub-hosted `data/pse-isin-map.properties`, caches it, and resolves the symbol from that PSE EDGE-derived map.
 
 ## ISIN Attributes
 

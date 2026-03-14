@@ -44,6 +44,13 @@ node tools/cli.js GOOG price
 node tools/cli.js GOOG isin
 node tools/cli.js ZPRX.DE isin
 node tools/cli.js PSE:BDO isin
+node tools/cli.js PHY077751022 name
+```
+
+Refresh the GitHub-hosted PSE ISIN map data file:
+
+```sh
+node tools/generate-pse-isin-map.js
 ```
 
 Run the live benchmark for scalar-vs-range performance:

@@ -33,6 +33,18 @@ const PSE_SEARCH_AC_HTML = `
   </tbody>
 `;
 
+const PSE_SEARCH_BDO_HTML = `
+<tbody>
+  <tr>
+      <td><a href="#company" onclick="cmDetail('260','468');return false;">BDO Unibank, Inc.</a></td>
+      <td class="alignC"><a href="#company" onclick="cmDetail('260','468');return false;">BDO</a></td>
+      <td>Banking</td>
+      <td>Universal Banks</td>
+      <td class="alignC">Dec 19, 1969</td>
+    </tr>
+  </tbody>
+`;
+
 const PSE_STOCK_AAA_HTML = `
 <div class="compInfo">
   <p style="">Asia Amalgamated Holdings Corporation</p>
@@ -119,6 +131,12 @@ const PSE_STOCK_BDO_HTML = `
   <td style="text-align:right;padding-right:1.2em;">123.18</td>
 </tr>
 </table>
+`;
+
+const PSE_ISIN_MAP_PROPERTIES = `
+# PSE ISIN to ticker map
+# updated_at=2026-03-13T18:34:56.295Z
+PHY077751022=PSE:BDO
 `;
 
 const LON_SEARCH_SJPA_HTML = `
@@ -279,6 +297,7 @@ Text: <input type="text" name="filter">
 function loadHoodlefinance() {
 const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
+  const scriptPropertiesStore = new Map();
   const userPropertiesStore = new Map();
   const uiState = {
     alerts: [],
@@ -334,6 +353,7 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
     Error,
     Map,
     __uiState: uiState,
+    __scriptPropertiesStore: scriptPropertiesStore,
     __userPropertiesStore: userPropertiesStore,
     CacheService: {
       getScriptCache() {
@@ -348,6 +368,19 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
       },
     },
     PropertiesService: {
+      getScriptProperties() {
+        return {
+          deleteProperty(key) {
+            scriptPropertiesStore.delete(key);
+          },
+          getProperty(key) {
+            return scriptPropertiesStore.has(key) ? scriptPropertiesStore.get(key) : null;
+          },
+          setProperty(key, value) {
+            scriptPropertiesStore.set(key, String(value));
+          },
+        };
+      },
       getUserProperties() {
         return {
           deleteProperty(key) {
@@ -447,6 +480,57 @@ test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", ()
 
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSMF59.TA"), "KSM.F59.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSM.F59.TA"), "KSM.F59.TA");
+});
+
+test("resolves Philippine ISIN input to a mapped PSE ticker when Yahoo search has no symbol", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
+      return createHttpResponse(200, { quotes: [] });
+    }
+
+    if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
+      return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
+  assert.deepEqual(seenUrls, [
+    "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+  ]);
+  assert.equal(
+    ctx.__scriptPropertiesStore.get("hoodlefinance.pseIsinMap") != null,
+    true
+  );
+});
+
+test("reuses the cached GitHub PSE ISIN map without downloading it again while fresh", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.pseIsinMap",
+    JSON.stringify({
+      fetchedAtMs: new Date().getTime(),
+      text: PSE_ISIN_MAP_PROPERTIES,
+    })
+  );
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
+      return createHttpResponse(200, { quotes: [] });
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
 });
 
 test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
@@ -690,6 +774,73 @@ test("range calls batch yahoo isin search before quote lookup", () => {
   );
 });
 
+test("direct Philippine ISIN input falls back to mapped PSE ticker in the shared batch pipeline", () => {
+  const ctx = loadHoodlefinance();
+  const seenBatches = [];
+  const seenUrls = [];
+
+  function respond(url) {
+    seenUrls.push(url);
+
+    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
+      return createHttpResponse(200, { quotes: [] });
+    }
+
+    if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
+      return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468") {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  }
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    return respond(url);
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => respond(request.url));
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["PHY077751022"], ["PHY077751022"]], "price")),
+    JSON.stringify([[123.8], [123.8]])
+  );
+  assert.equal(
+    JSON.stringify(seenUrls),
+    JSON.stringify([
+      "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
+      "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+      "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
+      "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
+    ])
+  );
+
+  if (seenBatches.length) {
+    assert.equal(
+      JSON.stringify(seenBatches),
+      JSON.stringify([
+        [
+          "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
+        ],
+        [
+          "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
+        ],
+        [
+          "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
+        ],
+      ])
+    );
+  }
+});
+
 test("range calls abort with the first failing job in traversal order", () => {
   const ctx = loadHoodlefinance();
 
@@ -809,7 +960,7 @@ test("shared batch fetches are chunked in groups of fifty", () => {
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.4");
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.5");
 });
 
 test("compares semantic-style versions correctly", () => {

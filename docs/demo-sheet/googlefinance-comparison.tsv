@@ -1,5 +1,6 @@
 Use case	GOOGLEFINANCE formula	GOOGLEFINANCE result	HOODLEFINANCE formula	HOODLEFINANCE result	Why HOODLEFINANCE wins
 PSE market access	'=GOOGLEFINANCE("PSE:BDO","name")	=GOOGLEFINANCE("PSE:BDO","name")	'=HOODLEFINANCE("PSE:BDO","name")	=HOODLEFINANCE("PSE:BDO","name")	Dedicated PSE path instead of depending on Google coverage.
+PSE direct ISIN input	'=GOOGLEFINANCE("PHY077751022","name")	=GOOGLEFINANCE("PHY077751022","name")	'=HOODLEFINANCE("PHY077751022","name")	=HOODLEFINANCE("PHY077751022","name")	Uses the GitHub-hosted cached PSE ISIN map when Yahoo search does not resolve the Philippine symbol.
 Irish ETF access on LSE	'=GOOGLEFINANCE("SJPA.L","name")	=GOOGLEFINANCE("SJPA.L","name")	'=HOODLEFINANCE("SJPA.L","name")	=HOODLEFINANCE("SJPA.L","name")	Handles Irish UCITS ETFs that are awkward or unsupported in Google Sheets.
 Irish ETF access on Xetra	'=GOOGLEFINANCE("ZPRX.DE","name")	=GOOGLEFINANCE("ZPRX.DE","name")	'=HOODLEFINANCE("ZPRX.DE","name")	=HOODLEFINANCE("ZPRX.DE","name")	Handles Irish UCITS ETFs on non-U.S. exchanges and returns the name.
 Tel Aviv stock access via Yahoo-style ticker	'=GOOGLEFINANCE("POLI.TA","name")	=GOOGLEFINANCE("POLI.TA","name")	'=HOODLEFINANCE("POLI.TA","name")	=HOODLEFINANCE("POLI.TA","name")	Accepts the Yahoo-style `.TA` ticker directly.
