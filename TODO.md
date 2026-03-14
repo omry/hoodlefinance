@@ -1,6 +1,5 @@
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
 - Add CI-backed demo-sheet sync/deploy support so public demo updates do not depend only on local maintainer auth setup
-- Consider a dedicated Israeli `ISIN -> symbol` resolver instead of relying only on the generic direct-ISIN path
 - Support bare currency-pair identifiers such as `USDPHP` in addition to the current `CURRENCY:USDPHP` form
 - Consider adding a new parameter to control the output price currency and perform the FX conversion internally
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
