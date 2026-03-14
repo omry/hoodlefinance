@@ -1910,6 +1910,37 @@ test("extracts exact PSE listing matches from search results", () => {
   );
 });
 
+test("reuses cached PSE listings without repeating the search fetch", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+    assert.equal(url, "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=AC");
+    return createHttpResponse(200, PSE_SEARCH_AC_HTML);
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceResolvePseListing_("AC")),
+    JSON.stringify({
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "180",
+      symbol: "AC",
+    })
+  );
+  assert.equal(
+    JSON.stringify(ctx.hoodlefinanceResolvePseListing_("AC")),
+    JSON.stringify({
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "180",
+      symbol: "AC",
+    })
+  );
+  assert.deepEqual(seenUrls, ["https://edge.pse.com.ph/companyDirectory/search.ax?keyword=AC"]);
+});
+
 test("parses active PSE stock pages into the quote model", () => {
   const ctx = loadHoodlefinance();
   const quote = ctx.hoodlefinanceExtractPseQuote_(PSE_STOCK_BDO_HTML, {
@@ -1987,6 +2018,47 @@ test("fetches PSE quotes through the direct PSE path", () => {
   assert.equal(quote.currency, "PHP");
   assert.equal(quote.isin, "PHY030431175");
   assert.equal(quote.regularMarketPrice, 1.63);
+});
+
+test("shared batch PSE fetches reuse a warmed listing cache", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468") {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  ctx.hoodlefinanceResolvePseListing_("BDO");
+  seenUrls.length = 0;
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => ctx.UrlFetchApp.fetch(request.url));
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["PSE:BDO"], ["PSE:BDO"]], "price")),
+    JSON.stringify([[123.8], [123.8]])
+  );
+  assert.deepEqual(seenUrls, ["https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468"]);
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([
+      [
+        "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
+      ],
+    ])
+  );
 });
 
 test("pse:isin returns direct quote isin", () => {

@@ -74,6 +74,8 @@ const HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_ = "hoodlefinance:pseIsinMap";
 const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
+const HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ = "hoodlefinance:pse:listing:";
+const HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_UPDATE_CACHE_KEY_ = "hoodlefinance:update:latestVersion";
 const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
@@ -808,6 +810,59 @@ function hoodlefinanceParsePseIsinMapPayload_(payloadText) {
   return payload;
 }
 
+function hoodlefinanceBuildPseListingCacheKey_(symbol) {
+  return HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ + String(symbol || "").trim().toUpperCase();
+}
+
+function hoodlefinanceParsePseListingPayload_(payloadText) {
+  const payload = JSON.parse(payloadText);
+
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !payload.companyId ||
+    !payload.securityId ||
+    !payload.symbol
+  ) {
+    throw new Error("Cached PSE listing payload is invalid.");
+  }
+
+  return {
+    companyId: String(payload.companyId),
+    name: String(payload.name || ""),
+    securityId: String(payload.securityId),
+    symbol: String(payload.symbol).trim().toUpperCase(),
+  };
+}
+
+function hoodlefinanceGetCachedPseListing_(symbol) {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(hoodlefinanceBuildPseListingCacheKey_(symbol));
+
+  if (!cached) {
+    return null;
+  }
+
+  return hoodlefinanceParsePseListingPayload_(cached);
+}
+
+function hoodlefinanceCachePseListing_(listing) {
+  if (!listing || !listing.companyId || !listing.securityId || !listing.symbol) {
+    return;
+  }
+
+  CacheService.getScriptCache().put(
+    hoodlefinanceBuildPseListingCacheKey_(listing.symbol),
+    JSON.stringify({
+      companyId: String(listing.companyId),
+      name: String(listing.name || ""),
+      securityId: String(listing.securityId),
+      symbol: String(listing.symbol).trim().toUpperCase(),
+    }),
+    HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_
+  );
+}
+
 function hoodlefinanceGetPseIsinMap_() {
   const cache = CacheService.getScriptCache();
   const properties = hoodlefinanceGetPersistentProperties_();
@@ -1484,6 +1539,23 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
       continue;
     }
 
+    listing = hoodlefinanceGetCachedPseListing_(jobs[i].plan.symbol);
+
+    if (listing) {
+      jobs[i].plan.listing = listing;
+      stockRequests.push({
+        cacheKey: cacheKey,
+        job: jobs[i],
+        url:
+          HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+          "?cmpy_id=" +
+          encodeURIComponent(listing.companyId) +
+          "&security_id=" +
+          encodeURIComponent(listing.securityId),
+      });
+      continue;
+    }
+
     searchRequests.push({
       job: jobs[i],
       url: HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(jobs[i].plan.symbol),
@@ -1503,6 +1575,7 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
         responses[i].response.getResponseCode() === 200 ? responses[i].response.getContentText() : "",
         responses[i].request.job.plan.symbol
       );
+      hoodlefinanceCachePseListing_(listing);
       responses[i].request.job.plan.listing = listing;
       stockRequests.push({
         cacheKey: "hoodlefinance:pse:" + responses[i].request.job.plan.symbol,
@@ -1791,17 +1864,18 @@ function hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(tickerInput, yaho
 
 function hoodlefinanceResolvePseListing_(symbol) {
   const normalizedSymbol = String(symbol || "").trim().toUpperCase();
-  const html = hoodlefinanceFetchText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol));
-  const listings = hoodlefinanceExtractPseListings_(html);
-  let i;
+  const cached = hoodlefinanceGetCachedPseListing_(normalizedSymbol);
+  let listing;
+  let html;
 
-  for (i = 0; i < listings.length; i += 1) {
-    if (listings[i].symbol === normalizedSymbol) {
-      return listings[i];
-    }
+  if (cached) {
+    return cached;
   }
 
-  throw new Error('No PSE listing was found for "' + normalizedSymbol + '".');
+  html = hoodlefinanceFetchText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol));
+  listing = hoodlefinanceResolvePseListingFromHtml_(html, normalizedSymbol);
+  hoodlefinanceCachePseListing_(listing);
+  return listing;
 }
 
 function hoodlefinanceResolveLonListing_(code) {
