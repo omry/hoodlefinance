@@ -11,6 +11,7 @@ Use it as a design reference when deciding whether a new fetch path should reuse
 | Update checks | GitHub latest version | 6h | `🚫` | `✅` | Auto checks use cache; manual checks bypass it. |
 | Yahoo quotes | Yahoo chart `meta` | 60s | `🚫` | `✅` | Shared by scalar and range paths. |
 | PSE quotes | Parsed PSE quote | 5m | `🚫` | `✅` | Final quote only, not listing metadata. |
+| PSE ISIN map | GitHub-hosted `pse-isin-map.properties` text | 6h fast / 24h refresh | `🚫` | `✅` | `CacheService` holds the hot copy for 6h; `ScriptProperties` keeps the last downloaded body for up to 24h before the next redownload attempt. |
 | Yahoo ISIN | ISIN -> Yahoo symbol | 6h | `🚫` | `✅` | Used by scalar and range ISIN paths. |
 | ARIVA ISIN | ETR code -> ISIN | 6h | `🚫` | `✅` | Positive-result cache only. |
 | LON ISIN | LON code -> ISIN | 6h | `🚫` | `✅` | Positive-result cache only. |
@@ -47,3 +48,5 @@ Legend:
 - Positive-result caches are the default pattern used in the service today.
 - Most missing cache work is now in resolver-specific intermediate steps, not in quote fetching.
 - If a new upstream source is added, prefer a targeted cache row here instead of introducing a generic fetch cache.
+- The PSE ISIN map also has an opportunistic in-memory global cache for the lifetime of a warm Apps Script runtime, but the matrix rows focus on the durable/shared layers (`CacheService`, properties, etc.).
+- If the 24-hour PSE ISIN map refresh download fails, the last stored `ScriptProperties` copy is still reused instead of failing immediately.

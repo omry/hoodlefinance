@@ -533,6 +533,39 @@ test("reuses the cached GitHub PSE ISIN map without downloading it again while f
   assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
 });
 
+test("redownloads the GitHub PSE ISIN map after the 24-hour refresh window expires", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.pseIsinMap",
+    JSON.stringify({
+      fetchedAtMs: new Date().getTime() - (25 * 60 * 60 * 1000),
+      text: "# old\nPHY077751022=PSE:OLD\n",
+    })
+  );
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0") {
+      return createHttpResponse(200, { quotes: [] });
+    }
+
+    if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
+      return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
+  assert.deepEqual(seenUrls, [
+    "https://query2.finance.yahoo.com/v1/finance/search?q=PHY077751022&quotesCount=10&newsCount=0",
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+  ]);
+});
+
 test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
   const ctx = loadHoodlefinance();
 
