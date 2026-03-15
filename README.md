@@ -65,7 +65,7 @@ Supported identifiers:
 
 Three security identifier types are supported: Google-style symbols, Yahoo-style symbols, and ISINs.
 
-Google-style symbol examples: `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, `TLV:POLI`, `EURUSD`, `CURRENCY:EURUSD`
+Google-style symbol examples: `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, `TLV:POLI`, `EURUSD`, `CURRENCY:EURUSD`, `BTCUSD`, `CURRENCY:ETHUSD`
 
 Yahoo-style symbol examples: `GOOG`, `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, `POLI.TA`
 

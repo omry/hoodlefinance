@@ -174,9 +174,11 @@ Currency pairs can be passed either as bare pairs or with the `CURRENCY:` prefix
 ```gs
 =HOODLEFINANCE("EURUSD", "price")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
+=HOODLEFINANCE("BTCUSD", "price")
+=HOODLEFINANCE("CURRENCY:ETHUSD", "price")
 ```
 
-Canonical 3-letter codes such as `USD`, `EUR`, `GBP`, `ILS`, and `PHP` are the preferred form.
+Canonical 3-letter codes such as `USD`, `EUR`, `GBP`, `ILS`, and `PHP` are the preferred form. Major 3-character crypto codes that Google Finance currently quotes, such as `BTC`, `ETH`, `SOL`, and `XRP`, are also recognized in the same pair syntax.
 
 Some upstream quote-unit aliases are also accepted. For example, `GBpUSD`, `USDGBp`, `ILAUSD`, and `USDILA` are normalized through the corresponding canonical Yahoo FX symbol, while the returned value and `currency` still reflect the requested units.
 
@@ -218,7 +220,7 @@ If the identifier itself is an ISIN, `HOODLEFINANCE` resolves it automatically b
 Accepted FX input forms include:
 
 - bare pairs such as `EURUSD` or `USDPHP`
-- prefixed pairs such as `CURRENCY:EURUSD`
+- prefixed pairs such as `CURRENCY:EURUSD` or `CURRENCY:ETHUSD`
 - same-currency pairs such as `USDUSD`
 
 For FX pairs, the most useful attributes are:

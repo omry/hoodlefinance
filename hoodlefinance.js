@@ -1001,6 +1001,7 @@ function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
   const payload = JSON.parse(sourceText);
   const unitsByCode = {};
   const aliasPayload = payload && payload.aliases && typeof payload.aliases === "object" ? payload.aliases : {};
+  const cryptoCodeList = payload && Array.isArray(payload.cryptoCodes) ? payload.cryptoCodes : [];
   let canonicalCodeList;
   let i;
   let canonicalCode;
@@ -1025,6 +1026,22 @@ function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
     }
 
     unitsByCode[canonicalCode] = {
+      assetClass: "currency",
+      canonicalCode: canonicalCode,
+      displayCode: canonicalCode,
+      factor: 1,
+    };
+  }
+
+  for (i = 0; i < cryptoCodeList.length; i += 1) {
+    canonicalCode = String(cryptoCodeList[i] || "").trim().toUpperCase();
+
+    if (!/^[A-Z]{3}$/.test(canonicalCode) || unitsByCode[canonicalCode]) {
+      continue;
+    }
+
+    unitsByCode[canonicalCode] = {
+      assetClass: "crypto",
       canonicalCode: canonicalCode,
       displayCode: canonicalCode,
       factor: 1,
@@ -1050,6 +1067,7 @@ function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
     }
 
     unitsByCode[normalizedAliasCode] = {
+      assetClass: unitsByCode[aliasCanonicalCode].assetClass || "currency",
       canonicalCode: aliasCanonicalCode,
       displayCode: normalizedAliasCode,
       factor: factor,
@@ -1304,6 +1322,10 @@ function hoodlefinanceFetchQuote_(ticker) {
     return hoodlefinanceBuildSameCurrencyQuote_(fxPair);
   }
 
+  if (fxPair && fxPair.hasCrypto) {
+    return hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(fxPair);
+  }
+
   yahooSymbol = fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTicker_(normalizedTicker);
 
   if (hoodlefinanceIsPseTicker_(yahooSymbol)) {
@@ -1388,6 +1410,24 @@ function hoodlefinanceResolveCurrencyUnit_(code) {
   return unitsByCode[value] || unitsByCode[value.toUpperCase()] || null;
 }
 
+function hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(fxPair) {
+  const cacheKey = "hoodlefinance:google-finance:" + fxPair.googlePairSlug;
+  const cached = hoodlefinanceGetCachedJson_(cacheKey);
+  let quote;
+
+  if (cached) {
+    return hoodlefinanceDecorateFxQuote_(cached, fxPair);
+  }
+
+  quote = hoodlefinanceExtractGoogleFinanceCryptoPairQuote_(
+    hoodlefinanceFetchText_(hoodlefinanceBuildGoogleFinanceQuoteUrl_(fxPair.googlePairSlug)),
+    fxPair
+  );
+
+  hoodlefinancePutCachedJson_(cacheKey, quote, 60);
+  return hoodlefinanceDecorateFxQuote_(quote, fxPair);
+}
+
 function hoodlefinanceParseFxTicker_(ticker) {
   const value = String(ticker || "").trim();
   const explicitMatch = value.match(/^([^:]+):(.*)$/);
@@ -1421,7 +1461,12 @@ function hoodlefinanceParseFxTicker_(ticker) {
   }
 
   return {
+    baseAssetClass: baseUnit.assetClass || "currency",
+    canonicalPair: baseUnit.canonicalCode + quoteUnit.canonicalCode,
+    quoteAssetClass: quoteUnit.assetClass || "currency",
     displayQuoteCode: quoteUnit.displayCode,
+    googlePairSlug: baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode,
+    hasCrypto: (baseUnit.assetClass === "crypto") || (quoteUnit.assetClass === "crypto"),
     isSameCurrency: baseUnit.canonicalCode === quoteUnit.canonicalCode,
     pairDisplay: baseUnit.displayCode + quoteUnit.displayCode,
     scale: baseUnit.factor / quoteUnit.factor,
@@ -1644,6 +1689,7 @@ function hoodlefinanceShouldTreatRangeTickerAsBlank_(ticker) {
 
 function hoodlefinancePrefetchTickerJobs_(jobs) {
   const orderedJobs = jobs.orderedJobs;
+  const googleFinanceFxJobs = [];
   const yahooIsinJobs = [];
   const yahooChartJobs = [];
   const pseJobs = [];
@@ -1662,6 +1708,11 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
 
       if (plan.source === "yahoo-isin-search") {
         yahooIsinJobs.push(orderedJobs[i]);
+        continue;
+      }
+
+      if (plan.source === "google-finance-fx") {
+        googleFinanceFxJobs.push(orderedJobs[i]);
         continue;
       }
 
@@ -1690,6 +1741,7 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
     }
   }
 
+  hoodlefinancePrefetchGoogleFinanceFxJobs_(googleFinanceFxJobs);
   hoodlefinancePrefetchYahooChartJobs_(yahooChartJobs);
   hoodlefinancePrefetchPseJobs_(pseJobs);
 }
@@ -1713,6 +1765,13 @@ function hoodlefinanceClassifyTickerJob_(ticker) {
     };
   }
 
+  if (fxPair && fxPair.hasCrypto) {
+    return {
+      fxPair: fxPair,
+      source: "google-finance-fx",
+    };
+  }
+
   if (hoodlefinanceLooksLikeIsin_(normalizedTicker)) {
     return {
       isin: upperTicker,
@@ -1732,6 +1791,18 @@ function hoodlefinanceClassifyTickerJob_(ticker) {
     source: "yahoo-chart",
     yahooSymbol: fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker),
   };
+}
+
+function hoodlefinancePrefetchGoogleFinanceFxJobs_(jobs) {
+  let i;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    try {
+      jobs[i].quote = hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(jobs[i].plan.fxPair);
+    } catch (error) {
+      jobs[i].error = hoodlefinanceErrorMessage_(error);
+    }
+  }
 }
 
 function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
@@ -2045,8 +2116,7 @@ function hoodlefinanceParsePseSymbol_(ticker) {
 }
 
 function hoodlefinanceBuildSameCurrencyQuote_(fxPair) {
-  const canonicalPair = fxPair.yahooSymbol.slice(0, -2);
-  const quoteCurrency = fxPair.yahooSymbol.slice(3, 6);
+  const quoteCurrency = fxPair.canonicalPair.slice(3, 6);
   const nowSeconds = Math.floor(new Date().getTime() / 1000);
 
   return {
@@ -2062,7 +2132,7 @@ function hoodlefinanceBuildSameCurrencyQuote_(fxPair) {
     regularMarketPrice: 1,
     regularMarketTime: nowSeconds,
     shortName: fxPair.pairDisplay,
-    symbol: canonicalPair + "=X",
+    symbol: fxPair.canonicalPair,
   };
 }
 
@@ -2076,6 +2146,7 @@ function hoodlefinanceDecorateFxQuote_(quote, fxPair) {
   nextQuote.hoodlefinanceFxDisplayCurrency = fxPair.displayQuoteCode;
   nextQuote.hoodlefinanceFxUnitScale = fxPair.scale;
   nextQuote.shortName = fxPair.pairDisplay;
+  nextQuote.symbol = fxPair.canonicalPair;
 
   return nextQuote;
 }
@@ -2658,7 +2729,7 @@ function hoodlefinanceIsFxContext_(quote, context) {
   const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim() : "";
   const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
 
-  return !!hoodlefinanceParseFxTicker_(tickerInput) || /^[A-Z]{6}=X$/.test(resolvedSymbol);
+  return !!hoodlefinanceParseFxTicker_(tickerInput) || /^[A-Z]{6}(=X)?$/.test(resolvedSymbol);
 }
 
 function hoodlefinanceIsPseContext_(quote, context) {
@@ -2768,6 +2839,10 @@ function hoodlefinanceResolveSymbolAttribute_(quote, context, style) {
   }
 
   if (style === "yahoo") {
+    if (hoodlefinanceIsFxContext_(quote, context)) {
+      return resolvedSymbol.replace(/=X$/i, "") + "=X";
+    }
+
     return hoodlefinanceIsPseContext_(quote, context) ? resolvedSymbol + ".PS" : resolvedSymbol;
   }
 
@@ -3473,6 +3548,87 @@ function hoodlefinanceFetchText_(url) {
   }
 
   return response.getContentText();
+}
+
+function hoodlefinanceBuildGoogleFinanceQuoteUrl_(pairSlug) {
+  return "https://www.google.com/finance/quote/" + encodeURIComponent(pairSlug);
+}
+
+function hoodlefinanceExtractGoogleFinanceCryptoPairQuote_(html, fxPair) {
+  const tuple = hoodlefinanceExtractGoogleFinancePairTuple_(html, fxPair.googlePairSlug);
+  const marketData = Array.isArray(tuple[5]) ? tuple[5] : [];
+  const pairDetail = Array.isArray(tuple[15]) ? tuple[15] : [];
+  const currentPrice = Number(marketData[0]);
+  const changeAmount = Number(marketData[1]);
+  const previousClose = Number(tuple[7]);
+  const timestampList = Array.isArray(tuple[11]) ? tuple[11] : [];
+  const regularMarketTime = Number(timestampList[0]);
+  const baseCode = String(pairDetail[0] || fxPair.googlePairSlug.slice(0, 3)).trim().toUpperCase();
+  const quoteCode = String(pairDetail[1] || fxPair.googlePairSlug.slice(4, 7)).trim().toUpperCase();
+  const baseName = String(pairDetail[2] || baseCode).trim();
+  const quoteName = String(pairDetail[3] || quoteCode).trim();
+
+  if (!isFinite(currentPrice)) {
+    throw new Error('Google Finance did not expose a price for "' + fxPair.googlePairSlug + '".');
+  }
+
+  return {
+    currency: quoteCode,
+    exchangeDataDelayedBy: 0,
+    financialCurrency: quoteCode,
+    previousClose: isFinite(previousClose) ? previousClose : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
+    regularMarketPreviousClose: isFinite(previousClose) ? previousClose : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
+    regularMarketPrice: currentPrice,
+    regularMarketTime: isFinite(regularMarketTime) ? regularMarketTime : Math.floor(new Date().getTime() / 1000),
+    shortName: baseName + " (" + fxPair.pairDisplay.slice(0, 3) + " / " + fxPair.displayQuoteCode + ")",
+    symbol: baseCode + quoteCode,
+  };
+}
+
+function hoodlefinanceExtractGoogleFinancePairTuple_(html, pairSlug) {
+  const callbacks = String(html || "").match(/AF_initDataCallback\(([\s\S]*?)\);\s*<\/script>/gi) || [];
+  let i;
+  let dataMatch;
+  let data;
+  let tuple;
+
+  for (i = 0; i < callbacks.length; i += 1) {
+    dataMatch = callbacks[i].match(/data:(\[[\s\S]*?\]),\s*sideChannel:/i);
+    if (!dataMatch) {
+      continue;
+    }
+
+    data = JSON.parse(dataMatch[1]);
+    tuple = hoodlefinanceFindGoogleFinancePairTuple_(data, pairSlug);
+
+    if (tuple) {
+      return tuple;
+    }
+  }
+
+  throw new Error('Google Finance did not expose a quote tuple for "' + pairSlug + '".');
+}
+
+function hoodlefinanceFindGoogleFinancePairTuple_(value, pairSlug) {
+  let i;
+  let nested;
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  if (value.indexOf(pairSlug) >= 0) {
+    return value;
+  }
+
+  for (i = 0; i < value.length; i += 1) {
+    nested = hoodlefinanceFindGoogleFinancePairTuple_(value[i], pairSlug);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
 }
 
 function hoodlefinanceExtractIsin_(text) {

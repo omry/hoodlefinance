@@ -8,6 +8,12 @@ const { createUrlFetchApp } = require("./urlfetch-sync.js");
 function loadHoodlefinance() {
   const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
+  const scriptPropertiesStore = new Map();
+  const localCurrencyCodesPath = path.join(__dirname, "..", "data", "currency-codes.json");
+
+  scriptPropertiesStore.set("hoodlefinance.currencyCodes", fs.readFileSync(localCurrencyCodesPath, "utf8"));
+  scriptPropertiesStore.set("hoodlefinance.currencyCodesFetchedAtMs", String(Date.now()));
+
   const sandbox = {
     console,
     Date,
@@ -27,6 +33,21 @@ function loadHoodlefinance() {
           },
           put(key, value) {
             cacheStore.set(key, value);
+          },
+        };
+      },
+    },
+    PropertiesService: {
+      getScriptProperties() {
+        return {
+          deleteProperty(key) {
+            scriptPropertiesStore.delete(key);
+          },
+          getProperty(key) {
+            return scriptPropertiesStore.has(key) ? scriptPropertiesStore.get(key) : null;
+          },
+          setProperty(key, value) {
+            scriptPropertiesStore.set(key, String(value));
           },
         };
       },

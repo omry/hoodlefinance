@@ -147,6 +147,7 @@ const CURRENCY_CODES_JSON = JSON.stringify({
     publisher: "SIX Group",
     published: "2026-01-01",
   },
+  cryptoCodes: ["ADA", "BCH", "BNB", "BTC", "ETH", "LTC", "SOL", "XRP"],
   canonicalCodes: ["CHF", "EUR", "GBP", "ILS", "PHP", "USD"],
   aliases: {
     GBX: {
@@ -474,6 +475,44 @@ function createYahooChartResponse(symbol, meta) {
   });
 }
 
+function createGoogleFinancePairHtml(pairSlug, title, marketData, previousClose, timestamp, pairDetail) {
+  return [
+    "<html><body>",
+    "<script>",
+    "AF_initDataCallback({key: 'ds:17', hash: '3', data:[[[[",
+    JSON.stringify([
+      "/g/test-pair",
+      null,
+      title,
+      3,
+      null,
+      marketData,
+      null,
+      previousClose,
+      null,
+      null,
+      null,
+      [timestamp],
+      null,
+      0,
+      "/g/test-pair",
+      pairDetail,
+      null,
+      [timestamp],
+      null,
+      null,
+      null,
+      pairSlug,
+      null,
+      null,
+      2,
+    ]),
+    "]]]], sideChannel: {}});",
+    "</script>",
+    "</body></html>",
+  ].join("");
+}
+
 function createYahooIsinSearchResponse(symbol) {
   return createHttpResponse(200, {
     quotes: [
@@ -507,11 +546,21 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("TASE:KSMF59"), "KSM.F59.TA");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDPHP"), "USDPHP=X");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("BTCUSD"), "BTCUSD=X");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:ETHUSD"), "ETHUSD=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("GBpUSD"), "GBPUSD=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDILA"), "USDILS=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:USDUSD"), "USDUSD=X");
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("FOOUSD"), "FOOUSD");
+});
+
+test("4-character crypto tickers do not parse as currency pairs", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("DOGEUSD"), "DOGEUSD");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDTUSD"), "USDTUSD");
 });
 
 test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {
@@ -648,6 +697,93 @@ test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
   assert.equal(ctx.HOODLEFINANCE("GBPGBp", "currency"), "GBp");
   assert.equal(ctx.HOODLEFINANCE("GBpGBP", "price"), 0.01);
   assert.equal(ctx.HOODLEFINANCE("GBpGBP", "currency"), "GBP");
+});
+
+test("crypto currency pairs fetch rates from Google Finance quote pages", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://www.google.com/finance/quote/BTC-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "BTC-USD",
+          "Bitcoin (BTC / USD)",
+          [71785.7177, 572.0383, 0.8032702, 2, 2, 2],
+          71213.67940000001,
+          1773599520,
+          ["BTC", "USD", "Bitcoin", "United States Dollar", "/m/05p0rrx", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    if (url === "https://www.google.com/finance/quote/ETH-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "ETH-USD",
+          "Ether (ETH / USD)",
+          [2110.6139, 13.0525, 0.6222702, 2, 2, 2],
+          2097.5614,
+          1773599460,
+          ["ETH", "USD", "Ether", "United States Dollar", "/g/11ggdwqycn", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    if (url === "https://www.google.com/finance/quote/SOL-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "SOL-USD",
+          "Solana (SOL / USD)",
+          [88.589, 0.5186, 0.5888471, 4, 4, 2],
+          88.0704,
+          1773599460,
+          ["SOL", "USD", "Solana", "United States Dollar", "/g/11t6zrj6w7", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    if (url === "https://www.google.com/finance/quote/XRP-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "XRP-USD",
+          "XRP (XRP / USD)",
+          [1.42, 0.03, 2.15, 2, 2, 2],
+          1.39,
+          1773599400,
+          ["XRP", "USD", "XRP", "United States Dollar", "/g/11f3vb3vts", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD", "price"), 71785.7177);
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD", "currency"), "USD");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD", "name"), "BTCUSD");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD", "symbol"), "CURRENCY:BTCUSD");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD", "symbol:yahoo"), "BTCUSD=X");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD", "close"), 71213.67940000001);
+  assert.equal(ctx.HOODLEFINANCE("CURRENCY:ETHUSD", "price"), 2110.6139);
+  assert.equal(ctx.HOODLEFINANCE("SOLUSD", "price"), 88.589);
+  assert.equal(ctx.HOODLEFINANCE("XRPUSD", "price"), 1.42);
+  assert.deepEqual(seenUrls, [
+    "https://www.google.com/finance/quote/BTC-USD",
+    "https://www.google.com/finance/quote/ETH-USD",
+    "https://www.google.com/finance/quote/SOL-USD",
+    "https://www.google.com/finance/quote/XRP-USD",
+  ]);
 });
 
 test("scalar calls use the shared batch fetch pipeline", () => {
