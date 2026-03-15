@@ -2,8 +2,8 @@
 
 `HOODLEFINANCE` is a Google Apps Script custom function for Google Sheets. It is meant to cover practical current-data use cases where `GOOGLEFINANCE` is too limited, especially for non-U.S. listings, Yahoo-style symbols, and ISIN lookups.
 
-Current script version: `0.9.0`
-Current release notes: [`release-notes/v0.9.0.md`](./release-notes/v0.9.0.md)
+Current script version: `0.9.1`
+Current release notes: [`release-notes/v0.9.1.md`](./release-notes/v0.9.1.md)
 
 Release notes: [`release-notes/RELEASE_NOTES.md`](./release-notes/RELEASE_NOTES.md)
 
