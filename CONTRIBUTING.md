@@ -200,9 +200,5 @@ Maintainer release checklist:
 6. Merge the release PR, or if you used the local fallback, commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
 7. Confirm that `Release Publish` ran for the merged release PR and completed both jobs:
    the publish job and the demo-sync job.
-8. If the automatic publish path needs recovery, use the manual fallback `Release Publish` workflow or `node tools/release.js publish x.y.z`.
-9. If repo secrets are not configured yet or demo sync fails, fix the secrets and rerun the workflow, or use the local fallback `node tools/sync-demo-sheet.js`.
 
 If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
-
-If the change affects the public demo examples, refresh the demo sheet with `node tools/sync-demo-sheet.js`.
