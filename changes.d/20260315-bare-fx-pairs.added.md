@@ -1,0 +1,1 @@
+- Added support for bare FX pair inputs such as `EURUSD` and `USDPHP`, alongside the existing `CURRENCY:EURUSD` form.

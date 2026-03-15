@@ -1,9 +1,6 @@
-- move version to an explicit version file.
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
-- Add CI-backed demo-sheet sync/deploy support so public demo updates do not depend only on local maintainer auth setup
-- Consider adding a new parameter to control the output price currency and perform the FX conversion internally; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
-- Gather follow-up feedback on bare FX and alias-unit behavior before broadening the alias table beyond the currently observed upstream units
+- Revisit the PSE automation and fallback posture once `edge.pse.com.ph` is healthy again; the upstream site is currently returning Cloudflare 520s, which limits safe live validation and map-refresh testing.
+- Consider adding an optional output-currency parameter to `HOODLEFINANCE` so users can request converted prices directly without a second FX formula step; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
 - Consider adding an exchange-code attribute (for example resolved Yahoo exchange / normalized exchange code) to make ISIN-input resolution and debugging more transparent
 - Consider versioning `CacheService` keys with `HOODLEFINANCE_VERSION_` so cached results from older script versions do not leak across upgrades
-- Create a release-notes page; each version bump should record runtime behavior changes, and the “update available” version-check message should link to that page.
