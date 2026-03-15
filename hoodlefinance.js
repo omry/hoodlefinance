@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.2.5";
+const HOODLEFINANCE_VERSION_ = "0.9.0";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
