@@ -58,6 +58,10 @@ Refresh the GitHub-hosted PSE ISIN map data file:
 node tools/generate-pse-isin-map.js
 ```
 
+The same refresh also runs as a reviewable GitHub Actions workflow and via manual dispatch:
+
+- `Refresh PSE ISIN Map`
+
 Release tooling commands:
 
 ```sh
