@@ -1,1 +1,0 @@
-- Added the initial `HOODLEFINANCE` release with practical quote and identifier lookups for stocks, ETFs, currencies, and direct ISIN input across many markets that `GOOGLEFINANCE` does not support well.
