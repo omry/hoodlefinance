@@ -1126,7 +1126,7 @@ function hoodlefinanceFetchPseQuote_(ticker) {
   return hoodlefinanceResolveCachedJson_(cacheKey, 300, function () {
     const quote = (function () {
       listing = hoodlefinanceResolvePseListing_(symbol);
-      html = hoodlefinanceFetchText_(
+      html = hoodlefinanceFetchPseText_(
         HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
           "?cmpy_id=" +
           encodeURIComponent(listing.companyId) +
@@ -1507,7 +1507,9 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(
+        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
+      );
       continue;
     }
 
@@ -1558,7 +1560,9 @@ function hoodlefinancePrefetchYahooChartJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(
+        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
+      );
       continue;
     }
 
@@ -1627,13 +1631,24 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(
+        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
+      );
+      continue;
+    }
+
+    if (responses[i].response.getResponseCode() !== 200) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(
+        hoodlefinanceBuildPseUnavailableError_(
+          hoodlefinanceBuildPseHttpErrorMessage_(responses[i].response.getResponseCode())
+        )
+      );
       continue;
     }
 
     try {
       listing = hoodlefinanceResolvePseListingFromHtml_(
-        responses[i].response.getResponseCode() === 200 ? responses[i].response.getContentText() : "",
+        responses[i].response.getContentText(),
         responses[i].request.job.plan.symbol
       );
       hoodlefinanceCachePseListing_(listing);
@@ -1657,12 +1672,23 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(
+        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
+      );
+      continue;
+    }
+
+    if (responses[i].response.getResponseCode() !== 200) {
+      responses[i].request.job.error = hoodlefinanceErrorMessage_(
+        hoodlefinanceBuildPseUnavailableError_(
+          hoodlefinanceBuildPseHttpErrorMessage_(responses[i].response.getResponseCode())
+        )
+      );
       continue;
     }
 
     try {
-      html = responses[i].response.getResponseCode() === 200 ? responses[i].response.getContentText() : "";
+      html = responses[i].response.getContentText();
       quote = hoodlefinanceExtractPseQuote_(html, responses[i].request.job.plan.listing);
 
       if (!quote || !quote.symbol) {
@@ -1929,10 +1955,9 @@ function hoodlefinanceResolvePseListing_(symbol) {
     hoodlefinanceBuildPseListingCacheKey_(normalizedSymbol),
     HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_,
     function () {
-      return hoodlefinanceResolvePseListingFromHtml_(
-        hoodlefinanceFetchText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol)),
-        normalizedSymbol
-      );
+      const html = hoodlefinanceFetchPseText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol));
+
+      return hoodlefinanceResolvePseListingFromHtml_(html, normalizedSymbol);
     },
     hoodlefinanceParsePseListingPayload_,
     hoodlefinanceSerializePseListingPayload_
@@ -1970,6 +1995,44 @@ function hoodlefinanceExtractPseListings_(html) {
   }
 
   return listings;
+}
+
+function hoodlefinanceBuildPseUnavailableError_(detail) {
+  const normalizedDetail = detail == null ? "" : String(detail).trim();
+
+  return new Error(
+    "The PSE data source is currently unavailable" +
+      (normalizedDetail ? " (" + normalizedDetail + ")" : "") +
+      ". Please try again later."
+  );
+}
+
+function hoodlefinanceBuildPseHttpErrorMessage_(statusCode) {
+  const numericCode = Number(statusCode);
+
+  if (numericCode >= 520 && numericCode < 530) {
+    return "PSE upstream returned Cloudflare HTTP " + numericCode + ".";
+  }
+
+  return "PSE upstream returned HTTP " + statusCode + ".";
+}
+
+function hoodlefinanceFetchPseText_(url) {
+  let response;
+
+  try {
+    response = UrlFetchApp.fetch(url, hoodlefinanceBuildFetchOptions_());
+  } catch (error) {
+    throw hoodlefinanceBuildPseUnavailableError_(error && error.message ? error.message : error);
+  }
+
+  if (response.getResponseCode() !== 200) {
+    throw hoodlefinanceBuildPseUnavailableError_(
+      hoodlefinanceBuildPseHttpErrorMessage_(response.getResponseCode())
+    );
+  }
+
+  return response.getContentText();
 }
 
 function hoodlefinanceExtractLonListings_(html) {

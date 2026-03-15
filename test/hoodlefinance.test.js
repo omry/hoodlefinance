@@ -133,6 +133,8 @@ const PSE_STOCK_BDO_HTML = `
 </table>
 `;
 
+const PSE_HTTP_520_TEXT = "error code: 520";
+
 const PSE_ISIN_MAP_PROPERTIES = `
 # PSE ISIN to ticker map
 # updated_at=2026-03-13T18:34:56.295Z
@@ -2081,6 +2083,61 @@ test("fetches PSE quotes through the direct PSE path", () => {
   assert.equal(quote.regularMarketPrice, 1.63);
 });
 
+test("reports a clearer outage error when the PSE search page is unavailable", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(url, "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO");
+    return createHttpResponse(520, PSE_HTTP_520_TEXT);
+  };
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceFetchQuote_("PSE:BDO");
+    },
+    /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./
+  );
+});
+
+test("reports a clearer outage error for lower-level PSE fetch failures", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(url, "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO");
+    throw new Error("Could not resolve host: edge.pse.com.ph");
+  };
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceFetchQuote_("PSE:BDO");
+    },
+    /The PSE data source is currently unavailable \(Could not resolve host: edge\.pse\.com\.ph\)\. Please try again later\./
+  );
+});
+
+test("reports a clearer outage error when the PSE stock page is unavailable", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468") {
+      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceFetchQuote_("PSE:BDO");
+    },
+    /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./
+  );
+});
+
 test("shared batch PSE fetches reuse a warmed listing cache", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
@@ -2119,6 +2176,28 @@ test("shared batch PSE fetches reuse a warmed listing cache", () => {
         "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
       ],
     ])
+  );
+});
+
+test("shared batch PSE fetches surface a clearer outage error", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => ctx.UrlFetchApp.fetch(request.url));
+  };
+
+  assert.throws(
+    function () {
+      ctx.HOODLEFINANCE("PSE:BDO", "price");
+    },
+    /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./
   );
 });
 
