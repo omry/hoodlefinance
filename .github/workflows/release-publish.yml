@@ -1,0 +1,66 @@
+name: Release Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version in x.y.z format
+        required: true
+        type: string
+      ref:
+        description: Git ref or commit to publish
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-publish-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate release state
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          grep -q "^version=${VERSION}$" version.properties
+          grep -q "const HOODLEFINANCE_VERSION_ = \"${VERSION}\"" hoodlefinance.js
+          test -f "docs/release-notes/v${VERSION}.md"
+          grep -q "^## v${VERSION} - " docs/release-notes/RELEASE_NOTES.md
+
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists."
+            exit 1
+          fi
+
+      - name: Create and push release tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: docs/release-notes/v${{ inputs.version }}.md
+          generate_release_notes: false
+          name: v${{ inputs.version }}
+          tag_name: v${{ inputs.version }}

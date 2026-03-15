@@ -46,6 +46,21 @@ The sync command stores local-only tokens and temporary clasp files under:
 
 Those files are ignored by git and must not be committed.
 
+## GitHub Actions Automation
+
+The `Demo Sync On Release` workflow uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
+
+- `DEMO_SHEET_OAUTH_CLIENT_JSON` -> `.demo-sheet.local/oauth-client.json`
+- `DEMO_SHEET_OAUTH_TOKEN_JSON` -> `.demo-sheet.local/oauth-token.json`
+- `CLASP_RC_JSON` -> `${HOME}/.clasprc.json`
+
+Important distinction:
+
+- `CLASP_RC_JSON` should contain the authenticated global `clasp` login file from `~/.clasprc.json`
+- It should not contain the generated project file at `.demo-sheet.local/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
+
+That workflow is intended to run only from a published release, not from arbitrary pushes.
+
 ## Adding A Demo Maintainer
 
 The public demo is intended for a small trusted-maintainer group, not for arbitrary contributors.

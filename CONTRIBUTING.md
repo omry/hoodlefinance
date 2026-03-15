@@ -58,7 +58,7 @@ Refresh the GitHub-hosted PSE ISIN map data file:
 node tools/generate-pse-isin-map.js
 ```
 
-Prepare a release locally from tracked fragments:
+Release tooling commands:
 
 ```sh
 node tools/release.js check-fragments
@@ -159,6 +159,8 @@ If the user-facing behavior changed and the docs did not, the change is incomple
 
 User-facing releases are repo-managed.
 
+- Preferred path: use the GitHub Actions workflows under `.github/workflows/` to prepare the release PR, publish the release tag, and sync the demo after the release is published.
+- Local `node tools/release.js ...` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
 - Run `node tools/release.js check-fragments` to validate fragment filenames and contents without mutating anything.
 - Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
@@ -169,20 +171,32 @@ User-facing releases are repo-managed.
 - After local review, run `node tools/release.js publish x.y.z` to create the release tag, push the release commit/tag, and create the GitHub Release from the per-release notes file.
 - Do not edit GitHub Release notes independently from the repo-managed release files.
 
+Recommended GitHub Actions flow:
+
+1. Commit the release fragments on `main`.
+2. Run the `Release Prepare` workflow with the target version. It opens a generated release PR from `release/vX.Y.Z`.
+3. Review and merge that release PR.
+4. Run the `Release Publish` workflow with the same version and the merged release ref or `main`.
+5. After the GitHub Release is published, `Demo Sync On Release` updates the public demo sheet from the released tag.
+
+Demo-sync workflow secrets:
+
+- `DEMO_SHEET_OAUTH_CLIENT_JSON`
+- `DEMO_SHEET_OAUTH_TOKEN_JSON`
+- `CLASP_RC_JSON` from your authenticated global `~/.clasprc.json`
 Maintainer release checklist:
 
 1. Review pending fragments under [`changes.d/`](./changes.d/) and make sure each user-visible change is covered once, with end-user wording.
 2. Optional: run `node tools/release.js check-fragments`.
 3. Optional: run any extra smoke checks beyond the built-in `prepare` verification gate.
-4. Make sure the git worktree is clean, then run `node tools/release.js prepare x.y.z`.
+4. Run the `Release Prepare` workflow for `x.y.z`, or make sure the git worktree is clean and run `node tools/release.js prepare x.y.z`.
 5. Inspect the meaningful generated release artifacts:
    [version.properties](./version.properties),
    [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/),
    and [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md).
-6. Commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
-7. Run `node tools/release.js publish x.y.z`.
-8. Update the public demo sheet with `node tools/sync-demo-sheet.js` after the release so it runs the latest version. `publish` does not sync the demo sheet.
-   This step should go away once demo publishing is automated. That future automation should be tied to a new release, not to every push.
+6. Merge the release PR, or if you used the local fallback, commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
+7. Run the `Release Publish` workflow for `x.y.z`, or use the local fallback `node tools/release.js publish x.y.z`.
+8. Confirm that the `Demo Sync On Release` workflow ran for the published release. If repo secrets are not configured yet, run the local fallback `node tools/sync-demo-sheet.js`.
 
 If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
 

@@ -1,0 +1,50 @@
+name: Demo Sync On Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-sync-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  sync-demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out released tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Restore demo automation credentials
+        env:
+          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
+          DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
+        run: |
+          test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
+          test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
+          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+
+          mkdir -p .demo-sheet.local
+          printf '%s' "${DEMO_SHEET_OAUTH_CLIENT_JSON}" > .demo-sheet.local/oauth-client.json
+          printf '%s' "${DEMO_SHEET_OAUTH_TOKEN_JSON}" > .demo-sheet.local/oauth-token.json
+          printf '%s' "${CLASP_RC_JSON}" > "${HOME}/.clasprc.json"
+
+      - name: Sync public demo sheet
+        run: node tools/sync-demo-sheet.js
