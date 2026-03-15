@@ -707,6 +707,197 @@ test("direct Yahoo quote fetches reuse the cached JSON meta payload", () => {
   );
 });
 
+test("symbol and exchange attributes resolve U.S. quotes in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(
+      url,
+      "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d"
+    );
+    return createYahooChartResponse("GOOG", {
+      exchangeName: "NMS",
+      regularMarketPrice: 306.93,
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("GOOG", "symbol:yahoo"), "GOOG");
+  assert.equal(ctx.HOODLEFINANCE("GOOG", "symbol"), "NASDAQ:GOOG");
+  assert.equal(ctx.HOODLEFINANCE("GOOG", "exchange:yahoo"), "NMS");
+  assert.equal(ctx.HOODLEFINANCE("GOOG", "exchange"), "NASDAQ");
+});
+
+test("symbol and exchange attributes resolve non-U.S. quotes in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(
+      url,
+      "https://query1.finance.yahoo.com/v8/finance/chart/SJPA.L?interval=1d&range=1d"
+    );
+    return createYahooChartResponse("SJPA.L", {
+      regularMarketPrice: 45.67,
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("LON:SJPA", "symbol:yahoo"), "SJPA.L");
+  assert.equal(ctx.HOODLEFINANCE("SJPA.L", "symbol"), "LON:SJPA");
+  assert.equal(ctx.HOODLEFINANCE("SJPA.L", "exchange:yahoo"), "LON");
+  assert.equal(ctx.HOODLEFINANCE("SJPA.L", "exchange"), "LON");
+});
+
+test("symbol and exchange attributes preserve normalized TLV fund forms", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      assert.equal(
+        request.url,
+        "https://query1.finance.yahoo.com/v8/finance/chart/KSM.F59.TA?interval=1d&range=1d"
+      );
+      return createYahooChartResponse("KSM.F59.TA", {
+        regularMarketPrice: 405.6,
+      });
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "symbol:yahoo"), "KSM.F59.TA");
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "symbol"), "TLV:KSM.F59");
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "exchange:yahoo"), "TLV");
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59", "exchange"), "TLV");
+});
+
+test("symbol and exchange attributes resolve direct PSE quotes in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468") {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("PSE:BDO", "symbol:yahoo"), "BDO.PS");
+  assert.equal(ctx.HOODLEFINANCE("PSE:BDO", "symbol"), "PSE:BDO");
+  assert.equal(ctx.HOODLEFINANCE("PSE:BDO", "exchange:yahoo"), "PSE");
+  assert.equal(ctx.HOODLEFINANCE("PSE:BDO", "exchange"), "PSE");
+});
+
+test("symbol and exchange attributes resolve PSE ISIN input in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties") {
+      return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468") {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("PHY077751022", "symbol:yahoo"), "BDO.PS");
+  assert.equal(ctx.HOODLEFINANCE("PHY077751022", "symbol"), "PSE:BDO");
+  assert.equal(ctx.HOODLEFINANCE("PHY077751022", "exchange:yahoo"), "PSE");
+  assert.equal(ctx.HOODLEFINANCE("PHY077751022", "exchange"), "PSE");
+});
+
+test("symbol and exchange attributes format a resolved Yahoo ISIN lookup in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+  const fixtureIsin = "ZZ0000000001";
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=" + fixtureIsin + "&quotesCount=10&newsCount=0") {
+      return createYahooIsinSearchResponse("IJPA.L");
+    }
+
+    if (url === "https://query1.finance.yahoo.com/v8/finance/chart/IJPA.L?interval=1d&range=1d") {
+      return createYahooChartResponse("IJPA.L", {
+        regularMarketPrice: 45.67,
+      });
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "symbol:yahoo"), "IJPA.L");
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "symbol"), "LON:IJPA");
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "exchange:yahoo"), "LON");
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "exchange"), "LON");
+});
+
+test("symbol and exchange attributes resolve SGX quotes in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(
+      url,
+      "https://query1.finance.yahoo.com/v8/finance/chart/D05.SI?interval=1d&range=1d"
+    );
+    return createYahooChartResponse("D05.SI", {
+      regularMarketPrice: 35.12,
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("SGX:D05", "symbol:yahoo"), "D05.SI");
+  assert.equal(ctx.HOODLEFINANCE("D05.SI", "symbol"), "SGX:D05");
+  assert.equal(ctx.HOODLEFINANCE("D05.SI", "exchange:yahoo"), "SGX");
+  assert.equal(ctx.HOODLEFINANCE("D05.SI", "exchange"), "SGX");
+});
+
+test("symbol and exchange attributes resolve FX pairs in yahoo and google styles", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      assert.equal(
+        request.url,
+        "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d"
+      );
+      return createYahooChartResponse("EURUSD=X", {
+        currency: "USD",
+        regularMarketPrice: 1.08,
+      });
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("EURUSD", "symbol:yahoo"), "EURUSD=X");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD", "symbol"), "CURRENCY:EURUSD");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD", "exchange:yahoo"), "CURRENCY");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD", "exchange"), "CURRENCY");
+});
+
+test("symbol and exchange google-style outputs fail clearly when no mapping is available", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ symbol: "MYSTERY" }, "symbol", { tickerInput: "MYSTERY" }),
+    /No Google-style symbol is available for this instrument\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ symbol: "MYSTERY" }, "exchange", { tickerInput: "MYSTERY" }),
+    /No Google-style exchange is available for this instrument\./
+  );
+});
+
 test("versioned cache keys are namespaced by the current script version", () => {
   const ctx = loadHoodlefinance();
 

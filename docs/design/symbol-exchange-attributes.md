@@ -33,6 +33,8 @@ No `ticker` alias is planned.
 
 The new attributes should expose the resolved identifier in a requested style.
 
+For the initial user-facing contract, this should be described consistently as a best-effort conversion layer from the supported Google-style, Yahoo-style, and direct ISIN inputs into the requested symbol or exchange style.
+
 This is a best-effort system:
 
 - if the requested conversion can be derived confidently, return it

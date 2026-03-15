@@ -1,6 +1,7 @@
 - Periodically review and advance the cache support tracked in `docs/design/cache-matrix.md`
 - Revisit the PSE automation and fallback posture once `edge.pse.com.ph` is healthy again; the upstream site is currently returning Cloudflare 520s, which limits safe live validation and map-refresh testing.
 - Improve FX pair coverage so more supported currency pairs resolve successfully in practice, even when Yahoo prefers a different symbol shape than the current direct-pair normalization.
+- Hide source-specific internal attributes from user-facing unsupported-attribute error messages so formula guidance stays focused on public attribute names.
 - Consider adding an optional output-currency parameter to `HOODLEFINANCE` so users can request converted prices directly without a second FX formula step; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
 - Consider adding an exchange-code attribute (for example resolved Yahoo exchange / normalized exchange code) to make ISIN-input resolution and debugging more transparent

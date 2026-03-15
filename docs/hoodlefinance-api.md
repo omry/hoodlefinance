@@ -82,12 +82,11 @@ If any of those extra arguments are supplied, the function throws an error.
 
 Attribute matching is case-insensitive.
 
-Quote attributes:
+`GOOGLEFINANCE`-like quote attributes:
 
 - `price`
 - `name`
 - `currency`
-- `isin` (`GOOGLEFINANCE` does not provide this directly)
 - `tradetime`
 - `datadelay`
 - `volume`
@@ -97,6 +96,12 @@ Quote attributes:
 - `change`
 - `changepct`
 
+Additional `HOODLEFINANCE`-only attributes:
+
+- `symbol[:google|:yahoo]`: returns the resolved symbol in Google-style or Yahoo-style form
+- `exchange[:google|:yahoo]`: returns the resolved exchange code in Google-style or Yahoo-style form
+- `isin`: returns the resolved ISIN when an exchange-specific lookup path is available
+
 Behavior notes:
 
 - `price` is the default attribute.
@@ -105,6 +110,11 @@ Behavior notes:
 - `tradetime` returns a Sheets date-time value when the upstream source provides one.
 - `datadelay` is source-dependent and should be treated as advisory, not a guarantee of freshness.
 - `GBp` quotes are normalized to `GBP`, and `ILA` quotes are normalized to `ILS`. Money values are divided by `100` when that normalization applies.
+- `symbol` defaults to Google-style output such as `LON:SJPA` or `CURRENCY:EURUSD`.
+- `exchange` defaults to Google-style output such as `LON`, `NASDAQ`, `PSE`, or `CURRENCY`.
+- `symbol:yahoo` and `exchange:yahoo` expose the Yahoo-side resolved identifier when that conversion is available.
+- These identifier-style attributes are best-effort conversions from the supported Google-style, Yahoo-style, and direct ISIN inputs into the requested symbol or exchange style.
+- Some conversions are not available for every market or instrument, and unsupported conversions return a clear error instead of guessing.
 - If an upstream source does not provide a requested field, the formula returns an error for that lookup.
 
 Examples:
@@ -113,6 +123,8 @@ Examples:
 =HOODLEFINANCE("NASDAQ:GOOG")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
+=HOODLEFINANCE("IE00B4L5YX21", "symbol")
+=HOODLEFINANCE("IJPA.L", "exchange")
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("PSE:BDO", "pse:isin")
 ```

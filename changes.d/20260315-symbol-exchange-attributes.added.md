@@ -1,0 +1,1 @@
+- Added `symbol` and `exchange` attributes, with `:yahoo` and `:google` variants, so resolved identifiers can be returned directly for symbols, ISIN inputs, PSE instruments, and FX pairs.

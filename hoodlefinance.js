@@ -4,6 +4,15 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   "ariva:isin": function (quote, context) {
     return hoodlefinanceResolveArivaIsin_(quote, context);
   },
+  exchange: function (quote, context) {
+    return hoodlefinanceResolveExchangeAttribute_(quote, context, "google");
+  },
+  "exchange:google": function (quote, context) {
+    return hoodlefinanceResolveExchangeAttribute_(quote, context, "google");
+  },
+  "exchange:yahoo": function (quote, context) {
+    return hoodlefinanceResolveExchangeAttribute_(quote, context, "yahoo");
+  },
   "ibkr:isin": function (quote, context) {
     return hoodlefinanceResolveIbkrIsin_(quote, context);
   },
@@ -33,6 +42,15 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
   price: function (quote) {
     return hoodlefinanceNormalizeMoney_(quote, hoodlefinancePickPrice_(quote));
+  },
+  symbol: function (quote, context) {
+    return hoodlefinanceResolveSymbolAttribute_(quote, context, "google");
+  },
+  "symbol:google": function (quote, context) {
+    return hoodlefinanceResolveSymbolAttribute_(quote, context, "google");
+  },
+  "symbol:yahoo": function (quote, context) {
+    return hoodlefinanceResolveSymbolAttribute_(quote, context, "yahoo");
   },
   "pse:isin": function (quote, context) {
     return hoodlefinanceResolvePseIsin_(quote, context);
@@ -312,6 +330,26 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = {
   PNK: "OTCMKTS",
 };
 
+const HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_ = {
+  AMEX: "AMEX",
+  ARCA: "NYSEARCA",
+  ARCX: "NYSEARCA",
+  ASE: "AMEX",
+  BATS: "BATS",
+  CURRENCY: "CURRENCY",
+  NASDAQ: "NASDAQ",
+  NEO: "NEO",
+  NMS: "NASDAQ",
+  NYQ: "NYSE",
+  NYSE: "NYSE",
+  "NYSE ARCA": "NYSEARCA",
+  OQX: "OTCMKTS",
+  OTO: "OTCMKTS",
+  PCX: "NYSEARCA",
+  PNK: "OTCMKTS",
+  PSE: "PSE",
+};
+
 const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = {
   AMEX: "AMEX",
   ETR: "XETR",
@@ -351,6 +389,12 @@ const HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_ = {
  * - "price" (default)
  * - "name"
  * - "currency"
+ * - "symbol"
+ * - "symbol:yahoo"
+ * - "symbol:google"
+ * - "exchange"
+ * - "exchange:yahoo"
+ * - "exchange:google"
  * - "tradetime"
  * - "datadelay"
  * - "volume"
@@ -1919,7 +1963,10 @@ function hoodlefinanceResolvePrefetchedTickerJobs_(jobs) {
     jobs.orderedJobs[i].value = hoodlefinanceExtractAttribute_(
       jobs.orderedJobs[i].quote,
       jobs.orderedJobs[i].attribute,
-      { tickerInput: jobs.orderedJobs[i].tickerInput }
+      {
+        plan: jobs.orderedJobs[i].plan,
+        tickerInput: jobs.orderedJobs[i].tickerInput,
+      }
     );
     jobs.orderedJobs[i].valueResolved = true;
   }
@@ -2560,6 +2607,146 @@ function hoodlefinanceResolveTradingviewIsin_(quote, context) {
 
 function hoodlefinanceExtractQuoteSymbol_(quote) {
   return quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+}
+
+function hoodlefinanceExtractRawYahooExchangeFromQuote_(quote) {
+  const exchangeName = String(
+    (quote && (quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName)) || ""
+  ).trim().toUpperCase();
+
+  return exchangeName || "";
+}
+
+function hoodlefinanceIsFxContext_(quote, context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim() : "";
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+
+  return !!hoodlefinanceParseFxTicker_(tickerInput) || /^[A-Z]{6}=X$/.test(resolvedSymbol);
+}
+
+function hoodlefinanceIsPseContext_(quote, context) {
+  const plan = context && context.plan;
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim() : "";
+
+  return (
+    hoodlefinanceIsPseTicker_(tickerInput) ||
+    (plan && (plan.source === "pse" || hoodlefinanceIsPseTicker_(plan.yahooSymbol || "")))
+  );
+}
+
+function hoodlefinanceInferYahooExchangeIdentity_(quote, context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
+  const explicitExchange = hoodlefinanceExtractTickerExchange_(tickerInput);
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+  const rawMetaExchange = hoodlefinanceExtractRawYahooExchangeFromQuote_(quote);
+  const suffixExchange = hoodlefinanceExtractYahooExchangeFromSymbol_(resolvedSymbol || tickerInput);
+  const mappedMetaExchange = hoodlefinanceExtractYahooExchangeFromQuote_(quote);
+
+  if (hoodlefinanceIsFxContext_(quote, context)) {
+    return "CURRENCY";
+  }
+
+  if (hoodlefinanceIsPseContext_(quote, context)) {
+    return "PSE";
+  }
+
+  if (rawMetaExchange && HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[rawMetaExchange]) {
+    return rawMetaExchange;
+  }
+
+  if (suffixExchange) {
+    return suffixExchange;
+  }
+
+  if (explicitExchange) {
+    return explicitExchange;
+  }
+
+  if (mappedMetaExchange) {
+    return mappedMetaExchange;
+  }
+
+  return rawMetaExchange;
+}
+
+function hoodlefinanceResolveGoogleExchange_(quote, context) {
+  const yahooExchange = hoodlefinanceInferYahooExchangeIdentity_(quote, context);
+
+  if (!yahooExchange) {
+    return "";
+  }
+
+  if (HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[yahooExchange]) {
+    return HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[yahooExchange];
+  }
+
+  return yahooExchange === "TASE"
+    ? "TLV"
+    : (HOODLEFINANCE_PREFIXLESS_EXCHANGES_[yahooExchange] || HOODLEFINANCE_EXCHANGE_SUFFIXES_[yahooExchange])
+      ? yahooExchange
+      : "";
+}
+
+function hoodlefinanceRenderGoogleSymbol_(quote, context) {
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+  const googleExchange = hoodlefinanceResolveGoogleExchange_(quote, context);
+  const suffix = googleExchange && HOODLEFINANCE_EXCHANGE_SUFFIXES_[googleExchange];
+
+  if (hoodlefinanceIsFxContext_(quote, context)) {
+    if (!resolvedSymbol) {
+      throw new Error("No Google-style symbol is available for this instrument.");
+    }
+
+    return "CURRENCY:" + resolvedSymbol.replace(/=X$/i, "");
+  }
+
+  if (hoodlefinanceIsPseContext_(quote, context)) {
+    if (!resolvedSymbol) {
+      throw new Error("No Google-style symbol is available for this instrument.");
+    }
+
+    return "PSE:" + resolvedSymbol;
+  }
+
+  if (!googleExchange || !resolvedSymbol) {
+    throw new Error("No Google-style symbol is available for this instrument.");
+  }
+
+  if (HOODLEFINANCE_PREFIXLESS_EXCHANGES_[googleExchange]) {
+    return googleExchange + ":" + resolvedSymbol;
+  }
+
+  if (!suffix || resolvedSymbol.slice(-suffix.length).toUpperCase() !== suffix.toUpperCase()) {
+    throw new Error("No Google-style symbol is available for this instrument.");
+  }
+
+  return googleExchange + ":" + resolvedSymbol.slice(0, -suffix.length);
+}
+
+function hoodlefinanceResolveSymbolAttribute_(quote, context, style) {
+  const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
+
+  if (!resolvedSymbol) {
+    throw new Error("No resolved symbol is available for this instrument.");
+  }
+
+  if (style === "yahoo") {
+    return hoodlefinanceIsPseContext_(quote, context) ? resolvedSymbol + ".PS" : resolvedSymbol;
+  }
+
+  return hoodlefinanceRenderGoogleSymbol_(quote, context);
+}
+
+function hoodlefinanceResolveExchangeAttribute_(quote, context, style) {
+  const exchange = style === "yahoo"
+    ? hoodlefinanceInferYahooExchangeIdentity_(quote, context)
+    : hoodlefinanceResolveGoogleExchange_(quote, context);
+
+  if (!exchange) {
+    throw new Error("No " + (style === "yahoo" ? "Yahoo-style" : "Google-style") + " exchange is available for this instrument.");
+  }
+
+  return exchange;
 }
 
 function hoodlefinanceExtractTradingviewCode_(quote, context) {
