@@ -1226,6 +1226,8 @@ function hoodlefinanceShowUpdateDialog_(latestVersion) {
         latestVersion +
         ").\n\nRelease notes: " +
         releaseNotesUrl +
+        "\nFull history: " +
+        HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ +
         "\nUpdate link: " +
         HOODLEFINANCE_GITHUB_RAW_URL_,
       ui.ButtonSet.OK
@@ -1256,7 +1258,9 @@ function hoodlefinanceBuildUpdateDialogHtml_(latestVersion, releaseNotesUrl) {
       "Latest version: <code>" + hoodlefinanceEscapeHtml_(latestVersion) + "</code></p>" +
       "<p style=\"margin:0 0 16px 0;\">Read the release notes first, then open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
       "<p style=\"margin:0 0 16px 0;\">" +
-        '<a href="' + hoodlefinanceEscapeHtml_(releaseNotesUrl) + '" target="_blank">Open release notes</a>' +
+        '<a href="' + hoodlefinanceEscapeHtml_(releaseNotesUrl) + '" target="_blank">What\'s new in ' + hoodlefinanceEscapeHtml_(latestVersion) + "</a>" +
+        " | " +
+        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_) + '" target="_blank">Release history</a>' +
         " | " +
         '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) + '" target="_blank">Open raw source</a>' +
         " | " +
