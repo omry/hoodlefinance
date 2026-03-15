@@ -6,6 +6,8 @@ It uses multiple data sources to cover data, identifiers, and markets that `GOOG
 
 Current script version: `0.2.5`
 
+Release notes: [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md)
+
 There are also some limitations; see [Limits](#limits).
 
 ## Live Demo
@@ -50,6 +52,7 @@ Then try a few representative lookups:
 ```
 
 The script also adds a `Hoodlefinance` menu in Sheets for update-related actions.
+To update the script, review the release notes, then replace the current code in Apps Script with the latest version.
 
 ## Supported Inputs
 

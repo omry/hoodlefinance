@@ -4,6 +4,8 @@
 
 Current script version: `0.2.5`
 
+Release notes: [`release-notes/RELEASE_NOTES.md`](./release-notes/RELEASE_NOTES.md)
+
 For sampled live coverage by exchange, see [support-matrix.md](../support-matrix.md).
 
 ## What It Is Good At
@@ -268,7 +270,7 @@ When the script is installed in a bound spreadsheet, it adds a `Hoodlefinance` m
 - `Show installed version`
 - `Suppress automatic update checks` or `Enable automatic update checks`
 
-Automatic update checks run at most once per day per user when the spreadsheet opens. If a newer version is found, the script shows a dialog with links to the raw source, README, and repository.
+Automatic update checks run at most once per day per user when the spreadsheet opens. If a newer version is found, the script shows a dialog with links to the release notes, raw source, README, and repository.
 
 Suppressing update checks only disables the automatic once-per-day check. Manual checks from the menu still work.
 

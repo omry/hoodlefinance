@@ -12,6 +12,8 @@ The codebase is intentionally simple:
 - [`support-matrix.md`](./support-matrix.md): generated exchange coverage matrix
 - [`docs/demo-sheet/`](./docs/demo-sheet/): tracked demo sheet config and TSV tab data
 - [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md): detailed user-facing reference
+- [`version.properties`](./version.properties): release metadata source of truth
+- [`docs/release-notes/`](./docs/release-notes/): full-history release notes, template, and per-release notes
 
 ## License
 
@@ -25,6 +27,7 @@ Run the unit tests:
 
 ```sh
 node --test test/hoodlefinance.test.js
+node --test test/release.test.js
 node --test test/sync-demo-sheet.test.js
 ```
 
@@ -33,6 +36,8 @@ Run syntax checks:
 ```sh
 node --check hoodlefinance.js
 node --check test/hoodlefinance.test.js
+node --check tools/release.js
+node --check test/release.test.js
 node --check tools/sync-demo-sheet.js
 node --check test/sync-demo-sheet.test.js
 ```
@@ -52,6 +57,21 @@ Refresh the GitHub-hosted PSE ISIN map data file:
 ```sh
 node tools/generate-pse-isin-map.js
 ```
+
+Prepare a release locally from tracked fragments:
+
+```sh
+node tools/release.js check-fragments
+node tools/release.js prepare 0.2.6
+node tools/release.js publish 0.2.6
+```
+
+`prepare` automatically runs the release verification gate:
+
+- `node --test test/hoodlefinance.test.js`
+- `node --test test/release.test.js`
+- `node --test test/sync-demo-sheet.test.js`
+- `node tools/sync-demo-sheet.js --dry-run`
 
 Run the live benchmark for scalar-vs-range performance:
 
@@ -101,8 +121,10 @@ Changes should usually include:
 1. Unit tests for any new parsing, routing, or normalization logic.
 2. Documentation updates in [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md) and, when appropriate, [`README.md`](./README.md).
 3. Live CLI checks for any source-backed change, especially new ISIN resolvers.
-4. A version bump in `HOODLEFINANCE_VERSION_` for substantive user-facing changes.
+4. A release fragment under [`changes.d/`](./changes.d/) for substantive user-facing changes.
 5. Demo-sheet TSV and config updates when the public demo should reflect the new behavior.
+
+During normal feature work, do not manually bump versions. Keep fragments current, then let the release tool propagate the version metadata into the runtime and docs when cutting a release.
 
 If a change adds a new source or exchange path, include both:
 
@@ -132,6 +154,35 @@ That includes:
 - examples
 
 If the user-facing behavior changed and the docs did not, the change is incomplete.
+
+## Release Workflow
+
+User-facing releases are repo-managed.
+
+- Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
+- Run `node tools/release.js check-fragments` to validate fragment filenames and contents without mutating anything.
+- Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
+- `prepare` automatically runs the release verification suite and aborts without consuming fragments if verification fails.
+- `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.
+- The per-release file is rendered through the tracked template at [`docs/release-notes/TEMPLATE.md`](./docs/release-notes/TEMPLATE.md), similar in spirit to a towncrier-style release template.
+- `prepare` does not create a git commit. Review and commit the release changes before publishing.
+- After local review, run `node tools/release.js publish x.y.z` to create the release tag, push the release commit/tag, and create the GitHub Release from the per-release notes file.
+- Do not edit GitHub Release notes independently from the repo-managed release files.
+
+Maintainer release checklist:
+
+1. Review pending fragments under [`changes.d/`](./changes.d/) and make sure each user-visible change is covered once, with end-user wording.
+2. Optional: run `node tools/release.js check-fragments`.
+3. Optional: run any extra smoke checks beyond the built-in `prepare` verification gate.
+4. Make sure the git worktree is clean, then run `node tools/release.js prepare x.y.z`.
+5. Inspect the meaningful generated release artifacts:
+   [version.properties](./version.properties),
+   [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/),
+   and [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md).
+6. Commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
+7. Run `node tools/release.js publish x.y.z`.
+8. Update the public demo sheet with `node tools/sync-demo-sheet.js` after the release so it runs the latest version. `publish` does not sync the demo sheet.
+   This step should go away once demo publishing is automated. That future automation should be tied to a new release, not to every push.
 
 If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
 

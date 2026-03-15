@@ -65,6 +65,8 @@ const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_RAW_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
+const HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/RELEASE_NOTES.md";
+const HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/";
 const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
 const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_FALLBACK_URL_ = "https://github.com/omry/hoodlefinance/raw/main/data/pse-isin-map.properties";
 const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
@@ -997,6 +999,7 @@ function hoodlefinanceGetPseIsinMap_() {
 
 function hoodlefinanceShowUpdateDialog_(latestVersion) {
   const ui = hoodlefinanceGetUi_();
+  const releaseNotesUrl = hoodlefinanceBuildGitHubReleaseNotesUrl_(latestVersion);
   let output;
 
   if (!ui) {
@@ -1006,27 +1009,42 @@ function hoodlefinanceShowUpdateDialog_(latestVersion) {
   if (typeof HtmlService === "undefined" || !HtmlService || !HtmlService.createHtmlOutput) {
     ui.alert(
       "HOODLEFINANCE updates",
-      "A newer version is available (" + latestVersion + ").\n\nUpdate link: " + HOODLEFINANCE_GITHUB_RAW_URL_,
+      "A newer version is available (" +
+        latestVersion +
+        ").\n\nRelease notes: " +
+        releaseNotesUrl +
+        "\nUpdate link: " +
+        HOODLEFINANCE_GITHUB_RAW_URL_,
       ui.ButtonSet.OK
     );
     return;
   }
 
-  output = HtmlService.createHtmlOutput(hoodlefinanceBuildUpdateDialogHtml_(latestVersion))
+  output = HtmlService.createHtmlOutput(hoodlefinanceBuildUpdateDialogHtml_(latestVersion, releaseNotesUrl))
     .setWidth(520)
     .setHeight(280);
 
   ui.showModalDialog(output, "HOODLEFINANCE update available");
 }
 
-function hoodlefinanceBuildUpdateDialogHtml_(latestVersion) {
+function hoodlefinanceBuildGitHubReleaseNotesUrl_(version) {
+  if (/^\d+\.\d+\.\d+$/.test(String(version || ""))) {
+    return HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ + "v" + String(version) + ".md";
+  }
+
+  return HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_;
+}
+
+function hoodlefinanceBuildUpdateDialogHtml_(latestVersion, releaseNotesUrl) {
   return (
     '<div style="font-family:Arial,sans-serif;padding:16px;line-height:1.5;">' +
       "<h2 style=\"margin:0 0 12px 0;font-size:18px;\">HOODLEFINANCE update available</h2>" +
       "<p style=\"margin:0 0 12px 0;\">Installed version: <code>" + hoodlefinanceEscapeHtml_(HOODLEFINANCE_VERSION_) + "</code><br>" +
       "Latest version: <code>" + hoodlefinanceEscapeHtml_(latestVersion) + "</code></p>" +
-      "<p style=\"margin:0 0 16px 0;\">Open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
+      "<p style=\"margin:0 0 16px 0;\">Read the release notes first, then open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
       "<p style=\"margin:0 0 16px 0;\">" +
+        '<a href="' + hoodlefinanceEscapeHtml_(releaseNotesUrl) + '" target="_blank">Open release notes</a>' +
+        " | " +
         '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) + '" target="_blank">Open raw source</a>' +
         " | " +
         '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_README_URL_) + '" target="_blank">Open README</a>' +

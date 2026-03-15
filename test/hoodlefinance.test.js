@@ -1057,7 +1057,10 @@ test("manual update checks show a dialog when a newer version exists", () => {
   );
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js"]);
   assert.equal(ctx.__uiState.dialogs.length, 1);
+  assert.match(ctx.__uiState.dialogs[0].output.content, /Open release notes/);
+  assert.match(ctx.__uiState.dialogs[0].output.content, /docs\/release-notes\/v9\.9\.9\.md/);
   assert.match(ctx.__uiState.dialogs[0].output.content, /Open raw source/);
+  assert.match(ctx.__uiState.dialogs[0].output.content, /Read the release notes first/);
 });
 
 test("manual update checks bypass stale cached latest-version info", () => {
