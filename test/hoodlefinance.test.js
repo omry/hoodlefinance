@@ -989,8 +989,11 @@ test("shared batch fetches are chunked in groups of fifty", () => {
 
 test("exposes a script version custom function", () => {
   const ctx = loadHoodlefinance();
+  const sourceText = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
+  const versionMatch = sourceText.match(/const HOODLEFINANCE_VERSION_ = "([^"]+)"/);
 
-  assert.equal(ctx.HOODLEFINANCE_VERSION(), "0.2.5");
+  assert.ok(versionMatch);
+  assert.equal(ctx.HOODLEFINANCE_VERSION(), versionMatch[1]);
 });
 
 test("compares semantic-style versions correctly", () => {
