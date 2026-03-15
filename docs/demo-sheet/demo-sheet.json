@@ -133,16 +133,175 @@
     {
       "formatting": {
         "autoResizeColumns": false,
+        "columnBackgrounds": [
+          {
+            "column": 1,
+            "startRow": 3,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.97,
+              "blue": 0.9
+            }
+          },
+          {
+            "column": 1,
+            "startRow": 11,
+            "endRow": 16,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.97,
+              "blue": 0.9
+            }
+          },
+          {
+            "column": 1,
+            "startRow": 19,
+            "endRow": 21,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.97,
+              "blue": 0.9
+            }
+          },
+          {
+            "column": 2,
+            "startRow": 3,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 2,
+            "startRow": 11,
+            "endRow": 16,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 2,
+            "startRow": 19,
+            "endRow": 21,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 3,
+            "startRow": 3,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 3,
+            "startRow": 11,
+            "endRow": 16,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 3,
+            "startRow": 19,
+            "endRow": 21,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 4,
+            "startRow": 3,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 4,
+            "startRow": 11,
+            "endRow": 16,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 4,
+            "startRow": 19,
+            "endRow": 21,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 5,
+            "startRow": 3,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 5,
+            "startRow": 11,
+            "endRow": 16,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 5,
+            "startRow": 19,
+            "endRow": 21,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          }
+        ],
         "columnPixelSizes": [
           220,
-          340,
-          200
+          300,
+          180,
+          240,
+          180
         ],
         "freezeRows": 1,
-        "formulaRows": [],
+        "formulaRows": [
+          2,
+          10,
+          18
+        ],
         "headerRows": [
           1,
-          9
+          9,
+          17
         ]
       },
       "title": "Ticker Forms",

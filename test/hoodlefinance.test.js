@@ -1729,6 +1729,32 @@ test("isin dispatches to the implemented exchange-specific source", () => {
   });
 });
 
+test("isin returns the direct ISIN input without redispatching to a source-specific resolver", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function () {
+    throw new Error("should not redispatch direct ISIN input");
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "IL0006625771" }),
+    "IL0006625771"
+  );
+});
+
+test("isin returns the direct ISIN input for ISIN:-prefixed identifiers", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.hoodlefinanceResolveTradingviewIsin_ = function () {
+    throw new Error("should not redispatch direct ISIN input");
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "ISIN:US02079K1079" }),
+    "US02079K1079"
+  );
+});
+
 test("extracts exact LON listings from search results", () => {
   const ctx = loadHoodlefinance();
 

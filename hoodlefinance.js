@@ -2488,8 +2488,13 @@ function hoodlefinanceResolveIbkrIsin_(quote, context) {
 }
 
 function hoodlefinanceResolveDefaultIsin_(quote, context) {
+  const directIsinInput = hoodlefinanceExtractDirectIsinInput_(context);
   const exchange = hoodlefinanceInferIsinExchange_(quote, context);
   const attribute = exchange ? HOODLEFINANCE_ISIN_ATTRIBUTE_BY_EXCHANGE_[exchange] || "" : "";
+
+  if (directIsinInput) {
+    return directIsinInput;
+  }
 
   if (!exchange) {
     throw new Error("Could not deduce an exchange for isin lookup. Use an explicit source attribute such as \"ariva:isin\", \"lon:isin\", \"pse:isin\", \"tradingview:isin\", or \"ibkr:isin\".");
@@ -2500,6 +2505,13 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
   }
 
   return hoodlefinanceExtractAttribute_(quote, attribute, context || {});
+}
+
+function hoodlefinanceExtractDirectIsinInput_(context) {
+  const tickerInput = context && context.tickerInput ? String(context.tickerInput).trim().toUpperCase() : "";
+  const isin = tickerInput.indexOf("ISIN:") === 0 ? tickerInput.slice(5).trim() : tickerInput;
+
+  return hoodlefinanceLooksLikeIsin_(isin) ? isin : "";
 }
 
 function hoodlefinanceResolveArivaIsin_(quote, context) {
