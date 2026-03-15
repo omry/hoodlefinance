@@ -11,6 +11,10 @@ Repo-specific standing directives for coding agents working in this project.
 
 ## Release process
 
+- Implementing a fix is not the same as committing, pushing, merging, publishing, or otherwise sending changes outside the local working tree.
+- Unless the user explicitly asks for that outward action after review, stop after local implementation, verification, and a summary of the proposed changes.
+- Pushing is always a separate approval checkpoint. Do not infer push approval from phrases such as "do that", "fix it", or "implement it".
+- If a change alters release automation, workflow triggers, deployment behavior, or other externally visible project mechanics, require an explicit user review checkpoint before any commit or push.
 - `version.properties` is the source of truth for the current release version metadata.
 - Per-release note files under `docs/release-notes/` are the source of truth for release content.
 - `docs/release-notes/RELEASE_NOTES.md` is the generated full-history release notes file derived from the per-release files.
