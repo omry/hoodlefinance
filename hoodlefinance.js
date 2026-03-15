@@ -644,7 +644,9 @@ function hoodlefinanceCompareVersions_(left, right) {
 function hoodlefinanceFetchLatestVersionInfo_(options) {
   const cache = CacheService.getScriptCache();
   const normalizedOptions = options || {};
-  const cached = normalizedOptions.useCache === false ? null : cache.get(HOODLEFINANCE_UPDATE_CACHE_KEY_);
+  const cached = normalizedOptions.useCache === false
+    ? null
+    : cache.get(hoodlefinanceVersionCacheKey_(HOODLEFINANCE_UPDATE_CACHE_KEY_));
   let response;
   let version;
 
@@ -684,7 +686,7 @@ function hoodlefinanceFetchLatestVersionInfo_(options) {
   }
 
   cache.put(
-    HOODLEFINANCE_UPDATE_CACHE_KEY_,
+    hoodlefinanceVersionCacheKey_(HOODLEFINANCE_UPDATE_CACHE_KEY_),
     JSON.stringify({ version: version }),
     HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
   );
@@ -805,16 +807,33 @@ function hoodlefinanceParsePseIsinMapPayload_(payloadText) {
   return payload;
 }
 
+function hoodlefinanceVersionCacheKey_(cacheKey) {
+  const key = String(cacheKey || "");
+
+  if (!key) {
+    return "";
+  }
+
+  if (key !== key.trim() || key.indexOf("hoodlefinance:") !== 0 || key.indexOf("hoodlefinance:v") === 0) {
+    throw new Error('Cache key must be a normalized unversioned "hoodlefinance:" key.');
+  }
+
+  return "hoodlefinance:v" + HOODLEFINANCE_VERSION_ + key.slice("hoodlefinance".length);
+}
+
 function hoodlefinanceGetCachedString_(cacheKey) {
-  return cacheKey ? (CacheService.getScriptCache().get(cacheKey) || "") : "";
+  const versionedCacheKey = hoodlefinanceVersionCacheKey_(cacheKey);
+  return versionedCacheKey ? (CacheService.getScriptCache().get(versionedCacheKey) || "") : "";
 }
 
 function hoodlefinancePutCachedString_(cacheKey, value, ttlSeconds) {
-  if (!cacheKey || !value) {
+  const versionedCacheKey = hoodlefinanceVersionCacheKey_(cacheKey);
+
+  if (!versionedCacheKey || !value) {
     return value;
   }
 
-  CacheService.getScriptCache().put(cacheKey, value, ttlSeconds);
+  CacheService.getScriptCache().put(versionedCacheKey, value, ttlSeconds);
   return value;
 }
 
@@ -984,7 +1003,7 @@ function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
 function hoodlefinanceGetPseIsinMap_() {
   const cache = CacheService.getScriptCache();
   const properties = hoodlefinanceGetPersistentProperties_();
-  const cached = cache.get(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_);
+  const cached = cache.get(hoodlefinanceVersionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_));
   const nowMs = new Date().getTime();
   let storedPayloadText;
   let storedPayload;
@@ -1011,7 +1030,7 @@ function hoodlefinanceGetPseIsinMap_() {
         nowMs - Number(storedPayload.fetchedAtMs) <= HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_
       ) {
         cache.put(
-          HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_,
+          hoodlefinanceVersionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
           storedPayload.text,
           HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
         );
@@ -1032,7 +1051,7 @@ function hoodlefinanceGetPseIsinMap_() {
     });
 
     cache.put(
-      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_,
+      hoodlefinanceVersionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
       downloadResult.text,
       HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
     );
@@ -1047,7 +1066,7 @@ function hoodlefinanceGetPseIsinMap_() {
 
   if (storedPayload && storedPayload.text) {
     cache.put(
-      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_,
+      hoodlefinanceVersionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
       storedPayload.text,
       HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
     );
@@ -1061,7 +1080,7 @@ function hoodlefinanceGetPseIsinMap_() {
 function hoodlefinanceGetCurrencyCodeData_() {
   const cache = CacheService.getScriptCache();
   const properties = hoodlefinanceGetPersistentProperties_();
-  const cached = cache.get(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_);
+  const cached = cache.get(hoodlefinanceVersionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_));
   const nowMs = new Date().getTime();
   let storedPayloadText;
   let storedFetchedAtMs;
@@ -1083,7 +1102,7 @@ function hoodlefinanceGetCurrencyCodeData_() {
     try {
       if (isFinite(storedFetchedAtMs) && nowMs - storedFetchedAtMs <= HOODLEFINANCE_CURRENCY_CODES_REFRESH_INTERVAL_MS_) {
         cache.put(
-          HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_,
+          hoodlefinanceVersionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
           storedPayloadText,
           HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
         );
@@ -1099,7 +1118,7 @@ function hoodlefinanceGetCurrencyCodeData_() {
 
   if (downloadResult.text) {
     cache.put(
-      HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_,
+      hoodlefinanceVersionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
       downloadResult.text,
       HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
     );
@@ -1115,7 +1134,7 @@ function hoodlefinanceGetCurrencyCodeData_() {
 
   if (storedPayloadText) {
     cache.put(
-      HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_,
+      hoodlefinanceVersionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
       storedPayloadText,
       HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
     );

@@ -378,6 +378,7 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
     Error,
     Map,
     __uiState: uiState,
+    __scriptCacheStore: cacheStore,
     __scriptPropertiesStore: scriptPropertiesStore,
     __userPropertiesStore: userPropertiesStore,
     CacheService: {
@@ -614,6 +615,10 @@ test("downloads and caches currency code data from GitHub", () => {
     ctx.__scriptPropertiesStore.get("hoodlefinance.currencyCodesFetchedAtMs") != null,
     true
   );
+  assert.equal(
+    ctx.__scriptCacheStore.has("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":currencyCodes"),
+    true
+  );
 });
 
 test("reuses the cached GitHub currency code data without downloading it again while fresh", () => {
@@ -696,6 +701,32 @@ test("direct Yahoo quote fetches reuse the cached JSON meta payload", () => {
   assert.deepEqual(seenUrls, [
     "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
   ]);
+  assert.equal(
+    ctx.__scriptCacheStore.has("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":GOOG"),
+    true
+  );
+});
+
+test("versioned cache keys are namespaced by the current script version", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.hoodlefinancePutCachedString_("hoodlefinance:test:key", "value", 60);
+
+  assert.equal(ctx.__scriptCacheStore.has("hoodlefinance:test:key"), false);
+  assert.equal(
+    ctx.__scriptCacheStore.get("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":test:key"),
+    "value"
+  );
+  assert.equal(ctx.hoodlefinanceGetCachedString_("hoodlefinance:test:key"), "value");
+});
+
+test("versioned cache key helper rejects already-versioned cache keys", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    () => ctx.hoodlefinanceVersionCacheKey_("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":test:key"),
+    /Cache key must be a normalized unversioned "hoodlefinance:" key\./
+  );
 });
 
 test("TLV fund aliases normalize to dotted Yahoo symbols in quote lookups", () => {
