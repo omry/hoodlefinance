@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.9.1 - 2026-03-15
+
+### Fixed
+
+- Improved release automation reliability so reviewed release PRs can publish and sync the public demo more consistently.
+
 ## v0.9.0 - 2026-03-15
 
 ### Added
