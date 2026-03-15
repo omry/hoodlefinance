@@ -12,33 +12,68 @@ on:
         required: false
         default: main
         type: string
+  pull_request_target:
+    types:
+      - closed
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
-  group: release-publish-${{ inputs.version }}
+  group: release-publish-${{ github.event.pull_request.head.ref || inputs.version || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.release_context.outputs.tag_name }}
+      version: ${{ steps.release_context.outputs.version }}
 
     steps:
       - name: Check out release ref
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
 
       - name: Configure git author
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Resolve release context
+        id: release_context
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          VERSION="$(sed -n 's/^version=//p' version.properties | head -n 1)"
+          test -n "${VERSION}" || { echo "version.properties is missing version."; exit 1; }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            test "${INPUT_VERSION}" = "${VERSION}" || {
+              echo "version.properties must point to ${INPUT_VERSION}, found ${VERSION}."
+              exit 1
+            }
+          else
+            test "${RELEASE_BRANCH}" = "release/v${VERSION}" || {
+              echo "Merged branch ${RELEASE_BRANCH} does not match release/v${VERSION}."
+              exit 1
+            }
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag_name=v${VERSION}" >> "${GITHUB_OUTPUT}"
+
       - name: Validate release state
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.release_context.outputs.version }}
         run: |
           grep -q "^version=${VERSION}$" version.properties
           grep -q "const HOODLEFINANCE_VERSION_ = \"${VERSION}\"" hoodlefinance.js
@@ -52,15 +87,53 @@ jobs:
 
       - name: Create and push release tag
         env:
-          VERSION: ${{ inputs.version }}
+          TAG_NAME: ${{ steps.release_context.outputs.tag_name }}
         run: |
-          git tag -a "v${VERSION}" -m "Release v${VERSION}"
-          git push origin "v${VERSION}"
+          git tag -a "${TAG_NAME}" -m "Release ${TAG_NAME}"
+          git push origin "${TAG_NAME}"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: docs/release-notes/v${{ inputs.version }}.md
+          body_path: docs/release-notes/v${{ steps.release_context.outputs.version }}.md
           generate_release_notes: false
-          name: v${{ inputs.version }}
-          tag_name: v${{ inputs.version }}
+          name: ${{ steps.release_context.outputs.tag_name }}
+          tag_name: ${{ steps.release_context.outputs.tag_name }}
+
+  sync-demo:
+    needs: publish
+    if: needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out released tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.publish.outputs.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Restore demo automation credentials
+        env:
+          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
+          DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
+        run: |
+          test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
+          test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
+          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+
+          mkdir -p .demo-sheet.local
+          printf '%s' "${DEMO_SHEET_OAUTH_CLIENT_JSON}" > .demo-sheet.local/oauth-client.json
+          printf '%s' "${DEMO_SHEET_OAUTH_TOKEN_JSON}" > .demo-sheet.local/oauth-token.json
+          printf '%s' "${CLASP_RC_JSON}" > "${HOME}/.clasprc.json"
+
+      - name: Sync public demo sheet
+        run: node tools/sync-demo-sheet.js

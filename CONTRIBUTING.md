@@ -159,7 +159,7 @@ If the user-facing behavior changed and the docs did not, the change is incomple
 
 User-facing releases are repo-managed.
 
-- Preferred path: use the GitHub Actions workflows under `.github/workflows/` to prepare the release PR, publish the release tag, and sync the demo after the release is published.
+- Preferred path: use the GitHub Actions workflows under `.github/workflows/` to prepare the release PR and let the merged release PR trigger publish plus demo sync automatically.
 - Local `node tools/release.js ...` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
 - Run `node tools/release.js check-fragments` to validate fragment filenames and contents without mutating anything.
@@ -175,9 +175,9 @@ Recommended GitHub Actions flow:
 
 1. Commit the release fragments on `main`.
 2. Run the `Release Prepare` workflow with the target version. It opens a generated release PR from `release/vX.Y.Z`.
-3. Review and merge that release PR.
-4. Run the `Release Publish` workflow with the same version and the merged release ref or `main`.
-5. After the GitHub Release is published, `Demo Sync On Release` updates the public demo sheet from the released tag.
+3. Review and merge that release PR. Merging is the maintainer approval gate.
+4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag.
+5. Use the manual `Release Publish` workflow only as a fallback if the automatic merge-triggered publish path needs to be rerun.
 
 Demo-sync workflow secrets:
 
@@ -195,8 +195,8 @@ Maintainer release checklist:
    [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/),
    and [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md).
 6. Merge the release PR, or if you used the local fallback, commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
-7. Run the `Release Publish` workflow for `x.y.z`, or use the local fallback `node tools/release.js publish x.y.z`.
-8. Confirm that the `Demo Sync On Release` workflow ran for the published release. If repo secrets are not configured yet, run the local fallback `node tools/sync-demo-sheet.js`.
+7. Confirm that `Release Publish` ran for the merged release PR and completed both the tag/release and demo-sync jobs. If needed, use the manual fallback `Release Publish` workflow or `node tools/release.js publish x.y.z`.
+8. If repo secrets are not configured yet or demo sync fails, run the local fallback `node tools/sync-demo-sheet.js`.
 
 If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
 

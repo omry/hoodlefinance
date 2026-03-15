@@ -48,7 +48,7 @@ Those files are ignored by git and must not be committed.
 
 ## GitHub Actions Automation
 
-The `Demo Sync On Release` workflow uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
+The `Release Publish` workflow syncs the demo as a follow-up job after a real release is published. It uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON` -> `.demo-sheet.local/oauth-client.json`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON` -> `.demo-sheet.local/oauth-token.json`
