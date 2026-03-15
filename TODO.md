@@ -1,4 +1,4 @@
-- Improve FX pair coverage so more supported currency pairs resolve successfully in practice, even when Yahoo prefers a different symbol shape than the current direct-pair normalization.
+- Improve FX pair coverage for supported 3-character currency and crypto codes when Google Finance does not expose a direct quote page for the requested cross.
 - Reject `isin` for currency pairs with a direct user-facing error, and avoid exposing source-specific internal resolver names when that happens.
 - Review user-facing error messages across the formula surface and remove references to internal source names or resolver-specific implementation details.
 - Investigate 4-character crypto symbols such as `DOGE` and `USDT`; the current FX parser only recognizes 3-character codes.
