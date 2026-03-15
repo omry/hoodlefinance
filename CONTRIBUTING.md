@@ -168,7 +168,7 @@ User-facing releases are repo-managed.
 - `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.
 - The per-release file is rendered through the tracked template at [`docs/release-notes/TEMPLATE.md`](./docs/release-notes/TEMPLATE.md), similar in spirit to a towncrier-style release template.
 - `prepare` does not create a git commit. Review and commit the release changes before publishing.
-- After local review, run `node tools/release.js publish x.y.z` to create the release tag, push the release commit/tag, and create the GitHub Release from the per-release notes file.
+- `node tools/release.js publish x.y.z` remains as a local maintainer fallback, but the normal GitHub Actions path is to merge the prepared release PR and let `Release Publish` handle the tag, GitHub Release, and demo sync.
 - Do not edit GitHub Release notes independently from the repo-managed release files.
 
 Recommended GitHub Actions flow:
@@ -177,13 +177,16 @@ Recommended GitHub Actions flow:
 2. Run the `Release Prepare` workflow with the target version. It opens a generated release PR from `release/vX.Y.Z`.
 3. Review and merge that release PR. Merging is the maintainer approval gate.
 4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag.
-5. Use the manual `Release Publish` workflow only as a fallback if the automatic merge-triggered publish path needs to be rerun.
+5. Use the manual `Release Publish` workflow only as a fallback if the automatic merge-triggered publish path needs to be rerun or repaired.
 
 Demo-sync workflow secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON`
 - `CLASP_RC_JSON` from your authenticated global `~/.clasprc.json`
+
+The demo-sync job writes those secret values back to the same file paths used by the local flow. All three secret values must be valid JSON.
+
 Maintainer release checklist:
 
 1. Review pending fragments under [`changes.d/`](./changes.d/) and make sure each user-visible change is covered once, with end-user wording.
@@ -195,8 +198,10 @@ Maintainer release checklist:
    [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/),
    and [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md).
 6. Merge the release PR, or if you used the local fallback, commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
-7. Confirm that `Release Publish` ran for the merged release PR and completed both the tag/release and demo-sync jobs. If needed, use the manual fallback `Release Publish` workflow or `node tools/release.js publish x.y.z`.
-8. If repo secrets are not configured yet or demo sync fails, run the local fallback `node tools/sync-demo-sheet.js`.
+7. Confirm that `Release Publish` ran for the merged release PR and completed both jobs:
+   the publish job and the demo-sync job.
+8. If the automatic publish path needs recovery, use the manual fallback `Release Publish` workflow or `node tools/release.js publish x.y.z`.
+9. If repo secrets are not configured yet or demo sync fails, fix the secrets and rerun the workflow, or use the local fallback `node tools/sync-demo-sheet.js`.
 
 If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
 

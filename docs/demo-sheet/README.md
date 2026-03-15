@@ -48,7 +48,14 @@ Those files are ignored by git and must not be committed.
 
 ## GitHub Actions Automation
 
-The `Release Publish` workflow syncs the demo as a follow-up job after a real release is published. It uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
+The normal release path is:
+
+1. `Release Prepare` opens a `release/vX.Y.Z` PR.
+2. A maintainer reviews and merges that PR.
+3. The merged PR automatically triggers `Release Publish`.
+4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job.
+
+That demo-sync job uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON` -> `.demo-sheet.local/oauth-client.json`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON` -> `.demo-sheet.local/oauth-token.json`
@@ -58,8 +65,7 @@ Important distinction:
 
 - `CLASP_RC_JSON` should contain the authenticated global `clasp` login file from `~/.clasprc.json`
 - It should not contain the generated project file at `.demo-sheet.local/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
-
-That workflow is intended to run only from a published release, not from arbitrary pushes.
+- All three secret values should be valid JSON. If `clasp` reports a JSON parse error in CI, re-copy the secret from the local source file.
 
 ## Adding A Demo Maintainer
 

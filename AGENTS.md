@@ -28,8 +28,8 @@ Repo-specific standing directives for coding agents working in this project.
 - Do not manually assemble release notes for a release. Use `node tools/release.js prepare <x.y.z>` so `version.properties`, `HOODLEFINANCE_VERSION_`, `README.md`, `docs/hoodlefinance-api.md`, `docs/release-notes/vX.Y.Z.md`, and `docs/release-notes/RELEASE_NOTES.md` stay in sync.
 - `prepare` is also the built-in release verification gate; it runs from a clean git worktree, then runs the test suites and demo-sheet dry run before consuming fragments.
 - Because `prepare` now relies on git-backed cleanup, release fragments should already be committed before a release cut.
-- Prefer the GitHub Actions release flow when the task is about an actual release cut: run `Release Prepare`, then let the merged `release/vX.Y.Z` PR trigger `Release Publish`, which also syncs the demo.
-- Use `node tools/release.js publish <x.y.z>` only after the release changes are reviewed and committed, since it tags, pushes, and creates the GitHub Release from the per-release notes file.
+- Prefer the GitHub Actions release flow when the task is about an actual release cut: run `Release Prepare`, review the generated PR, and let the merged `release/vX.Y.Z` PR trigger `Release Publish`, which also syncs the demo.
+- Use `node tools/release.js publish <x.y.z>` only as a local maintainer fallback after the release changes are reviewed and committed, since it tags, pushes, and creates the GitHub Release from the per-release notes file.
 - Do not edit GitHub Release notes independently from the repo-managed notes.
 - The current pasted Apps Script install path is manual. Do not design or imply a self-updating bound-script workflow unless the task explicitly asks for that.
 - Longer-term upgrade improvements should assume an add-on-oriented direction, but that is separate from the current release workflow.
