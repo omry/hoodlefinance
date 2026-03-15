@@ -1,0 +1,1 @@
+- Added versioned release notes and clearer in-sheet update guidance, so update prompts now link directly to the relevant release notes before you replace the Apps Script code.
