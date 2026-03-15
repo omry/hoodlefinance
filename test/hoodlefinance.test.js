@@ -898,6 +898,23 @@ test("symbol and exchange google-style outputs fail clearly when no mapping is a
   );
 });
 
+test("unsupported attribute errors list only public attributes", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "yahoo:symbol", { tickerInput: "GOOG" }),
+    (error) => {
+      assert.match(
+        error.message,
+        /Unsupported attribute "yahoo:symbol"\. Supported attributes: exchange, exchange:google, exchange:yahoo, currency, datadelay, close, high, low, isin, name, price, symbol, symbol:google, symbol:yahoo, tradetime, volume, changepct, change/
+      );
+      assert.equal(error.message.includes("tradingview:isin"), false);
+      assert.equal(error.message.includes("pse:isin"), false);
+      return true;
+    }
+  );
+});
+
 test("versioned cache keys are namespaced by the current script version", () => {
   const ctx = loadHoodlefinance();
 

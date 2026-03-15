@@ -1,6 +1,5 @@
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
 - Revisit the PSE automation and fallback posture once `edge.pse.com.ph` is healthy again; the upstream site is currently returning Cloudflare 520s, which limits safe live validation and map-refresh testing.
 - Improve FX pair coverage so more supported currency pairs resolve successfully in practice, even when Yahoo prefers a different symbol shape than the current direct-pair normalization.
-- Hide source-specific internal attributes from user-facing unsupported-attribute error messages so formula guidance stays focused on public attribute names.
 - Consider adding an optional output-currency parameter to `HOODLEFINANCE` so users can request converted prices directly without a second FX formula step; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
 - In the version check dialog, add a separate full-history changelog link alongside the per-version release notes link so users who skipped versions can open the complete release history directly.

@@ -79,6 +79,27 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
 };
 
+const HOODLEFINANCE_PUBLIC_ATTRIBUTES_ = [
+  "exchange",
+  "exchange:google",
+  "exchange:yahoo",
+  "currency",
+  "datadelay",
+  "close",
+  "high",
+  "low",
+  "isin",
+  "name",
+  "price",
+  "symbol",
+  "symbol:google",
+  "symbol:yahoo",
+  "tradetime",
+  "volume",
+  "changepct",
+  "change",
+];
+
 const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
 const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
@@ -2077,7 +2098,7 @@ function hoodlefinanceExtractAttribute_(quote, attribute, context) {
       'Unsupported attribute "' +
         attribute +
         '". Supported attributes: ' +
-        Object.keys(HOODLEFINANCE_SUPPORTED_ATTRIBUTES_).join(", ")
+        HOODLEFINANCE_PUBLIC_ATTRIBUTES_.join(", ")
     );
   }
 
