@@ -4,3 +4,4 @@
 - Consider adding an optional output-currency parameter to `HOODLEFINANCE` so users can request converted prices directly without a second FX formula step; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
 - Consider adding a `ticker` attribute that returns the resolved canonical ticker / symbol, especially for direct ISIN-input lookups and roundtrip verification
 - Consider adding an exchange-code attribute (for example resolved Yahoo exchange / normalized exchange code) to make ISIN-input resolution and debugging more transparent
+- In version check dialog box, add a link to show whats new in this version, and a link showing full change log. the problem is that if a user skips one or more versions, change log would only show him the updates in the newest verison.
