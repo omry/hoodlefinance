@@ -1,55 +1,52 @@
 # Identifier And Attribute Grammar
 
-This note documents the current grammar used by `HOODLEFINANCE` for both identifiers and attributes, then sketches a few cleanup directions for future iteration.
+This note describes the grammar model that `HOODLEFINANCE` should be explained and extended with.
 
-It is intentionally split into:
+It focuses on two things:
 
-- current state
-- inconsistency inventory
-- proposed design directions
+- the current public design
+- the forward design constraints that new features should preserve
 
-This is not a statement that any cleanup has already shipped. The current-state sections describe behavior that exists today in code, docs, and tests.
+It is intentionally not a change log.
 
-The narrower note at `docs/design/symbol-exchange-attributes.md` remains useful background for the symbol/exchange output work, but this document is meant to cover the broader grammar surface.
+The narrower note at `docs/design/symbol-exchange-attributes.md` remains useful background for symbol/exchange output behavior. This document is the broader grammar note for identifiers, attributes, style qualifiers, and source overrides.
 
-## Purpose And Scope
+## Design Summary
 
-`HOODLEFINANCE` currently accepts multiple identifier forms and multiple families of attribute names.
+The working model is:
 
-Those forms grew from practical needs:
+- the identifier says what instrument or pair we want
+- the attribute says what fact we want about it
+- an attribute qualifier, when present, says how to render that fact
+- an identifier suffix, when present, can force or inspect source routing
 
-- exchange-prefixed stock identifiers
-- Yahoo-style suffix identifiers
-- direct ISIN input
-- FX pair input
-- best-effort identifier-format output
-- exchange-specific `isin` resolvers
+In short:
 
-Today, those forms are workable but not fully uniform. The same separator can mean different things in different contexts, and attribute qualifiers are not always arranged in the same direction.
+- identifier = subject
+- attribute = requested fact
+- attribute qualifier = output style
+- identifier `@...` suffix = source/debug control
 
-This note covers:
+That split is the main design rule for future additions.
 
-- public identifier forms
-- public attribute forms
-- internal or testing-oriented qualifier ideas only as design inputs for later discussion
-
-This note does not change the public API.
-
-## Current Identifier Grammar
+## Current Public Identifier Grammar
 
 ### Bare Identifiers
 
-Some identifiers are accepted without any explicit prefix or suffix:
+The function accepts several bare identifier families:
 
-- equity examples such as `GOOG`
-- FX examples such as `EURUSD` and `BTCUSD`
-- direct ISIN examples such as `IE00B4L5YX21`
+- equity tickers such as `GOOG`
+- Yahoo-style market-suffix symbols such as `SJPA.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
+- six-character FX pairs such as `EURUSD`, `USDPHP`, and `BTCUSD`
+- direct ISIN input such as `IE00B4L5YX21`
 
-Bare input is interpreted by detection rules rather than by a single explicit grammar family.
+Bare identifiers are interpreted by detection rules rather than by one uniform prefix-based syntax.
 
-### Exchange-Prefixed Identifiers
+### Prefix-Based Identifiers
 
-Many identifiers use `:` as a leading namespace or exchange marker:
+The function also accepts identifiers of the form `PREFIX:VALUE`.
+
+Examples:
 
 - `NASDAQ:GOOG`
 - `LON:SJPA`
@@ -60,60 +57,48 @@ Many identifiers use `:` as a leading namespace or exchange marker:
 - `CURRENCY:EURUSD`
 - `ISIN:IE00B4L5YX21`
 
-These do not all mean the same thing semantically:
+These prefixes do not all play the same semantic role:
 
-- `NASDAQ:`, `LON:`, `SGX:`, and similar prefixes act like exchange selectors
-- `PSE:` acts like a dedicated project routing prefix
-- `CURRENCY:` acts like a type namespace for FX parsing
-- `ISIN:` acts like a type namespace for direct ISIN input
+- exchange selectors such as `NASDAQ:`, `LON:`, and `SGX:`
+- dedicated routing such as `PSE:`
+- type namespaces such as `CURRENCY:` and `ISIN:`
 
-From a syntax point of view they all look like `prefix:value`, but the prefix role is not uniform.
+The syntax is shared even when the meaning differs.
 
-### Yahoo-Style Suffixed Identifiers
+### Identifier Source Suffixes
 
-Some identifiers use Yahoo-style market suffixes:
+Identifiers can also carry an optional trailing `@...` suffix.
 
-- `SJPA.L`
-- `ZPRX.DE`
-- `9988.HK`
-- `D05.SI`
-- `POLI.TA`
+Current public/debug forms:
 
-Here `.` acts as a market suffix separator, not as a general-purpose qualifier system.
+- `IDENTIFIER@SOURCE`
+- `IDENTIFIER@?`
+- `IDENTIFIER@`
+- `IDENTIFIER@anything-unknown`
 
-### FX-Specific Forms
+Current behavior:
 
-FX input has two accepted forms:
+- `@SOURCE` forces a supported source for that request and disables fallback from that forced path
+- `@?` returns the currently deduced primary source name
+- `@` and unknown `@...` suffixes return the supported source list
 
-- bare six-letter pairs such as `EURUSD`, `USDPHP`, and `BTCUSD`
-- `CURRENCY:`-prefixed pairs such as `CURRENCY:EURUSD` and `CURRENCY:ETHUSD`
+Examples:
 
-FX parsing is strict:
+- `BTCUSD@YAHOO`
+- `EURUSD@GOOGLE`
+- `PSE:BDO@PSE`
+- `ZPRX.DE@TRADINGVIEW`
+- `GOOG@IBKR`
+- `BTCUSD@?`
+- `BTCUSD@`
 
-- the pair must be six letters long
-- each leg must resolve to a supported 3-character currency or crypto unit
-- unsupported explicit `CURRENCY:` input fails clearly
-- unsupported bare six-letter input falls back to non-FX ticker handling
+These suffixes are primarily a debugging and coverage-inspection surface, not the default user-facing path.
 
-Same-currency pairs such as `USDUSD` short-circuit locally.
-
-### Identifier Normalization Model
-
-Current identifier handling is practical rather than canonical:
-
-- exchange-prefixed tickers are often normalized toward Yahoo symbols for quote fetches
-- Yahoo-style suffix identifiers are inferred back into exchange identity when needed
-- `PSE:` has explicit handling instead of relying on Yahoo normalization alone
-- FX pairs are parsed into a project-specific pair model with both Google-style and Yahoo-style renderings
-- direct ISIN input resolves into another identifier form before quote lookup
-
-So the system already contains a best-effort identifier conversion layer, but it is spread across several code paths rather than exposed as one uniform grammar model.
-
-## Current Attribute Grammar
+## Current Public Attribute Grammar
 
 ### Plain Attributes
 
-Several attributes are simple unqualified names:
+Current plain attributes include:
 
 - `price`
 - `name`
@@ -130,68 +115,62 @@ Several attributes are simple unqualified names:
 - `exchange`
 - `isin`
 
-These are the most direct attribute names in the system.
+### Style-Qualified Attributes
 
-### Suffix-Qualified Attributes
-
-Some attributes use a `base:qualifier` pattern:
+Some attributes use a `base:style` form:
 
 - `symbol:google`
 - `symbol:yahoo`
 - `exchange:google`
 - `exchange:yahoo`
 
-In this family:
-
-- the base concept comes first
-- the suffix selects a representation style
-- the unqualified form chooses a default
-
 Current defaults:
 
-- `symbol` means `symbol:google`
-- `exchange` means `exchange:google`
+- `symbol` means the default symbol rendering
+- `exchange` means the default exchange rendering
 
-### Source Selection For `isin`
+In practice those defaults currently align with the Google-style forms.
 
-Source selection for `isin` now lives on the identifier side rather than in separate attribute spellings.
+### `isin` As A Resolver Attribute
+
+`isin` is a plain attribute name, but it is not a simple field read in all cases.
+
+Its current model is:
+
+- direct ISIN input returns the direct ISIN
+- otherwise, the function infers an exchange-aware default resolver
+- an identifier-side `@SOURCE` suffix can force a specific `isin` resolver
 
 Examples:
 
-- `PSE:BDO@PSE`
-- `SJPA.L@LON`
-- `ZPRV.DE@ARIVA`
-- `GOOG@IBKR`
-- `ZPRX.DE@TRADINGVIEW`
+- `=HOODLEFINANCE("GOOG", "isin")`
+- `=HOODLEFINANCE("PSE:BDO@PSE", "isin")`
+- `=HOODLEFINANCE("ZPRV.DE@ARIVA", "isin")`
+- `=HOODLEFINANCE("SJPA.L@LON", "isin")`
+- `=HOODLEFINANCE("GOOG@IBKR", "isin")`
+- `=HOODLEFINANCE("ZPRX.DE@TRADINGVIEW", "isin")`
 
-In this model:
+This is an important design boundary:
 
-- the base attribute stays `isin`
-- the identifier can carry an optional source override
-- the unqualified `isin` attribute still delegates to a default exchange-aware resolver when no override is present
+- source choice for `isin` lives on the identifier side
+- formatting choice for values such as `symbol` and `exchange` lives on the attribute side
 
-### Internal And Testing-Oriented Qualifier Ideas
-
-There is current interest in adding non-public testing hooks such as `price:yahoo` or `price:google`.
-
-Those names are not part of the current public API and are not implemented today. They are useful design examples because they would naturally join the same qualifier space as `symbol:yahoo` and `exchange:google`.
-
-## Semantic Roles Of Separators
+## Separator Semantics
 
 ### `:` In Identifiers
 
-In identifier input, `:` currently serves several roles:
+Inside identifiers, `:` currently means "explicit namespace boundary", but the namespace type varies:
 
-- exchange selector in `NASDAQ:GOOG`
-- project routing marker in `PSE:BDO`
-- FX type namespace in `CURRENCY:EURUSD`
-- direct-ISIN namespace in `ISIN:IE00B4L5YX21`
+- exchange selection in `NASDAQ:GOOG`
+- dedicated project routing in `PSE:BDO`
+- type selection in `CURRENCY:EURUSD`
+- direct-ISIN input in `ISIN:IE00B4L5YX21`
 
-So `:` does not mean only "exchange". It often means "explicit namespace", but the namespace type varies.
+So `:` is structurally consistent but semantically broad.
 
 ### `.` In Identifiers
 
-In identifier input, `.` is primarily a Yahoo-style market suffix separator:
+Inside identifiers, `.` is used for Yahoo-style market suffixes:
 
 - `.L`
 - `.DE`
@@ -199,239 +178,158 @@ In identifier input, `.` is primarily a Yahoo-style market suffix separator:
 - `.SI`
 - `.TA`
 
-This is a distinct grammar family from the colon-prefixed identifier forms.
+This is a separate identifier family from the prefix-based `PREFIX:VALUE` forms.
 
 ### `:` In Attributes
 
-In attribute names, `:` is currently used for representation/style qualifiers such as:
+Inside attributes, `:` means style qualification rather than instrument naming.
+
+Examples:
 
 - `symbol:yahoo`
 - `symbol:google`
 - `exchange:yahoo`
 - `exchange:google`
 
-So the attribute namespace is now simpler than before, but still distinct from identifier syntax.
+So the same separator appears in both identifiers and attributes, but the two argument positions keep the meanings distinct.
 
-## Current Inconsistency Inventory
+### `@` In Identifiers
 
-### Identifiers Still Mix Subject And Source Hints
+Inside identifiers, trailing `@...` is reserved for source and debug control.
 
-`PSE:BDO`, `ISIN:IE00...`, and `PSE:BDO@PSE` all carry different kinds of routing information inside the identifier.
+Current meanings:
 
-That is cleaner than putting resolver names into attributes, but it still means the identifier grammar carries both "what" and "where" concerns.
+- `@SOURCE` = force source
+- `@?` = show deduced primary source
+- `@` = show supported sources
 
-### Identifiers Mix Exchange Prefixes And Type Prefixes
+That keeps provider-routing hints out of the attribute namespace.
 
-`NASDAQ:GOOG` looks structurally similar to `CURRENCY:EURUSD` and `ISIN:IE00...`, but the prefix meaning is different:
+## Current Design Rules
 
-- exchange selection
-- type selection
-- dedicated routing
+The current design should be described with these rules:
 
-The syntax is consistent, but the semantics are not.
+1. Identifiers may carry subject information plus optional routing/debug hints.
+2. Attributes request facts about that subject.
+3. Attribute qualifiers are for output style, not for resolver-source selection.
+4. `isin` stays a plain attribute even when it dispatches through source-specific resolver logic.
+5. Source forcing belongs on the identifier side.
 
-### Identifiers And Attributes Reuse `:` Differently
+Those rules are more important than any one spelling detail.
 
-In identifiers, `:` is part of the input locator syntax.
+## Current Constraints And Known Gaps
 
-In attributes, `:` is part of the attribute qualifier syntax.
+The current model is coherent, but a few limits should be kept explicit in design discussions.
 
-That reuse is manageable in practice because identifiers and attributes live in different function arguments, but it still means the same visual form does not carry one shared conceptual model across the API.
+### The Identifier Space Is Still Mixed
 
-### Identifiers Use `.` Suffixes While Attributes Do Not
+Identifiers currently combine several categories of information:
 
-Identifier suffixes such as `.L` and `.TA` are meaningful input forms.
+- subject identity
+- exchange or namespace hints
+- dedicated routing prefixes such as `PSE:`
+- optional debug/source suffixes
 
-Attribute qualification uses `:`, not `.`.
+That is acceptable, but it means the identifier grammar is still broader than a pure "symbol only" model.
 
-So suffix notation exists in both domains, but with different separators and different meanings.
+### Source Capability Is Not Uniform Across Attributes
 
-### Default Forms Are Not Uniform
+Not every source participates in every attribute.
 
-Some unqualified names are defaults for a qualified family:
+Today, the source namespace includes a mix of:
 
-- `symbol` -> `symbol:google`
-- `exchange` -> `exchange:google`
+- quote-oriented paths such as `YAHOO` and `GOOGLE`
+- resolver-oriented paths such as `TRADINGVIEW`, `LON`, `ARIVA`, `IBKR`, and `PSE`
 
-Some are umbrella dispatch points:
+The important design point is not to force artificial uniformity. A shared source namespace is fine even when each attribute supports only a subset of sources.
 
-- `isin` chooses a default resolver based on inferred exchange
+### `@?` Reports The Deduced Primary Route
 
-Some are standalone concepts:
+`@?` currently reports the deduced primary source choice for the request.
 
-- `price`
-- `currency`
-- `name`
+It should be understood as routing introspection, not as a perfect explanation of every fallback branch that might run later. A fuller fallback-graph explanation would require a more explicit runtime routing model.
 
-This means a bare attribute name can mean:
+## Forward Design
 
-- a true base attribute
-- a default style alias
-- a dispatcher into resolver-specific logic
+Future additions should preserve the same conceptual split:
 
-### Internal Testing Hooks Would Need To Pick A Side
+- identifier chooses the subject
+- identifier may optionally control routing/debug behavior
+- attribute chooses the requested fact
+- attribute qualifier chooses representation style
 
-If future testing-only attributes such as `price:yahoo` are added, they would naturally align with the existing `base:qualifier` family.
+That suggests the following direction.
 
-That would keep style-oriented attribute qualification consistent, but it would also make the split between identifier-side source selection and attribute-side style selection more important to explain clearly.
+### Keep Source On The Identifier Side
 
-## Proposed Design Directions
+New source-selection features should continue to live on the identifier side rather than re-entering the attribute namespace.
 
-This section is intentionally forward-looking. The proposals below are design candidates, not current behavior.
+Good fit:
 
-### Goals
+- `IDENTIFIER@SOURCE`
 
-Any cleanup direction should aim to:
+Bad fit:
 
-- separate the concepts of subject, source, requested field, and output style
-- make the role of each separator easier to explain
-- reduce ambiguity about whether source selection belongs to the identifier or the attribute
-- preserve compatibility where practical
-- leave room for internal testing hooks without making the public API harder to understand
-- keep identifier input flexible enough for real-world market data workflows
+- new public forms such as `price:yahoo` or `isin:ibkr`
 
-### Leading Direction: Source On The Identifier, Style On The Attribute
+If internal testing hooks are ever added, they should not blur the public rule that source choice belongs with identifier routing.
 
-The clearest direction so far is:
+### Keep Style On The Attribute Side
 
-- identifiers describe what we want data about
-- attributes describe what we want to know about it
-- source selection belongs primarily to the identifier
-- style selection belongs to the attribute when needed
+Style-oriented output forms belong on the attribute side.
 
-Under that model:
+This includes current patterns such as:
 
-- `GOOG`, `BTCUSD`, `PSE:BDO`, and `ISIN:IE00...` still identify the subject
-- `price`, `name`, `currency`, `isin`, `symbol`, and `exchange` remain attribute requests
-- `symbol:yahoo` and `symbol:google` remain style choices for the returned symbol representation
-- `exchange:yahoo` and `exchange:google` remain style choices for the returned exchange representation
+- `symbol:yahoo`
+- `symbol:google`
+- `exchange:yahoo`
+- `exchange:google`
 
-This gives the system a clearer conceptual split:
+If more rendered-output variants are added later, they should align with this same rule.
 
-- identifier = what
-- attribute = which fact
-- style qualifier = how to render that fact
-- source override = where to force lookup for debugging
+### Treat Source Overrides As Debug/Advanced Surface
 
-### Proposed Identifier Source Override
+The current `@SOURCE` forms are useful, but they should still be framed as advanced tooling:
 
-The proposed source override syntax is:
+- troubleshooting
+- coverage inspection
+- resolver verification
+- source-specific smoke checks
 
-- `identifier@SOURCE`
+That keeps the main user-facing API centered on the normal identifier plus attribute forms.
 
-Examples:
+### Make Fallback Policy More Explicit If Needed
 
-- `BTCUSD@YAHOO`
-- `BTCUSD@GOOGLE`
-- `GOOG@YAHOO`
-- `PSE:BDO@YAHOO`
-- `ISIN:IE00B4L5YX21@IBKR`
+If future work needs richer introspection, it should come from an explicit routing/fallback model rather than from ad hoc exceptions.
 
-Intended semantics:
+The main candidate direction is:
 
-- without `@SOURCE`, the implementation deduces the source from the identifier and uses normal fallback behavior
-- with `@SOURCE`, the explicit source overrides the deduced source
-- the override is a debug tool, not a user-facing convenience feature
-- when a source is forced, there is no fallback
-- if the forced source does not resolve the instrument correctly, the request fails at that source
+- represent primary source, fallback candidates, and failure policy explicitly
+- let `@?` or a future debug surface report that explicit model
+- keep forced-source behavior strict and unsurprising
 
-That means `PSE:BDO@YAHOO` is intentionally allowed to fail, or even to resolve unexpectedly, because the point of the override is to inspect what Yahoo does when forced.
+This is especially relevant for paths where the initial deduced route and the final successful route can differ.
 
-### Proposed Error-Handling Policy
+### Preserve Compatibility For Core Identifier Families
 
-For normal identifiers without a source override:
+The current identifier families are practical and already established:
 
-- source is deduced from the identifier and existing routing logic
-- the implementation may keep using its normal "try harder" behavior when a path is unavailable or incomplete
+- bare tickers
+- Yahoo-style suffixed identifiers
+- exchange-prefixed identifiers
+- `CURRENCY:`
+- `ISIN:`
+- identifier-side `@SOURCE`
 
-For `identifier@SOURCE`:
-
-- the forced source is authoritative for that lookup
-- no automatic fallback should run after a forced-source failure
-- the failure should be reported as a failure of that source, not silently rerouted elsewhere
-
-This keeps the first version of source override small and easy to explain.
-
-### Why This Direction Helps
-
-- it removes provider choice from the attribute namespace
-- it keeps style qualifiers independent from quote-provider choice
-- it matches the fact that source choice affects routing and resolution, not just value formatting
-- it gives internal debugging a sharp, explicit mechanism without expanding the public surface too early
-
-It also creates a cleaner model for `isin`:
-
-- identifier-level ISIN input stays an identifier concern
-- asking for `isin` stays an attribute concern
-- source-specific resolver choice moves to identifier-side `@SOURCE`
-
-### Tension: Resolver Sources Vs Quote Sources
-
-One real tension remains: not every source participates in the system the same way.
-
-Roughly speaking, sources fall into three capability patterns:
-
-- quote-oriented sources such as Yahoo or Google
-- resolver-oriented sources such as ARIVA, IBKR, TradingView, or PSE for specific metadata paths
-- mixed or market-specific sources that do some of both
-
-This tension shows up most clearly around `isin`.
-
-The likely design implication is:
-
-- the source namespace can stay unified
-- but each attribute may support only a subset of sources
-- `price` and `close` are not necessarily available from the same source set as `isin`
-
-That capability model is still cleaner than encoding provider choice directly into both identifier and attribute syntax.
-
-### Current FX Preference
-
-For crypto and FX specifically, the current practical direction is:
-
-- prefer `GOOGLE` as the primary quote source
-- treat `TRADINGVIEW` as a possible supplemental source later, not the default FX path
-
-This is based on the current implementation and recent live checks:
-
-- Google Finance is already the active crypto/FX source for the broad path in this project
-- Google has shown better practical pair coverage than Yahoo in recent live probes
-- TradingView clearly exposes some crypto/forex symbols, but is currently a better fit for resolver-style or supplemental use than for the main FX routing path
-
-That does not rule out future TradingView-based FX support. It just means the design should treat it as an additive path, not as the default source to optimize around first.
-
-### Future Extension Space
-
-The first version does not need source chains or explicit fallback-policy suffixes.
-
-However, the `identifier@SOURCE` form intentionally leaves room for later extensions if needed, such as:
-
-- ordered source lists
-- explicit fallback-policy markers
-- more structured capability checks
-
-Those should only be added later if real use cases justify the extra grammar.
-
-### Open Questions For Future Iteration
-
-- Should `@SOURCE` stay strictly internal/debug-only, or eventually become a documented advanced feature?
-- Which source names belong in the initial override namespace: `YAHOO`, `GOOGLE`, `PSE`, `IBKR`, `ARIVA`, `TRADINGVIEW`, or a smaller subset?
-- Should forced-source errors surface the raw source failure directly, or be normalized into a project-specific error message?
-- Should `CURRENCY:` and `ISIN:` continue to look like exchange-prefixed identifiers, or should future design language describe them as namespaces first and exchange prefixes second?
+Future cleanup should explain these forms more clearly, not replace them casually.
 
 ## Working Conclusion
 
-The current system is functional but not fully uniform:
+The design to preserve is:
 
-- identifiers use both prefix and suffix forms
-- identifiers also now carry optional `@SOURCE` overrides
-- the same separators carry different meanings in different contexts
+- identifier syntax carries subject selection and optional routing/debug hints
+- attribute syntax carries fact selection
+- attribute qualification carries output style
+- source selection stays on the identifier side
 
-The strongest cleanup direction so far is:
-
-- identifier chooses the subject
-- identifier may optionally force the source with `@SOURCE`
-- attribute chooses the requested fact
-- attribute qualifiers such as `:yahoo` or `:google` stay style-oriented rather than source-oriented
-
-That does not mean the current API is broken. It does mean future additions should be made with this explicit grammar model in mind instead of extending the syntax ad hoc.
+That model is strong enough to explain the current API and clear enough to guide future additions without drifting back toward source-specific attribute sprawl.
