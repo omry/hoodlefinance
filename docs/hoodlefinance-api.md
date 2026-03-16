@@ -180,6 +180,8 @@ Currency pairs can be passed either as bare pairs or with the `CURRENCY:` prefix
 
 Canonical 3-letter codes such as `USD`, `EUR`, `GBP`, `ILS`, and `PHP` are the preferred form. Major 3-character crypto codes that Google Finance currently quotes, such as `BTC`, `ETH`, `SOL`, and `XRP`, are also recognized in the same pair syntax.
 
+By default, currency pairs now route through Google Finance quote pages rather than Yahoo chart lookups. That improves practical coverage for pairs that Yahoo often misses, such as `PHPILS`.
+
 Some upstream quote-unit aliases are also accepted. For example, `GBpUSD`, `USDGBp`, `ILAUSD`, and `USDILA` are normalized through the corresponding canonical Yahoo FX symbol, while the returned value and `currency` still reflect the requested units.
 
 If the base and quote currency are the same, `HOODLEFINANCE` short-circuits locally and returns `1`:
@@ -242,19 +244,21 @@ Accepted FX input forms include:
 - prefixed pairs such as `CURRENCY:EURUSD` or `CURRENCY:ETHUSD`
 - same-currency pairs such as `USDUSD`
 
-For FX pairs, the most useful attributes are:
+For FX pairs, the most consistently available attributes are:
 
 - `price` as the current conversion rate
 - `name` as the currency-pair label
 - `currency` as the quote currency or quote unit
-- `high`, `low`, `close`, `change`, and `changepct`
+- `close`, `change`, and `changepct`
 - `tradetime` and `datadelay` when the upstream source provides them
 
 Compared with typical `GOOGLEFINANCE` FX usage, `HOODLEFINANCE` adds a few practical improvements:
 
 - Same-currency pairs such as `USDUSD` return `1`, which simplifies normalization formulas.
 - Upstream quote-unit aliases such as `GBp` and `ILA` are accepted, while returned values and `currency` still reflect the requested units.
-- In practice, FX pairs expose the same current-quote attribute surface used elsewhere in `HOODLEFINANCE`, instead of being limited to a narrow price-only workflow.
+- In practice, FX pairs expose more than a price-only workflow, including `close`, `change`, `changepct`, `currency`, `tradetime`, and `datadelay`, while some fields still depend on what Google publishes for the requested pair.
+
+Some Google-quoted FX pairs do not expose `high`, `low`, or `volume`. When Google does not publish those fields for the requested pair, `HOODLEFINANCE` reports them as unavailable instead of backfilling them from another source.
 
 Examples:
 

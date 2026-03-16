@@ -1312,8 +1312,8 @@ function hoodlefinanceFetchQuote_(ticker) {
     return hoodlefinanceBuildSameCurrencyQuote_(fxPair);
   }
 
-  if (fxPair && fxPair.hasCrypto) {
-    return hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(fxPair);
+  if (fxPair) {
+    return hoodlefinanceFetchGoogleFinanceFxPairQuote_(fxPair);
   }
 
   yahooSymbol = fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTicker_(normalizedTicker);
@@ -1400,7 +1400,7 @@ function hoodlefinanceResolveCurrencyUnit_(code) {
   return unitsByCode[value] || unitsByCode[value.toUpperCase()] || null;
 }
 
-function hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(fxPair) {
+function hoodlefinanceFetchGoogleFinanceFxPairQuote_(fxPair) {
   const cacheKey = "hoodlefinance:google-finance:" + fxPair.googlePairSlug;
   const cached = hoodlefinanceGetCachedJson_(cacheKey);
   let quote;
@@ -1409,7 +1409,7 @@ function hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(fxPair) {
     return hoodlefinanceDecorateFxQuote_(cached, fxPair);
   }
 
-  quote = hoodlefinanceExtractGoogleFinanceCryptoPairQuote_(
+  quote = hoodlefinanceExtractGoogleFinanceFxPairQuote_(
     hoodlefinanceFetchText_(hoodlefinanceBuildGoogleFinanceQuoteUrl_(fxPair.googlePairSlug)),
     fxPair
   );
@@ -1969,7 +1969,7 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
     };
   }
 
-  if (fxPair && fxPair.hasCrypto) {
+  if (fxPair) {
     return {
       fxPair: fxPair,
       sourceOverride: sourceOverride,
@@ -2006,7 +2006,7 @@ function hoodlefinancePrefetchGoogleFinanceFxJobs_(jobs) {
 
   for (i = 0; i < jobs.length; i += 1) {
     try {
-      jobs[i].quote = hoodlefinanceFetchGoogleFinanceCryptoPairQuote_(jobs[i].plan.fxPair);
+      jobs[i].quote = hoodlefinanceFetchGoogleFinanceFxPairQuote_(jobs[i].plan.fxPair);
     } catch (error) {
       jobs[i].error = hoodlefinanceErrorMessage_(error);
     }
@@ -3815,7 +3815,7 @@ function hoodlefinanceBuildGoogleFinanceQuoteUrl_(pairSlug) {
   return "https://www.google.com/finance/quote/" + encodeURIComponent(pairSlug);
 }
 
-function hoodlefinanceExtractGoogleFinanceCryptoPairQuote_(html, fxPair) {
+function hoodlefinanceExtractGoogleFinanceFxPairQuote_(html, fxPair) {
   const tuple = hoodlefinanceExtractGoogleFinancePairTuple_(html, fxPair.googlePairSlug);
   const marketData = Array.isArray(tuple[5]) ? tuple[5] : [];
   const pairDetail = Array.isArray(tuple[15]) ? tuple[15] : [];

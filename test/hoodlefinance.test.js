@@ -582,7 +582,7 @@ test("source introspection suffixes return the deduced source or the supported s
   primeCurrencyCodeData(ctx);
 
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "GOOGLE");
-  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "GOOGLE");
   assert.equal(ctx.HOODLEFINANCE("PSE:AAA@?"), "PSE");
   assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "LOCAL");
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@"), "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO");
@@ -725,7 +725,7 @@ test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
   assert.equal(ctx.HOODLEFINANCE("GBpGBP", "currency"), "GBP");
 });
 
-test("crypto currency pairs fetch rates from Google Finance quote pages", () => {
+test("currency pairs fetch rates from Google Finance quote pages", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
   const seenUrls = [];
@@ -792,6 +792,20 @@ test("crypto currency pairs fetch rates from Google Finance quote pages", () => 
       );
     }
 
+    if (url === "https://www.google.com/finance/quote/PHP-ILS") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "PHP-ILS",
+          "Philippine Peso (PHP / ILS)",
+          [0.0522947672, -0.0005022859, -0.95135215, 4, 4, 2],
+          0.0527970531,
+          1773656600,
+          ["PHP", "ILS", "Philippine Peso", "Israeli New Shekel", "/m/05sry", "/m/03qgx5", 2]
+        )
+      );
+    }
+
     throw new Error("Unexpected URL " + url);
   };
 
@@ -804,12 +818,54 @@ test("crypto currency pairs fetch rates from Google Finance quote pages", () => 
   assert.equal(ctx.HOODLEFINANCE("CURRENCY:ETHUSD", "price"), 2110.6139);
   assert.equal(ctx.HOODLEFINANCE("SOLUSD", "price"), 88.589);
   assert.equal(ctx.HOODLEFINANCE("XRPUSD", "price"), 1.42);
+  assert.equal(ctx.HOODLEFINANCE("PHPILS", "price"), 0.0522947672);
+  assert.equal(ctx.HOODLEFINANCE("PHPILS", "currency"), "ILS");
+  assert.equal(ctx.HOODLEFINANCE("PHPILS", "close"), 0.0527970531);
+  assert.ok(Math.abs(ctx.HOODLEFINANCE("PHPILS", "change") - (-0.0005022859)) < 1e-15);
+  assert.ok(Math.abs(ctx.HOODLEFINANCE("PHPILS", "changepct") - (-0.009513521503722018)) < 1e-15);
   assert.deepEqual(seenUrls, [
     "https://www.google.com/finance/quote/BTC-USD",
     "https://www.google.com/finance/quote/ETH-USD",
     "https://www.google.com/finance/quote/SOL-USD",
     "https://www.google.com/finance/quote/XRP-USD",
+    "https://www.google.com/finance/quote/PHP-ILS",
   ]);
+});
+
+test("Google-quoted FX pairs fail clearly for attributes the page does not expose", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(url, "https://www.google.com/finance/quote/PHP-ILS");
+    return createHttpResponse(
+      200,
+      createGoogleFinancePairHtml(
+        "PHP-ILS",
+        "Philippine Peso (PHP / ILS)",
+        [0.0522947672, -0.0005022859, -0.95135215, 4, 4, 2],
+        0.0527970531,
+        1773656600,
+        ["PHP", "ILS", "Philippine Peso", "Israeli New Shekel", "/m/05sry", "/m/03qgx5", 2]
+      )
+    );
+  };
+
+  assert.throws(
+    () => ctx.HOODLEFINANCE("PHPILS", "high"),
+    /No value is available for this ticker\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("PHPILS", "low"),
+    /No value is available for this ticker\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("PHPILS", "volume"),
+    /No volume is available for this ticker\./
+  );
 });
 
 test("forced Yahoo source routes crypto FX pairs through Yahoo chart lookups", () => {
@@ -1100,20 +1156,22 @@ test("symbol and exchange attributes resolve FX pairs in yahoo and google styles
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
 
-  ctx.UrlFetchApp.fetch = function () {
-    throw new Error("Unexpected direct fetch");
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
   };
-  ctx.UrlFetchApp.fetchAll = function (requests) {
-    return requests.map((request) => {
-      assert.equal(
-        request.url,
-        "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d"
-      );
-      return createYahooChartResponse("EURUSD=X", {
-        currency: "USD",
-        regularMarketPrice: 1.08,
-      });
-    });
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
+    return createHttpResponse(
+      200,
+      createGoogleFinancePairHtml(
+        "EUR-USD",
+        "Euro (EUR / USD)",
+        [1.0812, 0.0017, 0.1575, 4, 4, 2],
+        1.0795,
+        1773599520,
+        ["EUR", "USD", "Euro", "United States Dollar", "/m/01l6dm", "/m/09nqf", 2]
+      )
+    );
   };
 
   assert.equal(ctx.HOODLEFINANCE("EURUSD", "symbol:yahoo"), "EURUSD=X");
@@ -1251,31 +1309,44 @@ test("blank scalar ticker input still throws", () => {
 
 test("range-built currency tickers ignore trailing blank-built rows", () => {
   const ctx = loadHoodlefinance();
-  const seenBatches = [];
+  const seenUrls = [];
   primeCurrencyCodeData(ctx);
 
-  ctx.UrlFetchApp.fetch = function () {
-    throw new Error("Unexpected direct fetch");
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
   };
-  ctx.UrlFetchApp.fetchAll = function (requests) {
-    seenBatches.push(requests.map((request) => request.url));
-    return requests.map((request) => {
-      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d") {
-        return createYahooChartResponse("EURUSD=X", {
-          currency: "USD",
-          regularMarketPrice: 1.08,
-        });
-      }
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
 
-      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/CHFUSD%3DX?interval=1d&range=1d") {
-        return createYahooChartResponse("CHFUSD=X", {
-          currency: "USD",
-          regularMarketPrice: 1.13,
-        });
-      }
+    if (url === "https://www.google.com/finance/quote/EUR-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "EUR-USD",
+          "Euro (EUR / USD)",
+          [1.08, 0.002, 0.185, 4, 4, 2],
+          1.078,
+          1773599520,
+          ["EUR", "USD", "Euro", "United States Dollar", "/m/01l6dm", "/m/09nqf", 2]
+        )
+      );
+    }
 
-      throw new Error("Unexpected URL " + request.url);
-    });
+    if (url === "https://www.google.com/finance/quote/CHF-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "CHF-USD",
+          "Swiss Franc (CHF / USD)",
+          [1.13, 0.004, 0.355, 4, 4, 2],
+          1.126,
+          1773599520,
+          ["CHF", "USD", "Swiss Franc", "United States Dollar", "/m/01hy_q", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
   };
 
   assert.equal(
@@ -1285,65 +1356,71 @@ test("range-built currency tickers ignore trailing blank-built rows", () => {
     JSON.stringify([[1], [1.08], [1.13], [""]])
   );
   assert.equal(
-    JSON.stringify(seenBatches),
-    JSON.stringify([[
-      "https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d",
-      "https://query1.finance.yahoo.com/v8/finance/chart/CHFUSD%3DX?interval=1d&range=1d",
-    ]])
+    JSON.stringify(seenUrls),
+    JSON.stringify([
+      "https://www.google.com/finance/quote/EUR-USD",
+      "https://www.google.com/finance/quote/CHF-USD",
+    ])
   );
 });
 
-test("bare FX pairs use canonical Yahoo quotes with alias-aware scaling", () => {
+test("bare FX pairs use canonical Google quotes with alias-aware scaling", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
-  const seenBatches = [];
+  const seenUrls = [];
 
-  ctx.UrlFetchApp.fetch = function () {
-    throw new Error("Unexpected direct fetch");
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
   };
-  ctx.UrlFetchApp.fetchAll = function (requests) {
-    seenBatches.push(requests.map((request) => request.url));
-    return requests.map((request) => {
-      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GBPUSD%3DX?interval=1d&range=1d") {
-        return createYahooChartResponse("GBPUSD=X", {
-          currency: "USD",
-          previousClose: 1.3,
-          regularMarketDayHigh: 1.4,
-          regularMarketDayLow: 1.2,
-          regularMarketPrice: 1.3223,
-        });
-      }
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
 
-      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/USDGBP%3DX?interval=1d&range=1d") {
-        return createYahooChartResponse("USDGBP=X", {
-          currency: "GBP",
-          previousClose: 0.75,
-          regularMarketDayHigh: 0.76,
-          regularMarketDayLow: 0.74,
-          regularMarketPrice: 0.7563,
-        });
-      }
+    if (url === "https://www.google.com/finance/quote/GBP-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "GBP-USD",
+          "British Pound Sterling (GBP / USD)",
+          [1.3223, 0.0223, 1.7153846153846187, 4, 4, 2],
+          1.3,
+          1773599520,
+          ["GBP", "USD", "British Pound Sterling", "United States Dollar", "/m/05z1_", "/m/09nqf", 2]
+        )
+      );
+    }
 
-      throw new Error("Unexpected URL " + request.url);
-    });
+    if (url === "https://www.google.com/finance/quote/USD-GBP") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "USD-GBP",
+          "United States Dollar (USD / GBP)",
+          [0.7563, 0.0063, 0.84, 4, 4, 2],
+          0.75,
+          1773599520,
+          ["USD", "GBP", "United States Dollar", "British Pound Sterling", "/m/09nqf", "/m/05z1_", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
   };
 
   assert.equal(ctx.HOODLEFINANCE("GBpUSD", "price"), 0.013223);
   assert.equal(ctx.HOODLEFINANCE("GBpUSD", "close"), 0.013000000000000001);
-  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "high"), 0.013999999999999999);
-  assert.equal(ctx.HOODLEFINANCE("GBpUSD", "low"), 0.012);
   assert.ok(Math.abs(ctx.HOODLEFINANCE("GBpUSD", "change") - 0.000223) < 1e-12);
   assert.ok(Math.abs(ctx.HOODLEFINANCE("GBpUSD", "changepct") - 0.017153846153846186) < 1e-12);
   assert.equal(ctx.HOODLEFINANCE("GBpUSD", "currency"), "USD");
+  assert.throws(() => ctx.HOODLEFINANCE("GBpUSD", "high"), /No value is available for this ticker\./);
+  assert.throws(() => ctx.HOODLEFINANCE("GBpUSD", "low"), /No value is available for this ticker\./);
   assert.equal(ctx.HOODLEFINANCE("USDGBp", "price"), 75.63);
   assert.equal(ctx.HOODLEFINANCE("USDGBp", "currency"), "GBp");
   assert.equal(
-    JSON.stringify(seenBatches),
-    JSON.stringify([[
-      "https://query1.finance.yahoo.com/v8/finance/chart/GBPUSD%3DX?interval=1d&range=1d",
-    ], [
-      "https://query1.finance.yahoo.com/v8/finance/chart/USDGBP%3DX?interval=1d&range=1d",
-    ]])
+    JSON.stringify(seenUrls),
+    JSON.stringify([
+      "https://www.google.com/finance/quote/GBP-USD",
+      "https://www.google.com/finance/quote/USD-GBP",
+    ])
   );
 });
 
