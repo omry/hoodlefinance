@@ -1,6 +1,6 @@
-- Review user-facing error messages across the formula surface and remove references to internal routing, fallback, or source-selection implementation details when they are not user-actionable.
 - Investigate 4-character crypto symbols such as `DOGE` and `USDT`; the current FX parser only recognizes 3-character codes.
 - Design and implement an explicit fallback framework so source selection, fallback candidates, failure policy, and `@?` introspection reflect the actual runtime resolution graph instead of scattered one-off fallback branches.
+- Review user-facing error messages across the formula surface and remove references to internal routing, fallback, or source-selection implementation details when they are not user-actionable.
 - Consider adding an optional output-currency parameter to `HOODLEFINANCE` so users can request converted prices directly without a second FX formula step; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
 - Revisit the PSE automation and fallback posture once `edge.pse.com.ph` is healthy again; the upstream site is currently returning Cloudflare 520s, which limits safe live validation and map-refresh testing.
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
