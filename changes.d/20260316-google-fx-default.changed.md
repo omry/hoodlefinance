@@ -1,1 +1,0 @@
-Default currency-pair lookups now use Google Finance quote pages, improving coverage for pairs that Yahoo often misses such as `PHPILS`. Some FX-specific fields such as `high`, `low`, and `volume` may be unavailable when Google does not publish them for the requested pair.
