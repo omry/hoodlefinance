@@ -170,7 +170,7 @@ function sortObjectByKey(value) {
   return sorted;
 }
 
-function writeOutputs(isinMap, quoteRecords, stats) {
+function buildOutputText(isinMap, quoteRecords, stats, updatedAt) {
   const missingIsinSymbols = quoteRecords
     .filter(function (record) {
       return !record.isin;
@@ -179,7 +179,6 @@ function writeOutputs(isinMap, quoteRecords, stats) {
       return record.symbol;
     })
     .sort();
-  const updatedAt = new Date().toISOString();
   const dataLines = [
     "# PSE ISIN to ticker map",
     "# updated_at=" + updatedAt,
@@ -195,8 +194,52 @@ function writeOutputs(isinMap, quoteRecords, stats) {
     return isin + "=" + isinMap[isin];
   }));
 
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(DATA_PATH, dataLines.join("\n") + "\n");
+  return dataLines.join("\n") + "\n";
+}
+
+function extractUpdatedAt(text) {
+  const match = String(text || "").match(/^# updated_at=(.+)$/m);
+  return match ? match[1].trim() : "";
+}
+
+function stripUpdatedAtLine(text) {
+  return String(text || "").replace(/^# updated_at=.*(?:\r?\n)?/m, "").trimEnd();
+}
+
+function preserveExistingUpdatedAtIfOnlyTimestampChanged(existingText, nextText) {
+  const existingUpdatedAt = extractUpdatedAt(existingText);
+
+  if (!existingUpdatedAt || stripUpdatedAtLine(existingText) !== stripUpdatedAtLine(nextText)) {
+    return nextText;
+  }
+
+  return nextText.replace(/^# updated_at=.*$/m, "# updated_at=" + existingUpdatedAt);
+}
+
+function writeOutputs(isinMap, quoteRecords, stats, options) {
+  const dataPath = options && options.dataPath ? options.dataPath : DATA_PATH;
+  const nextText = buildOutputText(
+    isinMap,
+    quoteRecords,
+    stats,
+    options && options.updatedAt ? String(options.updatedAt) : new Date().toISOString()
+  );
+  const existingText = fs.existsSync(dataPath) ? fs.readFileSync(dataPath, "utf8") : "";
+  const finalText = preserveExistingUpdatedAtIfOnlyTimestampChanged(existingText, nextText);
+
+  if (existingText === finalText) {
+    return {
+      changed: false,
+      path: dataPath,
+    };
+  }
+
+  fs.mkdirSync(path.dirname(dataPath), { recursive: true });
+  fs.writeFileSync(dataPath, finalText);
+  return {
+    changed: true,
+    path: dataPath,
+  };
 }
 
 function main() {
@@ -211,17 +254,35 @@ function main() {
     );
   }
 
-  writeOutputs(isinMap, quoteRecords, listingInfo);
+  const writeResult = writeOutputs(isinMap, quoteRecords, listingInfo);
+  const summary =
+    Object.keys(isinMap).length +
+    " PSE ISIN mappings from " +
+    quoteRecords.length +
+    " listings (" +
+    (quoteRecords.length - Object.keys(isinMap).length) +
+    " without ISIN)";
+
   console.log(
-    "Generated " +
-      Object.keys(isinMap).length +
-      " PSE ISIN mappings from " +
-      quoteRecords.length +
-      " listings (" +
-      (quoteRecords.length - Object.keys(isinMap).length) +
-      " without ISIN) into " +
-      DATA_PATH
+    writeResult.changed
+      ? "Generated " + summary + " into " + writeResult.path
+      : "Verified " + summary + "; no map changes for " + writeResult.path
   );
 }
 
-main();
+module.exports = {
+  buildIsinMap,
+  buildOutputText,
+  extractUpdatedAt,
+  fetchAllListings,
+  fetchPseQuotes,
+  loadHoodlefinance,
+  preserveExistingUpdatedAtIfOnlyTimestampChanged,
+  sortObjectByKey,
+  stripUpdatedAtLine,
+  writeOutputs,
+};
+
+if (require.main === module) {
+  main();
+}
