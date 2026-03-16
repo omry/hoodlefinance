@@ -2811,6 +2811,10 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
     return directIsinInput;
   }
 
+  if (hoodlefinanceIsFxContext_(quote, context)) {
+    throw new Error("ISIN is not available for currency pairs.");
+  }
+
   if (source) {
     return hoodlefinanceResolveIsinBySource_(source, quote, context || {});
   }

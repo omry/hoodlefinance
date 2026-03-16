@@ -2019,6 +2019,49 @@ test("money normalization converts ILA prices to ILS", () => {
   assert.equal(ctx.hoodlefinanceNormalizeCurrency_("ILA"), "ILS");
 });
 
+test("isin rejects currency pairs with a direct user-facing error", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://www.google.com/finance/quote/EUR-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "EUR-USD",
+          "Euro (EUR / USD)",
+          [1.0812, 0.0017, 0.1575, 4, 4, 2],
+          1.0795,
+          1773599520,
+          ["EUR", "USD", "Euro", "United States Dollar", "/m/01l6dm", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(
+    () => ctx.HOODLEFINANCE("EURUSD", "isin"),
+    /ISIN is not available for currency pairs\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("CURRENCY:EURUSD", "isin"),
+    /ISIN is not available for currency pairs\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("EURUSD@IBKR", "isin"),
+    /ISIN is not available for currency pairs\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("EURUSD@GOOGLE", "isin"),
+    /ISIN is not available for currency pairs\./
+  );
+});
+
 test("attribute extraction uses context-aware IBKR source override for isin", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;

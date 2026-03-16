@@ -359,6 +359,7 @@ Suppressing update checks only disables the automatic once-per-day check. Manual
 - `marketcap` is currently unsupported.
 - Quote freshness depends on upstream sources and may be delayed by an unspecified amount of time.
 - `isin` only works for exchanges with an implemented resolver. Quote support is broader than ISIN support.
+- `isin` is not available for currency pairs.
 - `@IBKR`, `@TRADINGVIEW`, `@LON`, `@ARIVA`, and the `PSE:` path all depend on public websites or unofficial endpoints and may break if those sites change.
 - `@IBKR` can fail when IBKR presents a captcha challenge.
 - Some attributes may be unavailable for a specific listing even when the exchange is generally supported.

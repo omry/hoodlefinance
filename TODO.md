@@ -1,4 +1,3 @@
-- Reject `isin` for currency pairs with a direct user-facing error, and avoid exposing internal routing details or debug-only `@SOURCE` guidance when that happens.
 - Review user-facing error messages across the formula surface and remove references to internal routing, fallback, or source-selection implementation details when they are not user-actionable.
 - Investigate 4-character crypto symbols such as `DOGE` and `USDT`; the current FX parser only recognizes 3-character codes.
 - Design and implement an explicit fallback framework so source selection, fallback candidates, failure policy, and `@?` introspection reflect the actual runtime resolution graph instead of scattered one-off fallback branches.
