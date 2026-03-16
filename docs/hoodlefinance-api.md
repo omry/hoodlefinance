@@ -15,7 +15,7 @@ For sampled live coverage by exchange, see [support-matrix.md](../support-matrix
 - Yahoo-style symbols such as `SJPA.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, and `POLI.TA`
 - Exchange-prefixed inputs such as `LON:SJPA`, `ETR:ZPRX`, `SGX:D05`, `TLV:POLI`, and `PSE:BDO`
 - Direct ISIN input such as `IE00B4L5YX21` or `PHY077751022`
-- Exchange-specific ISIN lookups through `isin` and explicit source attributes such as `lon:isin` or `pse:isin`
+- Exchange-specific ISIN lookups through `isin` and identifier-side source overrides such as `@LON` or `@PSE`
 
 ## Where `GOOGLEFINANCE` Is Still Better
 
@@ -126,7 +126,7 @@ Examples:
 =HOODLEFINANCE("IE00B4L5YX21", "symbol")
 =HOODLEFINANCE("IJPA.L", "exchange")
 =HOODLEFINANCE("GOOG", "isin")
-=HOODLEFINANCE("PSE:BDO", "pse:isin")
+=HOODLEFINANCE("PSE:BDO@PSE", "isin")
 ```
 
 ## Supported Identifier Forms
@@ -213,6 +213,25 @@ If the identifier itself is an ISIN, `HOODLEFINANCE` resolves it automatically b
 =HOODLEFINANCE("PHY077751022", "name")
 ```
 
+### Debug Source Suffixes
+
+For troubleshooting and source-coverage checks, identifiers also support a small debug suffix surface:
+
+- `IDENTIFIER@SOURCE`: force a specific source for that lookup and disable fallback
+- `IDENTIFIER@?`: return the currently deduced source name
+- `IDENTIFIER@` or `IDENTIFIER@anything-unknown`: return the supported source list
+
+Examples:
+
+```gs
+=HOODLEFINANCE("BTCUSD@YAHOO", "price")
+=HOODLEFINANCE("EURUSD@GOOGLE", "price")
+=HOODLEFINANCE("BTCUSD@?")
+=HOODLEFINANCE("BTCUSD@")
+```
+
+These forms are primarily meant for debugging and sheet-level troubleshooting rather than normal portfolio formulas.
+
 ## Currency Conversion
 
 `HOODLEFINANCE` also supports spot currency conversion through the same function.
@@ -267,26 +286,28 @@ For current practical coverage, see [support-matrix.md](../support-matrix.md).
 
 ## Specific ISIN Sources
 
-In normal use, `isin` should be enough. The source-specific attributes below exist for debugging, coverage checks, and cases where you want to force a particular lookup path.
+In normal use, `isin` should be enough. For debugging, coverage checks, and cases where you want to force a particular lookup path, use an identifier-side `@SOURCE` override.
 
-`tradingview:isin`: uses the public TradingView symbol page and extracts `isin_displayed` from the page bootstrap data. This is the main default path for many exchange-based identifiers.
+That keeps source forcing on the identifier side while leaving attributes such as `symbol:yahoo` and `exchange:google` focused on output style.
 
-`lon:isin`: uses public London Stock Exchange search results and extracts the ISIN from the structured listing row.
+`@TRADINGVIEW`: uses the public TradingView symbol page and extracts `isin_displayed` from the page bootstrap data. This is the main default path for many exchange-based identifiers.
 
-`pse:isin`: uses the public PSE EDGE stock-data page and only works for `PSE:` identifiers.
+`@LON`: uses public London Stock Exchange search results and extracts the ISIN from the structured listing row.
 
-`ariva:isin`: uses ARIVA public search and detail pages. It is intentionally narrow: only `ETR` and `.DE` identifiers are supported, and the search result must expose a matching Xetra listing.
+`@PSE`: uses the public PSE EDGE stock-data page and only works for `PSE:` identifiers or PSE-mapped ISINs.
 
-`ibkr:isin`: scrapes public Interactive Brokers contract-detail pages. It does not come from Yahoo quote metadata.
+`@ARIVA`: uses ARIVA public search and detail pages. It is intentionally narrow: only `ETR` and `.DE` identifiers are supported, and the search result must expose a matching Xetra listing.
+
+`@IBKR`: scrapes public Interactive Brokers contract-detail pages. It does not come from Yahoo quote metadata.
 
 Examples:
 
 ```gs
-=HOODLEFINANCE("ZPRX.DE", "tradingview:isin") // direct TradingView source
-=HOODLEFINANCE("LON:SJPA", "lon:isin")        // direct London Stock Exchange source
-=HOODLEFINANCE("PSE:BDO", "pse:isin")         // direct PSE source
-=HOODLEFINANCE("ZPRV.DE", "ariva:isin")       // direct ARIVA source
-=HOODLEFINANCE("ISJP.L", "ibkr:isin")         // direct IBKR source
+=HOODLEFINANCE("ZPRX.DE@TRADINGVIEW", "isin") // direct TradingView source
+=HOODLEFINANCE("LON:SJPA@LON", "isin")        // direct London Stock Exchange source
+=HOODLEFINANCE("PSE:BDO@PSE", "isin")         // direct PSE source
+=HOODLEFINANCE("ZPRV.DE@ARIVA", "isin")       // direct ARIVA source
+=HOODLEFINANCE("ISJP.L@IBKR", "isin")         // direct IBKR source
 ```
 
 ## Array Usage
@@ -334,7 +355,7 @@ Suppressing update checks only disables the automatic once-per-day check. Manual
 - `marketcap` is currently unsupported.
 - Quote freshness depends on upstream sources and may be delayed by an unspecified amount of time.
 - `isin` only works for exchanges with an implemented resolver. Quote support is broader than ISIN support.
-- `ibkr:isin`, `tradingview:isin`, `lon:isin`, `ariva:isin`, and the `PSE:` path all depend on public websites or unofficial endpoints and may break if those sites change.
-- `ibkr:isin` can fail when IBKR presents a captcha challenge.
+- `@IBKR`, `@TRADINGVIEW`, `@LON`, `@ARIVA`, and the `PSE:` path all depend on public websites or unofficial endpoints and may break if those sites change.
+- `@IBKR` can fail when IBKR presents a captcha challenge.
 - Some attributes may be unavailable for a specific listing even when the exchange is generally supported.
 - The function is pasted Apps Script code, so it is less portable than built-in `GOOGLEFINANCE`.

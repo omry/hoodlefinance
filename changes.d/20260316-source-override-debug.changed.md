@@ -1,0 +1,1 @@
+Added debug-oriented identifier suffixes for source inspection and forcing specific lookup sources without fallback, and moved source-specific `isin` forcing to identifier-side `@SOURCE` forms such as `@PSE`, `@LON`, and `@TRADINGVIEW`.

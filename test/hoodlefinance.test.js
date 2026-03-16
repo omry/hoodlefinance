@@ -563,6 +563,32 @@ test("4-character crypto tickers do not parse as currency pairs", () => {
   assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDTUSD"), "USDTUSD");
 });
 
+test("source overrides are parsed separately from ticker normalization", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.equal(ctx.hoodlefinanceExtractTickerSourceOverride_("BTCUSD@YAHOO"), "YAHOO");
+  assert.equal(ctx.hoodlefinanceExtractTickerSourceOverride_("GOOG@IBKR"), "IBKR");
+  assert.equal(ctx.hoodlefinanceExtractTickerSourceOverride_("BTCUSD@MYSTERY"), "");
+  assert.equal(ctx.hoodlefinanceExtractTickerInfoMode_("BTCUSD@?"), "source-name");
+  assert.equal(ctx.hoodlefinanceExtractTickerInfoMode_("BTCUSD@"), "source-list");
+  assert.equal(ctx.hoodlefinanceExtractTickerInfoMode_("BTCUSD@MYSTERY"), "source-list");
+  assert.equal(ctx.hoodlefinanceNormalizeTicker_("BTCUSD@YAHOO"), "BTCUSD=X");
+  assert.equal(ctx.hoodlefinanceStripTickerSourceOverride_("ISIN:US02079K1079@YAHOO"), "ISIN:US02079K1079");
+});
+
+test("source introspection suffixes return the deduced source or the supported source list", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "GOOGLE");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("PSE:AAA@?"), "PSE");
+  assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "LOCAL");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@"), "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@MYSTERY"), "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO");
+});
+
 test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {
   const ctx = loadHoodlefinance();
 
@@ -784,6 +810,81 @@ test("crypto currency pairs fetch rates from Google Finance quote pages", () => 
     "https://www.google.com/finance/quote/SOL-USD",
     "https://www.google.com/finance/quote/XRP-USD",
   ]);
+});
+
+test("forced Yahoo source routes crypto FX pairs through Yahoo chart lookups", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      assert.equal(
+        request.url,
+        "https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=1d&range=1d"
+      );
+      return createYahooChartResponse("BTC-USD", {
+        currency: "USD",
+        regularMarketPrice: 71801.25,
+      });
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@YAHOO", "price"), 71801.25);
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([[
+      "https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=1d&range=1d",
+    ]])
+  );
+});
+
+test("forced Google source routes fiat FX pairs through Google Finance quote pages", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://www.google.com/finance/quote/EUR-USD") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "EUR-USD",
+          "Euro (EUR / USD)",
+          [1.0812, 0.0017, 0.1575, 4, 4, 2],
+          1.0795,
+          1773599520,
+          ["EUR", "USD", "Euro", "United States Dollar", "/m/01l6dm", "/m/09nqf", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("EURUSD@GOOGLE", "price"), 1.0812);
+  assert.equal(ctx.HOODLEFINANCE("EURUSD@GOOGLE", "currency"), "USD");
+  assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/EUR-USD"]);
+});
+
+test("unsupported quote-source overrides fail clearly", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.HOODLEFINANCE("GOOG@IBKR", "price");
+    },
+    /Source override "@IBKR" is only implemented for isin lookups\./
+  );
 });
 
 test("scalar calls use the shared batch fetch pipeline", () => {
@@ -1044,8 +1145,6 @@ test("unsupported attribute errors list only public attributes", () => {
         error.message,
         /Unsupported attribute "yahoo:symbol"\. Supported attributes: exchange, exchange:google, exchange:yahoo, currency, datadelay, close, high, low, isin, name, price, symbol, symbol:google, symbol:yahoo, tradetime, volume, changepct, change/
       );
-      assert.equal(error.message.includes("tradingview:isin"), false);
-      assert.equal(error.message.includes("pse:isin"), false);
       return true;
     }
   );
@@ -1821,7 +1920,7 @@ test("detects IBKR captcha challenges and reports them explicitly", () => {
 
   assert.throws(
     function () {
-      ctx.HOODLEFINANCE("GOOG", "ibkr:isin");
+      ctx.HOODLEFINANCE("GOOG@IBKR", "isin");
     },
     /IBKR ISIN lookup is currently blocked by a captcha challenge for "GOOG"\. URL: https:\/\/contract\.ibkr\.info\//
   );
@@ -1843,7 +1942,7 @@ test("money normalization converts ILA prices to ILS", () => {
   assert.equal(ctx.hoodlefinanceNormalizeCurrency_("ILA"), "ILS");
 });
 
-test("attribute extraction uses context-aware ibkr:isin resolver", () => {
+test("attribute extraction uses context-aware IBKR source override for isin", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -1854,14 +1953,14 @@ test("attribute extraction uses context-aware ibkr:isin resolver", () => {
 
   const result = ctx.hoodlefinanceExtractAttribute_(
     { symbol: "ISJP.L" },
-    "ibkr:isin",
-    { tickerInput: "LON:ISJP" }
+    "isin",
+    { tickerInput: "LON:ISJP@IBKR" }
   );
 
   assert.equal(result, "TESTISIN123");
   assert.deepEqual(capturedArgs, {
     quote: { symbol: "ISJP.L" },
-    context: { tickerInput: "LON:ISJP" },
+    context: { tickerInput: "LON:ISJP@IBKR" },
   });
 });
 
@@ -1908,6 +2007,25 @@ test("isin returns the direct ISIN input for ISIN:-prefixed identifiers", () => 
     ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "ISIN:US02079K1079" }),
     "US02079K1079"
   );
+});
+
+test("isin source overrides dispatch through the requested resolver", () => {
+  const ctx = loadHoodlefinance();
+  let capturedArgs = null;
+
+  ctx.hoodlefinanceResolveIbkrIsin_ = function (quote, context) {
+    capturedArgs = { quote, context };
+    return "IBKRISIN123";
+  };
+
+  assert.equal(
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "GOOG@IBKR" }),
+    "IBKRISIN123"
+  );
+  assert.deepEqual(capturedArgs, {
+    quote: { symbol: "GOOG" },
+    context: { tickerInput: "GOOG@IBKR" },
+  });
 });
 
 test("extracts exact LON listings from search results", () => {
@@ -1959,7 +2077,7 @@ test("extracts exact LON listings from search results", () => {
   );
 });
 
-test("lon:isin resolves from the public LSE search results", () => {
+test("isin@LON resolves from the public LSE search results", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -1978,7 +2096,7 @@ test("lon:isin resolves from the public LSE search results", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "lon:isin", { tickerInput: "SJPA.L" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@LON" }),
     "IE00B4L5YX21"
   );
 });
@@ -1998,7 +2116,7 @@ test("extracts exact ARIVA listing matches from live search results", () => {
   );
 });
 
-test("ariva:isin resolves from ARIVA search and detail pages", () => {
+test("isin@ARIVA resolves from ARIVA search and detail pages", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2028,12 +2146,12 @@ test("ariva:isin resolves from ARIVA search and detail pages", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
     "IE00BSPLC413"
   );
 });
 
-test("ariva:isin reuses the cached string result without repeating the upstream fetches", () => {
+test("isin@ARIVA reuses the cached string result without repeating the upstream fetches", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
 
@@ -2052,11 +2170,11 @@ test("ariva:isin reuses the cached string result without repeating the upstream 
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
     "IE00BSPLC413"
   );
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "ariva:isin", { tickerInput: "ZPRV.DE" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
     "IE00BSPLC413"
   );
   assert.deepEqual(seenUrls, [
@@ -2065,7 +2183,7 @@ test("ariva:isin reuses the cached string result without repeating the upstream 
   ]);
 });
 
-test("isin dispatches to tradingview:isin for ETR tickers", () => {
+test("isin dispatches to TradingView for ETR tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2084,7 +2202,7 @@ test("isin dispatches to tradingview:isin for ETR tickers", () => {
   });
 });
 
-test("isin dispatches to lon:isin for London tickers", () => {
+test("isin dispatches to LON for London tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2103,7 +2221,7 @@ test("isin dispatches to lon:isin for London tickers", () => {
   });
 });
 
-test("isin dispatches to tradingview:isin for NASDAQ tickers", () => {
+test("isin dispatches to TradingView for NASDAQ tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2122,7 +2240,7 @@ test("isin dispatches to tradingview:isin for NASDAQ tickers", () => {
   });
 });
 
-test("isin dispatches to tradingview:isin for NEO tickers", () => {
+test("isin dispatches to TradingView for NEO tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2141,7 +2259,7 @@ test("isin dispatches to tradingview:isin for NEO tickers", () => {
   });
 });
 
-test("isin dispatches to tradingview:isin for NYSEARCA tickers inferred from metadata", () => {
+test("isin dispatches to TradingView for NYSEARCA tickers inferred from metadata", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2160,7 +2278,7 @@ test("isin dispatches to tradingview:isin for NYSEARCA tickers inferred from met
   });
 });
 
-test("isin dispatches to tradingview:isin for OTCMKTS tickers", () => {
+test("isin dispatches to TradingView for OTCMKTS tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2179,7 +2297,7 @@ test("isin dispatches to tradingview:isin for OTCMKTS tickers", () => {
   });
 });
 
-test("isin dispatches to tradingview:isin for TLV tickers", () => {
+test("isin dispatches to TradingView for TLV tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2198,7 +2316,7 @@ test("isin dispatches to tradingview:isin for TLV tickers", () => {
   });
 });
 
-test("isin dispatches to tradingview:isin for SGX tickers", () => {
+test("isin dispatches to TradingView for SGX tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2224,7 +2342,7 @@ test("isin fails clearly when no exchange-specific source is implemented", () =>
     function () {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "VWRP.SW" }, "isin", { tickerInput: "VWRP.SW" });
     },
-    /No isin source is implemented for exchange "SIX"\. Use an explicit source attribute such as "ariva:isin", "lon:isin", "pse:isin", "tradingview:isin", or "ibkr:isin"\./
+    /No isin source is implemented for exchange "SIX"\. Use an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR"\./
   );
 });
 
@@ -2243,7 +2361,7 @@ test("extracts TradingView symbol metadata from the page bootstrap", () => {
   assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_NEO_ZTL_HTML), "CA05582Y1007");
 });
 
-test("tradingview:isin resolves for XETR tickers", () => {
+test("isin@TRADINGVIEW resolves for XETR tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2262,12 +2380,12 @@ test("tradingview:isin resolves for XETR tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "tradingview:isin", { tickerInput: "ZPRX.DE" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE@TRADINGVIEW" }),
     "IE00BSPLC298"
   );
 });
 
-test("tradingview:isin resolves for LON tickers", () => {
+test("isin@TRADINGVIEW resolves for LON tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2286,12 +2404,12 @@ test("tradingview:isin resolves for LON tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "tradingview:isin", { tickerInput: "SJPA.L" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@TRADINGVIEW" }),
     "IE00B4L5YX21"
   );
 });
 
-test("tradingview:isin resolves for NASDAQ tickers", () => {
+test("isin@TRADINGVIEW resolves for NASDAQ tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2310,12 +2428,12 @@ test("tradingview:isin resolves for NASDAQ tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "tradingview:isin", { tickerInput: "GOOG" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@TRADINGVIEW" }),
     "US02079K1079"
   );
 });
 
-test("tradingview:isin resolves for NYSEARCA tickers", () => {
+test("isin@TRADINGVIEW resolves for NYSEARCA tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2334,12 +2452,12 @@ test("tradingview:isin resolves for NYSEARCA tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AVLV", exchangeName: "PCX" }, "tradingview:isin", { tickerInput: "AVLV" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AVLV", exchangeName: "PCX" }, "isin", { tickerInput: "AVLV@TRADINGVIEW" }),
     "US05351W1036"
   );
 });
 
-test("tradingview:isin resolves for OTCMKTS tickers", () => {
+test("isin@TRADINGVIEW resolves for OTCMKTS tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2358,12 +2476,12 @@ test("tradingview:isin resolves for OTCMKTS tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "tradingview:isin", { tickerInput: "OTCMKTS:RYCEY" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "isin", { tickerInput: "OTCMKTS:RYCEY@TRADINGVIEW" }),
     "US7757812067"
   );
 });
 
-test("tradingview:isin resolves for SGX tickers", () => {
+test("isin@TRADINGVIEW resolves for SGX tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2382,12 +2500,12 @@ test("tradingview:isin resolves for SGX tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "tradingview:isin", { tickerInput: "SGX:D05" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "isin", { tickerInput: "SGX:D05@TRADINGVIEW" }),
     "SG1L01001701"
   );
 });
 
-test("tradingview:isin resolves for NEO tickers", () => {
+test("isin@TRADINGVIEW resolves for NEO tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2406,12 +2524,12 @@ test("tradingview:isin resolves for NEO tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZTL.NE" }, "tradingview:isin", { tickerInput: "ZTL.NE" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZTL.NE" }, "isin", { tickerInput: "ZTL.NE@TRADINGVIEW" }),
     "CA05582Y1007"
   );
 });
 
-test("tradingview:isin resolves for TLV tickers", () => {
+test("isin@TRADINGVIEW resolves for TLV tickers", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2430,12 +2548,12 @@ test("tradingview:isin resolves for TLV tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "tradingview:isin", { tickerInput: "POLI.TA" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "POLI.TA@TRADINGVIEW" }),
     "IL0006625771"
   );
 });
 
-test("tradingview:isin normalizes TLV fund aliases before TradingView lookup", () => {
+test("isin@TRADINGVIEW normalizes TLV fund aliases before TradingView lookup", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
@@ -2454,12 +2572,12 @@ test("tradingview:isin normalizes TLV fund aliases before TradingView lookup", (
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "KSM.F59.TA" }, "tradingview:isin", { tickerInput: "TLV:KSMF59" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "KSM.F59.TA" }, "isin", { tickerInput: "TLV:KSMF59@TRADINGVIEW" }),
     "IL0011465700"
   );
 });
 
-test("tradingview:isin rejects mismatched TradingView symbols", () => {
+test("isin@TRADINGVIEW rejects mismatched TradingView symbols", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function () {
@@ -2475,7 +2593,7 @@ test("tradingview:isin rejects mismatched TradingView symbols", () => {
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "tradingview:isin", { tickerInput: "ZPRX.DE" });
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE@TRADINGVIEW" });
     },
     /TradingView resolved "XETR:ZPRX" to "LSE:SJPA" instead of an exact symbol match\./
   );
@@ -2747,49 +2865,49 @@ test("shared batch PSE fetches surface a clearer outage error", () => {
   );
 });
 
-test("pse:isin returns direct quote isin", () => {
+test("isin@PSE returns direct quote isin", () => {
   const ctx = loadHoodlefinance();
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "pse:isin", { tickerInput: "PSE:AAA" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA@PSE" }),
     "PHY030431175"
   );
 });
 
-test("pse:isin rejects non-PSE tickers", () => {
+test("isin@PSE rejects non-PSE tickers", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "pse:isin", { tickerInput: "GOOG" });
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@PSE" });
     },
-    /pse:isin is only implemented for PSE tickers\./
+    /PSE isin lookup is only implemented for PSE tickers\./
   );
 });
 
-test("lon:isin rejects non-LON tickers", () => {
+test("isin@LON rejects non-LON tickers", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "lon:isin", { tickerInput: "GOOG" });
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@LON" });
     },
-    /lon:isin is only implemented for LON tickers\./
+    /LON isin lookup is only implemented for LON tickers\./
   );
 });
 
-test("ariva:isin rejects non-ETR tickers", () => {
+test("isin@ARIVA rejects non-ETR tickers", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "ariva:isin", { tickerInput: "SJPA.L" });
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@ARIVA" });
     },
-    /ariva:isin is only implemented for ETR tickers\./
+    /ARIVA isin lookup is only implemented for ETR tickers\./
   );
 });
 
-test("ibkr:isin does not short-circuit to direct quote isin", () => {
+test("isin@IBKR does not short-circuit to direct quote isin", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
@@ -2799,11 +2917,11 @@ test("ibkr:isin does not short-circuit to direct quote isin", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "ibkr:isin", { tickerInput: "PSE:AAA" }),
+    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA@IBKR" }),
     "IBKRISIN123"
   );
   assert.deepEqual(capturedArgs, {
     quote: { symbol: "AAA", isin: "PHY030431175" },
-    context: { tickerInput: "PSE:AAA" },
+    context: { tickerInput: "PSE:AAA@IBKR" },
   });
 });
