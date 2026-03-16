@@ -2,3 +2,4 @@
 - Review user-facing error messages across the formula surface and remove references to internal routing, fallback, or source-selection implementation details when they are not user-actionable.
 - Consider adding an optional output-currency parameter to `HOODLEFINANCE` so users can request converted prices directly without a second FX formula step; if that is added, reconsider whether automatic `GBp -> GBP` and `ILA -> ILS` normalization should remain implicit or move behind the explicit output-currency path
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
+- Evaluate alternative deployment strategies for the Google Sheets / Apps Script code beyond the current manual install path, including the tradeoffs for updates, user setup, and release management.
