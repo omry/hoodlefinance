@@ -72,11 +72,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--codes",
-        help="optional comma-separated subset of 3-letter codes to build the matrix from",
+        help="optional comma-separated subset of 3- or 4-character codes to build the matrix from",
     )
     parser.add_argument(
         "--pairs",
-        help="optional comma-separated list of explicit directed pairs such as EURUSD,PHPILS,BTCUSD",
+        help="optional comma-separated list of explicit directed pairs such as EURUSD,DOGEUSD,USDT.USD",
     )
     parser.add_argument(
         "--no-progress",
@@ -94,12 +94,12 @@ def load_code_set(path: Path) -> list[str]:
     seen = set()
 
     for code in canonical_codes + crypto_codes:
-        if re.fullmatch(r"[A-Z]{3}", code) and code not in seen:
+        if re.fullmatch(r"[A-Z]{3,4}", code) and code not in seen:
             seen.add(code)
             codes.append(code)
 
     if not codes:
-        raise ValueError(f"No valid 3-letter codes were found in {path}.")
+        raise ValueError(f"No valid 3- or 4-character codes were found in {path}.")
 
     return codes
 
@@ -118,9 +118,43 @@ def parse_code_filter(text: str | None, known_codes: set[str]) -> list[str]:
         codes.append(code)
 
     if not codes:
-        raise ValueError("--codes did not contain any valid 3-letter codes.")
+        raise ValueError("--codes did not contain any valid 3- or 4-character codes.")
 
     return sorted(dict.fromkeys(codes))
+
+
+def normalize_pair(base: str, quote: str) -> str:
+    return base + quote if len(base) == 3 and len(quote) == 3 else base + "." + quote
+
+
+def split_pair(pair: str, known_codes: set[str]) -> tuple[str, str]:
+    if "." in pair:
+        parts = pair.split(".", 1)
+        if len(parts) != 2 or parts[0] not in known_codes or parts[1] not in known_codes:
+            raise ValueError(f"Pair in --pairs uses unknown code(s): {pair}")
+        return parts[0], parts[1]
+
+    if not re.fullmatch(r"[A-Z]{6,8}", pair):
+        raise ValueError(f"Invalid pair in --pairs: {pair}")
+
+    candidates = []
+    for base_len in (3, 4):
+        quote_len = len(pair) - base_len
+        if quote_len < 3 or quote_len > 4:
+            continue
+        base = pair[:base_len]
+        quote = pair[base_len:]
+        if base in known_codes and quote in known_codes:
+            candidates.append((base, quote))
+
+    if not candidates:
+        raise ValueError(f"Pair in --pairs uses unknown code(s): {pair}")
+
+    if len(candidates) > 1:
+        suggestions = " or ".join(normalize_pair(base, quote) for base, quote in candidates[:2])
+        raise ValueError(f"Pair in --pairs is ambiguous: {pair}. Use {suggestions}.")
+
+    return candidates[0]
 
 
 def parse_pair_filter(text: str | None, known_codes: set[str]) -> list[str] | None:
@@ -132,14 +166,11 @@ def parse_pair_filter(text: str | None, known_codes: set[str]) -> list[str] | No
         pair = raw.strip().upper()
         if not pair:
             continue
-        if not re.fullmatch(r"[A-Z]{6}", pair):
-            raise ValueError(f"Invalid pair in --pairs: {pair}")
-        if pair[:3] not in known_codes or pair[3:] not in known_codes:
-            raise ValueError(f"Pair in --pairs uses unknown code(s): {pair}")
-        pairs.append(pair)
+        base, quote = split_pair(pair, known_codes)
+        pairs.append(normalize_pair(base, quote))
 
     if not pairs:
-        raise ValueError("--pairs did not contain any valid 6-letter pairs.")
+        raise ValueError("--pairs did not contain any valid directed pairs.")
 
     return list(dict.fromkeys(pairs))
 
@@ -148,7 +179,7 @@ def build_pair_list(codes: list[str], explicit_pairs: list[str] | None) -> list[
     if explicit_pairs is not None:
         return explicit_pairs
 
-    return [base + quote for base in codes for quote in codes]
+    return [normalize_pair(base, quote) for base in codes for quote in codes]
 
 
 def extract_html_title(text: str) -> str:
@@ -276,8 +307,7 @@ def fetch_google_quote_page(pair_slug: str, timeout: float) -> tuple[int, str]:
 
 
 def probe_pair(pair: str, timeout: float) -> dict[str, Any]:
-    base = pair[:3]
-    quote = pair[3:]
+    base, quote = pair.split(".", 1) if "." in pair else (pair[:3], pair[3:])
     pair_slug = base + "-" + quote
     url = GOOGLE_FX_URL.format(pair_slug=pair_slug)
 
@@ -539,7 +569,11 @@ def main() -> int:
         )
 
     results.sort(key=lambda row: row["pair"])
-    write_outputs(output_dir, results, selected_codes if explicit_pairs is None else sorted({pair[:3] for pair in pairs} | {pair[3:] for pair in pairs}))
+    write_outputs(
+        output_dir,
+        results,
+        selected_codes if explicit_pairs is None else sorted({row["base"] for row in results} | {row["quote"] for row in results}),
+    )
     print_summary(output_dir, results)
     return 0
 

@@ -10,9 +10,13 @@
     "BCH",
     "BNB",
     "BTC",
+    "DOGE",
     "ETH",
     "LTC",
     "SOL",
+    "TUSD",
+    "USDC",
+    "USDT",
     "XRP"
   ],
   "canonicalCodes": [

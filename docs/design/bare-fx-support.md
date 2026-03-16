@@ -23,16 +23,14 @@ This change is about input parsing and currency-unit semantics. It is not meant 
 
 The parser should:
 
-- accept `CURRENCY:<pair>` and bare `<pair>`
-- split the pair into two 3-character legs
-- treat a bare token as FX only if both legs are recognized codes or aliases
+- accept `CURRENCY:<pair>` and bare compact `<pair>` forms such as `EURUSD` or `DOGEUSD`
+- split compact pairs into recognized 3- or 4-character legs
+- accept dotted prefixed pairs such as `CURRENCY:BTC.USDT` when explicit disambiguation is needed
+- treat a bare token as FX only if exactly one valid split exists
 - otherwise leave the token on the normal ticker path
 
-This change does not add:
-
-- 2-letter currency codes
-- separators such as `/` or `-`
-- other new FX syntaxes beyond bare `<pair>` and `CURRENCY:<pair>`
+Out of scope: 2-letter codes, slash/dash separators, and bare dotted syntax such as `DOGE.USD`.
+Supported forms remain bare compact `<pair>`, compact `CURRENCY:<pair>`, and dotted `CURRENCY:<base>.<quote>`.
 
 ## Currency Code Model
 
@@ -53,6 +51,8 @@ For example:
 
 - `USDPHP` -> `USDPHP=X`
 - `GBpUSD` -> `GBPUSD=X`
+- `DOGEUSD` -> `DOGEUSD=X`
+- `USDUSDT` -> `USDUSDT=X`
 - `USDILA` -> `USDILS=X`
 
 The returned numeric values should then be scaled to match the requested input/output units.
@@ -74,7 +74,7 @@ It does not:
 
 - add special `N/A` handling just to mimic `GOOGLEFINANCE`
 - change non-FX currency normalization semantics for securities
-- broaden bare FX detection to any arbitrary 6-letter token
+- broaden bare FX detection to any arbitrary 6- to 8-letter token
 
 The intent is to add bare FX support and generic unit normalization without regressing existing stock, ISIN, PSE, Israeli-market, or prefixed-FX behavior.
 

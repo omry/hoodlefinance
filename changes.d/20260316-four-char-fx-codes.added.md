@@ -1,0 +1,1 @@
+Currency pairs now support 4-character crypto or unit codes alongside the existing 3-character form. Unambiguous pairs such as `DOGEUSD`, `USDUSDT`, and `USDCUSDT` work directly, and dotted prefixed syntax such as `CURRENCY:BTC.USDT` is available for explicit 4-character-leg pairs while ambiguous compact `CURRENCY:` inputs now fail with a direct disambiguation error.

@@ -1026,7 +1026,7 @@ function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
   for (i = 0; i < cryptoCodeList.length; i += 1) {
     canonicalCode = String(cryptoCodeList[i] || "").trim().toUpperCase();
 
-    if (!/^[A-Z]{3}$/.test(canonicalCode) || unitsByCode[canonicalCode]) {
+    if (!/^[A-Z]{3,4}$/.test(canonicalCode) || unitsByCode[canonicalCode]) {
       continue;
     }
 
@@ -1052,7 +1052,7 @@ function hoodlefinanceParseCurrencyCodeDataResource_(sourceText) {
     aliasCanonicalCode = String(aliasEntry && aliasEntry.canonicalCode || "").trim().toUpperCase();
     factor = Number(aliasEntry && aliasEntry.factor);
 
-    if (!/^[A-Za-z]{3}$/.test(normalizedAliasCode) || !unitsByCode[aliasCanonicalCode] || !isFinite(factor) || factor <= 0) {
+    if (!/^[A-Za-z]{3,4}$/.test(normalizedAliasCode) || !unitsByCode[aliasCanonicalCode] || !isFinite(factor) || factor <= 0) {
       throw new Error('Currency alias "' + aliasCode + '" is invalid.');
     }
 
@@ -1400,6 +1400,90 @@ function hoodlefinanceResolveCurrencyUnit_(code) {
   return unitsByCode[value] || unitsByCode[value.toUpperCase()] || null;
 }
 
+function hoodlefinanceBuildFxPair_(baseUnit, quoteUnit) {
+  const hasCrypto = (baseUnit.assetClass === "crypto") || (quoteUnit.assetClass === "crypto");
+  const canonicalPair = baseUnit.canonicalCode + quoteUnit.canonicalCode;
+
+  return {
+    baseAssetClass: baseUnit.assetClass || "currency",
+    baseCanonicalCode: baseUnit.canonicalCode,
+    baseDisplayCode: baseUnit.displayCode,
+    canonicalPair: canonicalPair,
+    displayQuoteCode: quoteUnit.displayCode,
+    googlePairSlug: baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode,
+    googleSymbol: baseUnit.displayCode.length === 3 && quoteUnit.displayCode.length === 3
+      ? "CURRENCY:" + baseUnit.displayCode + quoteUnit.displayCode
+      : "CURRENCY:" + baseUnit.displayCode + "." + quoteUnit.displayCode,
+    hasCrypto: hasCrypto,
+    isSameCurrency: baseUnit.canonicalCode === quoteUnit.canonicalCode,
+    pairDisplay: baseUnit.displayCode + quoteUnit.displayCode,
+    quoteAssetClass: quoteUnit.assetClass || "currency",
+    quoteCanonicalCode: quoteUnit.canonicalCode,
+    quoteDisplayCode: quoteUnit.displayCode,
+    scale: baseUnit.factor / quoteUnit.factor,
+    yahooChartSymbol: hasCrypto ? baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode : canonicalPair + "=X",
+    yahooSymbol: canonicalPair + "=X",
+  };
+}
+
+function hoodlefinanceFindCompactFxPairCandidates_(pairText) {
+  const candidates = [];
+  let baseLength;
+  let quoteLength;
+  let baseUnit;
+  let quoteUnit;
+
+  for (baseLength = 3; baseLength <= 4; baseLength += 1) {
+    quoteLength = pairText.length - baseLength;
+
+    if (quoteLength < 3 || quoteLength > 4) {
+      continue;
+    }
+
+    baseUnit = hoodlefinanceResolveCurrencyUnit_(pairText.slice(0, baseLength));
+    quoteUnit = hoodlefinanceResolveCurrencyUnit_(pairText.slice(baseLength));
+
+    if (!baseUnit || !quoteUnit) {
+      continue;
+    }
+
+    candidates.push(hoodlefinanceBuildFxPair_(baseUnit, quoteUnit));
+  }
+
+  return candidates;
+}
+
+function hoodlefinanceBuildAmbiguousFxTickerError_(ticker, candidates) {
+  const suggestions = candidates
+    .slice(0, 2)
+    .map(function (candidate) {
+      return "CURRENCY:" + candidate.baseDisplayCode + "." + candidate.quoteDisplayCode;
+    })
+    .join(" or ");
+
+  return new Error('Currency ticker "' + ticker + '" is ambiguous. Use ' + suggestions + ".");
+}
+
+function hoodlefinanceLooksLikeIncompleteExplicitFxPair_(pairText) {
+  const value = String(pairText || "").trim();
+  let parts;
+
+  if (!value) {
+    return true;
+  }
+
+  if (/^[A-Za-z]{3,4}$/.test(value)) {
+    return true;
+  }
+
+  if (!/^[A-Za-z]{0,4}\.[A-Za-z]{0,4}$/.test(value)) {
+    return false;
+  }
+
+  parts = value.split(".");
+  return !parts[0] || !parts[1];
+}
+
 function hoodlefinanceFetchGoogleFinanceFxPairQuote_(fxPair) {
   const cacheKey = "hoodlefinance:google-finance:" + fxPair.googlePairSlug;
   const cached = hoodlefinanceGetCachedJson_(cacheKey);
@@ -1423,7 +1507,9 @@ function hoodlefinanceParseFxTicker_(ticker) {
   const explicitMatch = value.match(/^([^:]+):(.*)$/);
   const exchange = explicitMatch ? explicitMatch[1].trim().toUpperCase() : "";
   const pairText = explicitMatch ? explicitMatch[2].trim() : value;
-  const looksLikePair = /^[A-Za-z]{6}$/.test(pairText);
+  const dottedMatch = explicitMatch ? pairText.match(/^([A-Za-z]{3,4})\.([A-Za-z]{3,4})$/) : null;
+  const looksLikeCompactPair = /^[A-Za-z]{6,8}$/.test(pairText);
+  const compactCandidates = looksLikeCompactPair ? hoodlefinanceFindCompactFxPairCandidates_(pairText) : [];
   let baseUnit;
   let quoteUnit;
 
@@ -1431,37 +1517,42 @@ function hoodlefinanceParseFxTicker_(ticker) {
     return null;
   }
 
-  if (explicitMatch && !looksLikePair) {
-    throw new Error('Currency ticker "' + ticker + '" must look like CURRENCY:USDEUR.');
+  if (dottedMatch) {
+    baseUnit = hoodlefinanceResolveCurrencyUnit_(dottedMatch[1]);
+    quoteUnit = hoodlefinanceResolveCurrencyUnit_(dottedMatch[2]);
+
+    if (!baseUnit || !quoteUnit) {
+      throw new Error('Currency ticker "' + ticker + '" must use supported 3- or 4-character currency codes.');
+    }
+
+    return hoodlefinanceBuildFxPair_(baseUnit, quoteUnit);
   }
 
-  if (!looksLikePair) {
+  if (explicitMatch && !looksLikeCompactPair) {
+    throw new Error('Currency ticker "' + ticker + '" must look like CURRENCY:USDEUR or CURRENCY:USDT.USD.');
+  }
+
+  if (!looksLikeCompactPair) {
     return null;
   }
 
-  baseUnit = hoodlefinanceResolveCurrencyUnit_(pairText.slice(0, 3));
-  quoteUnit = hoodlefinanceResolveCurrencyUnit_(pairText.slice(3, 6));
-
-  if (!baseUnit || !quoteUnit) {
+  if (!compactCandidates.length) {
     if (explicitMatch) {
-      throw new Error('Currency ticker "' + ticker + '" must use supported 3-character currency codes.');
+      throw new Error('Currency ticker "' + ticker + '" must use supported 3- or 4-character currency codes.');
     }
 
     return null;
   }
 
-  return {
-    baseAssetClass: baseUnit.assetClass || "currency",
-    canonicalPair: baseUnit.canonicalCode + quoteUnit.canonicalCode,
-    quoteAssetClass: quoteUnit.assetClass || "currency",
-    displayQuoteCode: quoteUnit.displayCode,
-    googlePairSlug: baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode,
-    hasCrypto: (baseUnit.assetClass === "crypto") || (quoteUnit.assetClass === "crypto"),
-    isSameCurrency: baseUnit.canonicalCode === quoteUnit.canonicalCode,
-    pairDisplay: baseUnit.displayCode + quoteUnit.displayCode,
-    scale: baseUnit.factor / quoteUnit.factor,
-    yahooSymbol: baseUnit.canonicalCode + quoteUnit.canonicalCode + "=X",
-  };
+  if (compactCandidates.length > 1) {
+    if (explicitMatch) {
+      throw hoodlefinanceBuildAmbiguousFxTickerError_(ticker, compactCandidates);
+    }
+
+    return null;
+  }
+
+  return compactCandidates[0];
 }
 
 function hoodlefinanceNormalizeTickerWithoutIsin_(ticker) {
@@ -1717,7 +1808,6 @@ function hoodlefinanceShouldTreatRangeTickerAsBlank_(ticker) {
   const parts = value.split(":");
   const exchange = parts.length > 1 ? parts[0].trim().toUpperCase() : "";
   const symbol = parts.length > 1 ? parts.slice(1).join(":").trim() : "";
-  const currencyPair = exchange === "CURRENCY" ? symbol.replace(/[^A-Za-z]/g, "").toUpperCase() : "";
 
   if (!exchange) {
     return false;
@@ -1727,7 +1817,7 @@ function hoodlefinanceShouldTreatRangeTickerAsBlank_(ticker) {
     return true;
   }
 
-  return exchange === "CURRENCY" && currencyPair.length === 3;
+  return exchange === "CURRENCY" && hoodlefinanceLooksLikeIncompleteExplicitFxPair_(symbol);
 }
 
 function hoodlefinancePrefetchTickerJobs_(jobs) {
@@ -1824,11 +1914,7 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
       sourceOverride: sourceOverride,
       yahooSymbol: hoodlefinanceIsPseTicker_(normalizedTicker)
         ? hoodlefinanceParsePseSymbol_(normalizedTicker) + ".PS"
-        : (fxPair
-          ? (fxPair.hasCrypto
-            ? fxPair.canonicalPair.slice(0, 3) + "-" + fxPair.canonicalPair.slice(3, 6)
-            : fxPair.yahooSymbol)
-          : hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker)),
+        : (fxPair ? fxPair.yahooChartSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker)),
     };
   }
 
@@ -2334,13 +2420,14 @@ function hoodlefinanceParsePseSymbol_(ticker) {
 }
 
 function hoodlefinanceBuildSameCurrencyQuote_(fxPair) {
-  const quoteCurrency = fxPair.canonicalPair.slice(3, 6);
+  const quoteCurrency = fxPair.quoteCanonicalCode;
   const nowSeconds = Math.floor(new Date().getTime() / 1000);
 
   return {
     currency: quoteCurrency,
     exchangeDataDelayedBy: 0,
     financialCurrency: quoteCurrency,
+    hoodlefinanceFxGoogleSymbol: fxPair.googleSymbol,
     hoodlefinanceFxDisplayCurrency: fxPair.displayQuoteCode,
     hoodlefinanceFxUnitScale: fxPair.scale,
     previousClose: 1,
@@ -2361,6 +2448,7 @@ function hoodlefinanceDecorateFxQuote_(quote, fxPair) {
 
   const nextQuote = Object.assign({}, quote);
 
+  nextQuote.hoodlefinanceFxGoogleSymbol = fxPair.googleSymbol;
   nextQuote.hoodlefinanceFxDisplayCurrency = fxPair.displayQuoteCode;
   nextQuote.hoodlefinanceFxUnitScale = fxPair.scale;
   nextQuote.shortName = fxPair.pairDisplay;
@@ -2370,13 +2458,16 @@ function hoodlefinanceDecorateFxQuote_(quote, fxPair) {
 }
 
 function hoodlefinanceExtractRawQuote_(quote) {
-  if (!quote || (quote.hoodlefinanceFxDisplayCurrency == null && quote.hoodlefinanceFxUnitScale == null)) {
+  if (!quote || (quote.hoodlefinanceFxDisplayCurrency == null &&
+      quote.hoodlefinanceFxGoogleSymbol == null &&
+      quote.hoodlefinanceFxUnitScale == null)) {
     return quote;
   }
 
   const rawQuote = Object.assign({}, quote);
 
   delete rawQuote.hoodlefinanceFxDisplayCurrency;
+  delete rawQuote.hoodlefinanceFxGoogleSymbol;
   delete rawQuote.hoodlefinanceFxUnitScale;
 
   return rawQuote;
@@ -2982,7 +3073,9 @@ function hoodlefinanceIsFxContext_(quote, context) {
     : "";
   const resolvedSymbol = hoodlefinanceExtractQuoteSymbol_(quote);
 
-  return !!hoodlefinanceParseFxTicker_(tickerInput) || /^[A-Z]{6}(=X)?$/.test(resolvedSymbol);
+  return !!(quote && (quote.hoodlefinanceFxDisplayCurrency != null || quote.hoodlefinanceFxGoogleSymbol)) ||
+    tickerInput.toUpperCase().indexOf("CURRENCY:") === 0 ||
+    /^[A-Z]{6}(=X)?$/.test(resolvedSymbol);
 }
 
 function hoodlefinanceIsPseContext_(quote, context) {
@@ -3058,6 +3151,10 @@ function hoodlefinanceRenderGoogleSymbol_(quote, context) {
   const suffix = googleExchange && HOODLEFINANCE_EXCHANGE_SUFFIXES_[googleExchange];
 
   if (hoodlefinanceIsFxContext_(quote, context)) {
+    if (quote && quote.hoodlefinanceFxGoogleSymbol) {
+      return String(quote.hoodlefinanceFxGoogleSymbol);
+    }
+
     if (!resolvedSymbol) {
       throw new Error("No Google-style symbol is available for this instrument.");
     }
@@ -3828,8 +3925,8 @@ function hoodlefinanceExtractGoogleFinanceFxPairQuote_(html, fxPair) {
   const previousClose = Number(tuple[7]);
   const timestampList = Array.isArray(tuple[11]) ? tuple[11] : [];
   const regularMarketTime = Number(timestampList[0]);
-  const baseCode = String(pairDetail[0] || fxPair.googlePairSlug.slice(0, 3)).trim().toUpperCase();
-  const quoteCode = String(pairDetail[1] || fxPair.googlePairSlug.slice(4, 7)).trim().toUpperCase();
+  const baseCode = String(pairDetail[0] || fxPair.baseCanonicalCode).trim().toUpperCase();
+  const quoteCode = String(pairDetail[1] || fxPair.quoteCanonicalCode).trim().toUpperCase();
   const baseName = String(pairDetail[2] || baseCode).trim();
   const quoteName = String(pairDetail[3] || quoteCode).trim();
 
@@ -3845,7 +3942,7 @@ function hoodlefinanceExtractGoogleFinanceFxPairQuote_(html, fxPair) {
     regularMarketPreviousClose: isFinite(previousClose) ? previousClose : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
     regularMarketPrice: currentPrice,
     regularMarketTime: isFinite(regularMarketTime) ? regularMarketTime : Math.floor(new Date().getTime() / 1000),
-    shortName: baseName + " (" + fxPair.pairDisplay.slice(0, 3) + " / " + fxPair.displayQuoteCode + ")",
+    shortName: baseName + " (" + fxPair.baseDisplayCode + " / " + fxPair.displayQuoteCode + ")",
     symbol: baseCode + quoteCode,
   };
 }

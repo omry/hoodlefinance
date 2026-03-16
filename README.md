@@ -65,7 +65,7 @@ Supported identifiers:
 
 Three security identifier types are supported: Google-style symbols, Yahoo-style symbols, and ISINs.
 
-Google-style symbol examples: `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, `TLV:POLI`, `EURUSD`, `CURRENCY:EURUSD`, `BTCUSD`, `CURRENCY:ETHUSD`
+Google-style symbol examples: `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, `TLV:POLI`, `EURUSD`, `CURRENCY:EURUSD`, `BTCUSD`, `DOGEUSD`, `USDUSDT`, `CURRENCY:BTC.USDT`
 
 Yahoo-style symbol examples: `GOOG`, `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, `POLI.TA`
 
@@ -81,7 +81,7 @@ Supported attributes:
 - Resolved identifier outputs such as `symbol[:google|:yahoo]` and `exchange[:google|:yahoo]`
 - Additional outputs such as `isin`, which `GOOGLEFINANCE` does not provide directly
 
-The resolved identifier outputs are best-effort conversions between the supported Google-style, Yahoo-style, and ISIN forms. Use `:yahoo` or `:google` to request the output style explicitly, for example `=HOODLEFINANCE("SJPA.L", "symbol:google")` or `=HOODLEFINANCE("GOOG", "exchange:yahoo")`.
+The resolved identifier outputs are best-effort style conversions between the supported Google-style, Yahoo-style, and ISIN forms. Use `:yahoo` or `:google` to request the output style explicitly, for example `=HOODLEFINANCE("SJPA.L", "symbol:google")` or `=HOODLEFINANCE("GOOG", "exchange:yahoo")`.
 
 ## Reference And Coverage
 

@@ -112,7 +112,7 @@ Behavior notes:
 - `GBp` quotes are normalized to `GBP`, and `ILA` quotes are normalized to `ILS`. Money values are divided by `100` when that normalization applies.
 - `symbol` defaults to Google-style output such as `LON:SJPA` or `CURRENCY:EURUSD`.
 - `exchange` defaults to Google-style output such as `LON`, `NASDAQ`, `PSE`, or `CURRENCY`.
-- `symbol:yahoo` and `exchange:yahoo` expose the Yahoo-side resolved identifier when that conversion is available.
+- `symbol:yahoo` and `exchange:yahoo` return Yahoo-style identifier output when that conversion is available.
 - These identifier-style attributes are best-effort conversions from the supported Google-style, Yahoo-style, and direct ISIN inputs into the requested symbol or exchange style.
 - Some conversions are not available for every market or instrument, and unsupported conversions return a clear error instead of guessing.
 - If an upstream source does not provide a requested field, the formula returns an error for that lookup.
@@ -175,20 +175,26 @@ Currency pairs can be passed either as bare pairs or with the `CURRENCY:` prefix
 =HOODLEFINANCE("EURUSD", "price")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
 =HOODLEFINANCE("BTCUSD", "price")
+=HOODLEFINANCE("DOGEUSD", "price")
+=HOODLEFINANCE("USDUSDT", "price")
+=HOODLEFINANCE("CURRENCY:BTC.USDT", "price")
 =HOODLEFINANCE("CURRENCY:ETHUSD", "price")
 ```
 
-Canonical 3-letter codes such as `USD`, `EUR`, `GBP`, `ILS`, and `PHP` are the preferred form. Major 3-character crypto codes that Google Finance currently quotes, such as `BTC`, `ETH`, `SOL`, and `XRP`, are also recognized in the same pair syntax.
+Canonical 3-letter codes such as `USD`, `EUR`, `GBP`, `ILS`, and `PHP` remain the base form. Supported crypto or unit codes can now be either 3 or 4 characters, so unambiguous pairs such as `DOGEUSD`, `USDUSDT`, and `USDCUSDT` are also recognized in the same syntax.
 
 By default, currency pairs now route through Google Finance quote pages rather than Yahoo chart lookups. That improves practical coverage for pairs that Yahoo often misses, such as `PHPILS`.
 
 Some upstream quote-unit aliases are also accepted. For example, `GBpUSD`, `USDGBp`, `ILAUSD`, and `USDILA` are normalized through the corresponding canonical Yahoo FX symbol, while the returned value and `currency` still reflect the requested units.
+
+If a compact `CURRENCY:` pair would be ambiguous once 3- and 4-character legs are considered, `HOODLEFINANCE` raises a direct ambiguity error and tells you to rewrite it with dotted prefixed syntax such as `CURRENCY:<base>.<quote>`. Dotted prefixed syntax also works for unambiguous 4-character-leg pairs such as `CURRENCY:BTC.USDT`.
 
 If the base and quote currency are the same, `HOODLEFINANCE` short-circuits locally and returns `1`:
 
 ```gs
 =HOODLEFINANCE("USDUSD", "price")
 =HOODLEFINANCE("CURRENCY:USDUSD", "price")
+=HOODLEFINANCE("CURRENCY:USDT.USDT", "price")
 ```
 
 This is a practical improvement over `GOOGLEFINANCE` for some portfolio sheets because it simplifies currency-normalization formulas when multiple positions are already denominated in the target currency.
