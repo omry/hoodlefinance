@@ -9,6 +9,7 @@ The codebase is intentionally simple:
 - [`tools/cli.js`](./tools/cli.js): local smoke-test wrapper
 - [`tools/sync-demo-sheet.js`](./tools/sync-demo-sheet.js): public demo sheet sync tool
 - [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
+- [`tools/map-google-fx-coverage.py`](./tools/map-google-fx-coverage.py): parallel Google FX currency pairs coverage probe
 - [`support-matrix.md`](./support-matrix.md): generated exchange coverage matrix
 - [`docs/demo-sheet/`](./docs/demo-sheet/): tracked demo sheet config and TSV tab data
 - [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md): detailed user-facing reference
@@ -115,6 +116,16 @@ python3 tools/generate-support-matrix.py
 python3 tools/generate-support-matrix.py --details
 python3 tools/generate-support-matrix.py --update-page
 ```
+
+Map Google Finance FX page coverage across the canonical currency/crypto pair set:
+
+```sh
+python3 tools/map-google-fx-coverage.py
+python3 tools/map-google-fx-coverage.py --codes USD,EUR,PHP,ILS
+python3 tools/map-google-fx-coverage.py --pairs EURUSD,PHPILS,USDUSD
+```
+
+The FX coverage tool writes timestamped results under [`tmp/`](./tmp/), which stays untracked.
 
 The generator is intentionally user-facing: it reports exchange coverage for the features a normal user calls, not the backend-specific helper attributes. It also contains a small reliability override map for combinations that are known to be flaky in practice. Use that map for long-term stability issues; do not rely on a single successful run to promote a fragile combination to stable support.
 
