@@ -4,8 +4,8 @@
 
 It uses multiple data sources to cover data, identifiers, and markets that `GOOGLEFINANCE` does not provide or does not support well.
 
-Current script version: `0.9.1`
-Current release notes: [`docs/release-notes/v0.9.1.md`](./docs/release-notes/v0.9.1.md)
+Current script version: `0.9.2`
+Current release notes: [`docs/release-notes/v0.9.2.md`](./docs/release-notes/v0.9.2.md)
 
 Release notes: [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md)
 
