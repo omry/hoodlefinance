@@ -2270,9 +2270,7 @@ test("output-currency conversion rejects non-money attributes and FX identifiers
       },
       "price@USD",
       {
-        plan: {
-          fxPair: ctx.hoodlefinanceParseFxTicker_("EURUSD"),
-        },
+        plan: { routeState: { fxPair: ctx.hoodlefinanceParseFxTicker_("EURUSD") } },
         tickerInput: "EURUSD",
       }
     ),

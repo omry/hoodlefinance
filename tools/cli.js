@@ -116,7 +116,7 @@ function traceRoutingForSymbol(symbol, ctx) {
     };
   }
 
-  if (job.plan.source === "source-debug") {
+  if (Object.prototype.hasOwnProperty.call(job.plan || {}, "debugValue")) {
     return {
       ok: true,
       plannedRoute: String(job.plan.debugValue || ""),

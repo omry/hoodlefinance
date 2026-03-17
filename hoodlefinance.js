@@ -517,7 +517,7 @@ function HOODLEFINANCE_ROUTES(ticker) {
 
   plan = hoodlefinanceClassifyTickerJob_(String(normalizedTicker).trim(), "price");
 
-  if (plan.source === "source-debug") {
+  if (hoodlefinanceIsDebugRoutePlan_(plan)) {
     return String(plan.debugValue || "");
   }
 
@@ -1353,7 +1353,7 @@ function hoodlefinanceFetchQuote_(ticker) {
 
   job.plan = hoodlefinanceClassifyTickerJob_(job.tickerInput, "price");
 
-  if (job.plan.source === "source-debug") {
+  if (hoodlefinanceIsDebugRoutePlan_(job.plan)) {
     throw new Error("Debug-only ticker requests cannot be fetched as quotes.");
   }
 
@@ -1926,7 +1926,7 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
       plan = hoodlefinanceClassifyTickerJob_(orderedJobs[i].tickerInput, orderedJobs[i].attribute);
       orderedJobs[i].plan = plan;
 
-      if (plan.source === "source-debug") {
+      if (hoodlefinanceIsDebugRoutePlan_(plan)) {
         orderedJobs[i].value = plan.debugValue;
         orderedJobs[i].valueResolved = true;
         continue;
@@ -1943,6 +1943,7 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
 function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribute, upperTicker, fxPair, sourceOverride) {
   let pseTicker;
   let isinValue;
+  let symbol;
 
   if (sourceOverride === "YAHOO") {
     isinValue = hoodlefinanceLooksLikeIsin_(normalizedTicker)
@@ -1955,12 +1956,6 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
         routeAttempts: [hoodlefinanceCreateYahooIsinAttempt_("yahoo-only")],
         routeState: { isin: isinValue },
         routePath: "YAHOO-ISIN -> YAHOO",
-        source: "yahoo-isin-search",
-        sourceOverride: sourceOverride,
-        extras: {
-          fxPair: fxPair,
-          isin: isinValue,
-        },
       });
     }
 
@@ -1970,9 +1965,6 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
         fxPair: fxPair,
         yahooSymbol: hoodlefinanceBuildForcedYahooSymbol_(normalizedTicker, fxPair),
       },
-      source: "yahoo-chart",
-      sourceOverride: sourceOverride,
-      extras: { fxPair: fxPair },
     });
   }
 
@@ -1983,19 +1975,14 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
 
     return hoodlefinanceCreateSingleAttemptRoutePlan_("FORCED:GOOGLE", "google-finance-fx", "GOOGLE", {
       routeState: { fxPair: fxPair },
-      source: "google-finance-fx",
-      sourceOverride: sourceOverride,
-      extras: { fxPair: fxPair },
     });
   }
 
   if (sourceOverride === "PSE") {
     if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
+      symbol = hoodlefinanceParsePseSymbol_(normalizedTicker);
       return hoodlefinanceCreateSingleAttemptRoutePlan_("FORCED:PSE", "pse-quote", "PSE", {
-        routeState: { symbol: hoodlefinanceParsePseSymbol_(normalizedTicker) },
-        source: "pse",
-        sourceOverride: sourceOverride,
-        extras: { symbol: hoodlefinanceParsePseSymbol_(normalizedTicker) },
+        routeState: { symbol: symbol },
       });
     }
 
@@ -2008,11 +1995,9 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
         throw new Error('No PSE ticker was found for ISIN "' + isinValue + '" when forcing "@PSE".');
       }
 
+      symbol = hoodlefinanceParsePseSymbol_(pseTicker);
       return hoodlefinanceCreateSingleAttemptRoutePlan_("FORCED:PSE", "pse-quote", "PSE", {
-        routeState: { symbol: hoodlefinanceParsePseSymbol_(pseTicker) },
-        source: "pse",
-        sourceOverride: sourceOverride,
-        extras: { symbol: hoodlefinanceParsePseSymbol_(pseTicker) },
+        routeState: { symbol: symbol },
       });
     }
 
@@ -2035,28 +2020,20 @@ function hoodlefinanceDescribePlanSource_(plan) {
 }
 
 const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
-  { example: "GOOG" },
-  { example: "TLV:KSMF59" },
-  { example: "EURUSD" },
-  { example: "USDUSD" },
-  { example: "PSE:BDO" },
-  { example: "US02079K1079" },
-  { example: "GOOG@YAHOO" },
-  { example: "US02079K1079@YAHOO" },
-  { example: "EURUSD@GOOGLE" },
-  { example: "PSE:BDO@PSE" },
+  { classification: "TICKER", example: "GOOG", route: "TICKER -> YAHOO" },
+  { classification: "TICKER-IL-FUND", example: "TLV:KSMF59", route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW" },
+  { classification: "FX", example: "EURUSD", route: "FX -> GOOGLE" },
+  { classification: "FX-SAME", example: "USDUSD", route: "FX-SAME -> LOCAL" },
+  { classification: "PSE-TICKER", example: "PSE:BDO", route: "PSE-TICKER -> PSE" },
+  { classification: "ISIN", example: "US02079K1079", route: "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))" },
+  { classification: "FORCED:YAHOO", example: "GOOG@YAHOO", route: "FORCED:YAHOO -> YAHOO" },
+  { classification: "FORCED:YAHOO-ISIN", example: "US02079K1079@YAHOO", route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO" },
+  { classification: "FORCED:GOOGLE", example: "EURUSD@GOOGLE", route: "FORCED:GOOGLE -> GOOGLE" },
+  { classification: "FORCED:PSE", example: "PSE:BDO@PSE", route: "FORCED:PSE -> PSE" },
 ];
 
 function hoodlefinanceGetRoutingTableRows_() {
-  return HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_.map(function (entry) {
-    const plan = hoodlefinanceClassifyTickerJob_(entry.example, "price");
-
-    return {
-      classification: plan.routeClass || "",
-      example: entry.example,
-      route: hoodlefinanceDescribePlanSource_(plan),
-    };
-  });
+  return HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_.slice();
 }
 
 function hoodlefinanceBuildRoutingTableGrid_() {
@@ -2087,26 +2064,22 @@ function hoodlefinanceBuildRouteTrace_(routeClass, routeTrace) {
 }
 
 function hoodlefinanceCreateRoutePlan_(options) {
-  const plan = {
+  return {
     routeClass: options.routeClass || "",
     routeAttempts: options.routeAttempts || [],
     routeState: options.routeState || {},
     routeTrace: options.routeTrace != null
       ? String(options.routeTrace)
       : hoodlefinanceBuildRouteTrace_(options.routeClass, options.routePath || ""),
-    source: options.source || "",
-    sourceOverride: options.sourceOverride,
   };
-  const extras = options.extras || {};
-  let key;
+}
 
-  for (key in extras) {
-    if (Object.prototype.hasOwnProperty.call(extras, key)) {
-      plan[key] = extras[key];
-    }
-  }
+function hoodlefinanceCreateDebugRoutePlan_(value) {
+  return { debugValue: value };
+}
 
-  return plan;
+function hoodlefinanceIsDebugRoutePlan_(plan) {
+  return !!plan && Object.prototype.hasOwnProperty.call(plan, "debugValue");
 }
 
 function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
@@ -2123,18 +2096,12 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
   let isIsraeliFundTicker;
 
   if (infoMode === "source-list") {
-    return {
-      debugValue: hoodlefinanceListSupportedSources_(),
-      source: "source-debug",
-    };
+    return hoodlefinanceCreateDebugRoutePlan_(hoodlefinanceListSupportedSources_());
   }
 
   if (infoMode === "source-name") {
     plan = hoodlefinanceClassifyTickerJob_(requestTicker, attribute);
-    return {
-      debugValue: hoodlefinanceDescribePlanSource_(plan),
-      source: "source-debug",
-    };
+    return hoodlefinanceCreateDebugRoutePlan_(hoodlefinanceDescribePlanSource_(plan));
   }
 
   if (sourceOverride) {
@@ -2151,35 +2118,24 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
       routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
       routeState: { symbol: hoodlefinanceParsePseSymbol_(requestTicker) },
       routePath: "PSE",
-      sourceOverride: sourceOverride,
-      source: "pse",
-      extras: { symbol: hoodlefinanceParsePseSymbol_(requestTicker) },
     });
   }
 
   if (fxPair && fxPair.isSameCurrency) {
     return hoodlefinanceCreateRoutePlan_({
-      fxPair: fxPair,
       routeClass: "FX-SAME",
       routeAttempts: [hoodlefinanceCreateRouteAttempt_("local-fx", "LOCAL")],
       routeState: { fxPair: fxPair },
       routePath: "LOCAL",
-      sourceOverride: sourceOverride,
-      source: "local-fx",
-      extras: { fxPair: fxPair },
     });
   }
 
   if (fxPair) {
     return hoodlefinanceCreateRoutePlan_({
-      fxPair: fxPair,
       routeClass: "FX",
       routeAttempts: [hoodlefinanceCreateRouteAttempt_("google-finance-fx", "GOOGLE")],
       routeState: { fxPair: fxPair },
       routePath: "GOOGLE",
-      sourceOverride: sourceOverride,
-      source: "google-finance-fx",
-      extras: { fxPair: fxPair },
     });
   }
 
@@ -2192,9 +2148,6 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
       ],
       routeState: { isin: requestUpperTicker },
       routePath: "PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
-      sourceOverride: sourceOverride,
-      source: "yahoo-isin-search",
-      extras: { isin: requestUpperTicker },
     });
   }
 
@@ -2207,9 +2160,6 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
       ],
       routeState: { isin: requestUpperTicker.slice(5).trim() },
       routePath: "PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
-      sourceOverride: sourceOverride,
-      source: "yahoo-isin-search",
-      extras: { isin: requestUpperTicker.slice(5).trim() },
     });
   }
 
@@ -2224,12 +2174,6 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
       yahooSymbol: normalizedYahooTicker,
     },
     routePath: isIsraeliFundTicker ? "YAHOO -> TRADINGVIEW" : "YAHOO",
-    sourceOverride: sourceOverride,
-    source: "yahoo-chart",
-    extras: {
-      fxPair: fxPair,
-      yahooSymbol: normalizedYahooTicker,
-    },
   });
 }
 
@@ -2309,9 +2253,6 @@ function hoodlefinanceCreateSingleAttemptRoutePlan_(routeClass, adapterId, trace
     routeAttempts: [hoodlefinanceCreateRouteAttempt_(adapterId, traceLabel, config.attemptOptions)],
     routeState: config.routeState || {},
     routePath: config.routePath != null ? config.routePath : traceLabel,
-    source: config.source || "",
-    sourceOverride: config.sourceOverride,
-    extras: config.extras || {},
   });
 }
 
@@ -2568,7 +2509,7 @@ function hoodlefinanceExecuteLocalFxRouteBatch_(jobs) {
   for (i = 0; i < jobs.length; i += 1) {
     try {
       results.push(hoodlefinanceCreateRouteResult_("success", {
-        quote: hoodlefinanceBuildSameCurrencyQuote_(jobs[i].plan.fxPair || jobs[i].routeState.fxPair),
+        quote: hoodlefinanceBuildSameCurrencyQuote_(jobs[i].routeState.fxPair),
       }));
     } catch (error) {
       results.push(hoodlefinanceCreateRouteResult_("terminal_error", { error: error }));
@@ -2585,7 +2526,7 @@ function hoodlefinanceExecuteGoogleFinanceFxRouteBatch_(jobs) {
   for (i = 0; i < jobs.length; i += 1) {
     try {
       results.push(hoodlefinanceCreateRouteResult_("success", {
-        quote: hoodlefinanceFetchGoogleFinanceFxPairQuote_(jobs[i].plan.fxPair || jobs[i].routeState.fxPair),
+        quote: hoodlefinanceFetchGoogleFinanceFxPairQuote_(jobs[i].routeState.fxPair),
       }));
     } catch (error) {
       results.push(hoodlefinanceCreateRouteResult_("terminal_error", { error: error }));
@@ -2707,7 +2648,7 @@ function hoodlefinanceExecuteYahooChartRouteBatch_(jobs) {
 
     if (cached) {
       results[i] = hoodlefinanceCreateRouteResult_("success", {
-        quote: hoodlefinanceDecorateFxQuote_(cached, jobs[i].plan.fxPair || jobs[i].routeState.fxPair),
+        quote: hoodlefinanceDecorateFxQuote_(cached, jobs[i].routeState.fxPair),
       });
       continue;
     }
@@ -2732,7 +2673,7 @@ function hoodlefinanceExecuteYahooChartRouteBatch_(jobs) {
             responses[i].response,
             jobs[responses[i].request.index].tickerInput
           ),
-          jobs[responses[i].request.index].plan.fxPair || jobs[responses[i].request.index].routeState.fxPair
+          jobs[responses[i].request.index].routeState.fxPair
         );
         hoodlefinancePutCachedJson_(
           responses[i].request.cacheKey,
@@ -3259,7 +3200,7 @@ function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attri
   let conversionQuote;
   let conversionRate;
 
-  if (plan && plan.fxPair) {
+  if (plan && plan.routeState && plan.routeState.fxPair) {
     throw new Error("Output-currency conversion is not supported for currency-pair identifiers.");
   }
 
@@ -3315,7 +3256,7 @@ function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attri
 function hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(job, error) {
   const yahooSymbol = job && job.routeState && job.routeState.yahooSymbol
     ? String(job.routeState.yahooSymbol).trim().toUpperCase()
-    : (job && job.plan && job.plan.yahooSymbol ? String(job.plan.yahooSymbol).trim().toUpperCase() : "");
+    : "";
   const message = hoodlefinanceErrorMessage_(error);
 
   if (!hoodlefinanceLooksLikeIsraeliFundYahooSymbol_(yahooSymbol)) {
@@ -3323,61 +3264,6 @@ function hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(job, error) {
   }
 
   return /No quote data was found|Quote lookup failed/i.test(message);
-}
-
-function hoodlefinancePrefetchIsraeliTradingviewFundJobs_(jobs) {
-  const requests = [];
-  let i;
-  let fallbackInfo;
-  let cacheKey;
-  let primaryCacheKey;
-  let cached;
-  let responses;
-
-  for (i = 0; i < jobs.length; i += 1) {
-    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(jobs[i].tickerInput, jobs[i].plan.yahooSymbol);
-    cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
-    primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
-    cached = hoodlefinanceGetCachedJson_(cacheKey);
-
-    if (cached) {
-      jobs[i].quote = cached;
-      jobs[i].error = null;
-      hoodlefinancePutCachedJson_(primaryCacheKey, cached, 60);
-      continue;
-    }
-
-    requests.push({
-      cacheKey: cacheKey,
-      expectedSymbol: fallbackInfo.expectedSymbol,
-      job: jobs[i],
-      primaryCacheKey: primaryCacheKey,
-      url: fallbackInfo.url,
-      yahooSymbol: fallbackInfo.yahooSymbol,
-    });
-  }
-
-  responses = hoodlefinanceFetchAllInChunks_("tradingview-quote", requests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(responses[i].error);
-      continue;
-    }
-
-    try {
-      responses[i].request.job.quote = hoodlefinanceExtractTradingviewFundQuoteFromResponse_(
-        responses[i].response,
-        responses[i].request.yahooSymbol,
-        responses[i].request.expectedSymbol
-      );
-      responses[i].request.job.error = null;
-      hoodlefinancePutCachedJson_(responses[i].request.cacheKey, responses[i].request.job.quote, 60);
-      hoodlefinancePutCachedJson_(responses[i].request.primaryCacheKey, responses[i].request.job.quote, 60);
-    } catch (error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
-    }
-  }
 }
 
 function hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(tickerInput, yahooSymbol) {
@@ -3861,7 +3747,7 @@ function hoodlefinanceIsPseContext_(quote, context) {
 
   return (
     hoodlefinanceIsPseTicker_(tickerInput) ||
-    (plan && (plan.source === "pse" || hoodlefinanceIsPseTicker_(plan.yahooSymbol || ""))) ||
+    hoodlefinanceIsPseTicker_(routeState && routeState.yahooSymbol || "") ||
     !!(routeState && routeState.symbol) ||
     String(quote && quote.exchangeName || "").trim().toUpperCase() === "PSE"
   );
