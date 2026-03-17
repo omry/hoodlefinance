@@ -101,11 +101,15 @@ Additional `HOODLEFINANCE`-only attributes:
 - `symbol[:google|:yahoo]`: returns the resolved symbol in Google-style or Yahoo-style form
 - `exchange[:google|:yahoo]`: returns the resolved exchange code in Google-style or Yahoo-style form
 - `isin`: returns the resolved ISIN when an exchange-specific lookup path is available
+- an optional output currency on `price`, such as `price@USD`: returns the current price in the requested output currency or unit
 
 Behavior notes:
 
 - `price` is the default attribute.
 - `close` returns the previous close price.
+- `price` can request an output currency such as `USD`, `EUR`, `GBp`, or `USDT` by using forms like `price@USD`.
+- `close`, `high`, `low`, `change`, `changepct`, `currency`, `name`, `volume`, `tradetime`, `datadelay`, `symbol`, `exchange`, and `isin` do not support an output currency.
+- Output-currency requests are also rejected for currency-pair identifiers such as `EURUSD` or `CURRENCY:BTC.USDT`.
 - `changepct` returns a fraction such as `0.0123` for `1.23%`. Format the cell as Percent in Sheets.
 - `tradetime` returns a Sheets date-time value when the upstream source provides one.
 - `datadelay` is source-dependent and should be treated as advisory, not a guarantee of freshness.
@@ -125,6 +129,7 @@ Examples:
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
 =HOODLEFINANCE("IE00B4L5YX21", "symbol")
 =HOODLEFINANCE("IJPA.L", "exchange")
+=HOODLEFINANCE("SJPA.L", "price@USD")
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("PSE:BDO@PSE", "isin")
 ```
@@ -243,6 +248,18 @@ These forms are primarily meant for debugging and sheet-level troubleshooting ra
 ## Currency Conversion
 
 `HOODLEFINANCE` also supports spot currency conversion through the same function.
+
+For security quotes, `price` can also request an output currency directly:
+
+```gs
+=HOODLEFINANCE("SJPA.L", "price@USD")
+=HOODLEFINANCE("ZPRX.DE", "price@USD")
+=HOODLEFINANCE("NASDAQ:GOOG", "price@EUR")
+```
+
+This form is currently supported for `price`.
+
+`close`, `high`, `low`, `change`, and `changepct` are not supported with an output currency today. They could be added later if there is enough demand for a clearly defined converted-value model.
 
 Accepted FX input forms include:
 

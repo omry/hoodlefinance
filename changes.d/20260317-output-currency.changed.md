@@ -1,0 +1,1 @@
+- Added `price@<currency>` output conversion so a single `HOODLEFINANCE` formula can return the current price in the requested output currency or unit. Unsupported-attribute errors now also show grouped public attribute forms such as `price[@currency]` and `symbol[:google|yahoo]`.

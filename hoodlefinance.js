@@ -64,26 +64,36 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   },
 };
 
-const HOODLEFINANCE_PUBLIC_ATTRIBUTES_ = [
-  "exchange",
-  "exchange:google",
-  "exchange:yahoo",
-  "currency",
-  "datadelay",
-  "close",
-  "high",
-  "low",
-  "isin",
-  "name",
-  "price",
-  "symbol",
-  "symbol:google",
-  "symbol:yahoo",
-  "tradetime",
-  "volume",
-  "changepct",
-  "change",
+const HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_ = [
+  {
+    label: "quote fields",
+    attributes: [
+      "price[@currency]",
+      "name",
+      "currency",
+      "high",
+      "low",
+      "close",
+      "change",
+      "changepct",
+      "volume",
+      "tradetime",
+      "datadelay",
+    ],
+  },
+  {
+    label: "identifier fields",
+    attributes: [
+      "symbol[:google|yahoo]",
+      "exchange[:google|yahoo]",
+      "isin",
+    ],
+  },
 ];
+
+const HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_ = {
+  price: true,
+};
 
 const HOODLEFINANCE_SOURCE_OVERRIDES_ = {
   ARIVA: true,
@@ -94,6 +104,14 @@ const HOODLEFINANCE_SOURCE_OVERRIDES_ = {
   TRADINGVIEW: true,
   YAHOO: true,
 };
+
+function hoodlefinanceFormatPublicAttributes_() {
+  return HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_
+    .map(function (group) {
+      return group.label + ": " + group.attributes.join(", ");
+    })
+    .join("; ");
+}
 
 const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
 const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
@@ -420,10 +438,12 @@ const HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_ = {
  * - "close"
  * - "changepct"
  * - "change"
+ * - price variants such as "price@USD"
  *
  * Examples:
  *   =HOODLEFINANCE("NASDAQ:GOOG")
  *   =HOODLEFINANCE("NASDAQ:GOOG", "price")
+ *   =HOODLEFINANCE("SJPA.L", "price@USD")
  *   =HOODLEFINANCE("NYSE:IBM", "name")
  *   =HOODLEFINANCE("CURRENCY:USDEUR", "price")
  *   =HOODLEFINANCE("LON:SJPA", "isin")
@@ -1650,6 +1670,34 @@ function hoodlefinanceNormalizeAttribute_(attribute) {
   return normalizedAttribute ? normalizedAttribute : "price";
 }
 
+function hoodlefinanceParseAttributeRequest_(attribute) {
+  const rawAttribute = hoodlefinanceNormalizeAttribute_(attribute);
+  const firstAtIndex = rawAttribute.indexOf("@");
+  const lastAtIndex = rawAttribute.lastIndexOf("@");
+  let baseAttribute = rawAttribute;
+  let outputCode = "";
+
+  if (firstAtIndex >= 0) {
+    if (firstAtIndex !== lastAtIndex || firstAtIndex === 0 || firstAtIndex === rawAttribute.length - 1) {
+      throw new Error('Converted attributes must look like price@USD.');
+    }
+
+    baseAttribute = rawAttribute.slice(0, firstAtIndex).trim();
+    outputCode = rawAttribute.slice(firstAtIndex + 1).trim();
+
+    if (!baseAttribute || !outputCode) {
+      throw new Error('Converted attributes must look like price@USD.');
+    }
+  }
+
+  return {
+    baseAttribute: String(baseAttribute).trim().toLowerCase(),
+    outputCode: outputCode,
+    rawAttribute: rawAttribute,
+    wantsOutputCurrency: outputCode !== "",
+  };
+}
+
 function hoodlefinanceParseTickerRequest_(ticker) {
   const value = String(ticker == null ? "" : ticker).trim();
   const atIndex = value.lastIndexOf("@");
@@ -2474,19 +2522,40 @@ function hoodlefinanceExtractRawQuote_(quote) {
 }
 
 function hoodlefinanceExtractAttribute_(quote, attribute, context) {
-  const normalizedAttribute = String(attribute).trim().toLowerCase();
-  const extractor = HOODLEFINANCE_SUPPORTED_ATTRIBUTES_[normalizedAttribute];
+  const attributeRequest = hoodlefinanceParseAttributeRequest_(attribute);
+  const extractor = HOODLEFINANCE_SUPPORTED_ATTRIBUTES_[attributeRequest.baseAttribute];
+  let value;
 
   if (!extractor) {
     throw new Error(
       'Unsupported attribute "' +
         attribute +
         '". Supported attributes: ' +
-        HOODLEFINANCE_PUBLIC_ATTRIBUTES_.join(", ")
+        hoodlefinanceFormatPublicAttributes_()
     );
   }
 
-  return extractor(quote, context || {});
+  if (attributeRequest.wantsOutputCurrency) {
+    if (attributeRequest.baseAttribute === "currency") {
+      throw new Error('Attribute "currency" does not support output-currency conversion.');
+    }
+
+    if (!HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_[attributeRequest.baseAttribute]) {
+      throw new Error(
+        'Attribute "' +
+          attributeRequest.baseAttribute +
+          '" does not support output-currency conversion. Supported attribute is: price.'
+      );
+    }
+  }
+
+  value = extractor(quote, context || {});
+
+  if (!attributeRequest.wantsOutputCurrency) {
+    return value;
+  }
+
+  return hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attributeRequest, context || {});
 }
 
 function hoodlefinanceHasValue_(value) {
@@ -2552,6 +2621,58 @@ function hoodlefinanceNormalizeMoney_(quote, value) {
     (normalizedCurrency === "ILS" && (quote.currency === "ILA" || quote.financialCurrency === "ILA"))
     ? value / 100
     : value;
+}
+
+function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attributeRequest, context) {
+  const sourceCurrency = hoodlefinanceExtractCurrencyValue_(quote);
+  const sourceUnit = hoodlefinanceResolveCurrencyUnit_(sourceCurrency);
+  const targetUnit = hoodlefinanceResolveCurrencyUnit_(attributeRequest.outputCode);
+  const plan = context && context.plan ? context.plan : null;
+  let fxPair;
+  let conversionQuote;
+  let conversionRate;
+
+  if (plan && plan.fxPair) {
+    throw new Error("Output-currency conversion is not supported for currency-pair identifiers.");
+  }
+
+  if (!sourceCurrency) {
+    throw new Error('No quote currency is available for output-currency conversion on "' + attributeRequest.rawAttribute + '".');
+  }
+
+  if (!sourceUnit) {
+    throw new Error('Quote currency "' + sourceCurrency + '" is not supported for output-currency conversion.');
+  }
+
+  if (!targetUnit) {
+    throw new Error('Output currency "' + attributeRequest.outputCode + '" is not supported.');
+  }
+
+  if (sourceUnit.displayCode === targetUnit.displayCode) {
+    return value;
+  }
+
+  fxPair = hoodlefinanceBuildFxPair_(sourceUnit, targetUnit);
+
+  if (fxPair.isSameCurrency) {
+    return value * fxPair.scale;
+  }
+
+  try {
+    conversionQuote = hoodlefinanceFetchQuote_(fxPair.googleSymbol);
+    conversionRate = hoodlefinanceNormalizeMoney_(conversionQuote, hoodlefinancePickPrice_(conversionQuote));
+  } catch (error) {
+    throw new Error(
+      'Output-currency conversion from "' +
+        sourceUnit.displayCode +
+        '" to "' +
+        targetUnit.displayCode +
+        '" is unavailable. ' +
+        hoodlefinanceErrorMessage_(error)
+    );
+  }
+
+  return value * conversionRate;
 }
 
 function hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(job, error) {

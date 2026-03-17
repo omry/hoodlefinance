@@ -25,6 +25,7 @@ This is most useful if your sheet is ETF-heavy, non-U.S.-heavy, or needs identif
 - Dedicated support for the Philippine Stock Exchange (`PSE`)
 - Support for direct ISIN lookups and the `isin` output attribute
 - More flexible currency conversion, including same-currency pairs such as `USDUSD` and quote-unit handling for subunit-style inputs such as `GBp` and `ILA`, where the returned rate and `currency` still reflect the requested units
+- An optional output currency on `price`, such as `price@USD`, so one formula can return a quote in the currency you want
 - A broader practical FX surface than typical `GOOGLEFINANCE` usage, including fields such as `name`, `high`, `low`, `close`, `change`, and `changepct`
 - Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `NEO:ZTL`, `HKG:9988`, and `SGX:D05`
 
@@ -82,6 +83,8 @@ Supported attributes:
 - Additional outputs such as `isin`, which `GOOGLEFINANCE` does not provide directly
 
 The resolved identifier outputs are best-effort style conversions between the supported Google-style, Yahoo-style, and ISIN forms. Use `:yahoo` or `:google` to request the output style explicitly, for example `=HOODLEFINANCE("SJPA.L", "symbol:google")` or `=HOODLEFINANCE("GOOG", "exchange:yahoo")`.
+
+`price` can also request an output currency, such as `price@USD`.
 
 ## Reference And Coverage
 

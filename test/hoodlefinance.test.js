@@ -1306,7 +1306,7 @@ test("unsupported attribute errors list only public attributes", () => {
     (error) => {
       assert.match(
         error.message,
-        /Unsupported attribute "yahoo:symbol"\. Supported attributes: exchange, exchange:google, exchange:yahoo, currency, datadelay, close, high, low, isin, name, price, symbol, symbol:google, symbol:yahoo, tradetime, volume, changepct, change/
+        /Unsupported attribute "yahoo:symbol"\. Supported attributes: quote fields: price\[@currency\], name, currency, high, low, close, change, changepct, volume, tradetime, datadelay; identifier fields: symbol\[:google\|yahoo\], exchange\[:google\|yahoo\], isin/
       );
       return true;
     }
@@ -2132,6 +2132,252 @@ test("money normalization converts ILA prices to ILS", () => {
 
   assert.equal(ctx.hoodlefinanceNormalizeMoney_(quote, 12345), 123.45);
   assert.equal(ctx.hoodlefinanceNormalizeCurrency_("ILA"), "ILS");
+});
+
+test("supported quote attributes support output-currency conversion", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const quote = {
+    currency: "USD",
+    regularMarketDayHigh: 205,
+    regularMarketDayLow: 190,
+    regularMarketPreviousClose: 195,
+    regularMarketPrice: 200,
+  };
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetchAll = function () {
+    throw new Error("Unexpected batch fetch");
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://www.google.com/finance/quote/USD-EUR") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "USD-EUR",
+          "United States Dollar (USD / EUR)",
+          [0.91, 0.01, 1.11, 4, 4, 2],
+          0.9,
+          1773599520,
+          ["USD", "EUR", "United States Dollar", "Euro", "/m/09nqf", "/m/01l6dm", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.hoodlefinanceExtractAttribute_(quote, "price@EUR", {}), 182);
+  assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/USD-EUR"]);
+});
+
+test("output-currency conversion reuses money normalization and unit aliases", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const quote = {
+    currency: "GBp",
+    regularMarketPreviousClose: 1200,
+    regularMarketPrice: 1234,
+  };
+
+  assert.equal(ctx.hoodlefinanceExtractAttribute_(quote, "price@GBP", {}), 12.34);
+  assert.equal(ctx.hoodlefinanceExtractAttribute_(quote, "price@GBp", {}), 1234);
+});
+
+test("output-currency conversion rejects non-money attributes and FX identifiers", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD" }, "currency@USD", {}),
+    /Attribute "currency" does not support output-currency conversion\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ longName: "Alphabet" }, "name@USD", {}),
+    /Attribute "name" does not support output-currency conversion\. Supported attribute is: price\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_(
+      { currency: "USD", regularMarketPreviousClose: 9, regularMarketPrice: 10 },
+      "close@USD",
+      {}
+    ),
+    /Attribute "close" does not support output-currency conversion\. Supported attribute is: price\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_(
+      { currency: "USD", regularMarketDayHigh: 11, regularMarketPrice: 10 },
+      "high@USD",
+      {}
+    ),
+    /Attribute "high" does not support output-currency conversion\. Supported attribute is: price\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_(
+      { currency: "USD", regularMarketDayLow: 8, regularMarketPrice: 10 },
+      "low@USD",
+      {}
+    ),
+    /Attribute "low" does not support output-currency conversion\. Supported attribute is: price\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_(
+      { currency: "USD", regularMarketPreviousClose: 9, regularMarketPrice: 10 },
+      "change@USD",
+      {}
+    ),
+    /Attribute "change" does not support output-currency conversion\. Supported attribute is: price\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_(
+      {
+        currency: "USD",
+        regularMarketPrice: 1.0812,
+      },
+      "price@USD",
+      {
+        plan: {
+          fxPair: ctx.hoodlefinanceParseFxTicker_("EURUSD"),
+        },
+        tickerInput: "EURUSD",
+      }
+    ),
+    /Output-currency conversion is not supported for currency-pair identifiers\./
+  );
+});
+
+test("output-currency conversion rejects malformed or unsupported converted attributes", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@", {}),
+    /Converted attributes must look like price@USD\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@@USD", {}),
+    /Converted attributes must look like price@USD\./
+  );
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@FOO", {}),
+    /Output currency "FOO" is not supported\./
+  );
+});
+
+test("output-currency conversion fails clearly when no quote currency is available", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.throws(
+    () => ctx.hoodlefinanceExtractAttribute_({ regularMarketPrice: 10 }, "price@USD", {}),
+    /No quote currency is available for output-currency conversion on "price@USD"\./
+  );
+});
+
+test("HOODLEFINANCE converts live quote attributes to the requested output currency", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const seenBatches = [];
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPreviousClose: 195,
+          regularMarketPrice: 200,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://www.google.com/finance/quote/USD-EUR") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "USD-EUR",
+          "United States Dollar (USD / EUR)",
+          [0.91, 0.01, 1.11, 4, 4, 2],
+          0.9,
+          1773599520,
+          ["USD", "EUR", "United States Dollar", "Euro", "/m/09nqf", "/m/01l6dm", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("NASDAQ:GOOG", "price@EUR"), 182);
+  assert.equal(JSON.stringify(seenBatches), JSON.stringify([[
+    "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+  ]]));
+  assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/USD-EUR"]);
+});
+
+test("HOODLEFINANCE converts array inputs to an output currency with deduped fetches", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+  const seenBatches = [];
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPrice: 200,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/MSFT?interval=1d&range=1d") {
+        return createYahooChartResponse("MSFT", {
+          currency: "USD",
+          regularMarketPrice: 300,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (url === "https://www.google.com/finance/quote/USD-EUR") {
+      return createHttpResponse(
+        200,
+        createGoogleFinancePairHtml(
+          "USD-EUR",
+          "United States Dollar (USD / EUR)",
+          [0.91, 0.01, 1.11, 4, 4, 2],
+          0.9,
+          1773599520,
+          ["USD", "EUR", "United States Dollar", "Euro", "/m/09nqf", "/m/01l6dm", 2]
+        )
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["NASDAQ:GOOG"], ["NASDAQ:GOOG"], ["NASDAQ:MSFT"]], "price@EUR")),
+    JSON.stringify([[182], [182], [273]])
+  );
+  assert.equal(JSON.stringify(seenBatches), JSON.stringify([[
+    "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+    "https://query1.finance.yahoo.com/v8/finance/chart/MSFT?interval=1d&range=1d",
+  ]]));
+  assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/USD-EUR"]);
 });
 
 test("isin rejects currency pairs with a direct user-facing error", () => {
