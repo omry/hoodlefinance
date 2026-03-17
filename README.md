@@ -1,6 +1,6 @@
 # HOODLEFINANCE
 
-`HOODLEFINANCE` is a Google Apps Script custom function that provides a practical alternative to `GOOGLEFINANCE` for many single-cell and array-based workflows, especially ETF-heavy and non-U.S. ones.
+`HOODLEFINANCE` is a Google Apps Script custom function that provides a practical alternative to `GOOGLEFINANCE`, especially for international, mixed-currency portfolios and ETF-heavy sheets.
 
 It uses multiple data sources to cover data, identifiers, and markets that `GOOGLEFINANCE` does not provide or does not support well.
 
@@ -14,19 +14,18 @@ There are also some limitations; see [Limits](#limits).
 ## Live Demo
 
 <!-- DEMO_SHEET_LINK:START -->
-See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).
+See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for live examples.
 <!-- DEMO_SHEET_LINK:END -->
 
 ## Why Use It Instead Of GOOGLEFINANCE?
 
-This is most useful if your sheet is ETF-heavy, non-U.S.-heavy, or needs identifiers that `GOOGLEFINANCE` does not expose.
+This is most useful if your sheet spans international markets, mixes holdings quoted in different currencies, or needs identifiers that `GOOGLEFINANCE` does not expose.
 
 - Better practical support for many foreign ETFs, especially Yahoo-style symbols such as `.L` and `.DE`
 - Dedicated support for the Philippine Stock Exchange (`PSE`)
 - Support for direct ISIN lookups and the `isin` output attribute
-- More flexible currency conversion, including same-currency pairs such as `USDUSD` and quote-unit handling for subunit-style inputs such as `GBp` and `ILA`, where the returned rate and `currency` still reflect the requested units
-- An optional output currency on `price`, such as `price@USD`, so one formula can return a quote in the currency you want
-- A broader practical FX surface than typical `GOOGLEFINANCE` usage, including fields such as `name`, `high`, `low`, `close`, `change`, and `changepct`
+- More flexible currency conversion, including same-currency pairs such as `USDUSD` and unit-specific inputs such as `GBp` and `ILA`
+- An optional output currency on `price`, such as `price@USD`, so one formula can return the current quote in the currency you actually care about, not just the symbol's market currency
 - Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `NEO:ZTL`, `HKG:9988`, and `SGX:D05`
 
 ## Quick Start
@@ -50,10 +49,13 @@ Then try a few representative lookups:
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("EURUSD", "price")
+=HOODLEFINANCE("SJPA.L", "price@USD")
 =HOODLEFINANCE("SGX:D05", "name")
 =HOODLEFINANCE("PSE:BDO", "isin")
 =HOODLEFINANCE("PHY077751022", "name")
 ```
+
+If you hold positions across markets and currencies, especially in a mixed-currency portfolio, `price@USD`-style lookups are often one of the biggest practical wins because they let you normalize quotes into one comparison currency without a separate helper-column FX step.
 
 The script also adds a `Hoodlefinance` menu in Sheets for update-related actions.
 To update the script, review the release notes, then replace the current code in Apps Script with the latest version.
@@ -82,9 +84,9 @@ Supported attributes:
 - Resolved identifier outputs such as `symbol[:google|:yahoo]` and `exchange[:google|:yahoo]`
 - Additional outputs such as `isin`, which `GOOGLEFINANCE` does not provide directly
 
-The resolved identifier outputs are best-effort style conversions between the supported Google-style, Yahoo-style, and ISIN forms. Use `:yahoo` or `:google` to request the output style explicitly, for example `=HOODLEFINANCE("SJPA.L", "symbol:google")` or `=HOODLEFINANCE("GOOG", "exchange:yahoo")`.
+The resolved identifier outputs try to convert between the supported Google-style, Yahoo-style, and ISIN forms. Use `:yahoo` or `:google` to request the output style explicitly, for example `=HOODLEFINANCE("SJPA.L", "symbol:google")` or `=HOODLEFINANCE("GOOG", "exchange:yahoo")`.
 
-`price` can also request an output currency, such as `price@USD`.
+`price` can also request an output currency, such as `price@USD`, which is especially useful when you are comparing holdings across international markets in one portfolio currency.
 
 ## Reference And Coverage
 
