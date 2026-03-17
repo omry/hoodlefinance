@@ -47,6 +47,10 @@ If Sheets reports `Unknown function: HOODLEFINANCE`, check that the script was p
 ```
 
 ```gs
+=HOODLEFINANCE_ROUTES([identifier])
+```
+
+```gs
 =HOODLEFINANCE_VERSION()
 ```
 
@@ -77,6 +81,10 @@ But the historical-style arguments are not implemented:
 If any of those extra arguments are supplied, the function throws an error.
 
 `HOODLEFINANCE_VERSION()` returns the version string embedded in the pasted script.
+
+`HOODLEFINANCE_ROUTES()` returns a spilled routing table with the current quote classifications and planned routes.
+
+`HOODLEFINANCE_ROUTES(identifier)` returns the planned quote route for one identifier, using the same static route introspection as `IDENTIFIER@?`.
 
 ## Supported Attributes
 
@@ -231,7 +239,7 @@ If the identifier itself is an ISIN, `HOODLEFINANCE` resolves it automatically b
 For troubleshooting and source-coverage checks, identifiers also support a small debug suffix surface:
 
 - `IDENTIFIER@SOURCE`: force a specific source for that lookup and disable fallback
-- `IDENTIFIER@?`: return the currently deduced source name
+- `IDENTIFIER@?`: return the planned quote route, prefixed by the classifier bucket that selected it, such as `FX -> GOOGLE`, `TICKER -> YAHOO`, or `TICKER-IL-FUND -> YAHOO -> TRADINGVIEW`
 - `IDENTIFIER@` or `IDENTIFIER@anything-unknown`: return the supported source list
 
 Examples:
@@ -240,8 +248,11 @@ Examples:
 =HOODLEFINANCE("BTCUSD@YAHOO", "price")
 =HOODLEFINANCE("EURUSD@GOOGLE", "price")
 =HOODLEFINANCE("BTCUSD@?")
+=HOODLEFINANCE("GOOG@?")
 =HOODLEFINANCE("BTCUSD@")
 ```
+
+`@?` is static route introspection. It does not run a live lookup; it shows the classifier bucket and route `HOODLEFINANCE` plans to use for quote resolution. Generic ticker routes show `YAHOO`, and the extra `TRADINGVIEW` step appears only for the Israeli-fund ticker subset where that fallback is actually eligible.
 
 These forms are primarily meant for debugging and sheet-level troubleshooting rather than normal portfolio formulas.
 

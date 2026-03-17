@@ -490,6 +490,40 @@ function HOODLEFINANCE_VERSION() {
   return HOODLEFINANCE_VERSION_;
 }
 
+/**
+ * Returns the current quote-routing table, or the planned quote route for one ticker.
+ *
+ * Examples:
+ *   =HOODLEFINANCE_ROUTES()
+ *   =HOODLEFINANCE_ROUTES("GOOG")
+ *
+ * @param {string=} ticker Optional ticker identifier to introspect.
+ * @return {string|Array<Array<string>>}
+ * @customfunction
+ */
+function HOODLEFINANCE_ROUTES(ticker) {
+  let normalizedTicker;
+  let plan;
+
+  if (!hoodlefinanceHasValue_(ticker)) {
+    return hoodlefinanceBuildRoutingTableGrid_();
+  }
+
+  normalizedTicker = hoodlefinanceCoerceScalar_(ticker, "ticker");
+
+  if (!String(normalizedTicker).trim()) {
+    return hoodlefinanceBuildRoutingTableGrid_();
+  }
+
+  plan = hoodlefinanceClassifyTickerJob_(String(normalizedTicker).trim(), "price");
+
+  if (plan.source === "source-debug") {
+    return String(plan.debugValue || "");
+  }
+
+  return hoodlefinanceDescribePlanSource_(plan);
+}
+
 function onOpen() {
   hoodlefinanceAddMenu_();
   hoodlefinanceMaybeCheckForUpdates_();
@@ -1315,59 +1349,35 @@ function hoodlefinanceEscapeHtml_(text) {
 }
 
 function hoodlefinanceFetchQuote_(ticker) {
-  const normalizedTicker = String(ticker).trim();
-  const fxPair = hoodlefinanceParseFxTicker_(normalizedTicker);
-  let yahooSymbol;
-  let cacheKey;
-  let cached;
-  let response;
-  let meta;
-  let fallbackInfo;
+  const job = {
+    attribute: "price",
+    error: null,
+    key: hoodlefinanceBuildTickerJobKey_(ticker, "price"),
+    quote: null,
+    tickerInput: String(ticker).trim(),
+    value: null,
+    valueResolved: false,
+  };
 
-  if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
-    return hoodlefinanceFetchPseQuote_(normalizedTicker);
+  job.plan = hoodlefinanceClassifyTickerJob_(job.tickerInput, "price");
+
+  if (job.plan.source === "source-debug") {
+    throw new Error("Debug-only ticker requests cannot be fetched as quotes.");
   }
 
-  if (fxPair && fxPair.isSameCurrency) {
-    return hoodlefinanceBuildSameCurrencyQuote_(fxPair);
+  job.routeAttempts = hoodlefinanceCloneRouteAttempts_(job.plan.routeAttempts || []);
+  job.routeIndex = 0;
+  job.routeState = hoodlefinanceCloneRouteState_(job.plan.routeState || {});
+  job.routeRuntimeTrace = [];
+  job.routeLastLookupFailure = "";
+
+  hoodlefinanceExecuteRouteJobs_([job]);
+
+  if (job.error) {
+    throw new Error(job.error);
   }
 
-  if (fxPair) {
-    return hoodlefinanceFetchGoogleFinanceFxPairQuote_(fxPair);
-  }
-
-  yahooSymbol = fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTicker_(normalizedTicker);
-
-  if (hoodlefinanceIsPseTicker_(yahooSymbol)) {
-    return hoodlefinanceFetchPseQuote_(yahooSymbol);
-  }
-
-  cacheKey = "hoodlefinance:" + yahooSymbol;
-  cached = hoodlefinanceGetCachedJson_(cacheKey);
-
-  if (cached) {
-    return hoodlefinanceDecorateFxQuote_(cached, fxPair);
-  }
-
-  response = UrlFetchApp.fetch(hoodlefinanceBuildYahooChartUrl_(yahooSymbol), hoodlefinanceBuildFetchOptions_());
-
-  try {
-    meta = hoodlefinanceExtractYahooQuoteMetaFromResponse_(response, ticker);
-  } catch (error) {
-    if (!hoodlefinanceShouldUseIsraeliFundTradingviewFallback_({ plan: { yahooSymbol: yahooSymbol } }, error)) {
-      throw error;
-    }
-
-    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(normalizedTicker, yahooSymbol);
-    meta = hoodlefinanceExtractTradingviewFundQuote_(
-      hoodlefinanceFetchText_(fallbackInfo.url),
-      yahooSymbol,
-      fallbackInfo.expectedSymbol
-    );
-  }
-
-  hoodlefinancePutCachedJson_(cacheKey, meta, 60);
-  return hoodlefinanceDecorateFxQuote_(meta, fxPair);
+  return job.quote;
 }
 
 function hoodlefinanceFetchPseQuote_(ticker) {
@@ -1870,10 +1880,6 @@ function hoodlefinanceShouldTreatRangeTickerAsBlank_(ticker) {
 
 function hoodlefinancePrefetchTickerJobs_(jobs) {
   const orderedJobs = jobs.orderedJobs;
-  const googleFinanceFxJobs = [];
-  const yahooIsinJobs = [];
-  const yahooChartJobs = [];
-  const pseJobs = [];
   let i;
   let plan;
 
@@ -1887,50 +1893,17 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
         orderedJobs[i].valueResolved = true;
         continue;
       }
-
-      if (plan.source === "local-fx") {
-        orderedJobs[i].quote = hoodlefinanceBuildSameCurrencyQuote_(plan.fxPair);
-        continue;
-      }
-
-      if (plan.source === "yahoo-isin-search") {
-        yahooIsinJobs.push(orderedJobs[i]);
-        continue;
-      }
-
-      if (plan.source === "google-finance-fx") {
-        googleFinanceFxJobs.push(orderedJobs[i]);
-        continue;
-      }
-
-      if (plan.source === "yahoo-chart") {
-        yahooChartJobs.push(orderedJobs[i]);
-        continue;
-      }
-
-      if (plan.source === "pse") {
-        pseJobs.push(orderedJobs[i]);
-      }
+      orderedJobs[i].routeAttempts = hoodlefinanceCloneRouteAttempts_(plan.routeAttempts || []);
+      orderedJobs[i].routeIndex = 0;
+      orderedJobs[i].routeState = hoodlefinanceCloneRouteState_(plan.routeState || {});
+      orderedJobs[i].routeRuntimeTrace = [];
+      orderedJobs[i].routeLastLookupFailure = "";
     } catch (error) {
       orderedJobs[i].error = hoodlefinanceErrorMessage_(error);
     }
   }
 
-  hoodlefinancePrefetchYahooIsinJobs_(yahooIsinJobs);
-
-  for (i = 0; i < yahooIsinJobs.length; i += 1) {
-    if (!yahooIsinJobs[i].error && yahooIsinJobs[i].plan && yahooIsinJobs[i].plan.yahooSymbol) {
-      if (hoodlefinanceIsPseTicker_(yahooIsinJobs[i].plan.yahooSymbol)) {
-        pseJobs.push(yahooIsinJobs[i]);
-      } else {
-        yahooChartJobs.push(yahooIsinJobs[i]);
-      }
-    }
-  }
-
-  hoodlefinancePrefetchGoogleFinanceFxJobs_(googleFinanceFxJobs);
-  hoodlefinancePrefetchYahooChartJobs_(yahooChartJobs);
-  hoodlefinancePrefetchPseJobs_(pseJobs);
+  hoodlefinanceExecuteRouteJobs_(orderedJobs);
 }
 
 function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribute, upperTicker, fxPair, sourceOverride) {
@@ -1939,8 +1912,12 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
   if (sourceOverride === "YAHOO") {
     if (hoodlefinanceLooksLikeIsin_(normalizedTicker)) {
       return {
+        routeClass: "FORCED:YAHOO-ISIN",
+        fxPair: fxPair,
         isin: upperTicker,
-        noSourceFallback: true,
+        routeAttempts: [hoodlefinanceCreateYahooIsinAttempt_("yahoo-only")],
+        routeState: { isin: upperTicker },
+        routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:YAHOO-ISIN", "YAHOO-ISIN -> YAHOO"),
         source: "yahoo-isin-search",
         sourceOverride: sourceOverride,
       };
@@ -1948,8 +1925,12 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
 
     if (upperTicker.indexOf("ISIN:") === 0) {
       return {
+        routeClass: "FORCED:YAHOO-ISIN",
+        fxPair: fxPair,
         isin: upperTicker.slice(5).trim(),
-        noSourceFallback: true,
+        routeAttempts: [hoodlefinanceCreateYahooIsinAttempt_("yahoo-only")],
+        routeState: { isin: upperTicker.slice(5).trim() },
+        routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:YAHOO-ISIN", "YAHOO-ISIN -> YAHOO"),
         source: "yahoo-isin-search",
         sourceOverride: sourceOverride,
       };
@@ -1957,12 +1938,15 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
 
     return {
       fxPair: fxPair,
-      noSourceFallback: true,
+      routeClass: "FORCED:YAHOO",
+      routeAttempts: [hoodlefinanceCreateYahooChartAttempt_(false)],
+      routeState: {
+        fxPair: fxPair,
+        yahooSymbol: hoodlefinanceBuildForcedYahooSymbol_(normalizedTicker, fxPair),
+      },
+      routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:YAHOO", "YAHOO"),
       source: "yahoo-chart",
       sourceOverride: sourceOverride,
-      yahooSymbol: hoodlefinanceIsPseTicker_(normalizedTicker)
-        ? hoodlefinanceParsePseSymbol_(normalizedTicker) + ".PS"
-        : (fxPair ? fxPair.yahooChartSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker)),
     };
   }
 
@@ -1973,7 +1957,10 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
 
     return {
       fxPair: fxPair,
-      noSourceFallback: true,
+      routeClass: "FORCED:GOOGLE",
+      routeAttempts: [hoodlefinanceCreateRouteAttempt_("google-finance-fx", "GOOGLE")],
+      routeState: { fxPair: fxPair },
+      routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:GOOGLE", "GOOGLE"),
       source: "google-finance-fx",
       sourceOverride: sourceOverride,
     };
@@ -1982,7 +1969,10 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
   if (sourceOverride === "PSE") {
     if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
       return {
-        noSourceFallback: true,
+        routeClass: "FORCED:PSE",
+        routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
+        routeState: { symbol: hoodlefinanceParsePseSymbol_(normalizedTicker) },
+        routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:PSE", "PSE"),
         source: "pse",
         sourceOverride: sourceOverride,
         symbol: hoodlefinanceParsePseSymbol_(normalizedTicker),
@@ -1997,7 +1987,10 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
       }
 
       return {
-        noSourceFallback: true,
+        routeClass: "FORCED:PSE",
+        routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
+        routeState: { symbol: hoodlefinanceParsePseSymbol_(pseTicker) },
+        routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:PSE", "PSE"),
         source: "pse",
         sourceOverride: sourceOverride,
         symbol: hoodlefinanceParsePseSymbol_(pseTicker),
@@ -2012,7 +2005,10 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
       }
 
       return {
-        noSourceFallback: true,
+        routeClass: "FORCED:PSE",
+        routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
+        routeState: { symbol: hoodlefinanceParsePseSymbol_(pseTicker) },
+        routeTrace: hoodlefinanceBuildRouteTrace_("FORCED:PSE", "PSE"),
         source: "pse",
         sourceOverride: sourceOverride,
         symbol: hoodlefinanceParsePseSymbol_(pseTicker),
@@ -2030,27 +2026,61 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
 }
 
 function hoodlefinanceDescribePlanSource_(plan) {
-  if (!plan || !plan.source) {
+  if (!plan) {
     return "";
   }
 
-  if (plan.source === "google-finance-fx") {
-    return "GOOGLE";
+  return plan.routeTrace || "";
+}
+
+function hoodlefinanceGetRoutingTableRows_() {
+  return [
+    { classification: "TICKER", example: "GOOG", route: "TICKER -> YAHOO" },
+    { classification: "TICKER-IL-FUND", example: "TLV:KSMF59", route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW" },
+    { classification: "FX", example: "EURUSD", route: "FX -> GOOGLE" },
+    { classification: "FX-SAME", example: "USDUSD", route: "FX-SAME -> LOCAL" },
+    { classification: "PSE-TICKER", example: "PSE:BDO", route: "PSE-TICKER -> PSE" },
+    {
+      classification: "ISIN",
+      example: "US02079K1079",
+      route: "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+    },
+    { classification: "FORCED:YAHOO", example: "GOOG@YAHOO", route: "FORCED:YAHOO -> YAHOO" },
+    {
+      classification: "FORCED:YAHOO-ISIN",
+      example: "US02079K1079@YAHOO",
+      route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
+    },
+    { classification: "FORCED:GOOGLE", example: "EURUSD@GOOGLE", route: "FORCED:GOOGLE -> GOOGLE" },
+    { classification: "FORCED:PSE", example: "PSE:BDO@PSE", route: "FORCED:PSE -> PSE" },
+  ];
+}
+
+function hoodlefinanceBuildRoutingTableGrid_() {
+  const rows = hoodlefinanceGetRoutingTableRows_();
+  const grid = [["classification", "example", "planned route"]];
+  let i;
+
+  for (i = 0; i < rows.length; i += 1) {
+    grid.push([rows[i].classification, rows[i].example, rows[i].route]);
   }
 
-  if (plan.source === "local-fx") {
-    return "LOCAL";
+  return grid;
+}
+
+function hoodlefinanceBuildRouteTrace_(routeClass, routeTrace) {
+  const normalizedClass = String(routeClass || "").trim();
+  const normalizedTrace = String(routeTrace || "").trim();
+
+  if (!normalizedClass) {
+    return normalizedTrace;
   }
 
-  if (plan.source === "pse") {
-    return "PSE";
+  if (!normalizedTrace) {
+    return normalizedClass;
   }
 
-  if (plan.source === "yahoo-chart" || plan.source === "yahoo-isin-search") {
-    return "YAHOO";
-  }
-
-  return String(plan.source).toUpperCase();
+  return normalizedClass + " -> " + normalizedTrace;
 }
 
 function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
@@ -2063,6 +2093,8 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
   const requestUpperTicker = requestTicker.toUpperCase();
   const fxPair = hoodlefinanceParseFxTicker_(requestTicker);
   let plan;
+  let normalizedYahooTicker;
+  let isIsraeliFundTicker;
 
   if (infoMode === "source-list") {
     return {
@@ -2089,6 +2121,10 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
 
   if (hoodlefinanceIsPseTicker_(requestTicker)) {
     return {
+      routeClass: "PSE-TICKER",
+      routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
+      routeState: { symbol: hoodlefinanceParsePseSymbol_(requestTicker) },
+      routeTrace: hoodlefinanceBuildRouteTrace_("PSE-TICKER", "PSE"),
       sourceOverride: sourceOverride,
       source: "pse",
       symbol: hoodlefinanceParsePseSymbol_(requestTicker),
@@ -2098,6 +2134,10 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
   if (fxPair && fxPair.isSameCurrency) {
     return {
       fxPair: fxPair,
+      routeClass: "FX-SAME",
+      routeAttempts: [hoodlefinanceCreateRouteAttempt_("local-fx", "LOCAL")],
+      routeState: { fxPair: fxPair },
+      routeTrace: hoodlefinanceBuildRouteTrace_("FX-SAME", "LOCAL"),
       sourceOverride: sourceOverride,
       source: "local-fx",
     };
@@ -2106,6 +2146,10 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
   if (fxPair) {
     return {
       fxPair: fxPair,
+      routeClass: "FX",
+      routeAttempts: [hoodlefinanceCreateRouteAttempt_("google-finance-fx", "GOOGLE")],
+      routeState: { fxPair: fxPair },
+      routeTrace: hoodlefinanceBuildRouteTrace_("FX", "GOOGLE"),
       sourceOverride: sourceOverride,
       source: "google-finance-fx",
     };
@@ -2114,6 +2158,16 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
   if (hoodlefinanceLooksLikeIsin_(requestTicker)) {
     return {
       isin: requestUpperTicker,
+      routeClass: "ISIN",
+      routeAttempts: [
+        hoodlefinanceCreateRouteAttempt_("pse-isin-map", "PSE-MAP"),
+        hoodlefinanceCreateYahooIsinAttempt_("default"),
+      ],
+      routeState: { isin: requestUpperTicker },
+      routeTrace: hoodlefinanceBuildRouteTrace_(
+        "ISIN",
+        "PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))"
+      ),
       sourceOverride: sourceOverride,
       source: "yahoo-isin-search",
     };
@@ -2122,64 +2176,440 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
   if (requestUpperTicker.indexOf("ISIN:") === 0) {
     return {
       isin: requestUpperTicker.slice(5).trim(),
+      routeClass: "ISIN",
+      routeAttempts: [
+        hoodlefinanceCreateRouteAttempt_("pse-isin-map", "PSE-MAP"),
+        hoodlefinanceCreateYahooIsinAttempt_("default"),
+      ],
+      routeState: { isin: requestUpperTicker.slice(5).trim() },
+      routeTrace: hoodlefinanceBuildRouteTrace_(
+        "ISIN",
+        "PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))"
+      ),
       sourceOverride: sourceOverride,
       source: "yahoo-isin-search",
     };
   }
 
+  normalizedYahooTicker = fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(requestTicker);
+  isIsraeliFundTicker = hoodlefinanceLooksLikeIsraeliFundYahooSymbol_(normalizedYahooTicker);
+
   return {
     fxPair: fxPair,
+    routeClass: isIsraeliFundTicker ? "TICKER-IL-FUND" : "TICKER",
+    routeAttempts: [hoodlefinanceCreateYahooChartAttempt_(isIsraeliFundTicker)],
+    routeState: {
+      fxPair: fxPair,
+      yahooSymbol: normalizedYahooTicker,
+    },
+    routeTrace: hoodlefinanceBuildRouteTrace_(
+      isIsraeliFundTicker ? "TICKER-IL-FUND" : "TICKER",
+      isIsraeliFundTicker ? "YAHOO -> TRADINGVIEW" : "YAHOO"
+    ),
     sourceOverride: sourceOverride,
     source: "yahoo-chart",
-    yahooSymbol: fxPair ? fxPair.yahooSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(requestTicker),
+    yahooSymbol: normalizedYahooTicker,
   };
 }
 
-function hoodlefinancePrefetchGoogleFinanceFxJobs_(jobs) {
-  let i;
+function hoodlefinanceCreateRouteAttempt_(adapterId, traceLabel, options) {
+  const attempt = {
+    adapterId: adapterId,
+    traceLabel: traceLabel,
+  };
+  const extras = options || {};
+  let key;
 
-  for (i = 0; i < jobs.length; i += 1) {
-    try {
-      jobs[i].quote = hoodlefinanceFetchGoogleFinanceFxPairQuote_(jobs[i].plan.fxPair);
-    } catch (error) {
-      jobs[i].error = hoodlefinanceErrorMessage_(error);
+  for (key in extras) {
+    if (Object.prototype.hasOwnProperty.call(extras, key)) {
+      attempt[key] = extras[key];
+    }
+  }
+
+  return attempt;
+}
+
+function hoodlefinanceCreateYahooChartAttempt_(allowTradingviewFallback) {
+  return hoodlefinanceCreateRouteAttempt_("yahoo-chart", "YAHOO", {
+    allowTradingviewFallback: allowTradingviewFallback === true,
+  });
+}
+
+function hoodlefinanceCreateYahooIsinAttempt_(resolvedSymbolMode) {
+  return hoodlefinanceCreateRouteAttempt_("yahoo-isin-search", "YAHOO-ISIN", {
+    resolvedSymbolMode: resolvedSymbolMode || "default",
+  });
+}
+
+function hoodlefinanceCloneRouteAttempts_(attempts) {
+  let i;
+  const cloned = [];
+
+  for (i = 0; i < attempts.length; i += 1) {
+    cloned.push(hoodlefinanceCreateRouteAttempt_(attempts[i].adapterId, attempts[i].traceLabel, attempts[i]));
+  }
+
+  return cloned;
+}
+
+function hoodlefinanceCloneRouteState_(state) {
+  const cloned = {};
+  const source = state || {};
+  let key;
+
+  for (key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      cloned[key] = source[key];
+    }
+  }
+
+  return cloned;
+}
+
+function hoodlefinanceCreateRouteResult_(status, options) {
+  const result = { status: status };
+  const extras = options || {};
+  let key;
+
+  for (key in extras) {
+    if (Object.prototype.hasOwnProperty.call(extras, key)) {
+      result[key] = extras[key];
+    }
+  }
+
+  return result;
+}
+
+function hoodlefinanceBuildForcedYahooSymbol_(normalizedTicker, fxPair) {
+  if (hoodlefinanceIsPseTicker_(normalizedTicker)) {
+    return hoodlefinanceParsePseSymbol_(normalizedTicker) + ".PS";
+  }
+
+  return fxPair ? fxPair.yahooChartSymbol : hoodlefinanceNormalizeTickerWithoutIsin_(normalizedTicker);
+}
+
+function hoodlefinanceBuildQuoteAttemptsForResolvedIdentifier_(resolvedIdentifier, mode) {
+  const normalizedMode = mode || "default";
+  const normalizedIdentifier = hoodlefinanceBuildForcedYahooSymbol_(
+    resolvedIdentifier,
+    hoodlefinanceParseFxTicker_(resolvedIdentifier)
+  );
+  const allowTradingviewFallback =
+    normalizedMode !== "yahoo-only" && hoodlefinanceLooksLikeIsraeliFundYahooSymbol_(normalizedIdentifier);
+
+  if (hoodlefinanceIsPseTicker_(resolvedIdentifier) && normalizedMode !== "yahoo-only") {
+    return {
+      nextAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
+      stateChanges: {
+        resolvedIdentifier: resolvedIdentifier,
+        symbol: hoodlefinanceParsePseSymbol_(resolvedIdentifier),
+      },
+    };
+  }
+
+  return {
+    nextAttempts: [hoodlefinanceCreateYahooChartAttempt_(allowTradingviewFallback)],
+    stateChanges: {
+      resolvedIdentifier: resolvedIdentifier,
+      yahooSymbol: normalizedIdentifier,
+    },
+  };
+}
+
+function hoodlefinanceGetCurrentRouteAttempt_(job) {
+  if (!job || !job.routeAttempts || job.routeIndex == null || job.routeIndex < 0 || job.routeIndex >= job.routeAttempts.length) {
+    return null;
+  }
+
+  return job.routeAttempts[job.routeIndex];
+}
+
+function hoodlefinanceMergeRouteState_(job, stateChanges) {
+  const changes = stateChanges || {};
+  let key;
+
+  if (!job.routeState) {
+    job.routeState = {};
+  }
+
+  for (key in changes) {
+    if (Object.prototype.hasOwnProperty.call(changes, key)) {
+      job.routeState[key] = changes[key];
+    }
+  }
+
+  if (job.plan) {
+    job.plan.routeState = job.routeState;
+  }
+}
+
+function hoodlefinanceApplyRouteResult_(job, attempt, result) {
+  const normalizedResult = result || hoodlefinanceCreateRouteResult_("terminal_error", { error: "Route adapter returned no result." });
+  const errorMessage = normalizedResult.error ? hoodlefinanceErrorMessage_(normalizedResult.error) : "";
+
+  if (!job.routeRuntimeTrace) {
+    job.routeRuntimeTrace = [];
+  }
+
+  job.routeRuntimeTrace.push({
+    label: attempt && attempt.traceLabel ? attempt.traceLabel : "",
+    status: normalizedResult.status,
+  });
+
+  hoodlefinanceMergeRouteState_(job, normalizedResult.stateChanges);
+
+  if (normalizedResult.status === "success") {
+    job.quote = normalizedResult.quote || null;
+    return;
+  }
+
+  if (normalizedResult.status === "pivot") {
+    job.routeAttempts = hoodlefinanceCloneRouteAttempts_(normalizedResult.nextAttempts || []);
+    job.routeIndex = 0;
+    return;
+  }
+
+  if (normalizedResult.status === "lookup_failure") {
+    if (errorMessage) {
+      job.routeLastLookupFailure = errorMessage;
+    }
+
+    if (normalizedResult.nextAttempts && normalizedResult.nextAttempts.length) {
+      job.routeAttempts = hoodlefinanceCloneRouteAttempts_(normalizedResult.nextAttempts);
+      job.routeIndex = 0;
+      return;
+    }
+
+    job.routeIndex += 1;
+
+    if (job.routeIndex >= job.routeAttempts.length) {
+      job.error = job.routeLastLookupFailure || errorMessage || "Quote lookup failed.";
+    }
+
+    return;
+  }
+
+  job.error = errorMessage || "Quote lookup failed.";
+}
+
+function hoodlefinanceGetRouteAdapter_(adapterId) {
+  if (adapterId === "local-fx") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteLocalFxRouteBatch_,
+    };
+  }
+
+  if (adapterId === "google-finance-fx") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteGoogleFinanceFxRouteBatch_,
+    };
+  }
+
+  if (adapterId === "pse-isin-map") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecutePseIsinMapRouteBatch_,
+    };
+  }
+
+  if (adapterId === "yahoo-isin-search") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteYahooIsinRouteBatch_,
+    };
+  }
+
+  if (adapterId === "yahoo-chart") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteYahooChartRouteBatch_,
+    };
+  }
+
+  if (adapterId === "tradingview-fund") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteTradingviewFundRouteBatch_,
+    };
+  }
+
+  if (adapterId === "pse-quote") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecutePseQuoteRouteBatch_,
+    };
+  }
+
+  throw new Error('Unknown route adapter "' + adapterId + '".');
+}
+
+function hoodlefinanceExecuteRouteJobs_(orderedJobs) {
+  let pendingJobs;
+  let groupsByKey;
+  let groupOrder;
+  let i;
+  let job;
+  let attempt;
+  let adapter;
+  let groupKey;
+  let results;
+  let resultIndex;
+
+  while (true) {
+    pendingJobs = [];
+    groupsByKey = {};
+    groupOrder = [];
+
+    for (i = 0; i < orderedJobs.length; i += 1) {
+      job = orderedJobs[i];
+
+      if (job.error || job.quote || job.valueResolved) {
+        continue;
+      }
+
+      attempt = hoodlefinanceGetCurrentRouteAttempt_(job);
+
+      if (!attempt) {
+        if (!job.error) {
+          job.error = job.routeLastLookupFailure || "Quote lookup failed.";
+        }
+        continue;
+      }
+
+      adapter = hoodlefinanceGetRouteAdapter_(attempt.adapterId);
+      groupKey = adapter.adapterId + "\n" + adapter.batchKey(job, attempt);
+
+      if (!groupsByKey[groupKey]) {
+        groupsByKey[groupKey] = {
+          adapter: adapter,
+          jobs: [],
+        };
+        groupOrder.push(groupKey);
+      }
+
+      groupsByKey[groupKey].jobs.push(job);
+      pendingJobs.push(job);
+    }
+
+    if (!pendingJobs.length) {
+      return;
+    }
+
+    for (i = 0; i < groupOrder.length; i += 1) {
+      results = groupsByKey[groupOrder[i]].adapter.executeBatch(groupsByKey[groupOrder[i]].jobs);
+
+      for (resultIndex = 0; resultIndex < groupsByKey[groupOrder[i]].jobs.length; resultIndex += 1) {
+        hoodlefinanceApplyRouteResult_(
+          groupsByKey[groupOrder[i]].jobs[resultIndex],
+          hoodlefinanceGetCurrentRouteAttempt_(groupsByKey[groupOrder[i]].jobs[resultIndex]),
+          results[resultIndex]
+        );
+      }
     }
   }
 }
 
-function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
+function hoodlefinanceExecuteLocalFxRouteBatch_(jobs) {
+  let i;
+  const results = [];
+
+  for (i = 0; i < jobs.length; i += 1) {
+    try {
+      results.push(hoodlefinanceCreateRouteResult_("success", {
+        quote: hoodlefinanceBuildSameCurrencyQuote_(jobs[i].plan.fxPair || jobs[i].routeState.fxPair),
+      }));
+    } catch (error) {
+      results.push(hoodlefinanceCreateRouteResult_("terminal_error", { error: error }));
+    }
+  }
+
+  return results;
+}
+
+function hoodlefinanceExecuteGoogleFinanceFxRouteBatch_(jobs) {
+  let i;
+  const results = [];
+
+  for (i = 0; i < jobs.length; i += 1) {
+    try {
+      results.push(hoodlefinanceCreateRouteResult_("success", {
+        quote: hoodlefinanceFetchGoogleFinanceFxPairQuote_(jobs[i].plan.fxPair || jobs[i].routeState.fxPair),
+      }));
+    } catch (error) {
+      results.push(hoodlefinanceCreateRouteResult_("terminal_error", { error: error }));
+    }
+  }
+
+  return results;
+}
+
+function hoodlefinanceExecutePseIsinMapRouteBatch_(jobs) {
+  let i;
+  let pseTicker;
+  let nextRoute;
+  const results = [];
+
+  for (i = 0; i < jobs.length; i += 1) {
+    try {
+      pseTicker = hoodlefinanceResolvePseTickerFromIsinMap_(jobs[i].routeState.isin);
+
+      if (!pseTicker) {
+        results.push(hoodlefinanceCreateRouteResult_("lookup_failure"));
+        continue;
+      }
+
+      nextRoute = hoodlefinanceBuildQuoteAttemptsForResolvedIdentifier_(pseTicker, "default");
+      results.push(hoodlefinanceCreateRouteResult_("pivot", {
+        nextAttempts: nextRoute.nextAttempts,
+        stateChanges: nextRoute.stateChanges,
+      }));
+    } catch (error) {
+      results.push(hoodlefinanceCreateRouteResult_("terminal_error", { error: error }));
+    }
+  }
+
+  return results;
+}
+
+function hoodlefinanceExecuteYahooIsinRouteBatch_(jobs) {
+  const results = jobs.map(function () { return null; });
   const requests = [];
   let i;
   let cacheKey;
   let cached;
-  let pseTicker;
   let responses;
+  let routeInfo;
 
   for (i = 0; i < jobs.length; i += 1) {
-    cacheKey = "hoodlefinance:isin:" + jobs[i].plan.isin;
+    cacheKey = "hoodlefinance:isin:" + jobs[i].routeState.isin;
     cached = hoodlefinanceGetCachedString_(cacheKey);
 
     if (cached) {
-      jobs[i].plan.yahooSymbol = cached;
-      if (hoodlefinanceIsPseTicker_(cached)) {
-        jobs[i].plan.symbol = hoodlefinanceParsePseSymbol_(cached);
-      }
-      continue;
-    }
-
-    pseTicker = jobs[i].plan.noSourceFallback ? "" : hoodlefinanceResolvePseTickerFromIsinMap_(jobs[i].plan.isin);
-
-    if (pseTicker) {
-      jobs[i].plan.yahooSymbol = pseTicker;
-      jobs[i].plan.symbol = hoodlefinanceParsePseSymbol_(pseTicker);
-      hoodlefinancePutCachedString_(cacheKey, pseTicker, 21600);
+      routeInfo = hoodlefinanceBuildQuoteAttemptsForResolvedIdentifier_(
+        cached,
+        hoodlefinanceGetCurrentRouteAttempt_(jobs[i]).resolvedSymbolMode
+      );
+      results[i] = hoodlefinanceCreateRouteResult_("pivot", {
+        nextAttempts: routeInfo.nextAttempts,
+        stateChanges: routeInfo.stateChanges,
+      });
       continue;
     }
 
     requests.push({
       cacheKey: cacheKey,
-      job: jobs[i],
-      url: hoodlefinanceBuildYahooIsinSearchUrl_(jobs[i].plan.isin),
+      index: i,
+      isin: jobs[i].routeState.isin,
+      url: hoodlefinanceBuildYahooIsinSearchUrl_(jobs[i].routeState.isin),
     });
   }
 
@@ -2187,123 +2617,209 @@ function hoodlefinancePrefetchYahooIsinJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(
-        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
-      );
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("lookup_failure", {
+        error: responses[i].error,
+      });
       continue;
     }
 
     try {
-      responses[i].request.job.plan.yahooSymbol = responses[i].request.job.plan.noSourceFallback
-        ? hoodlefinanceExtractYahooSymbolFromSearchResponse_(
-          responses[i].response,
-          responses[i].request.job.plan.isin
-        )
-        : hoodlefinanceResolveIsinFromSearchResponse_(
-          responses[i].response,
-          responses[i].request.job.plan.isin
-        );
-      if (hoodlefinanceIsPseTicker_(responses[i].request.job.plan.yahooSymbol)) {
-        responses[i].request.job.plan.symbol = hoodlefinanceParsePseSymbol_(responses[i].request.job.plan.yahooSymbol);
-      }
-      hoodlefinancePutCachedString_(responses[i].request.cacheKey, responses[i].request.job.plan.yahooSymbol, 21600);
+      cached = hoodlefinanceExtractYahooSymbolFromSearchResponse_(
+        responses[i].response,
+        responses[i].request.isin
+      );
+      hoodlefinancePutCachedString_(responses[i].request.cacheKey, cached, 21600);
+      routeInfo = hoodlefinanceBuildQuoteAttemptsForResolvedIdentifier_(
+        cached,
+        hoodlefinanceGetCurrentRouteAttempt_(jobs[responses[i].request.index]).resolvedSymbolMode
+      );
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("pivot", {
+        nextAttempts: routeInfo.nextAttempts,
+        stateChanges: routeInfo.stateChanges,
+      });
     } catch (error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("lookup_failure", {
+        error: error,
+      });
     }
   }
+
+  return results;
 }
 
-function hoodlefinancePrefetchYahooChartJobs_(jobs) {
+function hoodlefinanceExecuteYahooChartRouteBatch_(jobs) {
+  const results = jobs.map(function () { return null; });
   const requests = [];
-  const fallbackJobs = [];
   let i;
   let cacheKey;
   let cached;
   let responses;
+  let quote;
+  let error;
+  let attempt;
 
   for (i = 0; i < jobs.length; i += 1) {
-    if (jobs[i].error) {
-      continue;
-    }
-
-    cacheKey = "hoodlefinance:" + jobs[i].plan.yahooSymbol;
+    cacheKey = "hoodlefinance:" + jobs[i].routeState.yahooSymbol;
     cached = hoodlefinanceGetCachedJson_(cacheKey);
 
     if (cached) {
-      jobs[i].quote = hoodlefinanceDecorateFxQuote_(cached, jobs[i].plan.fxPair);
+      results[i] = hoodlefinanceCreateRouteResult_("success", {
+        quote: hoodlefinanceDecorateFxQuote_(cached, jobs[i].plan.fxPair || jobs[i].routeState.fxPair),
+      });
       continue;
     }
 
     requests.push({
       cacheKey: cacheKey,
-      job: jobs[i],
-      url: hoodlefinanceBuildYahooChartUrl_(jobs[i].plan.yahooSymbol),
+      index: i,
+      url: hoodlefinanceBuildYahooChartUrl_(jobs[i].routeState.yahooSymbol),
     });
   }
 
   responses = hoodlefinanceFetchAllInChunks_("yahoo-chart", requests);
 
   for (i = 0; i < responses.length; i += 1) {
+    attempt = hoodlefinanceGetCurrentRouteAttempt_(jobs[responses[i].request.index]);
+    error = responses[i].error || null;
+
+    if (!error) {
+      try {
+        quote = hoodlefinanceDecorateFxQuote_(
+          hoodlefinanceExtractYahooQuoteMetaFromResponse_(
+            responses[i].response,
+            jobs[responses[i].request.index].tickerInput
+          ),
+          jobs[responses[i].request.index].plan.fxPair || jobs[responses[i].request.index].routeState.fxPair
+        );
+        hoodlefinancePutCachedJson_(
+          responses[i].request.cacheKey,
+          hoodlefinanceExtractRawQuote_(quote),
+          60
+        );
+        results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("success", {
+          quote: quote,
+        });
+        continue;
+      } catch (extractError) {
+        error = extractError;
+      }
+    }
+
+    if (attempt && attempt.allowTradingviewFallback &&
+      hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(jobs[responses[i].request.index], error)) {
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("lookup_failure", {
+        error: error,
+        nextAttempts: [hoodlefinanceCreateRouteAttempt_("tradingview-fund", "TRADINGVIEW")],
+      });
+    } else if (error && /No quote data was found|Quote lookup failed/i.test(hoodlefinanceErrorMessage_(error))) {
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("lookup_failure", {
+        error: error,
+      });
+    } else {
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: error,
+      });
+    }
+  }
+
+  return results;
+}
+
+function hoodlefinanceExecuteTradingviewFundRouteBatch_(jobs) {
+  const results = jobs.map(function () { return null; });
+  const requests = [];
+  let i;
+  let fallbackInfo;
+  let cacheKey;
+  let primaryCacheKey;
+  let cached;
+  let responses;
+  let quote;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    fallbackInfo = hoodlefinanceBuildIsraeliFundTradingviewFallbackInfo_(jobs[i].tickerInput, jobs[i].routeState.yahooSymbol);
+    cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
+    primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
+    cached = hoodlefinanceGetCachedJson_(cacheKey);
+
+    if (cached) {
+      hoodlefinancePutCachedJson_(primaryCacheKey, cached, 60);
+      results[i] = hoodlefinanceCreateRouteResult_("success", {
+        quote: cached,
+      });
+      continue;
+    }
+
+    requests.push({
+      cacheKey: cacheKey,
+      expectedSymbol: fallbackInfo.expectedSymbol,
+      index: i,
+      primaryCacheKey: primaryCacheKey,
+      url: fallbackInfo.url,
+      yahooSymbol: fallbackInfo.yahooSymbol,
+    });
+  }
+
+  responses = hoodlefinanceFetchAllInChunks_("tradingview-quote", requests);
+
+  for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(
-        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
-      );
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: responses[i].error,
+      });
       continue;
     }
 
     try {
-      responses[i].request.job.quote = hoodlefinanceDecorateFxQuote_(
-        hoodlefinanceExtractYahooQuoteMetaFromResponse_(
-          responses[i].response,
-          responses[i].request.job.tickerInput
-        ),
-        responses[i].request.job.plan.fxPair
+      quote = hoodlefinanceExtractTradingviewFundQuoteFromResponse_(
+        responses[i].response,
+        responses[i].request.yahooSymbol,
+        responses[i].request.expectedSymbol
       );
-      hoodlefinancePutCachedJson_(
-        responses[i].request.cacheKey,
-        hoodlefinanceExtractRawQuote_(responses[i].request.job.quote),
-        60
-      );
+      hoodlefinancePutCachedJson_(responses[i].request.cacheKey, quote, 60);
+      hoodlefinancePutCachedJson_(responses[i].request.primaryCacheKey, quote, 60);
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("success", {
+        quote: quote,
+      });
     } catch (error) {
-      if (!responses[i].request.job.plan.noSourceFallback &&
-        hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(responses[i].request.job, error)) {
-        fallbackJobs.push(responses[i].request.job);
-      } else {
-        responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
-      }
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: error,
+      });
     }
   }
 
-  hoodlefinancePrefetchIsraeliTradingviewFundJobs_(fallbackJobs);
+  return results;
 }
 
-function hoodlefinancePrefetchPseJobs_(jobs) {
+function hoodlefinanceExecutePseQuoteRouteBatch_(jobs) {
+  const results = jobs.map(function () { return null; });
   const searchRequests = [];
   const stockRequests = [];
   let i;
   let cacheKey;
   let cached;
-  let responses;
   let listing;
-  let html;
+  let responses;
   let quote;
 
   for (i = 0; i < jobs.length; i += 1) {
-    cacheKey = "hoodlefinance:pse:" + jobs[i].plan.symbol;
+    cacheKey = "hoodlefinance:pse:" + jobs[i].routeState.symbol;
     cached = hoodlefinanceGetCachedJson_(cacheKey);
 
     if (cached) {
-      jobs[i].quote = cached;
+      results[i] = hoodlefinanceCreateRouteResult_("success", {
+        quote: cached,
+      });
       continue;
     }
 
-    listing = hoodlefinanceGetCachedPseListing_(jobs[i].plan.symbol);
+    listing = hoodlefinanceGetCachedPseListing_(jobs[i].routeState.symbol);
 
     if (listing) {
-      jobs[i].plan.listing = listing;
+      jobs[i].routeState.listing = listing;
       stockRequests.push({
         cacheKey: cacheKey,
-        job: jobs[i],
+        index: i,
         url:
           HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
           "?cmpy_id=" +
@@ -2315,8 +2831,8 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
     }
 
     searchRequests.push({
-      job: jobs[i],
-      url: HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(jobs[i].plan.symbol),
+      index: i,
+      url: HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(jobs[i].routeState.symbol),
     });
   }
 
@@ -2324,31 +2840,33 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(
-        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
-      );
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: hoodlefinanceBuildPseUnavailableError_(
+          responses[i].error && responses[i].error.message ? responses[i].error.message : responses[i].error
+        ),
+      });
       continue;
     }
 
     if (responses[i].response.getResponseCode() !== 200) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(
-        hoodlefinanceBuildPseUnavailableError_(
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: hoodlefinanceBuildPseUnavailableError_(
           hoodlefinanceBuildPseHttpErrorMessage_(responses[i].response.getResponseCode())
-        )
-      );
+        ),
+      });
       continue;
     }
 
     try {
       listing = hoodlefinanceResolvePseListingFromHtml_(
         responses[i].response.getContentText(),
-        responses[i].request.job.plan.symbol
+        jobs[responses[i].request.index].routeState.symbol
       );
       hoodlefinanceCachePseListing_(listing);
-      responses[i].request.job.plan.listing = listing;
+      jobs[responses[i].request.index].routeState.listing = listing;
       stockRequests.push({
-        cacheKey: "hoodlefinance:pse:" + responses[i].request.job.plan.symbol,
-        job: responses[i].request.job,
+        cacheKey: "hoodlefinance:pse:" + jobs[responses[i].request.index].routeState.symbol,
+        index: responses[i].request.index,
         url:
           HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
           "?cmpy_id=" +
@@ -2357,7 +2875,9 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
           encodeURIComponent(listing.securityId),
       });
     } catch (error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: error,
+      });
     }
   }
 
@@ -2365,35 +2885,45 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(
-        hoodlefinanceBuildPseUnavailableError_(responses[i].error)
-      );
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: hoodlefinanceBuildPseUnavailableError_(
+          responses[i].error && responses[i].error.message ? responses[i].error.message : responses[i].error
+        ),
+      });
       continue;
     }
 
     if (responses[i].response.getResponseCode() !== 200) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(
-        hoodlefinanceBuildPseUnavailableError_(
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: hoodlefinanceBuildPseUnavailableError_(
           hoodlefinanceBuildPseHttpErrorMessage_(responses[i].response.getResponseCode())
-        )
-      );
+        ),
+      });
       continue;
     }
 
     try {
-      html = responses[i].response.getContentText();
-      quote = hoodlefinanceExtractPseQuote_(html, responses[i].request.job.plan.listing);
+      quote = hoodlefinanceExtractPseQuote_(
+        responses[i].response.getContentText(),
+        jobs[responses[i].request.index].routeState.listing
+      );
 
       if (!quote || !quote.symbol) {
-        throw new Error("No PSE quote data was found for " + responses[i].request.job.tickerInput + ".");
+        throw new Error("No PSE quote data was found for " + jobs[responses[i].request.index].tickerInput + ".");
       }
 
-      responses[i].request.job.quote = quote;
       hoodlefinancePutCachedJson_(responses[i].request.cacheKey, quote, 300);
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("success", {
+        quote: quote,
+      });
     } catch (error) {
-      responses[i].request.job.error = hoodlefinanceErrorMessage_(error);
+      results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
+        error: error,
+      });
     }
   }
+
+  return results;
 }
 
 function hoodlefinanceResolvePrefetchedTickerJobs_(jobs) {
@@ -2710,7 +3240,9 @@ function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attri
 }
 
 function hoodlefinanceShouldUseIsraeliFundTradingviewFallback_(job, error) {
-  const yahooSymbol = job && job.plan && job.plan.yahooSymbol ? String(job.plan.yahooSymbol).trim().toUpperCase() : "";
+  const yahooSymbol = job && job.routeState && job.routeState.yahooSymbol
+    ? String(job.routeState.yahooSymbol).trim().toUpperCase()
+    : (job && job.plan && job.plan.yahooSymbol ? String(job.plan.yahooSymbol).trim().toUpperCase() : "");
   const message = hoodlefinanceErrorMessage_(error);
 
   if (!hoodlefinanceLooksLikeIsraeliFundYahooSymbol_(yahooSymbol)) {
@@ -3235,13 +3767,16 @@ function hoodlefinanceIsFxContext_(quote, context) {
 
 function hoodlefinanceIsPseContext_(quote, context) {
   const plan = context && context.plan;
+  const routeState = plan && plan.routeState ? plan.routeState : null;
   const tickerInput = context && context.tickerInput
     ? String(hoodlefinanceStripTickerSourceOverride_(context.tickerInput) || "").trim()
     : "";
 
   return (
     hoodlefinanceIsPseTicker_(tickerInput) ||
-    (plan && (plan.source === "pse" || hoodlefinanceIsPseTicker_(plan.yahooSymbol || "")))
+    (plan && (plan.source === "pse" || hoodlefinanceIsPseTicker_(plan.yahooSymbol || ""))) ||
+    !!(routeState && routeState.symbol) ||
+    String(quote && quote.exchangeName || "").trim().toUpperCase() === "PSE"
   );
 }
 

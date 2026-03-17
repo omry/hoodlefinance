@@ -580,16 +580,48 @@ test("source overrides are parsed separately from ticker normalization", () => {
   assert.equal(ctx.hoodlefinanceStripTickerSourceOverride_("ISIN:US02079K1079@YAHOO"), "ISIN:US02079K1079");
 });
 
-test("source introspection suffixes return the deduced source or the supported source list", () => {
+test("source introspection suffixes return the planned route or the supported source list", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
 
-  assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "GOOGLE");
-  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "GOOGLE");
-  assert.equal(ctx.HOODLEFINANCE("PSE:AAA@?"), "PSE");
-  assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "LOCAL");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "FX -> GOOGLE");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE");
+  assert.equal(ctx.HOODLEFINANCE("PSE:AAA@?"), "PSE-TICKER -> PSE");
+  assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "FX-SAME -> LOCAL");
+  assert.equal(ctx.HOODLEFINANCE("GOOG@?"), "TICKER -> YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59@?"), "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW");
+  assert.equal(
+    ctx.HOODLEFINANCE("US02079K1079@?"),
+    "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))"
+  );
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@"), "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO");
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@MYSTERY"), "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO");
+});
+
+test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route", () => {
+  const ctx = loadHoodlefinance();
+  primeCurrencyCodeData(ctx);
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE_ROUTES()),
+    JSON.stringify([
+      ["classification", "example", "planned route"],
+      ["TICKER", "GOOG", "TICKER -> YAHOO"],
+      ["TICKER-IL-FUND", "TLV:KSMF59", "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW"],
+      ["FX", "EURUSD", "FX -> GOOGLE"],
+      ["FX-SAME", "USDUSD", "FX-SAME -> LOCAL"],
+      ["PSE-TICKER", "PSE:BDO", "PSE-TICKER -> PSE"],
+      ["ISIN", "US02079K1079", "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))"],
+      ["FORCED:YAHOO", "GOOG@YAHOO", "FORCED:YAHOO -> YAHOO"],
+      ["FORCED:YAHOO-ISIN", "US02079K1079@YAHOO", "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO"],
+      ["FORCED:GOOGLE", "EURUSD@GOOGLE", "FORCED:GOOGLE -> GOOGLE"],
+      ["FORCED:PSE", "PSE:BDO@PSE", "FORCED:PSE -> PSE"],
+    ])
+  );
+  assert.equal(ctx.HOODLEFINANCE_ROUTES("GOOG"), "TICKER -> YAHOO");
+  assert.equal(ctx.HOODLEFINANCE_ROUTES("TLV:KSMF59"), "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW");
+  assert.equal(ctx.HOODLEFINANCE_ROUTES("EURUSD"), "FX -> GOOGLE");
+  assert.equal(JSON.stringify(ctx.HOODLEFINANCE_ROUTES("")), JSON.stringify(ctx.HOODLEFINANCE_ROUTES()));
 });
 
 test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {

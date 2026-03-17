@@ -79,11 +79,137 @@ function runLookup(ticker, attribute) {
   }
 }
 
+function getRoutingTableRows(ctx) {
+  const runtime = ctx || loadHoodlefinance();
+
+  return runtime.hoodlefinanceGetRoutingTableRows_();
+}
+
+function formatRoutingTable(rows) {
+  return [["classification", "example", "planned route"]]
+    .concat(rows.map(function (row) {
+      return [row.classification, row.example, row.route];
+    }))
+    .map(function (columns) {
+      return columns.join("\t");
+    })
+    .join("\n");
+}
+
+function printRoutingTable() {
+  console.log(formatRoutingTable(getRoutingTableRows()));
+}
+
+function traceRoutingForSymbol(symbol, ctx) {
+  const runtime = ctx || loadHoodlefinance();
+  const job = {
+    attribute: "price",
+    error: null,
+    key: runtime.hoodlefinanceBuildTickerJobKey_(symbol, "price"),
+    quote: null,
+    tickerInput: String(symbol).trim(),
+    value: null,
+    valueResolved: false,
+  };
+
+  try {
+    job.plan = runtime.hoodlefinanceClassifyTickerJob_(job.tickerInput, "price");
+  } catch (error) {
+    return {
+      error: error && error.message ? error.message : String(error),
+      ok: false,
+      plannedRoute: "",
+      runtimeTrace: [],
+      value: null,
+    };
+  }
+
+  if (job.plan.source === "source-debug") {
+    return {
+      ok: true,
+      plannedRoute: String(job.plan.debugValue || ""),
+      runtimeTrace: [],
+      value: null,
+    };
+  }
+
+  job.routeAttempts = runtime.hoodlefinanceCloneRouteAttempts_(job.plan.routeAttempts || []);
+  job.routeIndex = 0;
+  job.routeState = runtime.hoodlefinanceCloneRouteState_(job.plan.routeState || {});
+  job.routeRuntimeTrace = [];
+  job.routeLastLookupFailure = "";
+
+  try {
+    runtime.hoodlefinanceExecuteRouteJobs_([job]);
+  } catch (error) {
+    job.error = error && error.message ? error.message : String(error);
+  }
+
+  return {
+    error: job.error || "",
+    ok: !job.error,
+    plannedRoute: runtime.hoodlefinanceDescribePlanSource_(job.plan),
+    runtimeTrace: (job.routeRuntimeTrace || []).map(function (entry) {
+      return {
+        label: String(entry && entry.label || ""),
+        status: String(entry && entry.status || ""),
+      };
+    }),
+    value: job.quote || null,
+  };
+}
+
+function formatRoutingTrace(trace) {
+  if (!trace.runtimeTrace.length) {
+    return "(no runtime trace)";
+  }
+
+  return trace.runtimeTrace.map(function (entry) {
+    return entry.label + " [" + entry.status + "]";
+  }).join(" -> ");
+}
+
+function formatTraceOutput(symbol, ctx) {
+  const trace = traceRoutingForSymbol(symbol, ctx);
+  const lines = [
+    "symbol: " + symbol,
+    "planned route: " + (trace.plannedRoute || "(none)"),
+    "runtime trace: " + formatRoutingTrace(trace),
+  ];
+
+  if (trace.ok) {
+    lines.push("result: success");
+  } else {
+    lines.push("result: error");
+    lines.push("error: " + trace.error);
+  }
+
+  return lines.join("\n");
+}
+
 function main() {
   const ticker = process.argv[2];
   const attribute = process.argv[3] || "price";
+
+  if (ticker === "--routing-table") {
+    printRoutingTable();
+    return;
+  }
+
+  if (ticker === "--trace") {
+    if (!process.argv[3]) {
+      console.error("Usage: node cli.js --trace <symbol>");
+      process.exit(1);
+    }
+
+    console.log(formatTraceOutput(process.argv[3]));
+    return;
+  }
+
   if (!ticker) {
     console.error("Usage: node cli.js <ticker> [attribute]");
+    console.error("       node cli.js --routing-table");
+    console.error("       node cli.js --trace <symbol>");
     process.exit(1);
   }
 
@@ -108,8 +234,14 @@ function main() {
 }
 
 module.exports = {
+  formatRoutingTable,
+  formatTraceOutput,
+  formatRoutingTrace,
+  getRoutingTableRows,
   loadHoodlefinance,
+  printRoutingTable,
   runLookup,
+  traceRoutingForSymbol,
 };
 
 if (require.main === module) {
