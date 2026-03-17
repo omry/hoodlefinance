@@ -2343,6 +2343,10 @@ function hoodlefinanceMergeRouteState_(job, stateChanges) {
   }
 }
 
+function hoodlefinanceDefaultRouteFailureMessage_(job) {
+  return job && job.routeKind === "isin" ? "ISIN lookup failed." : "Quote lookup failed.";
+}
+
 function hoodlefinanceApplyRouteResult_(job, attempt, result) {
   const normalizedResult = result || hoodlefinanceCreateRouteResult_("terminal_error", { error: "Route adapter returned no result." });
   const errorMessage = normalizedResult.error ? hoodlefinanceErrorMessage_(normalizedResult.error) : "";
@@ -2359,7 +2363,17 @@ function hoodlefinanceApplyRouteResult_(job, attempt, result) {
   hoodlefinanceMergeRouteState_(job, normalizedResult.stateChanges);
 
   if (normalizedResult.status === "success") {
-    job.quote = normalizedResult.quote || null;
+    if (Object.prototype.hasOwnProperty.call(normalizedResult, "quote")) {
+      job.quote = normalizedResult.quote || null;
+      return;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalizedResult, "value")) {
+      job.value = normalizedResult.value;
+      job.valueResolved = true;
+      return;
+    }
+
     return;
   }
 
@@ -2383,13 +2397,13 @@ function hoodlefinanceApplyRouteResult_(job, attempt, result) {
     job.routeIndex += 1;
 
     if (job.routeIndex >= job.routeAttempts.length) {
-      job.error = job.routeLastLookupFailure || errorMessage || "Quote lookup failed.";
+      job.error = job.routeLastLookupFailure || errorMessage || hoodlefinanceDefaultRouteFailureMessage_(job);
     }
 
     return;
   }
 
-  job.error = errorMessage || "Quote lookup failed.";
+  job.error = errorMessage || hoodlefinanceDefaultRouteFailureMessage_(job);
 }
 
 function hoodlefinanceGetRouteAdapter_(adapterId) {
@@ -2449,6 +2463,54 @@ function hoodlefinanceGetRouteAdapter_(adapterId) {
     };
   }
 
+  if (adapterId === "isin-direct") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteDirectIsinRouteBatch_,
+    };
+  }
+
+  if (adapterId === "isin-ariva") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteArivaIsinRouteBatch_,
+    };
+  }
+
+  if (adapterId === "isin-ibkr") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteIbkrIsinRouteBatch_,
+    };
+  }
+
+  if (adapterId === "isin-lon") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteLonIsinRouteBatch_,
+    };
+  }
+
+  if (adapterId === "isin-pse") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecutePseIsinRouteBatch_,
+    };
+  }
+
+  if (adapterId === "isin-tradingview") {
+    return {
+      adapterId: adapterId,
+      batchKey: function () { return ""; },
+      executeBatch: hoodlefinanceExecuteTradingviewIsinRouteBatch_,
+    };
+  }
+
   throw new Error('Unknown route adapter "' + adapterId + '".');
 }
 
@@ -2480,7 +2542,7 @@ function hoodlefinanceExecuteRouteJobs_(orderedJobs) {
 
       if (!attempt) {
         if (!job.error) {
-          job.error = job.routeLastLookupFailure || "Quote lookup failed.";
+          job.error = job.routeLastLookupFailure || hoodlefinanceDefaultRouteFailureMessage_(job);
         }
         continue;
       }
@@ -2920,6 +2982,56 @@ function hoodlefinanceExecutePseQuoteRouteBatch_(jobs) {
       results[responses[i].request.index] = hoodlefinanceCreateRouteResult_("terminal_error", {
         error: error,
       });
+    }
+  }
+
+  return results;
+}
+
+function hoodlefinanceExecuteDirectIsinRouteBatch_(jobs) {
+  let i;
+  const results = [];
+
+  for (i = 0; i < jobs.length; i += 1) {
+    results.push(hoodlefinanceCreateRouteResult_("success", {
+      value: String(jobs[i].routeState.isin || "").trim().toUpperCase(),
+    }));
+  }
+
+  return results;
+}
+
+function hoodlefinanceExecuteArivaIsinRouteBatch_(jobs) {
+  return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, hoodlefinanceResolveArivaIsin_);
+}
+
+function hoodlefinanceExecuteIbkrIsinRouteBatch_(jobs) {
+  return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, hoodlefinanceResolveIbkrIsin_);
+}
+
+function hoodlefinanceExecuteLonIsinRouteBatch_(jobs) {
+  return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, hoodlefinanceResolveLonIsin_);
+}
+
+function hoodlefinanceExecutePseIsinRouteBatch_(jobs) {
+  return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, hoodlefinanceResolvePseIsin_);
+}
+
+function hoodlefinanceExecuteTradingviewIsinRouteBatch_(jobs) {
+  return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, hoodlefinanceResolveTradingviewIsin_);
+}
+
+function hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, resolver) {
+  let i;
+  const results = [];
+
+  for (i = 0; i < jobs.length; i += 1) {
+    try {
+      results.push(hoodlefinanceCreateRouteResult_("success", {
+        value: resolver(jobs[i].sourceQuote, jobs[i].routeContext),
+      }));
+    } catch (error) {
+      results.push(hoodlefinanceCreateRouteResult_("terminal_error", { error: error }));
     }
   }
 
@@ -3579,14 +3691,22 @@ function hoodlefinanceResolveIbkrIsin_(quote, context) {
   throw new Error("No IBKR ISIN is available for this ticker.");
 }
 
-function hoodlefinanceResolveDefaultIsin_(quote, context) {
+function hoodlefinanceCreateIsinRouteAttempt_(adapterId, traceLabel) {
+  return hoodlefinanceCreateRouteAttempt_(adapterId, traceLabel);
+}
+
+function hoodlefinanceBuildIsinRoutePlan_(quote, context) {
   const directIsinInput = hoodlefinanceExtractDirectIsinInput_(context);
   const sourceOverride = context && context.tickerInput ? hoodlefinanceExtractTickerSourceOverride_(context.tickerInput) : "";
   const exchange = hoodlefinanceInferIsinExchange_(quote, context);
   const source = sourceOverride || (exchange ? HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_[exchange] || "" : "");
 
   if (directIsinInput) {
-    return directIsinInput;
+    return {
+      routeAttempts: [hoodlefinanceCreateIsinRouteAttempt_("isin-direct", "DIRECT")],
+      routeState: { isin: directIsinInput },
+      routeTrace: "DIRECT",
+    };
   }
 
   if (hoodlefinanceIsFxContext_(quote, context)) {
@@ -3594,7 +3714,7 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
   }
 
   if (source) {
-    return hoodlefinanceResolveIsinBySource_(source, quote, context || {});
+    return hoodlefinanceBuildIsinPlanForSource_(source);
   }
 
   if (!exchange) {
@@ -3604,30 +3724,83 @@ function hoodlefinanceResolveDefaultIsin_(quote, context) {
   throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
 }
 
-function hoodlefinanceResolveIsinBySource_(source, quote, context) {
+function hoodlefinanceBuildIsinPlanForSource_(source) {
   const normalizedSource = String(source || "").trim().toUpperCase();
 
   if (normalizedSource === "ARIVA") {
-    return hoodlefinanceResolveArivaIsin_(quote, context);
+    return {
+      routeAttempts: [hoodlefinanceCreateIsinRouteAttempt_("isin-ariva", "ARIVA")],
+      routeState: {},
+      routeTrace: "ARIVA",
+    };
   }
 
   if (normalizedSource === "IBKR") {
-    return hoodlefinanceResolveIbkrIsin_(quote, context);
+    return {
+      routeAttempts: [hoodlefinanceCreateIsinRouteAttempt_("isin-ibkr", "IBKR")],
+      routeState: {},
+      routeTrace: "IBKR",
+    };
   }
 
   if (normalizedSource === "LON") {
-    return hoodlefinanceResolveLonIsin_(quote, context);
+    return {
+      routeAttempts: [hoodlefinanceCreateIsinRouteAttempt_("isin-lon", "LON")],
+      routeState: {},
+      routeTrace: "LON",
+    };
   }
 
   if (normalizedSource === "PSE") {
-    return hoodlefinanceResolvePseIsin_(quote, context);
+    return {
+      routeAttempts: [hoodlefinanceCreateIsinRouteAttempt_("isin-pse", "PSE")],
+      routeState: {},
+      routeTrace: "PSE",
+    };
   }
 
   if (normalizedSource === "TRADINGVIEW") {
-    return hoodlefinanceResolveTradingviewIsin_(quote, context);
+    return {
+      routeAttempts: [hoodlefinanceCreateIsinRouteAttempt_("isin-tradingview", "TRADINGVIEW")],
+      routeState: {},
+      routeTrace: "TRADINGVIEW",
+    };
   }
 
   throw new Error('Source override "@' + normalizedSource + '" is not implemented for isin lookups.');
+}
+
+function hoodlefinanceResolveDefaultIsin_(quote, context) {
+  const routeContext = context || {};
+  const job = {
+    attribute: "isin",
+    error: null,
+    key: "",
+    plan: null,
+    quote: null,
+    routeContext: routeContext,
+    routeKind: "isin",
+    routeLastLookupFailure: "",
+    routeRuntimeTrace: [],
+    routeState: {},
+    sourceQuote: quote,
+    tickerInput: routeContext.tickerInput ? String(routeContext.tickerInput).trim() : "",
+    value: null,
+    valueResolved: false,
+  };
+
+  job.plan = hoodlefinanceBuildIsinRoutePlan_(quote, routeContext);
+  job.routeAttempts = hoodlefinanceCloneRouteAttempts_(job.plan.routeAttempts || []);
+  job.routeIndex = 0;
+  job.routeState = hoodlefinanceCloneRouteState_(job.plan.routeState || {});
+
+  hoodlefinanceExecuteRouteJobs_([job]);
+
+  if (job.error) {
+    throw new Error(job.error);
+  }
+
+  return job.value;
 }
 
 function hoodlefinanceExtractDirectIsinInput_(context) {

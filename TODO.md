@@ -1,5 +1,4 @@
 - Review user-facing error messages across the formula surface and remove references to internal routing, fallback, or source-selection implementation details when they are not user-actionable.
-- Move `isin` attribute resolution onto the explicit routing/adapter framework so `hoodlefinanceResolveDefaultIsin_` / `hoodlefinanceResolveIsinBySource_` no longer use a separate direct-dispatch path.
 - Create a dedicated demo-sheet currency surface that shows practical FX workflows and current advantages over `GOOGLEFINANCE`, with room to expand into `price@USD`-style examples later.
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
 - If installation and update friction become a priority, prototype a Google Sheets Editor add-on as the long-term alternative to the current manual bound-script install path.
