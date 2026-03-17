@@ -21,6 +21,7 @@ const {
   renderReleaseFile,
   renderVersionMetadata,
   upsertCurrentReleaseNotesLine,
+  validateReleaseFragmentContent,
   replaceCurrentVersionLine,
   replaceVersionInSource,
   validateVersion,
@@ -132,13 +133,24 @@ test("parseVersionMetadataText reads the version source-of-truth file", function
 
 test("renderReleaseBody keeps the configured section order", function () {
   const body = renderReleaseBody({
-    added: ["Added feature"],
-    changed: ["Changed behavior"],
-    fixed: ["Fixed bug"],
-    upgrade: ["Upgrade note"],
+    added: ["- Added feature"],
+    changed: ["- Changed behavior"],
+    fixed: ["- Fixed bug"],
+    upgrade: ["- Upgrade note"],
   });
 
   assert.match(body, /### Upgrade Notes[\s\S]*### Added[\s\S]*### Changed[\s\S]*### Fixed/);
+});
+
+test("renderReleaseBody keeps validated bullets as a tight list", function () {
+  const body = renderReleaseBody({
+    added: ["- Added one", "- Added two"],
+    changed: [],
+    fixed: [],
+    upgrade: [],
+  });
+
+  assert.equal(body, ["### Added", "", "- Added one", "- Added two"].join("\n"));
 });
 
 test("buildReleaseNotesPage renders release links in reverse version order", function () {
@@ -181,6 +193,64 @@ test("checkReleaseFragments validates fragments without mutating them", function
   assert.equal(result.groupedFragments.fixed.length, 1);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-one.added.md")), true);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-two.fixed.md")), true);
+});
+
+test("checkReleaseFragments rejects paragraph-style fragments", function () {
+  const fixture = createFixtureRepo();
+
+  fs.writeFileSync(path.join(fixture.changesDir, "20260316-one.added.md"), "Added thing\n", "utf8");
+
+  assert.throws(function () {
+    checkReleaseFragments({ changesDir: fixture.changesDir });
+  }, /must start with a single '- ' bullet line/);
+});
+
+test("checkReleaseFragments rejects fragments with multiple top-level bullets", function () {
+  const fixture = createFixtureRepo();
+
+  fs.writeFileSync(
+    path.join(fixture.changesDir, "20260316-one.added.md"),
+    "- Added thing\n- Added another thing\n",
+    "utf8"
+  );
+
+  assert.throws(function () {
+    checkReleaseFragments({ changesDir: fixture.changesDir });
+  }, /must contain exactly one top-level bullet/);
+});
+
+test("validateReleaseFragmentContent accepts a single bullet fragment", function () {
+  assert.doesNotThrow(function () {
+    validateReleaseFragmentContent({
+      content: "- Added thing",
+      fileName: "20260316-one.added.md",
+    });
+  });
+});
+
+test("validateReleaseFragmentContent accepts indented sub-bullets under one top-level bullet", function () {
+  assert.doesNotThrow(function () {
+    validateReleaseFragmentContent({
+      content: [
+        "- Added thing",
+        "  - More detail",
+        "  - Another detail",
+      ].join("\n"),
+      fileName: "20260316-one.added.md",
+    });
+  });
+});
+
+test("validateReleaseFragmentContent accepts continuation text under one top-level bullet", function () {
+  assert.doesNotThrow(function () {
+    validateReleaseFragmentContent({
+      content: [
+        "- Added thing",
+        "  With a little more explanation for readers.",
+      ].join("\n"),
+      fileName: "20260316-one.added.md",
+    });
+  });
 });
 
 test("prepareRelease fails when there are no release fragments", async function () {

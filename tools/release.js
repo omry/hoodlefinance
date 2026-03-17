@@ -25,6 +25,7 @@ const FRAGMENT_HEADING_BY_CATEGORY = {
 const FRAGMENT_FILENAME_PATTERN = /^(\d{8})-([a-z0-9][a-z0-9-]*)\.(upgrade|added|changed|fixed)\.md$/;
 const RELEASE_FILE_PATTERN = /^v(\d+\.\d+\.\d+)\.md$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
+const FRAGMENT_BULLET_PATTERN = /^- /;
 const IGNORED_CHANGE_FILES = {
   ".gitkeep": true,
   "README.md": true,
@@ -397,6 +398,33 @@ function loadReleaseFragments(changesDir) {
   return fragments;
 }
 
+function validateReleaseFragmentContent(fragment) {
+  const content = String(fragment && fragment.content || "");
+  const fileName = fragment && fragment.fileName ? fragment.fileName : "(unknown)";
+  const lines = content.split(/\r?\n/);
+  const bulletCount = lines.filter(function (line) {
+    return FRAGMENT_BULLET_PATTERN.test(line);
+  }).length;
+
+  if (!lines.length || !FRAGMENT_BULLET_PATTERN.test(lines[0])) {
+    throw new Error(
+      "Release fragment " +
+        fileName +
+        " must start with a single '- ' bullet line."
+    );
+  }
+
+  if (bulletCount !== 1) {
+    throw new Error(
+      "Release fragment " +
+        fileName +
+        " must contain exactly one top-level bullet."
+    );
+  }
+
+  return fragment;
+}
+
 function groupFragmentsByCategory(fragments) {
   const grouped = {
     added: [],
@@ -416,6 +444,8 @@ function checkReleaseFragments(options) {
   const normalizedOptions = options || {};
   const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
   const fragments = loadReleaseFragments(changesDir);
+
+  fragments.forEach(validateReleaseFragmentContent);
 
   return {
     fragmentCount: fragments.length,
@@ -457,7 +487,7 @@ function renderReleaseBody(grouped) {
     }
 
     parts.push("### " + FRAGMENT_HEADING_BY_CATEGORY[category]);
-    parts.push(grouped[category].join("\n\n"));
+    parts.push(grouped[category].join("\n"));
   });
 
   return parts.join("\n\n").trim();
@@ -859,6 +889,7 @@ module.exports = {
   renderVersionMetadata,
   toGitRelativePath,
   upsertCurrentReleaseNotesLine,
+  validateReleaseFragmentContent,
   replaceCurrentVersionLine,
   replaceVersionInSource,
   runCommand,

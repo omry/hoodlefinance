@@ -177,7 +177,9 @@ User-facing releases are repo-managed.
 - Preferred path: use the GitHub Actions workflows under `.github/workflows/` to prepare the release PR and let the merged release PR trigger publish plus demo sync automatically.
 - Local `node tools/release.js ...` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
+- Each release fragment must be exactly one top-level bullet that starts with `- `. One fragment maps to one rendered release-note bullet.
 - Run `node tools/release.js check-fragments` to validate fragment filenames and contents without mutating anything.
+- Optional convenience: set `git config core.hooksPath .githooks` to enable the repo-managed pre-commit hook, which runs `node tools/release.js check-fragments`.
 - Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
 - `prepare` automatically runs the release verification suite and aborts without consuming fragments if verification fails.
 - `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.
