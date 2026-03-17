@@ -1,1 +1,1 @@
-- Added `price@<currency>` output conversion so a single `HOODLEFINANCE` formula can return the current price in the requested output currency or unit. Repeated array conversions now reuse the same unit resolution and FX conversion work within a recalculation pass, and unsupported-attribute errors now also show grouped public attribute forms such as `price[@currency]` and `symbol[:google|yahoo]`.
+- Added `price@<currency>` so one `HOODLEFINANCE` formula can return the current price in the output currency or unit you want.
