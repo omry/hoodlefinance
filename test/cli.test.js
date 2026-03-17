@@ -58,8 +58,16 @@ test("routing trace formatter emits a readable attempted-source chain", function
 
 test("trace output includes the planned route and runtime trace summary", function () {
   const fakeCtx = {
-    hoodlefinanceBuildTickerJobKey_() {
-      return "GOOG\nprice";
+    hoodlefinanceCreateQuoteRouteJob_(ticker, attribute) {
+      return {
+        attribute,
+        error: null,
+        key: ticker + "\n" + attribute,
+        quote: null,
+        tickerInput: ticker,
+        value: null,
+        valueResolved: false,
+      };
     },
     hoodlefinanceClassifyTickerJob_() {
       return {
@@ -74,6 +82,14 @@ test("trace output includes the planned route and runtime trace summary", functi
     },
     hoodlefinanceCloneRouteState_(state) {
       return Object.assign({}, state);
+    },
+    hoodlefinancePrepareRouteJob_(job, plan) {
+      job.plan = plan;
+      job.routeAttempts = this.hoodlefinanceCloneRouteAttempts_(plan.routeAttempts || []);
+      job.routeIndex = 0;
+      job.routeState = this.hoodlefinanceCloneRouteState_(plan.routeState || {});
+      job.routeRuntimeTrace = [];
+      job.routeLastLookupFailure = "";
     },
     hoodlefinanceDescribePlanSource_(plan) {
       return plan.routeTrace;

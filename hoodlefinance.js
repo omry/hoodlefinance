@@ -1349,15 +1349,7 @@ function hoodlefinanceEscapeHtml_(text) {
 }
 
 function hoodlefinanceFetchQuote_(ticker) {
-  const job = {
-    attribute: "price",
-    error: null,
-    key: hoodlefinanceBuildTickerJobKey_(ticker, "price"),
-    quote: null,
-    tickerInput: String(ticker).trim(),
-    value: null,
-    valueResolved: false,
-  };
+  const job = hoodlefinanceCreateQuoteRouteJob_(String(ticker).trim(), "price");
 
   job.plan = hoodlefinanceClassifyTickerJob_(job.tickerInput, "price");
 
@@ -1365,11 +1357,7 @@ function hoodlefinanceFetchQuote_(ticker) {
     throw new Error("Debug-only ticker requests cannot be fetched as quotes.");
   }
 
-  job.routeAttempts = hoodlefinanceCloneRouteAttempts_(job.plan.routeAttempts || []);
-  job.routeIndex = 0;
-  job.routeState = hoodlefinanceCloneRouteState_(job.plan.routeState || {});
-  job.routeRuntimeTrace = [];
-  job.routeLastLookupFailure = "";
+  hoodlefinancePrepareRouteJob_(job, job.plan);
 
   hoodlefinanceExecuteRouteJobs_([job]);
 
@@ -1824,14 +1812,7 @@ function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute, allowImplicitBla
       key = hoodlefinanceBuildTickerJobKey_(normalizedTicker, attribute);
 
       if (!jobByKey[key]) {
-        jobByKey[key] = {
-          attribute: attribute,
-          key: key,
-          quote: null,
-          tickerInput: normalizedTicker,
-          value: null,
-          valueResolved: false,
-        };
+        jobByKey[key] = hoodlefinanceCreateQuoteRouteJob_(normalizedTicker, attribute);
         orderedJobs.push(jobByKey[key]);
       }
     }
@@ -1845,6 +1826,63 @@ function hoodlefinanceCollectTickerJobs_(tickerGrid, attribute, allowImplicitBla
 
 function hoodlefinanceBuildTickerJobKey_(ticker, attribute) {
   return String(ticker).trim() + "\n" + String(attribute).trim().toLowerCase();
+}
+
+function hoodlefinanceCreateRouteJob_(options) {
+  const extras = options || {};
+
+  return {
+    attribute: extras.attribute || "price",
+    error: null,
+    key: extras.key || "",
+    plan: extras.plan || null,
+    quote: extras.quote || null,
+    routeContext: extras.routeContext || null,
+    routeIndex: 0,
+    routeKind: extras.routeKind || "quote",
+    routeLastLookupFailure: "",
+    routeRuntimeTrace: [],
+    routeState: extras.routeState || {},
+    sourceQuote: extras.sourceQuote || null,
+    tickerInput: extras.tickerInput ? String(extras.tickerInput).trim() : "",
+    value: extras.value || null,
+    valueResolved: extras.valueResolved === true,
+  };
+}
+
+function hoodlefinanceCreateQuoteRouteJob_(ticker, attribute) {
+  const normalizedTicker = String(ticker).trim();
+  const normalizedAttribute = String(attribute == null ? "price" : attribute).trim();
+
+  return hoodlefinanceCreateRouteJob_({
+    attribute: normalizedAttribute,
+    key: hoodlefinanceBuildTickerJobKey_(normalizedTicker, normalizedAttribute),
+    tickerInput: normalizedTicker,
+  });
+}
+
+function hoodlefinanceCreateAttributeRouteJob_(attribute, quote, context, routeKind) {
+  const routeContext = context || {};
+
+  return hoodlefinanceCreateRouteJob_({
+    attribute: String(attribute == null ? "" : attribute).trim(),
+    routeContext: routeContext,
+    routeKind: routeKind || "attribute",
+    sourceQuote: quote,
+    tickerInput: routeContext.tickerInput ? String(routeContext.tickerInput).trim() : "",
+  });
+}
+
+function hoodlefinancePrepareRouteJob_(job, plan) {
+  const targetJob = job;
+  const routePlan = plan || targetJob.plan || {};
+
+  targetJob.plan = routePlan;
+  targetJob.routeAttempts = hoodlefinanceCloneRouteAttempts_(routePlan.routeAttempts || []);
+  targetJob.routeIndex = 0;
+  targetJob.routeState = hoodlefinanceCloneRouteState_(routePlan.routeState || {});
+  targetJob.routeRuntimeTrace = [];
+  targetJob.routeLastLookupFailure = "";
 }
 
 function hoodlefinanceIsMultiCellTickerGrid_(tickerGrid) {
@@ -1893,11 +1931,7 @@ function hoodlefinancePrefetchTickerJobs_(jobs) {
         orderedJobs[i].valueResolved = true;
         continue;
       }
-      orderedJobs[i].routeAttempts = hoodlefinanceCloneRouteAttempts_(plan.routeAttempts || []);
-      orderedJobs[i].routeIndex = 0;
-      orderedJobs[i].routeState = hoodlefinanceCloneRouteState_(plan.routeState || {});
-      orderedJobs[i].routeRuntimeTrace = [];
-      orderedJobs[i].routeLastLookupFailure = "";
+      hoodlefinancePrepareRouteJob_(orderedJobs[i], plan);
     } catch (error) {
       orderedJobs[i].error = hoodlefinanceErrorMessage_(error);
     }
@@ -3772,27 +3806,10 @@ function hoodlefinanceBuildIsinPlanForSource_(source) {
 
 function hoodlefinanceResolveDefaultIsin_(quote, context) {
   const routeContext = context || {};
-  const job = {
-    attribute: "isin",
-    error: null,
-    key: "",
-    plan: null,
-    quote: null,
-    routeContext: routeContext,
-    routeKind: "isin",
-    routeLastLookupFailure: "",
-    routeRuntimeTrace: [],
-    routeState: {},
-    sourceQuote: quote,
-    tickerInput: routeContext.tickerInput ? String(routeContext.tickerInput).trim() : "",
-    value: null,
-    valueResolved: false,
-  };
+  const job = hoodlefinanceCreateAttributeRouteJob_("isin", quote, routeContext, "isin");
 
   job.plan = hoodlefinanceBuildIsinRoutePlan_(quote, routeContext);
-  job.routeAttempts = hoodlefinanceCloneRouteAttempts_(job.plan.routeAttempts || []);
-  job.routeIndex = 0;
-  job.routeState = hoodlefinanceCloneRouteState_(job.plan.routeState || {});
+  hoodlefinancePrepareRouteJob_(job, job.plan);
 
   hoodlefinanceExecuteRouteJobs_([job]);
 

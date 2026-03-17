@@ -102,15 +102,7 @@ function printRoutingTable() {
 
 function traceRoutingForSymbol(symbol, ctx) {
   const runtime = ctx || loadHoodlefinance();
-  const job = {
-    attribute: "price",
-    error: null,
-    key: runtime.hoodlefinanceBuildTickerJobKey_(symbol, "price"),
-    quote: null,
-    tickerInput: String(symbol).trim(),
-    value: null,
-    valueResolved: false,
-  };
+  const job = runtime.hoodlefinanceCreateQuoteRouteJob_(String(symbol).trim(), "price");
 
   try {
     job.plan = runtime.hoodlefinanceClassifyTickerJob_(job.tickerInput, "price");
@@ -133,11 +125,7 @@ function traceRoutingForSymbol(symbol, ctx) {
     };
   }
 
-  job.routeAttempts = runtime.hoodlefinanceCloneRouteAttempts_(job.plan.routeAttempts || []);
-  job.routeIndex = 0;
-  job.routeState = runtime.hoodlefinanceCloneRouteState_(job.plan.routeState || {});
-  job.routeRuntimeTrace = [];
-  job.routeLastLookupFailure = "";
+  runtime.hoodlefinancePrepareRouteJob_(job, job.plan);
 
   try {
     runtime.hoodlefinanceExecuteRouteJobs_([job]);
