@@ -1076,7 +1076,7 @@ test("unsupported quote-source overrides fail clearly", () => {
     function () {
       ctx.HOODLEFINANCE("GOOG@IBKR", "price");
     },
-    /Source override "@IBKR" is only implemented for isin lookups\./
+    /"@IBKR" can only be used with the "isin" attribute\./
   );
 });
 
@@ -2970,7 +2970,36 @@ test("isin fails clearly when no exchange-specific source is implemented", () =>
     function () {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "VWRP.SW" }, "isin", { tickerInput: "VWRP.SW" });
     },
-    /No isin source is implemented for exchange "SIX"\. Use an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR"\./
+    /ISIN lookup is not supported yet for exchange "SIX"\. Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR"\./
+  );
+});
+
+test("isin helper errors avoid source-internal lookup jargon", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceResolveArivaIsin_({ exchangeName: "GER" }, { tickerInput: "ETR:@ARIVA" });
+    },
+    /Could not determine the ticker code needed for ARIVA ISIN lookup\./
+  );
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceResolveLonIsin_({ exchangeName: "LSE" }, { tickerInput: "LON:@LON" });
+    },
+    /Could not determine the ticker code needed for LON ISIN lookup\./
+  );
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceResolveTradingviewIsin_({ symbol: "NESN" }, { tickerInput: "SIX:NESN@TRADINGVIEW" });
+    },
+    /TradingView cannot be used for ISIN lookup on exchange "SIX"\./
+  );
+  assert.throws(
+    function () {
+      ctx.hoodlefinanceResolveTradingviewIsin_({ exchangeName: "NMS" }, {});
+    },
+    /Could not determine the ticker code needed for TradingView ISIN lookup\./
   );
 });
 
@@ -3509,7 +3538,7 @@ test("isin@PSE rejects non-PSE tickers", () => {
     function () {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@PSE" });
     },
-    /PSE isin lookup is only implemented for PSE tickers\./
+    /PSE ISIN lookup only works for PSE tickers\./
   );
 });
 
@@ -3520,7 +3549,7 @@ test("isin@LON rejects non-LON tickers", () => {
     function () {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@LON" });
     },
-    /LON isin lookup is only implemented for LON tickers\./
+    /LON ISIN lookup only works for LON tickers\./
   );
 });
 
@@ -3531,7 +3560,7 @@ test("isin@ARIVA rejects non-ETR tickers", () => {
     function () {
       ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@ARIVA" });
     },
-    /ARIVA isin lookup is only implemented for ETR tickers\./
+    /ARIVA ISIN lookup only works for ETR tickers\./
   );
 });
 

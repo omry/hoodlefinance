@@ -1970,7 +1970,7 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
 
   if (sourceOverride === "GOOGLE") {
     if (!fxPair) {
-      throw new Error('Source override "@GOOGLE" is only implemented for FX pairs.');
+      throw new Error('"@GOOGLE" can only be used with currency pairs.');
     }
 
     return hoodlefinanceCreateSingleAttemptRoutePlan_("FORCED:GOOGLE", "google-finance-fx", "GOOGLE", {
@@ -1992,7 +1992,7 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
     if (isinValue) {
       pseTicker = hoodlefinanceResolvePseTickerFromIsinMap_(isinValue);
       if (!pseTicker) {
-        throw new Error('No PSE ticker was found for ISIN "' + isinValue + '" when forcing "@PSE".');
+        throw new Error('No PSE ticker was found for ISIN "' + isinValue + '" when using "@PSE".');
       }
 
       symbol = hoodlefinanceParsePseSymbol_(pseTicker);
@@ -2001,14 +2001,14 @@ function hoodlefinanceBuildForcedSourcePlan_(normalizedTicker, normalizedAttribu
       });
     }
 
-    throw new Error('Source override "@PSE" is only implemented for PSE tickers and PSE-mapped ISINs.');
+    throw new Error('"@PSE" can only be used with PSE tickers and PSE-mapped ISINs.');
   }
 
   if (normalizedAttribute === "isin") {
     return null;
   }
 
-  throw new Error('Source override "@' + sourceOverride + '" is only implemented for isin lookups.');
+  throw new Error('"@' + sourceOverride + '" can only be used with the "isin" attribute.');
 }
 
 function hoodlefinanceDescribePlanSource_(plan) {
@@ -3568,10 +3568,10 @@ function hoodlefinanceBuildIsinRoutePlan_(quote, context) {
   }
 
   if (!exchange) {
-    throw new Error("Could not deduce an exchange for isin lookup. Use an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
+    throw new Error("Could not determine which market to use for ISIN lookup. Try an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
   }
 
-  throw new Error("No isin source is implemented for exchange \"" + exchange + "\". Use an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
+  throw new Error("ISIN lookup is not supported yet for exchange \"" + exchange + "\". Try an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
 }
 
 function hoodlefinanceBuildIsinPlanForSource_(source) {
@@ -3584,7 +3584,7 @@ function hoodlefinanceBuildIsinPlanForSource_(source) {
     });
   }
 
-  throw new Error('Source override "@' + normalizedSource + '" is not implemented for isin lookups.');
+  throw new Error('"@' + normalizedSource + '" is not available for ISIN lookups.');
 }
 
 function hoodlefinanceResolveDefaultIsin_(quote, context) {
@@ -3618,11 +3618,11 @@ function hoodlefinanceResolveArivaIsin_(quote, context) {
   const cacheKey = "hoodlefinance:ariva:isin:" + code;
 
   if (exchange !== "ETR") {
-    throw new Error("ARIVA isin lookup is only implemented for ETR tickers.");
+    throw new Error("ARIVA ISIN lookup only works for ETR tickers.");
   }
 
   if (!code) {
-    throw new Error("Could not determine the ARIVA search code for this ticker.");
+    throw new Error("Could not determine the ticker code needed for ARIVA ISIN lookup.");
   }
 
   return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
@@ -3644,7 +3644,7 @@ function hoodlefinanceResolvePseIsin_(quote, context) {
   const exchange = hoodlefinanceInferIsinExchange_(quote, context);
 
   if (exchange !== "PSE") {
-    throw new Error("PSE isin lookup is only implemented for PSE tickers.");
+    throw new Error("PSE ISIN lookup only works for PSE tickers.");
   }
 
   if (quote && quote.isin) {
@@ -3660,11 +3660,11 @@ function hoodlefinanceResolveLonIsin_(quote, context) {
   const cacheKey = "hoodlefinance:lon:isin:" + code;
 
   if (exchange !== "LON") {
-    throw new Error("LON isin lookup is only implemented for LON tickers.");
+    throw new Error("LON ISIN lookup only works for LON tickers.");
   }
 
   if (!code) {
-    throw new Error("Could not determine the LON code for this ticker.");
+    throw new Error("Could not determine the ticker code needed for LON ISIN lookup.");
   }
 
   return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
@@ -3687,13 +3687,13 @@ function hoodlefinanceResolveTradingviewIsin_(quote, context) {
 
   if (!tradingviewExchange) {
     if (yahooExchange) {
-      throw new Error('TradingView isin lookup is not implemented for exchange "' + yahooExchange + '".');
+      throw new Error('TradingView cannot be used for ISIN lookup on exchange "' + yahooExchange + '".');
     }
-    throw new Error("Could not determine the TradingView exchange for this ticker.");
+    throw new Error("Could not determine which market to use for TradingView ISIN lookup.");
   }
 
   if (!code) {
-    throw new Error("Could not determine the TradingView symbol code for this ticker.");
+    throw new Error("Could not determine the ticker code needed for TradingView ISIN lookup.");
   }
 
   return hoodlefinanceResolveCachedString_(cacheKey, 21600, function () {
