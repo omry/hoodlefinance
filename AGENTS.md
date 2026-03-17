@@ -34,3 +34,8 @@ Repo-specific standing directives for coding agents working in this project.
 - Do not edit GitHub Release notes independently from the repo-managed notes.
 - The current pasted Apps Script install path is manual. Do not design or imply a self-updating bound-script workflow unless the task explicitly asks for that.
 - Longer-term upgrade improvements should assume an add-on-oriented direction, but that is separate from the current release workflow.
+
+## Review scope
+
+- When asked to review a commit, pull request, or diff, cover correctness, completeness, documentation, and internal consistency, not just obvious bugs.
+- When applicable, also verify that the change includes an appropriate `changes.d/` fragment and that the fragment is accurate, user-facing, and consistent with the implementation and docs.
