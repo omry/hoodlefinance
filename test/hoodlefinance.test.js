@@ -2380,6 +2380,123 @@ test("HOODLEFINANCE converts array inputs to an output currency with deduped fet
   assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/USD-EUR"]);
 });
 
+test("output-currency conversion caches repeated unit resolutions and FX rates within one recalculation pass", () => {
+  const ctx = loadHoodlefinance();
+  const seenCodes = [];
+  const seenConversionTickers = [];
+  const unitsByCode = {
+    EUR: { assetClass: "currency", canonicalCode: "EUR", displayCode: "EUR", factor: 1 },
+    USD: { assetClass: "currency", canonicalCode: "USD", displayCode: "USD", factor: 1 },
+  };
+
+  ctx.hoodlefinanceResolveCurrencyUnit_ = function (code) {
+    const key = String(code || "").trim();
+    seenCodes.push(key);
+    return unitsByCode[key] || null;
+  };
+  ctx.hoodlefinanceFetchQuote_ = function (ticker) {
+    seenConversionTickers.push(ticker);
+    return {
+      currency: "EUR",
+      regularMarketPrice: 0.91,
+    };
+  };
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPrice: 200,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/MSFT?interval=1d&range=1d") {
+        return createYahooChartResponse("MSFT", {
+          currency: "USD",
+          regularMarketPrice: 300,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["NASDAQ:GOOG"], ["NASDAQ:MSFT"]], "price@EUR")),
+    JSON.stringify([[182], [273]])
+  );
+  assert.deepEqual(seenCodes, ["USD", "EUR"]);
+  assert.deepEqual(seenConversionTickers, ["CURRENCY:USDEUR"]);
+});
+
+test("output-currency conversion still resolves distinct source currencies separately within one recalculation pass", () => {
+  const ctx = loadHoodlefinance();
+  const seenCodes = [];
+  const seenConversionTickers = [];
+  const unitsByCode = {
+    EUR: { assetClass: "currency", canonicalCode: "EUR", displayCode: "EUR", factor: 1 },
+    GBP: { assetClass: "currency", canonicalCode: "GBP", displayCode: "GBP", factor: 1 },
+    USD: { assetClass: "currency", canonicalCode: "USD", displayCode: "USD", factor: 1 },
+  };
+
+  ctx.hoodlefinanceResolveCurrencyUnit_ = function (code) {
+    const key = String(code || "").trim();
+    seenCodes.push(key);
+    return unitsByCode[key] || null;
+  };
+  ctx.hoodlefinanceFetchQuote_ = function (ticker) {
+    seenConversionTickers.push(ticker);
+
+    if (ticker === "CURRENCY:USDGBP") {
+      return {
+        currency: "GBP",
+        regularMarketPrice: 0.8,
+      };
+    }
+
+    if (ticker === "CURRENCY:EURGBP") {
+      return {
+        currency: "GBP",
+        regularMarketPrice: 0.85,
+      };
+    }
+
+    throw new Error("Unexpected conversion ticker " + ticker);
+  };
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d") {
+        return createYahooChartResponse("GOOG", {
+          currency: "USD",
+          regularMarketPrice: 200,
+        });
+      }
+
+      if (request.url === "https://query1.finance.yahoo.com/v8/finance/chart/SIE.DE?interval=1d&range=1d") {
+        return createYahooChartResponse("SIE.DE", {
+          currency: "EUR",
+          regularMarketPrice: 150,
+        });
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["NASDAQ:GOOG"], ["SIE.DE"]], "price@GBP")),
+    JSON.stringify([[160], [127.5]])
+  );
+  assert.deepEqual(seenCodes, ["USD", "GBP", "EUR"]);
+  assert.deepEqual(seenConversionTickers, ["CURRENCY:USDGBP", "CURRENCY:EURGBP"]);
+});
+
 test("isin rejects currency pairs with a direct user-facing error", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);

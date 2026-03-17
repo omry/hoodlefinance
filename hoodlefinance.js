@@ -2397,6 +2397,10 @@ function hoodlefinancePrefetchPseJobs_(jobs) {
 }
 
 function hoodlefinanceResolvePrefetchedTickerJobs_(jobs) {
+  const outputCurrencyCache = {
+    conversionRateByPair: {},
+    unitByCode: {},
+  };
   let i;
 
   for (i = 0; i < jobs.orderedJobs.length; i += 1) {
@@ -2412,6 +2416,7 @@ function hoodlefinanceResolvePrefetchedTickerJobs_(jobs) {
       jobs.orderedJobs[i].quote,
       jobs.orderedJobs[i].attribute,
       {
+        outputCurrencyCache: outputCurrencyCache,
         plan: jobs.orderedJobs[i].plan,
         tickerInput: jobs.orderedJobs[i].tickerInput,
       }
@@ -2623,11 +2628,30 @@ function hoodlefinanceNormalizeMoney_(quote, value) {
     : value;
 }
 
+function hoodlefinanceResolveOutputCurrencyUnit_(outputCurrencyCache, code) {
+  const cacheKey = String(code || "").trim();
+  let unit;
+
+  if (!outputCurrencyCache || !cacheKey) {
+    return hoodlefinanceResolveCurrencyUnit_(code);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(outputCurrencyCache.unitByCode, cacheKey)) {
+    return outputCurrencyCache.unitByCode[cacheKey];
+  }
+
+  unit = hoodlefinanceResolveCurrencyUnit_(cacheKey);
+  outputCurrencyCache.unitByCode[cacheKey] = unit;
+  return unit;
+}
+
 function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attributeRequest, context) {
+  const outputCurrencyCache = context && context.outputCurrencyCache ? context.outputCurrencyCache : null;
   const sourceCurrency = hoodlefinanceExtractCurrencyValue_(quote);
-  const sourceUnit = hoodlefinanceResolveCurrencyUnit_(sourceCurrency);
-  const targetUnit = hoodlefinanceResolveCurrencyUnit_(attributeRequest.outputCode);
+  const sourceUnit = hoodlefinanceResolveOutputCurrencyUnit_(outputCurrencyCache, sourceCurrency);
+  const targetUnit = hoodlefinanceResolveOutputCurrencyUnit_(outputCurrencyCache, attributeRequest.outputCode);
   const plan = context && context.plan ? context.plan : null;
+  let cacheKey;
   let fxPair;
   let conversionQuote;
   let conversionRate;
@@ -2652,24 +2676,34 @@ function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attri
     return value;
   }
 
+  cacheKey = sourceUnit.displayCode + "->" + targetUnit.displayCode;
+
+  if (outputCurrencyCache && Object.prototype.hasOwnProperty.call(outputCurrencyCache.conversionRateByPair, cacheKey)) {
+    return value * outputCurrencyCache.conversionRateByPair[cacheKey];
+  }
+
   fxPair = hoodlefinanceBuildFxPair_(sourceUnit, targetUnit);
 
   if (fxPair.isSameCurrency) {
-    return value * fxPair.scale;
+    conversionRate = fxPair.scale;
+  } else {
+    try {
+      conversionQuote = hoodlefinanceFetchQuote_(fxPair.googleSymbol);
+      conversionRate = hoodlefinanceNormalizeMoney_(conversionQuote, hoodlefinancePickPrice_(conversionQuote));
+    } catch (error) {
+      throw new Error(
+        'Output-currency conversion from "' +
+          sourceUnit.displayCode +
+          '" to "' +
+          targetUnit.displayCode +
+          '" is unavailable. ' +
+          hoodlefinanceErrorMessage_(error)
+      );
+    }
   }
 
-  try {
-    conversionQuote = hoodlefinanceFetchQuote_(fxPair.googleSymbol);
-    conversionRate = hoodlefinanceNormalizeMoney_(conversionQuote, hoodlefinancePickPrice_(conversionQuote));
-  } catch (error) {
-    throw new Error(
-      'Output-currency conversion from "' +
-        sourceUnit.displayCode +
-        '" to "' +
-        targetUnit.displayCode +
-        '" is unavailable. ' +
-        hoodlefinanceErrorMessage_(error)
-    );
+  if (outputCurrencyCache) {
+    outputCurrencyCache.conversionRateByPair[cacheKey] = conversionRate;
   }
 
   return value * conversionRate;
