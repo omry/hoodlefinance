@@ -136,4 +136,4 @@ jobs:
           printf '%s' "${CLASP_RC_JSON}" > "${HOME}/.clasprc.json"
 
       - name: Sync public demo sheet
-        run: node tools/sync-demo-sheet.js
+        run: node tools/sync-demo-sheet.js --live-demo

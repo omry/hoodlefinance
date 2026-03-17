@@ -76,7 +76,7 @@ node tools/release.js publish 0.2.6
 - `node --test test/hoodlefinance.test.js`
 - `node --test test/release.test.js`
 - `node --test test/sync-demo-sheet.test.js`
-- `node tools/sync-demo-sheet.js --dry-run`
+- `node tools/sync-demo-sheet.js --dry-run` (staging config preflight only)
 
 Run the live benchmark for scalar-vs-range performance:
 
@@ -88,12 +88,20 @@ node tools/benchmark.js --tickers GOOG,AAPL,MSFT,AMZN,META
 
 The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through the local Node HTTP transport, so it is useful for checking live endpoints without pasting into Google Sheets.
 
-Sync the public demo sheet:
+Sync the demo sheet locally. The default target is staging:
 
 ```sh
-node tools/sync-demo-sheet.js --dry-run
 node tools/sync-demo-sheet.js
 ```
+
+Publish to the real public demo only when you explicitly opt in:
+
+```sh
+node tools/sync-demo-sheet.js --live-demo --dry-run
+node tools/sync-demo-sheet.js --live-demo
+```
+
+The production public demo should normally be synced automatically by the release workflow after a reviewed release PR is merged. For local maintainer use, `--live-demo --dry-run` is mainly a last-minute check that you are pointed at the real public sheet. Run a local `--live-demo` sync only when you are making a demo-only fix that should go live outside the normal release flow.
 
 Before the live sync will work, set up:
 
@@ -105,7 +113,7 @@ npm install -g @google/clasp
 clasp login --no-localhost
 ```
 
-The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. It writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
+The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets the tracked staging sheet so testing and iterative updates do not touch the public demo. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
 
 For the high-level process for adding another trusted demo maintainer, see [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md).
 
@@ -193,7 +201,7 @@ Recommended GitHub Actions flow:
 1. Commit the release fragments on `main`.
 2. Run the `Release Prepare` workflow with the target version. It opens a generated release PR from `release/vX.Y.Z`.
 3. Review and merge that release PR. Merging is the maintainer approval gate.
-4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag.
+4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag with `node tools/sync-demo-sheet.js --live-demo`.
 5. Use the manual `Release Publish` workflow only as a fallback if the automatic merge-triggered publish path needs to be rerun or repaired.
 
 Demo-sync workflow secrets:

@@ -32,7 +32,7 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 npm install -g @google/clasp
 clasp login --no-localhost
 ```
-4. Run:
+4. Run the default staging sync to confirm your credentials and access without touching the public demo:
 
 ```sh
 node tools/sync-demo-sheet.js
@@ -53,7 +53,7 @@ The normal release path is:
 1. `Release Prepare` opens a `release/vX.Y.Z` PR.
 2. A maintainer reviews and merges that PR.
 3. The merged PR automatically triggers `Release Publish`.
-4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job.
+4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job with `node tools/sync-demo-sheet.js --live-demo`.
 
 That demo-sync job uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
 
@@ -66,6 +66,23 @@ Important distinction:
 - `CLASP_RC_JSON` should contain the authenticated global `clasp` login file from `~/.clasprc.json`
 - It should not contain the generated project file at `.demo-sheet.local/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
 - All three secret values should be valid JSON. If `clasp` reports a JSON parse error in CI, re-copy the secret from the local source file.
+
+## Update Flow
+
+Normal local development should use the default staging target:
+
+1. Update [`hoodlefinance.js`](../../hoodlefinance.js) as needed.
+2. Edit the relevant TSV files in this directory.
+3. Run `node tools/sync-demo-sheet.js`.
+4. Check the staging sheet.
+
+The production public demo should normally be updated by `Release Publish`, which runs `node tools/sync-demo-sheet.js --live-demo`.
+
+Use a direct production sync only for demo-only fixes between releases:
+
+1. Optional: run `node tools/sync-demo-sheet.js --live-demo --dry-run`.
+2. Run `node tools/sync-demo-sheet.js --live-demo`.
+3. Confirm the public sheet shows the intended demo-only content changes.
 
 ## Adding A Demo Maintainer
 
@@ -94,7 +111,7 @@ clasp login --no-localhost
 .demo-sheet.local/oauth-client.json
 ```
 
-7. Walk them through one successful run of:
+7. Walk them through one successful default staging run of:
 
 ```sh
 node tools/sync-demo-sheet.js
@@ -109,12 +126,3 @@ In practice, a successful first sync confirms that all required access is in pla
 - Apps Script API enabled for the maintainer account
 - working local `clasp` login
 - working local OAuth credentials for the sync script
-
-## Update Flow
-
-When the public demo needs to be refreshed:
-
-1. Update [`hoodlefinance.js`](../../hoodlefinance.js) as needed.
-2. Edit the relevant TSV files in this directory.
-3. Run `node tools/sync-demo-sheet.js`.
-4. Confirm the public sheet shows the current `=HOODLEFINANCE_VERSION()`.

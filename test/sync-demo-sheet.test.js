@@ -33,15 +33,15 @@ const {
 test("parseArgs handles the supported flags", function () {
   assert.deepEqual(parseArgs([]), {
     dryRun: false,
+    liveDemo: false,
     skipClasp: false,
     skipSharing: false,
-    staging: false,
   });
-  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--staging"]), {
+  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--live-demo"]), {
     dryRun: true,
+    liveDemo: true,
     skipClasp: true,
     skipSharing: true,
-    staging: true,
   });
   assert.throws(function () {
     parseArgs(["--wat"]);
@@ -329,9 +329,14 @@ test("replaceDemoReadmeBlock replaces an existing marker section", function () {
 
 test("the tracked demo-sheet config validates and its TSV paths exist", function () {
   const config = loadDemoSheetConfig(false);
+  const liveConfig = loadDemoSheetConfig(true);
 
   validateConfig(config);
+  validateConfig(liveConfig);
   config.tabs.forEach(function (tab) {
+    assert.equal(fs.existsSync(resolveRepoPath(tab.path)), true, tab.path);
+  });
+  liveConfig.tabs.forEach(function (tab) {
     assert.equal(fs.existsSync(resolveRepoPath(tab.path)), true, tab.path);
   });
 });

@@ -38,7 +38,7 @@ const DEFAULT_ERROR_BACKGROUND_COLOR = {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const config = loadDemoSheetConfig(options.staging);
+  const config = loadDemoSheetConfig(options.liveDemo);
 
   validateConfig(config);
   await ensureConfiguredTabFilesExist(config);
@@ -51,7 +51,7 @@ async function main() {
   const accessToken = await ensureAccessToken();
   const syncedConfig = await syncDemoSheet(accessToken, config, options);
 
-  if (options.staging) {
+  if (!options.liveDemo) {
     const overrideConfig = {
       title: syncedConfig.title,
       spreadsheetId: syncedConfig.spreadsheetId,
@@ -71,9 +71,9 @@ async function main() {
 function parseArgs(argv) {
   const options = {
     dryRun: false,
+    liveDemo: false,
     skipClasp: false,
     skipSharing: false,
-    staging: false,
   };
   let i;
 
@@ -93,8 +93,8 @@ function parseArgs(argv) {
       continue;
     }
 
-    if (argv[i] === "--staging") {
-      options.staging = true;
+    if (argv[i] === "--live-demo") {
+      options.liveDemo = true;
       continue;
     }
 
@@ -104,10 +104,10 @@ function parseArgs(argv) {
   return options;
 }
 
-function loadDemoSheetConfig(isStaging) {
+function loadDemoSheetConfig(isLiveDemo) {
   const baseConfig = readJsonSync(CONFIG_PATH, "demo-sheet config");
   
-  if (!isStaging) {
+  if (isLiveDemo) {
     return baseConfig;
   }
   
@@ -1525,7 +1525,7 @@ function renderDemoReadmeBlock(publicUrl) {
 
   return (
     DEMO_MARKER_START +
-    "\nThe public demo sheet will be linked here after it is created with `node tools/sync-demo-sheet.js`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
+    "\nThe public demo sheet will be linked here after it is created with `node tools/sync-demo-sheet.js --live-demo`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
       DEMO_MARKER_END
   );
 }
@@ -1654,6 +1654,7 @@ function printSummary(config, options, message) {
   process.stdout.write("Spreadsheet ID: " + (config.spreadsheetId || "<not created yet>") + "\n");
   process.stdout.write("Public URL: " + (config.publicUrl || "<not created yet>") + "\n");
   process.stdout.write("Script ID: " + (config.script && config.script.scriptId ? config.script.scriptId : "<not created yet>") + "\n");
+  process.stdout.write("Target: " + (options.liveDemo ? "live-demo" : "staging") + "\n");
   process.stdout.write(
     "Mode: " +
       (options.dryRun ? "dry-run" : "live") +
