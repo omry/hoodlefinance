@@ -35,11 +35,13 @@ test("parseArgs handles the supported flags", function () {
     dryRun: false,
     skipClasp: false,
     skipSharing: false,
+    staging: false,
   });
-  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing"]), {
+  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--staging"]), {
     dryRun: true,
     skipClasp: true,
     skipSharing: true,
+    staging: true,
   });
   assert.throws(function () {
     parseArgs(["--wat"]);
@@ -326,7 +328,7 @@ test("replaceDemoReadmeBlock replaces an existing marker section", function () {
 });
 
 test("the tracked demo-sheet config validates and its TSV paths exist", function () {
-  const config = loadDemoSheetConfig(CONFIG_PATH);
+  const config = loadDemoSheetConfig(false);
 
   validateConfig(config);
   config.tabs.forEach(function (tab) {

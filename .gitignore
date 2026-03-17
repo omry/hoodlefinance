@@ -2,3 +2,4 @@ __pycache__/
 *.py[cod]
 .demo-sheet.local/
 tmp
+docs/demo-sheet/demo-sheet-staging.json

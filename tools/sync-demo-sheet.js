@@ -11,6 +11,7 @@ const crypto = require("node:crypto");
 const ROOT_DIR = path.resolve(__dirname, "..");
 const DEMO_DIR = path.join(ROOT_DIR, "docs", "demo-sheet");
 const CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet.json");
+const STAGING_CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet-staging.json");
 const README_PATH = path.join(ROOT_DIR, "README.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
@@ -37,7 +38,7 @@ const DEFAULT_ERROR_BACKGROUND_COLOR = {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const config = loadDemoSheetConfig(CONFIG_PATH);
+  const config = loadDemoSheetConfig(options.staging);
 
   validateConfig(config);
   await ensureConfiguredTabFilesExist(config);
@@ -50,8 +51,20 @@ async function main() {
   const accessToken = await ensureAccessToken();
   const syncedConfig = await syncDemoSheet(accessToken, config, options);
 
-  await saveJson(CONFIG_PATH, syncedConfig);
-  await updateReadmeDemoLink(syncedConfig.publicUrl || "");
+  if (options.staging) {
+    const overrideConfig = {
+      title: syncedConfig.title,
+      spreadsheetId: syncedConfig.spreadsheetId,
+      publicUrl: syncedConfig.publicUrl,
+      sharePublicReadOnly: syncedConfig.sharePublicReadOnly,
+      script: syncedConfig.script,
+    };
+    await saveJson(STAGING_CONFIG_PATH, overrideConfig);
+  } else {
+    await saveJson(CONFIG_PATH, syncedConfig);
+    await updateReadmeDemoLink(syncedConfig.publicUrl || "");
+  }
+  
   printSummary(syncedConfig, options, "Demo sheet sync completed.");
 }
 
@@ -60,6 +73,7 @@ function parseArgs(argv) {
     dryRun: false,
     skipClasp: false,
     skipSharing: false,
+    staging: false,
   };
   let i;
 
@@ -79,14 +93,38 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (argv[i] === "--staging") {
+      options.staging = true;
+      continue;
+    }
+
     throw new Error("Unknown argument: " + argv[i]);
   }
 
   return options;
 }
 
-function loadDemoSheetConfig(configPath) {
-  return readJsonSync(configPath, "demo-sheet config");
+function loadDemoSheetConfig(isStaging) {
+  const baseConfig = readJsonSync(CONFIG_PATH, "demo-sheet config");
+  
+  if (!isStaging) {
+    return baseConfig;
+  }
+  
+  const stagingConfig = readOptionalJsonSync(STAGING_CONFIG_PATH) || {};
+  
+  // Merge staging overrides onto base config
+  return Object.assign({}, baseConfig, stagingConfig, {
+    // Ensure we don't accidentally inherit production IDs if staging config was empty
+    spreadsheetId: stagingConfig.spreadsheetId || "",
+    publicUrl: stagingConfig.publicUrl || "",
+    sharePublicReadOnly: stagingConfig.sharePublicReadOnly === true,
+    title: stagingConfig.title || baseConfig.title + " (Staging)",
+    script: Object.assign({}, baseConfig.script, stagingConfig.script, {
+      scriptId: (stagingConfig.script && stagingConfig.script.scriptId) || "",
+      title: (stagingConfig.script && stagingConfig.script.title) || (baseConfig.script && baseConfig.script.title) + " (Staging)"
+    })
+  });
 }
 
 function validateConfig(config) {
@@ -1627,6 +1665,7 @@ function printSummary(config, options, message) {
 
 module.exports = {
   CONFIG_PATH,
+  STAGING_CONFIG_PATH,
   OAUTH_CLIENT_PATH,
   OAUTH_TOKEN_PATH,
   buildAutoResizeColumnsRequest,
