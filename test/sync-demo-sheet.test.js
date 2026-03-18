@@ -20,6 +20,8 @@ const {
   buildUnmergeCellsRequest,
   buildNumberFormatRequests,
   buildSheetRange,
+  ensureAccessTokenWithDeps,
+  isInvalidGrantOAuthError,
   loadDemoSheetConfig,
   normalizeTabFormatting,
   parseArgs,
@@ -46,6 +48,135 @@ test("parseArgs handles the supported flags", function () {
   assert.throws(function () {
     parseArgs(["--wat"]);
   }, /Unknown argument/);
+});
+
+test("ensureAccessTokenWithDeps returns a valid cached token without refreshing", async function () {
+  const accessToken = await ensureAccessTokenWithDeps({
+    authorizeInteractively: async function () {
+      throw new Error("should not authorize");
+    },
+    readJsonSync: function () {
+      return { installed: { client_id: "client-id", client_secret: "secret" } };
+    },
+    readOptionalJsonSync: function () {
+      return {
+        access_token: "cached-access",
+        expiry_date: Date.now() + 10 * 60 * 1000,
+      };
+    },
+    refreshAccessToken: async function () {
+      throw new Error("should not refresh");
+    },
+  });
+
+  assert.equal(accessToken, "cached-access");
+});
+
+test("ensureAccessTokenWithDeps refreshes an expired token when refresh succeeds", async function () {
+  let refreshCalls = 0;
+  const accessToken = await ensureAccessTokenWithDeps({
+    authorizeInteractively: async function () {
+      throw new Error("should not authorize");
+    },
+    readJsonSync: function () {
+      return { installed: { client_id: "client-id", client_secret: "secret" } };
+    },
+    readOptionalJsonSync: function () {
+      return {
+        access_token: "expired-access",
+        expiry_date: Date.now() - 1,
+        refresh_token: "refresh-token",
+      };
+    },
+    refreshAccessToken: async function () {
+      refreshCalls += 1;
+      return {
+        access_token: "refreshed-access",
+        expiry_date: Date.now() + 10 * 60 * 1000,
+        refresh_token: "refresh-token",
+      };
+    },
+  });
+
+  assert.equal(accessToken, "refreshed-access");
+  assert.equal(refreshCalls, 1);
+});
+
+test("ensureAccessTokenWithDeps falls back to interactive auth after invalid_grant", async function () {
+  let authorized = 0;
+  let stdout = "";
+  const originalWrite = process.stdout.write;
+
+  process.stdout.write = function (chunk) {
+    stdout += String(chunk);
+    return true;
+  };
+
+  try {
+    const accessToken = await ensureAccessTokenWithDeps({
+      authorizeInteractively: async function () {
+        authorized += 1;
+        return {
+          access_token: "interactive-access",
+          expiry_date: Date.now() + 10 * 60 * 1000,
+          refresh_token: "new-refresh-token",
+        };
+      },
+      readJsonSync: function () {
+        return { installed: { client_id: "client-id", client_secret: "secret" } };
+      },
+      readOptionalJsonSync: function () {
+        return {
+          access_token: "expired-access",
+          expiry_date: Date.now() - 1,
+          refresh_token: "stale-refresh-token",
+        };
+      },
+      refreshAccessToken: async function () {
+        const error = new Error("invalid grant");
+        error.oauthError = "invalid_grant";
+        throw error;
+      },
+    });
+
+    assert.equal(accessToken, "interactive-access");
+    assert.equal(authorized, 1);
+    assert.match(stdout, /Starting interactive reauthorization/);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+});
+
+test("ensureAccessTokenWithDeps rethrows non-invalid-grant refresh failures", async function () {
+  await assert.rejects(
+    ensureAccessTokenWithDeps({
+      authorizeInteractively: async function () {
+        throw new Error("should not authorize");
+      },
+      readJsonSync: function () {
+        return { installed: { client_id: "client-id", client_secret: "secret" } };
+      },
+      readOptionalJsonSync: function () {
+        return {
+          access_token: "expired-access",
+          expiry_date: Date.now() - 1,
+          refresh_token: "refresh-token",
+        };
+      },
+      refreshAccessToken: async function () {
+        const error = new Error("access denied");
+        error.oauthError = "access_denied";
+        throw error;
+      },
+    }),
+    /access denied/
+  );
+});
+
+test("isInvalidGrantOAuthError only matches invalid_grant", function () {
+  assert.equal(isInvalidGrantOAuthError({ oauthError: "invalid_grant" }), true);
+  assert.equal(isInvalidGrantOAuthError({ oauthError: "access_denied" }), false);
+  assert.equal(isInvalidGrantOAuthError(new Error("plain error")), false);
 });
 
 test("parseTsv preserves blank interior rows and strips only trailing newline rows", function () {

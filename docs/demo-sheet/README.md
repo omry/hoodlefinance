@@ -46,6 +46,8 @@ The sync command stores local-only tokens and temporary clasp files under:
 
 Those files are ignored by git and must not be committed.
 
+If the saved demo OAuth token is revoked or expires on the Google side, rerunning `node tools/sync-demo-sheet.js` will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
+
 ## GitHub Actions Automation
 
 The normal release path is:

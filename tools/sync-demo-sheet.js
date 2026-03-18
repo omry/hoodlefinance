@@ -1322,19 +1322,37 @@ async function syncBoundScriptWithClasp(config) {
 }
 
 async function ensureAccessToken() {
-  const clientConfig = readJsonSync(OAUTH_CLIENT_PATH, "OAuth client config");
+  return ensureAccessTokenWithDeps({});
+}
+
+async function ensureAccessTokenWithDeps(deps) {
+  const readJson = deps.readJsonSync || readJsonSync;
+  const readOptionalJson = deps.readOptionalJsonSync || readOptionalJsonSync;
+  const refreshToken = deps.refreshAccessToken || refreshAccessToken;
+  const authorize = deps.authorizeInteractively || authorizeInteractively;
+  const clientConfig = readJson(OAUTH_CLIENT_PATH, "OAuth client config");
   const client = normalizeOAuthClient(clientConfig);
-  const existingToken = readOptionalJsonSync(OAUTH_TOKEN_PATH);
+  const existingToken = readOptionalJson(OAUTH_TOKEN_PATH);
 
   if (existingToken && !tokenExpired(existingToken)) {
     return existingToken.access_token;
   }
 
   if (existingToken && existingToken.refresh_token) {
-    return (await refreshAccessToken(client, existingToken)).access_token;
+    try {
+      return (await refreshToken(client, existingToken)).access_token;
+    } catch (error) {
+      if (!isInvalidGrantOAuthError(error)) {
+        throw error;
+      }
+
+      process.stdout.write(
+        "Saved demo-sheet OAuth token is no longer valid. Starting interactive reauthorization.\n"
+      );
+    }
   }
 
-  return (await authorizeInteractively(client)).access_token;
+  return (await authorize(client)).access_token;
 }
 
 function normalizeOAuthClient(rawConfig) {
@@ -1366,6 +1384,10 @@ async function refreshAccessToken(client, token) {
   refreshed.refresh_token = refreshed.refresh_token || token.refresh_token;
   await saveJson(OAUTH_TOKEN_PATH, refreshed);
   return refreshed;
+}
+
+function isInvalidGrantOAuthError(error) {
+  return Boolean(error && error.oauthError === "invalid_grant");
 }
 
 async function authorizeInteractively(client) {
@@ -1455,12 +1477,15 @@ async function exchangeToken(label, params) {
   const payload = await response.json();
 
   if (!response.ok) {
-    throw new Error(
+    const authError = new Error(
       "OAuth token exchange failed for " +
         label +
         ": " +
         JSON.stringify(payload && payload.error ? payload : { error: response.statusText })
     );
+    authError.oauthError = payload && payload.error ? payload.error : "";
+    authError.oauthPayload = payload;
+    throw authError;
   }
 
   payload.expiry_date = Date.now() + Number(payload.expires_in || 0) * 1000;
@@ -1690,6 +1715,8 @@ module.exports = {
   normalizeTabFormatting,
   parseArgs,
   parseTsv,
+  ensureAccessTokenWithDeps,
+  isInvalidGrantOAuthError,
   renderDemoReadmeBlock,
   replaceDemoReadmeBlock,
   resolveRepoPath,

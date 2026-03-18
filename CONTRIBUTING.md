@@ -187,7 +187,7 @@ User-facing releases are repo-managed.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
 - Each release fragment must be exactly one top-level bullet that starts with `- `. One fragment maps to one rendered release-note bullet.
 - Run `node tools/release.js check-fragments` to validate fragment filenames and contents without mutating anything.
-- Optional convenience: set `git config core.hooksPath .githooks` to enable the repo-managed pre-commit hook, which runs `node tools/release.js check-fragments`.
+- Recommended local setup: run `git config core.hooksPath .githooks` so commits use the repo-managed pre-commit hook, which runs `node tools/release.js check-fragments`.
 - Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
 - `prepare` automatically runs the release verification suite and aborts without consuming fragments if verification fails.
 - `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.
