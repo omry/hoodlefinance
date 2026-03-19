@@ -44,7 +44,7 @@ The sync command stores local-only tokens and temporary clasp files under:
 .demo-sheet.local/
 ```
 
-Those files are ignored by git and must not be committed.
+Those files are ignored by git and must not be committed. The staging sheet ID and related staging metadata are also stored locally in the ignored file `docs/demo-sheet/demo-sheet-staging.json`.
 
 If the saved demo OAuth token is revoked or expires on the Google side, rerunning `node tools/sync-demo-sheet.js` will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
 
@@ -76,7 +76,7 @@ Normal local development should use the default staging target:
 1. Update [`hoodlefinance.js`](../../hoodlefinance.js) as needed.
 2. Edit the relevant TSV files in this directory.
 3. Run `node tools/sync-demo-sheet.js`.
-4. Check the staging sheet.
+4. Check the staging sheet referenced by your local `docs/demo-sheet/demo-sheet-staging.json` override.
 
 The production public demo should normally be updated by `Release Publish`, which runs `node tools/sync-demo-sheet.js --live-demo`.
 

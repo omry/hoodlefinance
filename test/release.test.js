@@ -486,6 +486,25 @@ test("verifyReleasePreparation runs the expected verification steps", async func
   );
 });
 
+test("default release verification covers both staging and live-demo demo sync preflights", function () {
+  const demoSheetSteps = DEFAULT_PREPARE_VERIFICATION_STEPS.filter(function (step) {
+    return step.command === process.execPath && Array.isArray(step.args) && step.args[0] === "tools/sync-demo-sheet.js";
+  });
+
+  assert.deepEqual(demoSheetSteps, [
+    {
+      args: ["tools/sync-demo-sheet.js", "--dry-run"],
+      command: process.execPath,
+      label: "demo-sheet staging dry run",
+    },
+    {
+      args: ["tools/sync-demo-sheet.js", "--live-demo", "--dry-run"],
+      command: process.execPath,
+      label: "demo-sheet live-demo dry run",
+    },
+  ]);
+});
+
 test("publishRelease rejects a dirty git worktree", async function () {
   const fixture = createFixtureRepo();
 

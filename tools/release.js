@@ -59,7 +59,12 @@ const DEFAULT_PREPARE_VERIFICATION_STEPS = [
   {
     args: ["tools/sync-demo-sheet.js", "--dry-run"],
     command: process.execPath,
-    label: "demo-sheet dry run",
+    label: "demo-sheet staging dry run",
+  },
+  {
+    args: ["tools/sync-demo-sheet.js", "--live-demo", "--dry-run"],
+    command: process.execPath,
+    label: "demo-sheet live-demo dry run",
   },
 ];
 

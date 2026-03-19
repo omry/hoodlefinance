@@ -76,7 +76,8 @@ node tools/release.js publish 0.2.6
 - `node --test test/hoodlefinance.test.js`
 - `node --test test/release.test.js`
 - `node --test test/sync-demo-sheet.test.js`
-- `node tools/sync-demo-sheet.js --dry-run` (staging config preflight only)
+- `node tools/sync-demo-sheet.js --dry-run` (staging config preflight)
+- `node tools/sync-demo-sheet.js --live-demo --dry-run` (public demo config preflight)
 
 Run the live benchmark for scalar-vs-range performance:
 
@@ -113,7 +114,7 @@ npm install -g @google/clasp
 clasp login --no-localhost
 ```
 
-The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets the tracked staging sheet so testing and iterative updates do not touch the public demo. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
+The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets a staging sheet recorded in the ignored local override file [`docs/demo-sheet/demo-sheet-staging.json`](./docs/demo-sheet/demo-sheet-staging.json). That keeps iterative testing away from the public demo without pretending the staging target is repo-tracked. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
 
 For the high-level process for adding another trusted demo maintainer, see [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md).
 
