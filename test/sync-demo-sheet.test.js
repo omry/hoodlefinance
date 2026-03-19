@@ -3,10 +3,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const {
-  CONFIG_PATH,
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
-  buildCalloutRowFormatRequest,
   buildEnsureTabsRequests,
   buildReorderTabsRequests,
   buildResolvedStyleApplications,
@@ -17,9 +15,6 @@ const {
   buildSheetErrorConditionalFormatRequest,
   buildFormulaCellFormatRequests,
   buildFreezeRowsRequest,
-  buildFormulaColumnFormatRequest,
-  buildFormulaRowFormatRequest,
-  buildHeaderRowFormatRequest,
   buildMergeCellsRequest,
   buildUnmergeCellsRequest,
   buildUnmergeSheetRequest,
@@ -166,11 +161,14 @@ test("style applications compile named styles to repeatCell requests", function 
   ]);
 });
 
-test("resolved style applications preserve legacy formatting selectors", function () {
+test("resolved style applications add default sheet and formula-cell styles", function () {
   assert.deepEqual(buildResolvedStyleApplications(normalizeTabFormatting({
-    calloutRows: [1],
-    formulaRows: [2],
-    headerRows: [3],
+    styleApplications: [
+      {
+        style: "headerRow",
+        target: { rows: [3] },
+      },
+    ],
   })), [
     {
       style: "sheetBody",
@@ -178,15 +176,13 @@ test("resolved style applications preserve legacy formatting selectors", functio
     },
     {
       style: "headerRow",
-      target: { rows: [3] },
-    },
-    {
-      style: "calloutRow",
-      target: { rows: [1] },
-    },
-    {
-      style: "formulaBand",
-      target: { rows: [2] },
+      target: {
+        columns: null,
+        formulaCells: false,
+        rows: [3],
+        sections: null,
+        sheet: false,
+      },
     },
     {
       style: "formulaCell",
@@ -398,7 +394,6 @@ test("formatting helpers build the expected Sheets API requests", function () {
     },
   });
 
-  assert.equal(buildCalloutRowFormatRequest(12, 8, 5).repeatCell.range.startRowIndex, 7);
   assert.equal(buildMergeCellsRequest(12, {
     startRow: 8,
     endRow: 8,
@@ -423,28 +418,26 @@ test("formatting helpers build the expected Sheets API requests", function () {
     },
   });
 
-  assert.deepEqual(normalizeTabFormatting({ headerRows: [1, 7] }), {
+  assert.deepEqual(normalizeTabFormatting({ styleApplications: [{ style: "headerRow", target: { rows: [1, 7] } }] }), {
     autoResizeColumns: true,
-    calloutRows: [],
     columnBackgrounds: [],
     columnPixelSizes: [],
     errorConditionalFormats: [],
     freezeRows: 0,
-    formulaColumns: [],
-    formulaSections: [],
-    formulaRows: [],
-    headerSections: [],
-    headerRows: [1, 7],
     mergedRanges: [],
     numberFormats: [],
-    styleApplications: [],
+    styleApplications: [{
+      style: "headerRow",
+      target: {
+        columns: null,
+        formulaCells: false,
+        rows: [1, 7],
+        sections: null,
+        sheet: false,
+      },
+    }],
   });
 
-  assert.deepEqual(normalizeTabFormatting({ headerSections: [{ row: 4, columns: 2 }] }).headerSections, [
-    { row: 4, columns: 2 },
-  ]);
-
-  assert.equal(buildHeaderRowFormatRequest(12, 7, 3).repeatCell.range.startRowIndex, 6);
   assert.equal(buildColumnWidthRequests(12, [120, 240])[1].updateDimensionProperties.properties.pixelSize, 240);
   assert.deepEqual(buildDeleteConditionalFormatRuleRequests(12, 2), [
     {
@@ -547,8 +540,6 @@ test("formatting helpers build the expected Sheets API requests", function () {
       blue: 0.92,
     },
   }], 1)[0].addConditionalFormatRule.index, 1);
-  assert.equal(buildFormulaRowFormatRequest(12, 2, 5).repeatCell.range.endRowIndex, 2);
-  assert.equal(buildFormulaColumnFormatRequest(12, 2, 6).repeatCell.range.startColumnIndex, 1);
   assert.deepEqual(buildNumberFormatRequests(12, [{
     column: 4,
     endRow: 13,

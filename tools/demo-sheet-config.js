@@ -92,27 +92,8 @@ function validateTabFormatting(tab, issues, index) {
   validateStyleApplications_(formatting.styleApplications, tabLabel, issues);
   validateColumnBackgrounds_(formatting.columnBackgrounds, tabLabel, issues);
   validateErrorConditionalFormats_(formatting.errorConditionalFormats, tabLabel, issues);
-  validateFormattingSections_(formatting.headerSections, "headerSections", tabLabel, issues);
-  validateFormattingSections_(formatting.formulaSections, "formulaSections", tabLabel, issues);
   validateNumberFormats_(formatting.numberFormats, tabLabel, issues);
-  validateRowNumbers_(formatting.calloutRows, "calloutRows", tabLabel, issues);
   validateMergedRanges_(formatting.mergedRanges, tabLabel, issues);
-
-  validateRowNumbers_(formatting.headerRows, "headerRows", tabLabel, issues);
-  validateRowNumbers_(formatting.formulaRows, "formulaRows", tabLabel, issues);
-
-  if (formatting.formulaColumns != null) {
-    if (!Array.isArray(formatting.formulaColumns)) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.formulaColumns\".");
-      return;
-    }
-
-    formatting.formulaColumns.forEach(function (columnNumber) {
-      if (!Number.isInteger(columnNumber) || columnNumber < 1) {
-        issues.push("Tab \"" + tabLabel + "\" has invalid formula column number: " + columnNumber);
-      }
-    });
-  }
 }
 
 function validateStyles_(styles, issues) {
@@ -389,19 +370,9 @@ function normalizeTabFormatting(formatting) {
       ? normalized.errorConditionalFormats.map(copyErrorConditionalFormat_)
       : [],
     freezeRows: Number(normalized.freezeRows || 0),
-    formulaColumns: Array.isArray(normalized.formulaColumns) ? normalized.formulaColumns.slice() : [],
-    formulaSections: Array.isArray(normalized.formulaSections)
-      ? normalized.formulaSections.map(copyFormattingSection_)
-      : [],
-    formulaRows: Array.isArray(normalized.formulaRows) ? normalized.formulaRows.slice() : [],
-    headerSections: Array.isArray(normalized.headerSections)
-      ? normalized.headerSections.map(copyFormattingSection_)
-      : [],
-    headerRows: Array.isArray(normalized.headerRows) ? normalized.headerRows.slice() : [],
     styleApplications: Array.isArray(normalized.styleApplications)
       ? normalized.styleApplications.map(copyStyleApplication_)
       : [],
-    calloutRows: Array.isArray(normalized.calloutRows) ? normalized.calloutRows.slice() : [],
     mergedRanges: Array.isArray(normalized.mergedRanges) ? normalized.mergedRanges.map(copyMergedRange_) : [],
     numberFormats: Array.isArray(normalized.numberFormats) ? normalized.numberFormats.map(copyNumberFormat_) : [],
   };

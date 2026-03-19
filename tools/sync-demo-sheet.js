@@ -604,42 +604,6 @@ function buildBodyAlignmentRequest(sheetId, maxRows, maxColumns) {
   });
 }
 
-function buildCalloutRowFormatRequest(sheetId, rowNumber, maxColumns) {
-  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.calloutRow, {
-    startRowIndex: rowNumber - 1,
-    endRowIndex: rowNumber,
-    startColumnIndex: 0,
-    endColumnIndex: maxColumns,
-  });
-}
-
-function buildHeaderRowFormatRequest(sheetId, rowNumber, maxColumns) {
-  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.headerRow, {
-    startRowIndex: rowNumber - 1,
-    endRowIndex: rowNumber,
-    startColumnIndex: 0,
-    endColumnIndex: maxColumns,
-  });
-}
-
-function buildFormulaRowFormatRequest(sheetId, rowNumber, maxColumns) {
-  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.formulaBand, {
-    startRowIndex: rowNumber - 1,
-    endRowIndex: rowNumber,
-    startColumnIndex: 0,
-    endColumnIndex: maxColumns,
-  });
-}
-
-function buildFormulaColumnFormatRequest(sheetId, columnNumber, maxRows) {
-  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.formulaBand, {
-    startRowIndex: 0,
-    endRowIndex: maxRows,
-    startColumnIndex: columnNumber - 1,
-    endColumnIndex: columnNumber,
-  });
-}
-
 function buildAutoResizeColumnsRequest(sheetId, maxColumns) {
   return {
     autoResizeDimensions: {
@@ -1258,7 +1222,6 @@ module.exports = {
   OAUTH_TOKEN_PATH,
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
-  buildCalloutRowFormatRequest,
   buildEnsureTabsRequests,
   buildStyleApplicationRequests,
   buildStyleRepeatCellRequest,
@@ -1269,9 +1232,6 @@ module.exports = {
   buildSheetErrorConditionalFormatRequest,
   buildFormulaCellFormatRequests,
   buildFreezeRowsRequest,
-  buildFormulaColumnFormatRequest,
-  buildFormulaRowFormatRequest,
-  buildHeaderRowFormatRequest,
   buildMergeCellsRequest,
   buildNumberFormatRequests,
   buildResolvedStyleApplications,

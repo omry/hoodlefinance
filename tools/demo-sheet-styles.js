@@ -165,72 +165,10 @@ function buildResolvedStyleApplications(formatting) {
     });
   }
 
-  applications.push.apply(applications, buildLegacyStyleApplications_(formatting));
-
   if (!hasStyleApplicationTarget_(applications, "formulaCells")) {
     applications.push({
       style: "formulaCell",
       target: { formulaCells: true },
-    });
-  }
-
-  return applications;
-}
-
-function buildLegacyStyleApplications_(formatting) {
-  const applications = [];
-
-  if (formatting.headerSections.length) {
-    applications.push({
-      style: "headerRow",
-      target: {
-        sections: formatting.headerSections,
-      },
-    });
-  }
-
-  if (formatting.headerRows.length) {
-    applications.push({
-      style: "headerRow",
-      target: {
-        rows: formatting.headerRows,
-      },
-    });
-  }
-
-  if (formatting.calloutRows.length) {
-    applications.push({
-      style: "calloutRow",
-      target: {
-        rows: formatting.calloutRows,
-      },
-    });
-  }
-
-  if (formatting.formulaSections.length) {
-    applications.push({
-      style: "formulaBand",
-      target: {
-        sections: formatting.formulaSections,
-      },
-    });
-  }
-
-  if (formatting.formulaRows.length) {
-    applications.push({
-      style: "formulaBand",
-      target: {
-        rows: formatting.formulaRows,
-      },
-    });
-  }
-
-  if (formatting.formulaColumns.length) {
-    applications.push({
-      style: "formulaBand",
-      target: {
-        columns: formatting.formulaColumns,
-      },
     });
   }
 
