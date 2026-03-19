@@ -1,0 +1,26 @@
+What this page shows: direct FX quote comparisons versus `GOOGLEFINANCE`, plus one-step `price@USD` normalization for a mixed-currency account and the same account rebuilt the long way in `GOOGLEFINANCE` style.					
+					
+Example	HOODLEFINANCE formula	HOODLEFINANCE result	GOOGLEFINANCE formula	GOOGLEFINANCE result	
+EUR to USD spot	'=HOODLEFINANCE("EURUSD")	=HOODLEFINANCE("EURUSD")	'=GOOGLEFINANCE("EURUSD")	=GOOGLEFINANCE("EURUSD")	
+Previous close	'=HOODLEFINANCE("EURUSD","close")	=HOODLEFINANCE("EURUSD","close")	'=GOOGLEFINANCE("EURUSD","close")	=GOOGLEFINANCE("EURUSD","close")	
+Change Since Previous Close	'=HOODLEFINANCE("EURUSD","change")	=HOODLEFINANCE("EURUSD","change")	'=GOOGLEFINANCE("EURUSD","change")	=GOOGLEFINANCE("EURUSD","change")	
+Change % Since Previous Close	'=HOODLEFINANCE("EURUSD","changepct")	=HOODLEFINANCE("EURUSD","changepct")	'=GOOGLEFINANCE("EURUSD","changepct")	=GOOGLEFINANCE("EURUSD","changepct")	
+Name	'=HOODLEFINANCE("EURUSD","name")	=HOODLEFINANCE("EURUSD","name")	'=GOOGLEFINANCE("EURUSD","name")	=GOOGLEFINANCE("EURUSD","name")	
+					
+Mixed-currency account normalized into USD with one spilled `HOODLEFINANCE(tickers,"price@USD")` array formula.					
+					
+Ticker	Price in USD	Why it matters		
+	'=HOODLEFINANCE(A14:A17,"price@USD")				
+NASDAQ:GOOG	=HOODLEFINANCE(A14:A17,"price@USD")	Already in USD.			
+TSE:RY		Normalized to USD in one step.			
+ETR:SIE		Normalized to USD in one step.			
+HKG:0700		Normalized to USD in one step.			
+					
+The same account in GOOGLEFINANCE style: separate quote lookup, separate currency lookup, separate FX lookup, plus an IF for already-USD positions.					
+					
+Ticker	Native price	Native currency	USD FX rate	Price in USD	Why it takes more work
+	'=GOOGLEFINANCE(A23,"price")	'=GOOGLEFINANCE(A23,"currency")	'=IF(C23="USD",1,GOOGLEFINANCE(C23&"USD"))	'=IF(B23="",,B23*D23)	
+NASDAQ:GOOG	=GOOGLEFINANCE(A23,"price")	=GOOGLEFINANCE(A23,"currency")	=IF(C23="USD",1,GOOGLEFINANCE(C23&"USD"))	=IF(B23="",,B23*D23)	Even for a simple U.S. holding, you still need helper steps to express the workflow.	
+TSE:RY	=GOOGLEFINANCE(A24,"price")	=GOOGLEFINANCE(A24,"currency")	=IF(C24="USD",1,GOOGLEFINANCE(C24&"USD"))	=IF(B24="",,B24*D24)	International holdings need more moving parts even when GoogleFinance recognizes the symbol.	
+ETR:SIE	=GOOGLEFINANCE(A25,"price")	=GOOGLEFINANCE(A25,"currency")	=IF(C25="USD",1,GOOGLEFINANCE(C25&"USD"))	=IF(B25="",,B25*D25)	The formula pattern gets longer before you even compare results.	
+HKG:0700	=GOOGLEFINANCE(A26,"price")	=GOOGLEFINANCE(A26,"currency")	=IF(C26="USD",1,GOOGLEFINANCE(C26&"USD"))	=IF(B26="",,B26*D26)	The same mixed account now needs multiple coupled helper columns.	

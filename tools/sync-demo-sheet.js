@@ -504,6 +504,7 @@ async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
     );
 
     requests.push(buildBodyAlignmentRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
+    requests.push(buildUnmergeSheetRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
     requests.push.apply(
       requests,
       buildDeleteConditionalFormatRuleRequests(sheetProperties.sheetId, Number(sheetProperties.conditionalFormatCount || 0))
@@ -552,26 +553,23 @@ async function ensureSpreadsheet(accessToken, config) {
 }
 
 async function ensureTabs(accessToken, config) {
-  const sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
-  const existingByTitle = {};
-  const requests = [];
-  let i;
+  let sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
+  let requests = buildEnsureTabsRequests(sheetMap, config);
 
-  Object.keys(sheetMap).forEach(function (title) {
-    existingByTitle[title] = true;
-  });
+  if (requests.length) {
+    await googleApiJson(
+      accessToken,
+      "POST",
+      "https://sheets.googleapis.com/v4/spreadsheets/" +
+        encodeURIComponent(config.spreadsheetId) +
+        ":batchUpdate",
+      { requests: requests }
+    );
 
-  for (i = 0; i < config.tabs.length; i += 1) {
-    if (!existingByTitle[config.tabs[i].title]) {
-      requests.push({
-        addSheet: {
-          properties: {
-            title: config.tabs[i].title,
-          },
-        },
-      });
-    }
+    sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
   }
+
+  requests = buildReorderTabsRequests(sheetMap, config);
 
   if (!requests.length) {
     return;
@@ -587,13 +585,93 @@ async function ensureTabs(accessToken, config) {
   );
 }
 
+function buildEnsureTabsRequests(sheetMap, config) {
+  const existingByTitle = {};
+  const managedByTitle = {};
+  const requests = [];
+  let i;
+  let title;
+  let sheetProperties;
+
+  Object.keys(sheetMap || {}).forEach(function (sheetTitle) {
+    existingByTitle[sheetTitle] = true;
+  });
+
+  for (i = 0; i < config.tabs.length; i += 1) {
+    title = config.tabs[i].title;
+    managedByTitle[title] = true;
+
+    if (!existingByTitle[title]) {
+      requests.push({
+        addSheet: {
+          properties: {
+            title: title,
+          },
+        },
+      });
+    }
+  }
+
+  Object.keys(sheetMap || {}).forEach(function (sheetTitle) {
+    sheetProperties = sheetMap[sheetTitle];
+
+    if (managedByTitle[sheetTitle]) {
+      return;
+    }
+
+    if (!sheetProperties || !Number.isInteger(sheetProperties.sheetId)) {
+      return;
+    }
+
+    requests.push({
+      deleteSheet: {
+        sheetId: sheetProperties.sheetId,
+      },
+    });
+  });
+
+  return requests;
+}
+
+function buildReorderTabsRequests(sheetMap, config) {
+  const requests = [];
+  let i;
+  let title;
+  let sheetProperties;
+
+  for (i = 0; i < config.tabs.length; i += 1) {
+    title = config.tabs[i].title;
+    sheetProperties = sheetMap[title];
+
+    if (!sheetProperties || !Number.isInteger(sheetProperties.sheetId)) {
+      continue;
+    }
+
+    if (sheetProperties.index === i) {
+      continue;
+    }
+
+    requests.push({
+      updateSheetProperties: {
+        fields: "index",
+        properties: {
+          index: i,
+          sheetId: sheetProperties.sheetId,
+        },
+      },
+    });
+  }
+
+  return requests;
+}
+
 async function fetchSpreadsheetSheetMap(accessToken, spreadsheetId) {
   const response = await googleApiJson(
     accessToken,
     "GET",
     "https://sheets.googleapis.com/v4/spreadsheets/" +
       encodeURIComponent(spreadsheetId) +
-      "?fields=sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),conditionalFormats)"
+      "?fields=sheets(properties(sheetId,title,index,gridProperties(rowCount,columnCount)),conditionalFormats)"
   );
   const sheetMap = {};
 
@@ -694,8 +772,12 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
       requests.push(buildFreezeRowsRequest(sheetProperties.sheetId, formatting.freezeRows));
     }
 
+    if (values.length > 0 && sheetColumnCount > 0) {
+      // Clear stale merges left behind by earlier sheet layouts before applying current merges.
+      requests.push(buildUnmergeSheetRequest(sheetProperties.sheetId, sheetRowCount, sheetColumnCount));
+    }
+
     formatting.mergedRanges.forEach(function (range) {
-      requests.push(buildUnmergeCellsRequest(sheetProperties.sheetId, range));
       requests.push(buildMergeCellsRequest(sheetProperties.sheetId, range));
     });
 
@@ -878,6 +960,20 @@ function buildUnmergeCellsRequest(sheetId, range) {
         endRowIndex: range.endRow,
         startColumnIndex: range.startColumn - 1,
         endColumnIndex: range.endColumn,
+        sheetId: sheetId,
+      },
+    },
+  };
+}
+
+function buildUnmergeSheetRequest(sheetId, rowCount, columnCount) {
+  return {
+    unmergeCells: {
+      range: {
+        startRowIndex: 0,
+        endRowIndex: rowCount,
+        startColumnIndex: 0,
+        endColumnIndex: columnCount,
         sheetId: sheetId,
       },
     },
@@ -1697,6 +1793,8 @@ module.exports = {
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
   buildCalloutRowFormatRequest,
+  buildEnsureTabsRequests,
+  buildReorderTabsRequests,
   buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
   buildErrorConditionalFormatRequests,
@@ -1711,6 +1809,7 @@ module.exports = {
   buildSheetRange,
   buildSpreadsheetUrl,
   buildUnmergeCellsRequest,
+  buildUnmergeSheetRequest,
   loadDemoSheetConfig,
   normalizeTabFormatting,
   parseArgs,

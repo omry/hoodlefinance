@@ -1,1 +1,0 @@
-- Tightened release verification for demo-sheet publishing by checking both the default staging sync path and the explicit `--live-demo` path, and clarified that staging-sheet metadata is stored locally rather than tracked in the repo.

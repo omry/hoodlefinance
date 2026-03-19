@@ -1,0 +1,1 @@
+- Added a dedicated `Currency & FX` demo tab that explains FX quotes, `price@USD` normalization, and a mixed-currency account alongside a more cumbersome `GOOGLEFINANCE`-style workflow.

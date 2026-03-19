@@ -8,6 +8,3 @@ Tel Aviv ETF access via alias ticker	'=GOOGLEFINANCE("TLV:KSMF59","name")	=GOOGL
 Israeli stock direct ISIN input	'=GOOGLEFINANCE("IL0006625771","name")	=GOOGLEFINANCE("IL0006625771","name")	'=HOODLEFINANCE("IL0006625771","name")	=HOODLEFINANCE("IL0006625771","name")	Supports direct ISIN-input lookup for a Tel Aviv stock.
 Israeli ETF direct ISIN input	'=GOOGLEFINANCE("IL0011465700","name")	=GOOGLEFINANCE("IL0011465700","name")	'=HOODLEFINANCE("IL0011465700","name")	=HOODLEFINANCE("IL0011465700","name")	Supports direct ISIN-input lookup for a Tel Aviv ETF.
 US stock ISIN attribute	'=GOOGLEFINANCE("GOOG","isin")	=GOOGLEFINANCE("GOOG","isin")	'=HOODLEFINANCE("GOOG","isin")	=HOODLEFINANCE("GOOG","isin")	Returns an ISIN directly.
-London ETF ISIN attribute	'=GOOGLEFINANCE("LON:SJPA","isin")	=GOOGLEFINANCE("LON:SJPA","isin")	'=HOODLEFINANCE("LON:SJPA","isin")	=HOODLEFINANCE("LON:SJPA","isin")	Works for a foreign ETF and exposes the identifier.
-Xetra ETF ISIN attribute	'=GOOGLEFINANCE("ETR:ZPRX","isin")	=GOOGLEFINANCE("ETR:ZPRX","isin")	'=HOODLEFINANCE("ETR:ZPRX","isin")	=HOODLEFINANCE("ETR:ZPRX","isin")	Supports UCITS ETF workflows that need ISINs.
-Singapore stock ISIN attribute	'=GOOGLEFINANCE("SGX:D05","isin")	=GOOGLEFINANCE("SGX:D05","isin")	'=HOODLEFINANCE("SGX:D05","isin")	=HOODLEFINANCE("SGX:D05","isin")	Provides the identifier on a non-U.S. listing.

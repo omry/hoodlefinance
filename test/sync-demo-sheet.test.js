@@ -7,6 +7,8 @@ const {
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
   buildCalloutRowFormatRequest,
+  buildEnsureTabsRequests,
+  buildReorderTabsRequests,
   buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
   buildErrorConditionalFormatRequests,
@@ -18,6 +20,7 @@ const {
   buildHeaderRowFormatRequest,
   buildMergeCellsRequest,
   buildUnmergeCellsRequest,
+  buildUnmergeSheetRequest,
   buildNumberFormatRequests,
   buildSheetRange,
   ensureAccessTokenWithDeps,
@@ -48,6 +51,67 @@ test("parseArgs handles the supported flags", function () {
   assert.throws(function () {
     parseArgs(["--wat"]);
   }, /Unknown argument/);
+});
+
+test("buildEnsureTabsRequests adds missing managed tabs and deletes stale unmanaged tabs", function () {
+  const requests = buildEnsureTabsRequests(
+    {
+      "Start Here": { sheetId: 1 },
+      "Currencies and FX": { sheetId: 2 },
+    },
+    {
+      tabs: [
+        { title: "Start Here" },
+        { title: "Currency & FX" },
+      ],
+    }
+  );
+
+  assert.deepEqual(requests, [
+    {
+      addSheet: {
+        properties: {
+          title: "Currency & FX",
+        },
+      },
+    },
+    {
+      deleteSheet: {
+        sheetId: 2,
+      },
+    },
+  ]);
+});
+
+test("buildReorderTabsRequests moves managed tabs into config order", function () {
+  const requests = buildReorderTabsRequests(
+    {
+      "Start Here": { sheetId: 1, index: 0 },
+      "Compared to GOOGLEFINANCE": { sheetId: 2, index: 1 },
+      "Foreign ETFs": { sheetId: 3, index: 2 },
+      "Currency & FX": { sheetId: 4, index: 5 },
+    },
+    {
+      tabs: [
+        { title: "Start Here" },
+        { title: "Compared to GOOGLEFINANCE" },
+        { title: "Foreign ETFs" },
+        { title: "Currency & FX" },
+      ],
+    }
+  );
+
+  assert.deepEqual(requests, [
+    {
+      updateSheetProperties: {
+        fields: "index",
+        properties: {
+          index: 3,
+          sheetId: 4,
+        },
+      },
+    },
+  ]);
 });
 
 test("ensureAccessTokenWithDeps returns a valid cached token without refreshing", async function () {
@@ -266,6 +330,17 @@ test("formatting helpers build the expected Sheets API requests", function () {
     startColumn: 1,
     endColumn: 5,
   }).unmergeCells.range.startColumnIndex, 0);
+  assert.deepEqual(buildUnmergeSheetRequest(12, 100, 8), {
+    unmergeCells: {
+      range: {
+        startRowIndex: 0,
+        endRowIndex: 100,
+        startColumnIndex: 0,
+        endColumnIndex: 8,
+        sheetId: 12,
+      },
+    },
+  });
 
   assert.deepEqual(normalizeTabFormatting({ headerRows: [1, 7] }), {
     autoResizeColumns: true,

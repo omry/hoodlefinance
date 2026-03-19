@@ -10,6 +10,7 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 - `Start Here` -> [`start-here.tsv`](./start-here.tsv)
 - `Compared to GOOGLEFINANCE` -> [`googlefinance-comparison.tsv`](./googlefinance-comparison.tsv)
 - `Foreign ETFs` -> [`foreign-etfs.tsv`](./foreign-etfs.tsv)
+- `Currency & FX` -> [`currency.tsv`](./currency.tsv)
 - `Philippines Stock Exchange (PSE)` -> [`pse.tsv`](./pse.tsv)
 - `Ticker Forms` -> [`ticker-forms.tsv`](./ticker-forms.tsv)
 - `Array Usage` -> [`array-usage.tsv`](./array-usage.tsv)

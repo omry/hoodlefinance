@@ -42,7 +42,7 @@
           {
             "column": 2,
             "startRow": 2,
-            "endRow": 12,
+            "endRow": 10,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -52,7 +52,7 @@
           {
             "column": 3,
             "startRow": 2,
-            "endRow": 12,
+            "endRow": 10,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -62,7 +62,7 @@
           {
             "column": 4,
             "startRow": 2,
-            "endRow": 12,
+            "endRow": 10,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -72,7 +72,7 @@
           {
             "column": 5,
             "startRow": 2,
-            "endRow": 12,
+            "endRow": 10,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -108,6 +108,122 @@
       },
       "title": "Foreign ETFs",
       "path": "docs/demo-sheet/foreign-etfs.tsv",
+      "startCell": "A1"
+    },
+    {
+      "formatting": {
+        "autoResizeColumns": false,
+        "columnPixelSizes": [
+          200,
+          280,
+          240,
+          345,
+          240,
+          360
+        ],
+        "freezeRows": 0,
+        "formulaRows": [
+          13,
+          22
+        ],
+        "headerRows": [
+          3,
+          12,
+          21
+        ],
+        "calloutRows": [
+          1,
+          10,
+          19
+        ],
+        "columnBackgrounds": [
+          {
+            "column": 2,
+            "startRow": 4,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.96,
+              "green": 0.94,
+              "blue": 0.88
+            }
+          },
+          {
+            "column": 3,
+            "startRow": 4,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          },
+          {
+            "column": 4,
+            "startRow": 4,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.96,
+              "green": 0.94,
+              "blue": 0.88
+            }
+          },
+          {
+            "column": 5,
+            "startRow": 4,
+            "endRow": 8,
+            "backgroundColor": {
+              "red": 0.9,
+              "green": 0.95,
+              "blue": 1
+            }
+          }
+        ],
+        "mergedRanges": [
+          {
+            "startRow": 1,
+            "endRow": 1,
+            "startColumn": 1,
+            "endColumn": 6
+          },
+          {
+            "startRow": 10,
+            "endRow": 10,
+            "startColumn": 1,
+            "endColumn": 6
+          },
+          {
+            "startRow": 19,
+            "endRow": 19,
+            "startColumn": 1,
+            "endColumn": 6
+          }
+        ],
+        "numberFormats": [
+          {
+            "column": 2,
+            "startRow": 14,
+            "endRow": 17,
+            "type": "CURRENCY",
+            "pattern": "$#,##0.00"
+          },
+          {
+            "column": 4,
+            "startRow": 23,
+            "endRow": 26,
+            "type": "NUMBER",
+            "pattern": "0.0000"
+          },
+          {
+            "column": 5,
+            "startRow": 23,
+            "endRow": 26,
+            "type": "CURRENCY",
+            "pattern": "$#,##0.00"
+          }
+        ]
+      },
+      "title": "Currency & FX",
+      "path": "docs/demo-sheet/currency.tsv",
       "startCell": "A1"
     },
     {
@@ -314,42 +430,12 @@
         "columnPixelSizes": [
           150,
           220,
-          180,
-          180,
-          220
+          180
         ],
         "freezeRows": 1,
         "formulaRows": [],
         "headerRows": [
-          1,
-          9
-        ],
-        "calloutRows": [
-          8
-        ],
-        "mergedRanges": [
-          {
-            "startRow": 8,
-            "endRow": 8,
-            "startColumn": 1,
-            "endColumn": 5
-          }
-        ],
-        "numberFormats": [
-          {
-            "column": 4,
-            "startRow": 11,
-            "endRow": 14,
-            "type": "NUMBER",
-            "pattern": "0.00"
-          },
-          {
-            "column": 5,
-            "startRow": 11,
-            "endRow": 14,
-            "type": "CURRENCY",
-            "pattern": "$#,##0.00"
-          }
+          1
         ]
       },
       "title": "Array Usage",

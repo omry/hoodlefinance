@@ -1,4 +1,3 @@
-- Create a dedicated demo-sheet currency surface that shows practical FX workflows and current advantages over `GOOGLEFINANCE`, with room to expand into `price@USD`-style examples later.
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
 - If installation and update friction become a priority, prototype a Google Sheets Editor add-on as the long-term alternative to the current manual bound-script install path.
 - Bug: look at resolving ISIN from the ISIN IE000I8KRLL9
