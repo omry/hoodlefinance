@@ -7,6 +7,93 @@
     "scriptId": "1oUtlXNtfr51n6lwV_G770U1ePaau_04dqHQRWMsQxl6XPzOVU3ktU5dh",
     "title": "HoodleFinance public demo"
   },
+  "styles": {
+    "sheetBody": {
+      "cell": {
+        "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 1,
+            "green": 1,
+            "blue": 1
+          },
+          "backgroundColorStyle": {
+            "rgbColor": {
+              "red": 1,
+              "green": 1,
+              "blue": 1
+            }
+          },
+          "horizontalAlignment": "LEFT",
+          "textFormat": {
+            "bold": false,
+            "italic": false
+          },
+          "wrapStrategy": "CLIP"
+        }
+      },
+      "fields": "userEnteredFormat"
+    },
+    "headerRow": {
+      "cell": {
+        "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 0.92,
+            "green": 0.92,
+            "blue": 0.92
+          },
+          "horizontalAlignment": "CENTER",
+          "textFormat": {
+            "bold": true
+          }
+        }
+      },
+      "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+    },
+    "calloutRow": {
+      "cell": {
+        "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 0.95,
+            "green": 0.95,
+            "blue": 0.95
+          },
+          "horizontalAlignment": "LEFT",
+          "textFormat": {
+            "bold": true,
+            "italic": false
+          }
+        }
+      },
+      "fields": "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat)"
+    },
+    "formulaBand": {
+      "cell": {
+        "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 0.96,
+            "green": 0.94,
+            "blue": 0.88
+          },
+          "textFormat": {
+            "italic": true
+          }
+        }
+      },
+      "fields": "userEnteredFormat(backgroundColor,textFormat)"
+    },
+    "formulaCell": {
+      "cell": {
+        "userEnteredFormat": {
+          "horizontalAlignment": "LEFT",
+          "textFormat": {
+            "italic": true
+          },
+          "wrapStrategy": "CLIP"
+        }
+      },
+      "fields": "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)"
+    }
+  },
   "tabs": [
     {
       "formatting": {
@@ -17,17 +104,21 @@
           340
         ],
         "freezeRows": 1,
-        "formulaRows": [],
-        "formulaSections": [],
-        "headerRows": [],
-        "headerSections": [
+        "styleApplications": [
           {
-            "row": 1,
-            "columns": 2
-          },
-          {
-            "row": 5,
-            "columns": 3
+            "style": "headerRow",
+            "target": {
+              "sections": [
+                {
+                  "row": 1,
+                  "columns": 2
+                },
+                {
+                  "row": 5,
+                  "columns": 3
+                }
+              ]
+            }
           }
         ]
       },
@@ -81,9 +172,15 @@
           }
         ],
         "freezeRows": 1,
-        "formulaRows": [],
-        "headerRows": [
-          1
+        "styleApplications": [
+          {
+            "style": "headerRow",
+            "target": {
+              "rows": [
+                1
+              ]
+            }
+          }
         ]
       },
       "title": "Compared to GOOGLEFINANCE",
@@ -101,9 +198,15 @@
           180
         ],
         "freezeRows": 1,
-        "formulaRows": [],
-        "headerRows": [
-          1
+        "styleApplications": [
+          {
+            "style": "headerRow",
+            "target": {
+              "rows": [
+                1
+              ]
+            }
+          }
         ]
       },
       "title": "Foreign ETFs",
@@ -122,19 +225,36 @@
           360
         ],
         "freezeRows": 0,
-        "formulaRows": [
-          13,
-          22
-        ],
-        "headerRows": [
-          3,
-          12,
-          21
-        ],
-        "calloutRows": [
-          1,
-          10,
-          19
+        "styleApplications": [
+          {
+            "style": "calloutRow",
+            "target": {
+              "rows": [
+                1,
+                10,
+                19
+              ]
+            }
+          },
+          {
+            "style": "headerRow",
+            "target": {
+              "rows": [
+                3,
+                12,
+                21
+              ]
+            }
+          },
+          {
+            "style": "formulaBand",
+            "target": {
+              "rows": [
+                13,
+                22
+              ]
+            }
+          }
         ],
         "columnBackgrounds": [
           {
@@ -237,9 +357,15 @@
           180
         ],
         "freezeRows": 1,
-        "formulaRows": [],
-        "headerRows": [
-          1
+        "styleApplications": [
+          {
+            "style": "headerRow",
+            "target": {
+              "rows": [
+                1
+              ]
+            }
+          }
         ]
       },
       "title": "Philippines Stock Exchange (PSE)",
@@ -409,15 +535,27 @@
           180
         ],
         "freezeRows": 1,
-        "formulaRows": [
-          2,
-          10,
-          18
-        ],
-        "headerRows": [
-          1,
-          9,
-          17
+        "styleApplications": [
+          {
+            "style": "headerRow",
+            "target": {
+              "rows": [
+                1,
+                9,
+                17
+              ]
+            }
+          },
+          {
+            "style": "formulaBand",
+            "target": {
+              "rows": [
+                2,
+                10,
+                18
+              ]
+            }
+          }
         ]
       },
       "title": "Ticker Forms",
@@ -433,9 +571,15 @@
           180
         ],
         "freezeRows": 1,
-        "formulaRows": [],
-        "headerRows": [
-          1
+        "styleApplications": [
+          {
+            "style": "headerRow",
+            "target": {
+              "rows": [
+                1
+              ]
+            }
+          }
         ]
       },
       "title": "Array Usage",

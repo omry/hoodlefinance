@@ -9,6 +9,8 @@ const {
   buildCalloutRowFormatRequest,
   buildEnsureTabsRequests,
   buildReorderTabsRequests,
+  buildResolvedStyleApplications,
+  buildStyleApplicationRequests,
   buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
   buildErrorConditionalFormatRequests,
@@ -26,6 +28,7 @@ const {
   ensureAccessTokenWithDeps,
   isInvalidGrantOAuthError,
   loadDemoSheetConfig,
+  normalizeStyleRegistry,
   normalizeTabFormatting,
   parseArgs,
   parseTsv,
@@ -110,6 +113,84 @@ test("buildReorderTabsRequests moves managed tabs into config order", function (
           sheetId: 4,
         },
       },
+    },
+  ]);
+});
+
+test("style applications compile named styles to repeatCell requests", function () {
+  const styleRegistry = normalizeStyleRegistry({
+    emphasis: {
+      cell: {
+        userEnteredFormat: {
+          textFormat: {
+            bold: true,
+          },
+        },
+      },
+      fields: "userEnteredFormat.textFormat",
+    },
+  });
+
+  assert.deepEqual(buildStyleApplicationRequests(12, styleRegistry, [
+    {
+      style: "emphasis",
+      target: {
+        rows: [2],
+      },
+    },
+  ], {
+    maxColumns: 3,
+    sheetColumnCount: 5,
+    sheetRowCount: 100,
+    values: [["a", "b", "c"]],
+  }), [
+    {
+      repeatCell: {
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              bold: true,
+            },
+          },
+        },
+        fields: "userEnteredFormat.textFormat",
+        range: {
+          startRowIndex: 1,
+          endRowIndex: 2,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+          sheetId: 12,
+        },
+      },
+    },
+  ]);
+});
+
+test("resolved style applications preserve legacy formatting selectors", function () {
+  assert.deepEqual(buildResolvedStyleApplications(normalizeTabFormatting({
+    calloutRows: [1],
+    formulaRows: [2],
+    headerRows: [3],
+  })), [
+    {
+      style: "sheetBody",
+      target: { sheet: true },
+    },
+    {
+      style: "headerRow",
+      target: { rows: [3] },
+    },
+    {
+      style: "calloutRow",
+      target: { rows: [1] },
+    },
+    {
+      style: "formulaBand",
+      target: { rows: [2] },
+    },
+    {
+      style: "formulaCell",
+      target: { formulaCells: true },
     },
   ]);
 });
@@ -356,6 +437,7 @@ test("formatting helpers build the expected Sheets API requests", function () {
     headerRows: [1, 7],
     mergedRanges: [],
     numberFormats: [],
+    styleApplications: [],
   });
 
   assert.deepEqual(normalizeTabFormatting({ headerSections: [{ row: 4, columns: 2 }] }).headerSections, [

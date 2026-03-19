@@ -35,6 +35,93 @@ const DEFAULT_ERROR_BACKGROUND_COLOR = {
   green: 0.92,
   blue: 0.92,
 };
+const DEFAULT_STYLES = {
+  sheetBody: {
+    cell: {
+      userEnteredFormat: {
+        backgroundColor: {
+          red: 1,
+          green: 1,
+          blue: 1,
+        },
+        backgroundColorStyle: {
+          rgbColor: {
+            red: 1,
+            green: 1,
+            blue: 1,
+          },
+        },
+        horizontalAlignment: "LEFT",
+        textFormat: {
+          bold: false,
+          italic: false,
+        },
+        wrapStrategy: "CLIP",
+      },
+    },
+    fields: "userEnteredFormat",
+  },
+  headerRow: {
+    cell: {
+      userEnteredFormat: {
+        backgroundColor: {
+          red: 0.92,
+          green: 0.92,
+          blue: 0.92,
+        },
+        horizontalAlignment: "CENTER",
+        textFormat: {
+          bold: true,
+        },
+      },
+    },
+    fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)",
+  },
+  calloutRow: {
+    cell: {
+      userEnteredFormat: {
+        backgroundColor: {
+          red: 0.95,
+          green: 0.95,
+          blue: 0.95,
+        },
+        horizontalAlignment: "LEFT",
+        textFormat: {
+          bold: true,
+          italic: false,
+        },
+      },
+    },
+    fields: "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat)",
+  },
+  formulaBand: {
+    cell: {
+      userEnteredFormat: {
+        backgroundColor: {
+          red: 0.96,
+          green: 0.94,
+          blue: 0.88,
+        },
+        textFormat: {
+          italic: true,
+        },
+      },
+    },
+    fields: "userEnteredFormat(backgroundColor,textFormat)",
+  },
+  formulaCell: {
+    cell: {
+      userEnteredFormat: {
+        horizontalAlignment: "LEFT",
+        textFormat: {
+          italic: true,
+        },
+        wrapStrategy: "CLIP",
+      },
+    },
+    fields: "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)",
+  },
+};
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -147,6 +234,8 @@ function validateConfig(config) {
     issues.push("Missing \"script.title\".");
   }
 
+  validateStyles_(config.styles, issues);
+
   if (!Array.isArray(config.tabs) || !config.tabs.length) {
     issues.push("Expected a non-empty \"tabs\" array.");
   } else {
@@ -214,6 +303,7 @@ function validateTabFormatting(tab, issues, index) {
     });
   }
 
+  validateStyleApplications_(formatting.styleApplications, tabLabel, issues);
   validateColumnBackgrounds_(formatting.columnBackgrounds, tabLabel, issues);
   validateErrorConditionalFormats_(formatting.errorConditionalFormats, tabLabel, issues);
   validateFormattingSections_(formatting.headerSections, "headerSections", tabLabel, issues);
@@ -237,6 +327,95 @@ function validateTabFormatting(tab, issues, index) {
       }
     });
   }
+}
+
+function validateStyles_(styles, issues) {
+  let styleName;
+  let styleDefinition;
+
+  if (styles == null) {
+    return;
+  }
+
+  if (!styles || typeof styles !== "object" || Array.isArray(styles)) {
+    issues.push("Top-level \"styles\" must be an object.");
+    return;
+  }
+
+  Object.keys(styles).forEach(function (name) {
+    styleName = name;
+    styleDefinition = styles[name];
+
+    if (!styleDefinition || typeof styleDefinition !== "object" || Array.isArray(styleDefinition)) {
+      issues.push("Style \"" + styleName + "\" must be an object.");
+      return;
+    }
+
+    if (!styleDefinition.cell || typeof styleDefinition.cell !== "object" || Array.isArray(styleDefinition.cell)) {
+      issues.push("Style \"" + styleName + "\" must contain a \"cell\" object.");
+    }
+
+    if (!String(styleDefinition.fields || "").trim()) {
+      issues.push("Style \"" + styleName + "\" must contain a non-empty \"fields\" string.");
+    }
+  });
+}
+
+function validateStyleApplications_(styleApplications, tabLabel, issues) {
+  if (styleApplications == null) {
+    return;
+  }
+
+  if (!Array.isArray(styleApplications)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.styleApplications\".");
+    return;
+  }
+
+  styleApplications.forEach(function (application) {
+    const target = application && application.target ? application.target : null;
+    let selectorCount = 0;
+
+    if (!application || typeof application !== "object") {
+      issues.push("Tab \"" + tabLabel + "\" has invalid style application entry.");
+      return;
+    }
+
+    if (!String(application.style || "").trim()) {
+      issues.push("Tab \"" + tabLabel + "\" has a style application without a style name.");
+    }
+
+    if (!target || typeof target !== "object" || Array.isArray(target)) {
+      issues.push("Tab \"" + tabLabel + "\" has a style application without a valid target.");
+      return;
+    }
+
+    if (target.sheet === true) {
+      selectorCount += 1;
+    }
+
+    if (target.formulaCells === true) {
+      selectorCount += 1;
+    }
+
+    if (target.rows != null) {
+      selectorCount += 1;
+      validateRowNumbers_(target.rows, "style target rows", tabLabel, issues);
+    }
+
+    if (target.columns != null) {
+      selectorCount += 1;
+      validateRowNumbers_(target.columns, "style target columns", tabLabel, issues);
+    }
+
+    if (target.sections != null) {
+      selectorCount += 1;
+      validateFormattingSections_(target.sections, "style target sections", tabLabel, issues);
+    }
+
+    if (selectorCount !== 1) {
+      issues.push("Tab \"" + tabLabel + "\" style applications must define exactly one target selector.");
+    }
+  });
 }
 
 function validateFormattingSections_(sections, label, tabLabel, issues) {
@@ -727,6 +906,7 @@ async function writeTabs(accessToken, config) {
 
 async function applyTabFormatting(accessToken, config, sheetMap) {
   const requests = [];
+  const styleRegistry = normalizeStyleRegistry(config.styles);
   let i;
   let tab;
   let values;
@@ -781,31 +961,20 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
       requests.push(buildMergeCellsRequest(sheetProperties.sheetId, range));
     });
 
-    formatting.headerSections.forEach(function (section) {
-      requests.push(buildHeaderRowFormatRequest(sheetProperties.sheetId, section.row, section.columns));
-    });
-
-    formatting.headerRows.forEach(function (rowNumber) {
-      requests.push(buildHeaderRowFormatRequest(sheetProperties.sheetId, rowNumber, maxColumns));
-    });
-
-    formatting.calloutRows.forEach(function (rowNumber) {
-      requests.push(buildCalloutRowFormatRequest(sheetProperties.sheetId, rowNumber, maxColumns));
-    });
-
-    formatting.formulaSections.forEach(function (section) {
-      requests.push(buildFormulaRowFormatRequest(sheetProperties.sheetId, section.row, section.columns));
-    });
-
-    formatting.formulaRows.forEach(function (rowNumber) {
-      requests.push(buildFormulaRowFormatRequest(sheetProperties.sheetId, rowNumber, maxColumns));
-    });
-
-    formatting.formulaColumns.forEach(function (columnNumber) {
-      requests.push(buildFormulaColumnFormatRequest(sheetProperties.sheetId, columnNumber, values.length));
-    });
-
-    requests.push.apply(requests, buildFormulaCellFormatRequests(sheetProperties.sheetId, values));
+    requests.push.apply(
+      requests,
+      buildStyleApplicationRequests(
+        sheetProperties.sheetId,
+        styleRegistry,
+        buildResolvedStyleApplications(formatting),
+        {
+          values: values,
+          maxColumns: maxColumns,
+          sheetColumnCount: sheetColumnCount,
+          sheetRowCount: sheetRowCount,
+        }
+      )
+    );
     requests.push.apply(
       requests,
       buildColumnBackgroundRequests(sheetProperties.sheetId, formatting.columnBackgrounds, values.length)
@@ -864,9 +1033,33 @@ function normalizeTabFormatting(formatting) {
       ? normalized.headerSections.map(copyFormattingSection_)
       : [],
     headerRows: Array.isArray(normalized.headerRows) ? normalized.headerRows.slice() : [],
+    styleApplications: Array.isArray(normalized.styleApplications)
+      ? normalized.styleApplications.map(copyStyleApplication_)
+      : [],
     calloutRows: Array.isArray(normalized.calloutRows) ? normalized.calloutRows.slice() : [],
     mergedRanges: Array.isArray(normalized.mergedRanges) ? normalized.mergedRanges.map(copyMergedRange_) : [],
     numberFormats: Array.isArray(normalized.numberFormats) ? normalized.numberFormats.map(copyNumberFormat_) : [],
+  };
+}
+
+function normalizeStyleRegistry(styles) {
+  const registry = {};
+
+  Object.keys(DEFAULT_STYLES).forEach(function (name) {
+    registry[name] = normalizeStyleDefinition_(DEFAULT_STYLES[name]);
+  });
+
+  Object.keys(styles || {}).forEach(function (name) {
+    registry[name] = normalizeStyleDefinition_(styles[name]);
+  });
+
+  return registry;
+}
+
+function normalizeStyleDefinition_(styleDefinition) {
+  return {
+    cell: copyJson_(styleDefinition.cell),
+    fields: String(styleDefinition.fields || ""),
   };
 }
 
@@ -874,6 +1067,23 @@ function copyFormattingSection_(section) {
   return {
     columns: Number(section.columns),
     row: Number(section.row),
+  };
+}
+
+function copyStyleApplication_(application) {
+  return {
+    style: String(application.style || ""),
+    target: copyStyleTarget_(application.target || {}),
+  };
+}
+
+function copyStyleTarget_(target) {
+  return {
+    columns: Array.isArray(target.columns) ? target.columns.slice() : null,
+    formulaCells: target.formulaCells === true,
+    rows: Array.isArray(target.rows) ? target.rows.slice() : null,
+    sections: Array.isArray(target.sections) ? target.sections.map(copyFormattingSection_) : null,
+    sheet: target.sheet === true,
   };
 }
 
@@ -921,6 +1131,10 @@ function copyMergedRange_(range) {
     startColumn: Number(range.startColumn),
     startRow: Number(range.startRow),
   };
+}
+
+function copyJson_(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function buildFreezeRowsRequest(sheetId, freezeRows) {
@@ -981,155 +1195,53 @@ function buildUnmergeSheetRequest(sheetId, rowCount, columnCount) {
 }
 
 function buildBodyAlignmentRequest(sheetId, maxRows, maxColumns) {
-  return {
-    repeatCell: {
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: {
-            red: 1,
-            green: 1,
-            blue: 1,
-          },
-          backgroundColorStyle: {
-            rgbColor: {
-              red: 1,
-              green: 1,
-              blue: 1,
-            },
-          },
-          horizontalAlignment: "LEFT",
-          textFormat: {
-            bold: false,
-            italic: false,
-          },
-          wrapStrategy: "CLIP",
-        },
-      },
-      fields: "userEnteredFormat",
-      range: {
-        startRowIndex: 0,
-        endRowIndex: maxRows,
-        startColumnIndex: 0,
-        endColumnIndex: maxColumns,
-        sheetId: sheetId,
-      },
-    },
-  };
+  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.sheetBody, {
+    startRowIndex: 0,
+    endRowIndex: maxRows,
+    startColumnIndex: 0,
+    endColumnIndex: maxColumns,
+  });
 }
 
 function buildCalloutRowFormatRequest(sheetId, rowNumber, maxColumns) {
-  return {
-    repeatCell: {
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: {
-            red: 0.95,
-            green: 0.95,
-            blue: 0.95,
-          },
-          horizontalAlignment: "LEFT",
-          textFormat: {
-            bold: true,
-            italic: false,
-          },
-        },
-      },
-      fields: "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat)",
-      range: {
-        startRowIndex: rowNumber - 1,
-        endRowIndex: rowNumber,
-        startColumnIndex: 0,
-        endColumnIndex: maxColumns,
-        sheetId: sheetId,
-      },
-    },
-  };
+  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.calloutRow, {
+    startRowIndex: rowNumber - 1,
+    endRowIndex: rowNumber,
+    startColumnIndex: 0,
+    endColumnIndex: maxColumns,
+  });
 }
 
 function buildHeaderRowFormatRequest(sheetId, rowNumber, maxColumns) {
-  return {
-    repeatCell: {
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: {
-            red: 0.92,
-            green: 0.92,
-            blue: 0.92,
-          },
-          horizontalAlignment: "CENTER",
-          textFormat: {
-            bold: true,
-          },
-        },
-      },
-      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)",
-      range: {
-        startRowIndex: rowNumber - 1,
-        endRowIndex: rowNumber,
-        startColumnIndex: 0,
-        endColumnIndex: maxColumns,
-        sheetId: sheetId,
-      },
-    },
-  };
+  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.headerRow, {
+    startRowIndex: rowNumber - 1,
+    endRowIndex: rowNumber,
+    startColumnIndex: 0,
+    endColumnIndex: maxColumns,
+  });
 }
 
 function buildFormulaRowFormatRequest(sheetId, rowNumber, maxColumns) {
-  return {
-    repeatCell: {
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: {
-            red: 0.96,
-            green: 0.94,
-            blue: 0.88,
-          },
-          textFormat: {
-            italic: true,
-          },
-        },
-      },
-      fields: "userEnteredFormat(backgroundColor,textFormat)",
-      range: {
-        startRowIndex: rowNumber - 1,
-        endRowIndex: rowNumber,
-        startColumnIndex: 0,
-        endColumnIndex: maxColumns,
-        sheetId: sheetId,
-      },
-    },
-  };
+  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.formulaBand, {
+    startRowIndex: rowNumber - 1,
+    endRowIndex: rowNumber,
+    startColumnIndex: 0,
+    endColumnIndex: maxColumns,
+  });
 }
 
 function buildFormulaColumnFormatRequest(sheetId, columnNumber, maxRows) {
-  return {
-    repeatCell: {
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: {
-            red: 0.96,
-            green: 0.94,
-            blue: 0.88,
-          },
-          textFormat: {
-            italic: true,
-          },
-        },
-      },
-      fields: "userEnteredFormat(backgroundColor,textFormat)",
-      range: {
-        startRowIndex: 0,
-        endRowIndex: maxRows,
-        startColumnIndex: columnNumber - 1,
-        endColumnIndex: columnNumber,
-        sheetId: sheetId,
-      },
-    },
-  };
+  return buildStyleRepeatCellRequest(sheetId, DEFAULT_STYLES.formulaBand, {
+    startRowIndex: 0,
+    endRowIndex: maxRows,
+    startColumnIndex: columnNumber - 1,
+    endColumnIndex: columnNumber,
+  });
 }
 
-function buildFormulaCellFormatRequests(sheetId, values) {
+function buildFormulaCellFormatRequests(sheetId, values, styleDefinition) {
   const requests = [];
+  const style = normalizeStyleDefinition_(styleDefinition || DEFAULT_STYLES.formulaCell);
   let rowIndex;
   let columnIndex;
   let row;
@@ -1142,7 +1254,7 @@ function buildFormulaCellFormatRequests(sheetId, values) {
       value = String(row[columnIndex] == null ? "" : row[columnIndex]);
 
       if (value.indexOf("'") === 0) {
-        requests.push(buildFormulaCellFormatRequest(sheetId, rowIndex + 1, columnIndex + 1));
+        requests.push(buildFormulaCellFormatRequest(sheetId, rowIndex + 1, columnIndex + 1, style));
       }
     }
   }
@@ -1150,28 +1262,15 @@ function buildFormulaCellFormatRequests(sheetId, values) {
   return requests;
 }
 
-function buildFormulaCellFormatRequest(sheetId, rowNumber, columnNumber) {
-  return {
-    repeatCell: {
-      cell: {
-        userEnteredFormat: {
-          horizontalAlignment: "LEFT",
-          textFormat: {
-            italic: true,
-          },
-          wrapStrategy: "CLIP",
-        },
-      },
-      fields: "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)",
-      range: {
-        startRowIndex: rowNumber - 1,
-        endRowIndex: rowNumber,
-        startColumnIndex: columnNumber - 1,
-        endColumnIndex: columnNumber,
-        sheetId: sheetId,
-      },
-    },
-  };
+function buildFormulaCellFormatRequest(sheetId, rowNumber, columnNumber, styleDefinition) {
+  const style = normalizeStyleDefinition_(styleDefinition || DEFAULT_STYLES.formulaCell);
+
+  return buildStyleRepeatCellRequest(sheetId, style, {
+    startRowIndex: rowNumber - 1,
+    endRowIndex: rowNumber,
+    startColumnIndex: columnNumber - 1,
+    endColumnIndex: columnNumber,
+  });
 }
 
 function buildAutoResizeColumnsRequest(sheetId, maxColumns) {
@@ -1204,6 +1303,192 @@ function buildColumnWidthRequests(sheetId, columnPixelSizes) {
       },
     };
   });
+}
+
+function buildStyleRepeatCellRequest(sheetId, styleDefinition, range) {
+  const style = normalizeStyleDefinition_(styleDefinition);
+
+  return {
+    repeatCell: {
+      cell: style.cell,
+      fields: style.fields,
+      range: Object.assign({ sheetId: sheetId }, range),
+    },
+  };
+}
+
+function buildResolvedStyleApplications(formatting) {
+  const applications = formatting.styleApplications.slice();
+
+  if (!hasStyleApplicationTarget_(applications, "sheet")) {
+    applications.unshift({
+      style: "sheetBody",
+      target: { sheet: true },
+    });
+  }
+
+  applications.push.apply(applications, buildLegacyStyleApplications_(formatting));
+
+  if (!hasStyleApplicationTarget_(applications, "formulaCells")) {
+    applications.push({
+      style: "formulaCell",
+      target: { formulaCells: true },
+    });
+  }
+
+  return applications;
+}
+
+function buildLegacyStyleApplications_(formatting) {
+  const applications = [];
+
+  if (formatting.headerSections.length) {
+    applications.push({
+      style: "headerRow",
+      target: {
+        sections: formatting.headerSections,
+      },
+    });
+  }
+
+  if (formatting.headerRows.length) {
+    applications.push({
+      style: "headerRow",
+      target: {
+        rows: formatting.headerRows,
+      },
+    });
+  }
+
+  if (formatting.calloutRows.length) {
+    applications.push({
+      style: "calloutRow",
+      target: {
+        rows: formatting.calloutRows,
+      },
+    });
+  }
+
+  if (formatting.formulaSections.length) {
+    applications.push({
+      style: "formulaBand",
+      target: {
+        sections: formatting.formulaSections,
+      },
+    });
+  }
+
+  if (formatting.formulaRows.length) {
+    applications.push({
+      style: "formulaBand",
+      target: {
+        rows: formatting.formulaRows,
+      },
+    });
+  }
+
+  if (formatting.formulaColumns.length) {
+    applications.push({
+      style: "formulaBand",
+      target: {
+        columns: formatting.formulaColumns,
+      },
+    });
+  }
+
+  return applications;
+}
+
+function hasStyleApplicationTarget_(applications, targetName) {
+  return applications.some(function (application) {
+    return Boolean(application && application.target && application.target[targetName]);
+  });
+}
+
+function buildStyleApplicationRequests(sheetId, styleRegistry, applications, context) {
+  const requests = [];
+
+  applications.forEach(function (application) {
+    const style = styleRegistry[application.style];
+
+    if (!style) {
+      throw new Error("Unknown style \"" + application.style + "\".");
+    }
+
+    requests.push.apply(
+      requests,
+      buildStyleTargetRequests_(sheetId, style, application.target, context)
+    );
+  });
+
+  return requests;
+}
+
+function buildStyleTargetRequests_(sheetId, style, target, context) {
+  const requests = [];
+  let i;
+
+  if (target.sheet) {
+    if (context.sheetRowCount > 0 && context.sheetColumnCount > 0) {
+      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
+        startRowIndex: 0,
+        endRowIndex: context.sheetRowCount,
+        startColumnIndex: 0,
+        endColumnIndex: context.sheetColumnCount,
+      }));
+    }
+    return requests;
+  }
+
+  if (target.rows) {
+    for (i = 0; i < target.rows.length; i += 1) {
+      if (context.maxColumns <= 0) {
+        break;
+      }
+
+      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
+        startRowIndex: target.rows[i] - 1,
+        endRowIndex: target.rows[i],
+        startColumnIndex: 0,
+        endColumnIndex: context.maxColumns,
+      }));
+    }
+    return requests;
+  }
+
+  if (target.columns) {
+    for (i = 0; i < target.columns.length; i += 1) {
+      if (context.values.length <= 0) {
+        break;
+      }
+
+      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
+        startRowIndex: 0,
+        endRowIndex: context.values.length,
+        startColumnIndex: target.columns[i] - 1,
+        endColumnIndex: target.columns[i],
+      }));
+    }
+    return requests;
+  }
+
+  if (target.sections) {
+    for (i = 0; i < target.sections.length; i += 1) {
+      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
+        startRowIndex: target.sections[i].row - 1,
+        endRowIndex: target.sections[i].row,
+        startColumnIndex: 0,
+        endColumnIndex: target.sections[i].columns,
+      }));
+    }
+    return requests;
+  }
+
+  if (target.formulaCells) {
+    return buildFormulaCellFormatRequests(sheetId, context.values, style);
+  }
+
+  return requests;
 }
 
 function buildNumberFormatRequests(sheetId, numberFormats) {
@@ -1794,6 +2079,8 @@ module.exports = {
   buildBodyAlignmentRequest,
   buildCalloutRowFormatRequest,
   buildEnsureTabsRequests,
+  buildStyleApplicationRequests,
+  buildStyleRepeatCellRequest,
   buildReorderTabsRequests,
   buildDeleteConditionalFormatRuleRequests,
   buildColumnWidthRequests,
@@ -1806,11 +2093,13 @@ module.exports = {
   buildHeaderRowFormatRequest,
   buildMergeCellsRequest,
   buildNumberFormatRequests,
+  buildResolvedStyleApplications,
   buildSheetRange,
   buildSpreadsheetUrl,
   buildUnmergeCellsRequest,
   buildUnmergeSheetRequest,
   loadDemoSheetConfig,
+  normalizeStyleRegistry,
   normalizeTabFormatting,
   parseArgs,
   parseTsv,
