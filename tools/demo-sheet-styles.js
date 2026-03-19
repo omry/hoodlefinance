@@ -248,6 +248,18 @@ function buildStyleTargetRequests_(sheetId, style, target, context) {
     return requests;
   }
 
+  if (target.ranges) {
+    for (i = 0; i < target.ranges.length; i += 1) {
+      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
+        startRowIndex: target.ranges[i].startRow - 1,
+        endRowIndex: target.ranges[i].endRow,
+        startColumnIndex: target.ranges[i].startColumn - 1,
+        endColumnIndex: target.ranges[i].endColumn,
+      }));
+    }
+    return requests;
+  }
+
   if (target.sections) {
     for (i = 0; i < target.sections.length; i += 1) {
       requests.push(buildStyleRepeatCellRequest(sheetId, style, {

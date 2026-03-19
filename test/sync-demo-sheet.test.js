@@ -133,6 +133,19 @@ test("style applications compile named styles to repeatCell requests", function 
         rows: [2],
       },
     },
+    {
+      style: "emphasis",
+      target: {
+        ranges: [
+          {
+            startRow: 5,
+            endRow: 6,
+            startColumn: 3,
+            endColumn: 4,
+          },
+        ],
+      },
+    },
   ], {
     maxColumns: 3,
     sheetColumnCount: 5,
@@ -158,6 +171,25 @@ test("style applications compile named styles to repeatCell requests", function 
         },
       },
     },
+    {
+      repeatCell: {
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              bold: true,
+            },
+          },
+        },
+        fields: "userEnteredFormat.textFormat",
+        range: {
+          startRowIndex: 4,
+          endRowIndex: 6,
+          startColumnIndex: 2,
+          endColumnIndex: 4,
+          sheetId: 12,
+        },
+      },
+    },
   ]);
 });
 
@@ -179,6 +211,7 @@ test("resolved style applications add default sheet and formula-cell styles", fu
       target: {
         columns: null,
         formulaCells: false,
+        ranges: null,
         rows: [3],
         sections: null,
         sheet: false,
@@ -431,6 +464,7 @@ test("formatting helpers build the expected Sheets API requests", function () {
       target: {
         columns: null,
         formulaCells: false,
+        ranges: null,
         rows: [1, 7],
         sections: null,
         sheet: false,
@@ -467,10 +501,13 @@ test("formatting helpers build the expected Sheets API requests", function () {
             ],
           },
           format: {
-            backgroundColor: {
-              red: 1,
-              green: 0.92,
-              blue: 0.92,
+            textFormat: {
+              bold: true,
+              foregroundColor: {
+                red: 0.8,
+                green: 0.2,
+                blue: 0.2,
+              },
             },
           },
         },
@@ -491,11 +528,6 @@ test("formatting helpers build the expected Sheets API requests", function () {
     endRow: 1000,
     startColumn: 3,
     endColumn: 3,
-    backgroundColor: {
-      red: 1,
-      green: 0.92,
-      blue: 0.92,
-    },
   }])[0], {
     addConditionalFormatRule: {
       index: 0,
@@ -510,10 +542,13 @@ test("formatting helpers build the expected Sheets API requests", function () {
             ],
           },
           format: {
-            backgroundColor: {
-              red: 1,
-              green: 0.92,
-              blue: 0.92,
+            textFormat: {
+              bold: true,
+              foregroundColor: {
+                red: 0.8,
+                green: 0.2,
+                blue: 0.2,
+              },
             },
           },
         },
@@ -534,11 +569,6 @@ test("formatting helpers build the expected Sheets API requests", function () {
     endRow: 1000,
     startColumn: 3,
     endColumn: 3,
-    backgroundColor: {
-      red: 1,
-      green: 0.92,
-      blue: 0.92,
-    },
   }], 1)[0].addConditionalFormatRule.index, 1);
   assert.deepEqual(buildNumberFormatRequests(12, [{
     column: 4,

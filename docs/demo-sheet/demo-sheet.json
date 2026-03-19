@@ -70,9 +70,9 @@
       "cell": {
         "userEnteredFormat": {
           "backgroundColor": {
-            "red": 0.96,
-            "green": 0.94,
-            "blue": 0.88
+            "red": 0.93,
+            "green": 0.9,
+            "blue": 0.98
           },
           "textFormat": {
             "italic": true
@@ -84,6 +84,11 @@
     "formulaCell": {
       "cell": {
         "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 0.93,
+            "green": 0.9,
+            "blue": 0.98
+          },
           "horizontalAlignment": "LEFT",
           "textFormat": {
             "italic": true
@@ -91,7 +96,39 @@
           "wrapStrategy": "CLIP"
         }
       },
-      "fields": "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)"
+      "fields": "userEnteredFormat(backgroundColor,horizontalAlignment,textFormat,wrapStrategy)"
+    },
+    "formulaResult": {
+      "cell": {
+        "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 0.9,
+            "green": 0.96,
+            "blue": 1
+          }
+        }
+      },
+      "fields": "userEnteredFormat(backgroundColor)"
+    },
+    "Text style": {
+      "cell": {
+        "userEnteredFormat": {
+          "backgroundColor": {
+            "red": 0.91,
+            "green": 0.98,
+            "blue": 0.91
+          },
+          "textFormat": {
+            "bold": true,
+            "foregroundColor": {
+              "red": 0.11,
+              "green": 0.22,
+              "blue": 0.55
+            }
+          }
+        }
+      },
+      "fields": "userEnteredFormat(backgroundColor,textFormat)"
     }
   },
   "tabs": [
@@ -119,6 +156,51 @@
                 }
               ]
             }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 2,
+                  "endRow": 3,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 6,
+                  "endRow": 10,
+                  "startColumn": 1,
+                  "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 2,
+                  "endRow": 3,
+                  "startColumn": 2,
+                  "endColumn": 2
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 6,
+                  "endRow": 10,
+                  "startColumn": 3,
+                  "endColumn": 3
+                }
+              ]
+            }
           }
         ]
       },
@@ -141,16 +223,6 @@
             }
           },
           {
-            "column": 3,
-            "startRow": 2,
-            "endRow": 10,
-            "backgroundColor": {
-              "red": 0.9,
-              "green": 0.95,
-              "blue": 1
-            }
-          },
-          {
             "column": 4,
             "startRow": 2,
             "endRow": 10,
@@ -158,16 +230,6 @@
               "red": 0.94,
               "green": 0.94,
               "blue": 0.94
-            }
-          },
-          {
-            "column": 5,
-            "startRow": 2,
-            "endRow": 10,
-            "backgroundColor": {
-              "red": 0.9,
-              "green": 0.95,
-              "blue": 1
             }
           }
         ],
@@ -178,6 +240,51 @@
             "target": {
               "rows": [
                 1
+              ]
+            }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 2,
+                  "endRow": 10,
+                  "startColumn": 1,
+                  "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 2,
+                  "endRow": 10,
+                  "startColumn": 6,
+                  "endColumn": 6
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 2,
+                  "endRow": 10,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 2,
+                  "endRow": 10,
+                  "startColumn": 5,
+                  "endColumn": 5
+                }
               ]
             }
           }
@@ -204,6 +311,32 @@
             "target": {
               "rows": [
                 1
+              ]
+            }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 6,
+                  "startColumn": 1,
+                  "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 6,
+                  "startColumn": 2,
+                  "endColumn": 5
+                }
               ]
             }
           }
@@ -254,6 +387,74 @@
                 22
               ]
             }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 4,
+                  "endRow": 8,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 14,
+                  "endRow": 17,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 23,
+                  "endRow": 26,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 14,
+                  "endRow": 17,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 23,
+                  "endRow": 26,
+                  "startColumn": 6,
+                  "endColumn": 6
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 4,
+                  "endRow": 8,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 4,
+                  "endRow": 8,
+                  "startColumn": 5,
+                  "endColumn": 5
+                },
+                {
+                  "startRow": 14,
+                  "endRow": 17,
+                  "startColumn": 2,
+                  "endColumn": 2
+                },
+                {
+                  "startRow": 23,
+                  "endRow": 26,
+                  "startColumn": 2,
+                  "endColumn": 5
+                }
+              ]
+            }
           }
         ],
         "columnBackgrounds": [
@@ -268,16 +469,6 @@
             }
           },
           {
-            "column": 3,
-            "startRow": 4,
-            "endRow": 8,
-            "backgroundColor": {
-              "red": 0.9,
-              "green": 0.95,
-              "blue": 1
-            }
-          },
-          {
             "column": 4,
             "startRow": 4,
             "endRow": 8,
@@ -285,16 +476,6 @@
               "red": 0.96,
               "green": 0.94,
               "blue": 0.88
-            }
-          },
-          {
-            "column": 5,
-            "startRow": 4,
-            "endRow": 8,
-            "backgroundColor": {
-              "red": 0.9,
-              "green": 0.95,
-              "blue": 1
             }
           }
         ],
@@ -363,6 +544,32 @@
             "target": {
               "rows": [
                 1
+              ]
+            }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 6,
+                  "startColumn": 1,
+                  "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 5,
+                  "startColumn": 2,
+                  "endColumn": 5
+                }
               ]
             }
           }
@@ -555,6 +762,31 @@
                 18
               ]
             }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 7,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 11,
+                  "endRow": 15,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 19,
+                  "endRow": 21,
+                  "startColumn": 1,
+                  "endColumn": 1
+                }
+              ]
+            }
           }
         ]
       },
@@ -577,6 +809,32 @@
             "target": {
               "rows": [
                 1
+              ]
+            }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 6,
+                  "startColumn": 1,
+                  "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 6,
+                  "startColumn": 2,
+                  "endColumn": 3
+                }
               ]
             }
           }

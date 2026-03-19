@@ -1,0 +1,1 @@
+- Refreshed the public demo sheet styling with clearer text, formula, input, and result highlighting across the example tabs.

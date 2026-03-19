@@ -46,10 +46,10 @@ const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/script.projects",
 ];
-const DEFAULT_ERROR_BACKGROUND_COLOR = {
-  red: 1,
-  green: 0.92,
-  blue: 0.92,
+const DEFAULT_ERROR_TEXT_COLOR = {
+  red: 0.8,
+  green: 0.2,
+  blue: 0.2,
 };
 
 async function main() {
@@ -493,6 +493,10 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
 
     requests.push.apply(
       requests,
+      buildColumnBackgroundRequests(sheetProperties.sheetId, formatting.columnBackgrounds, values.length)
+    );
+    requests.push.apply(
+      requests,
       buildStyleApplicationRequests(
         sheetProperties.sheetId,
         styleRegistry,
@@ -504,10 +508,6 @@ async function applyTabFormatting(accessToken, config, sheetMap) {
           sheetRowCount: sheetRowCount,
         }
       )
-    );
-    requests.push.apply(
-      requests,
-      buildColumnBackgroundRequests(sheetProperties.sheetId, formatting.columnBackgrounds, values.length)
     );
     requests.push.apply(requests, buildNumberFormatRequests(sheetProperties.sheetId, formatting.numberFormats));
 
@@ -717,7 +717,10 @@ function buildSheetErrorConditionalFormatRequest(sheetId, maxRows, maxColumns) {
             ],
           },
           format: {
-            backgroundColor: copyRgbColor(DEFAULT_ERROR_BACKGROUND_COLOR),
+            textFormat: {
+              bold: true,
+              foregroundColor: copyRgbColor(DEFAULT_ERROR_TEXT_COLOR),
+            },
           },
         },
         ranges: [
@@ -752,7 +755,10 @@ function buildErrorConditionalFormatRequests(sheetId, entries, startIndex) {
               ],
             },
             format: {
-              backgroundColor: copyRgbColor(entry.backgroundColor),
+              textFormat: {
+                bold: true,
+                foregroundColor: copyRgbColor(DEFAULT_ERROR_TEXT_COLOR),
+              },
             },
           },
           ranges: [

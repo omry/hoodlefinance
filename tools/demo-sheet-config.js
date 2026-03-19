@@ -174,6 +174,11 @@ function validateStyleApplications_(styleApplications, tabLabel, issues) {
       validateRowNumbers_(target.columns, "style target columns", tabLabel, issues);
     }
 
+    if (target.ranges != null) {
+      selectorCount += 1;
+      validateCellRanges_(target.ranges, "style target ranges", tabLabel, issues);
+    }
+
     if (target.sections != null) {
       selectorCount += 1;
       validateFormattingSections_(target.sections, "style target sections", tabLabel, issues);
@@ -181,6 +186,34 @@ function validateStyleApplications_(styleApplications, tabLabel, issues) {
 
     if (selectorCount !== 1) {
       issues.push("Tab \"" + tabLabel + "\" style applications must define exactly one target selector.");
+    }
+  });
+}
+
+function validateCellRanges_(ranges, label, tabLabel, issues) {
+  if (ranges == null) {
+    return;
+  }
+
+  if (!Array.isArray(ranges)) {
+    issues.push("Tab \"" + tabLabel + "\" has invalid \"" + label + "\".");
+    return;
+  }
+
+  ranges.forEach(function (range) {
+    if (
+      !range ||
+      typeof range !== "object" ||
+      !Number.isInteger(range.startRow) ||
+      range.startRow < 1 ||
+      !Number.isInteger(range.endRow) ||
+      range.endRow < range.startRow ||
+      !Number.isInteger(range.startColumn) ||
+      range.startColumn < 1 ||
+      !Number.isInteger(range.endColumn) ||
+      range.endColumn < range.startColumn
+    ) {
+      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " entry.");
     }
   });
 }
@@ -311,7 +344,6 @@ function validateErrorConditionalFormats_(entries, tabLabel, issues) {
       return;
     }
 
-    validateRgbColor_(entry.backgroundColor, "error conditional format", tabLabel, issues);
   });
 }
 
@@ -396,6 +428,7 @@ function copyStyleTarget_(target) {
   return {
     columns: Array.isArray(target.columns) ? target.columns.slice() : null,
     formulaCells: target.formulaCells === true,
+    ranges: Array.isArray(target.ranges) ? target.ranges.map(copyMergedRange_) : null,
     rows: Array.isArray(target.rows) ? target.rows.slice() : null,
     sections: Array.isArray(target.sections) ? target.sections.map(copyFormattingSection_) : null,
     sheet: target.sheet === true,
@@ -421,7 +454,6 @@ function copyRgbColor_(color) {
 
 function copyErrorConditionalFormat_(entry) {
   return {
-    backgroundColor: copyRgbColor_(entry.backgroundColor),
     endColumn: Number(entry.endColumn),
     endRow: Number(entry.endRow),
     startColumn: Number(entry.startColumn),
