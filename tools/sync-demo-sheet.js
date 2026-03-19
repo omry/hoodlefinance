@@ -4,9 +4,7 @@
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
-const http = require("node:http");
 const { spawn } = require("node:child_process");
-const crypto = require("node:crypto");
 const {
   DEFAULT_STYLES,
   buildFormulaCellFormatRequests,
@@ -20,6 +18,11 @@ const {
   normalizeTabFormatting,
   validateConfig,
 } = require("./demo-sheet-config.js");
+const {
+  ensureAccessTokenWithDeps,
+  googleApiJson,
+  isInvalidGrantOAuthError,
+} = require("./demo-sheet-google.js");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 const DEMO_DIR = path.join(ROOT_DIR, "docs", "demo-sheet");
@@ -848,201 +851,14 @@ async function syncBoundScriptWithClasp(config) {
 }
 
 async function ensureAccessToken() {
-  return ensureAccessTokenWithDeps({});
-}
-
-async function ensureAccessTokenWithDeps(deps) {
-  const readJson = deps.readJsonSync || readJsonSync;
-  const readOptionalJson = deps.readOptionalJsonSync || readOptionalJsonSync;
-  const refreshToken = deps.refreshAccessToken || refreshAccessToken;
-  const authorize = deps.authorizeInteractively || authorizeInteractively;
-  const clientConfig = readJson(OAUTH_CLIENT_PATH, "OAuth client config");
-  const client = normalizeOAuthClient(clientConfig);
-  const existingToken = readOptionalJson(OAUTH_TOKEN_PATH);
-
-  if (existingToken && !tokenExpired(existingToken)) {
-    return existingToken.access_token;
-  }
-
-  if (existingToken && existingToken.refresh_token) {
-    try {
-      return (await refreshToken(client, existingToken)).access_token;
-    } catch (error) {
-      if (!isInvalidGrantOAuthError(error)) {
-        throw error;
-      }
-
-      process.stdout.write(
-        "Saved demo-sheet OAuth token is no longer valid. Starting interactive reauthorization.\n"
-      );
-    }
-  }
-
-  return (await authorize(client)).access_token;
-}
-
-function normalizeOAuthClient(rawConfig) {
-  const client = rawConfig && (rawConfig.installed || rawConfig.web || rawConfig);
-
-  if (!client || !client.client_id) {
-    throw new Error("OAuth client JSON must contain an installed or web client with client_id.");
-  }
-
-  return {
-    clientId: client.client_id,
-    clientSecret: client.client_secret || "",
-  };
-}
-
-function tokenExpired(token) {
-  const expiry = Number(token && token.expiry_date ? token.expiry_date : 0);
-  return !token || !token.access_token || (expiry && expiry <= Date.now() + 60 * 1000);
-}
-
-async function refreshAccessToken(client, token) {
-  const refreshed = await exchangeToken("refresh_token", {
-    client_id: client.clientId,
-    client_secret: client.clientSecret,
-    grant_type: "refresh_token",
-    refresh_token: token.refresh_token,
+  return ensureAccessTokenWithDeps({
+    oauthClientPath: OAUTH_CLIENT_PATH,
+    oauthTokenPath: OAUTH_TOKEN_PATH,
+    readJsonSync: readJsonSync,
+    readOptionalJsonSync: readOptionalJsonSync,
+    saveJson: saveJson,
+    scopes: GOOGLE_SCOPES,
   });
-
-  refreshed.refresh_token = refreshed.refresh_token || token.refresh_token;
-  await saveJson(OAUTH_TOKEN_PATH, refreshed);
-  return refreshed;
-}
-
-function isInvalidGrantOAuthError(error) {
-  return Boolean(error && error.oauthError === "invalid_grant");
-}
-
-async function authorizeInteractively(client) {
-  const state = crypto.randomBytes(16).toString("hex");
-  const server = http.createServer();
-  const codePromise = new Promise(function (resolve, reject) {
-    const timeout = setTimeout(function () {
-      reject(new Error("Timed out waiting for OAuth callback."));
-    }, 5 * 60 * 1000);
-
-    server.on("request", function (request, response) {
-      const url = new URL(request.url, "http://localhost");
-      const returnedState = url.searchParams.get("state") || "";
-      const code = url.searchParams.get("code") || "";
-      const error = url.searchParams.get("error") || "";
-
-      if (error) {
-        clearTimeout(timeout);
-        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-        response.end("Authorization failed: " + error + "\n");
-        reject(new Error("OAuth authorization failed: " + error));
-        return;
-      }
-
-      if (returnedState !== state || !code) {
-        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-        response.end("Invalid OAuth callback.\n");
-        return;
-      }
-
-      clearTimeout(timeout);
-      response.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end("Authorization received. You can close this tab.\n");
-      resolve(code);
-    });
-  });
-
-  await new Promise(function (resolve) {
-    server.listen(0, "localhost", resolve);
-  });
-
-  try {
-    const port = server.address().port;
-    const redirectUri = "http://localhost:" + port + "/oauth2callback";
-    const authUrl =
-      "https://accounts.google.com/o/oauth2/v2/auth?" +
-      new URLSearchParams({
-        access_type: "offline",
-        client_id: client.clientId,
-        prompt: "consent",
-        redirect_uri: redirectUri,
-        response_type: "code",
-        scope: GOOGLE_SCOPES.join(" "),
-        state: state,
-      }).toString();
-
-    process.stdout.write(
-      "Open this URL in a browser to authorize demo-sheet automation:\n" + authUrl + "\n\n"
-    );
-
-    const code = await codePromise;
-    const token = await exchangeToken("authorization_code", {
-      client_id: client.clientId,
-      client_secret: client.clientSecret,
-      code: code,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-    });
-
-    await saveJson(OAUTH_TOKEN_PATH, token);
-    return token;
-  } finally {
-    await new Promise(function (resolve) {
-      server.close(resolve);
-    });
-  }
-}
-
-async function exchangeToken(label, params) {
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    body: new URLSearchParams(params),
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    method: "POST",
-  });
-  const payload = await response.json();
-
-  if (!response.ok) {
-    const authError = new Error(
-      "OAuth token exchange failed for " +
-        label +
-        ": " +
-        JSON.stringify(payload && payload.error ? payload : { error: response.statusText })
-    );
-    authError.oauthError = payload && payload.error ? payload.error : "";
-    authError.oauthPayload = payload;
-    throw authError;
-  }
-
-  payload.expiry_date = Date.now() + Number(payload.expires_in || 0) * 1000;
-  return payload;
-}
-
-async function googleApiJson(accessToken, method, url, body) {
-  const headers = {
-    Accept: "application/json",
-    Authorization: "Bearer " + accessToken,
-  };
-  const request = {
-    headers: headers,
-    method: method,
-  };
-  let response;
-  let text;
-
-  if (body != null) {
-    headers["Content-Type"] = "application/json; charset=utf-8";
-    request.body = JSON.stringify(body);
-  }
-
-  response = await fetch(url, request);
-  text = await response.text();
-
-  if (!response.ok) {
-    throw new Error("Google API request failed (" + response.status + " " + response.statusText + "): " + text);
-  }
-
-  return text ? JSON.parse(text) : {};
 }
 
 function parseTsv(text) {
