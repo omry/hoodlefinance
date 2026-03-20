@@ -91,19 +91,19 @@ const HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_ = [
   },
 ];
 
-const HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_ = {
-  price: true,
-};
+const HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_ = hoodlefinanceBuildSet_([
+  "price",
+]);
 
-const HOODLEFINANCE_SOURCE_OVERRIDES_ = {
-  ARIVA: true,
-  GOOGLE: true,
-  IBKR: true,
-  LON: true,
-  PSE: true,
-  TRADINGVIEW: true,
-  YAHOO: true,
-};
+const HOODLEFINANCE_SOURCE_OVERRIDES_ = hoodlefinanceBuildSet_([
+  "ARIVA",
+  "GOOGLE",
+  "IBKR",
+  "LON",
+  "PSE",
+  "TRADINGVIEW",
+  "YAHOO",
+]);
 
 function hoodlefinanceFormatPublicAttributes_() {
   return HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_
@@ -162,64 +162,65 @@ function hoodlefinanceBuildGroupedMap_(groupedEntries, overrides) {
   return map;
 }
 
-const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = {
-  AMS: ".AS",
-  ASX: ".AX",
-  BIT: ".MI",
-  BMV: ".MX",
-  BOM: ".BO",
-  BRU: ".BR",
-  BSE: ".BO",
-  BVMF: ".SA",
-  CPH: ".CO",
-  CVE: ".V",
-  EPA: ".PA",
-  ETR: ".DE",
-  FRA: ".F",
-  HEL: ".HE",
-  HKG: ".HK",
-  ICE: ".IC",
-  IST: ".IS",
-  JSE: ".JO",
-  KOSDAQ: ".KQ",
-  KRX: ".KS",
-  LON: ".L",
-  MAD: ".MC",
-  NEO: ".NE",
-  NSE: ".NS",
-  NZE: ".NZ",
-  OSL: ".OL",
-  PAR: ".PA",
-  SGX: ".SI",
-  SHA: ".SS",
-  SHE: ".SZ",
-  SIX: ".SW",
-  STO: ".ST",
-  SWX: ".SW",
-  TPE: ".TW",
-  TLV: ".TA",
-  TASE: ".TA",
-  TSX: ".TO",
-  TSE: ".TO",
-  TYO: ".T",
-  VIE: ".VI",
-  WSE: ".WA",
-};
+function hoodlefinanceBuildSet_(names) {
+  return hoodlefinanceBuildGroupedMap_({
+    true: Array.isArray(names) ? names : [],
+  });
+}
 
-const HOODLEFINANCE_PREFIXLESS_EXCHANGES_ = {
-  AMEX: true,
-  ARCA: true,
-  BATS: true,
-  INDEXDJX: true,
-  INDEXNASDAQ: true,
-  INDEXRUSSELL: true,
-  INDEXSP: true,
-  NASDAQ: true,
-  NYSE: true,
-  NYSEAMERICAN: true,
-  NYSEARCA: true,
-  OTCMKTS: true,
-};
+const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = hoodlefinanceBuildGroupedMap_({
+  ".AS": ["AMS"],
+  ".AX": ["ASX"],
+  ".BO": ["BOM", "BSE"],
+  ".BR": ["BRU"],
+  ".CO": ["CPH"],
+  ".DE": ["ETR"],
+  ".F": ["FRA"],
+  ".HE": ["HEL"],
+  ".HK": ["HKG"],
+  ".IC": ["ICE"],
+  ".IS": ["IST"],
+  ".JO": ["JSE"],
+  ".KQ": ["KOSDAQ"],
+  ".KS": ["KRX"],
+  ".L": ["LON"],
+  ".MC": ["MAD"],
+  ".MI": ["BIT"],
+  ".MX": ["BMV"],
+  ".NE": ["NEO"],
+  ".NS": ["NSE"],
+  ".NZ": ["NZE"],
+  ".OL": ["OSL"],
+  ".PA": ["EPA", "PAR"],
+  ".SA": ["BVMF"],
+  ".SI": ["SGX"],
+  ".SS": ["SHA"],
+  ".ST": ["STO"],
+  ".SW": ["SIX", "SWX"],
+  ".SZ": ["SHE"],
+  ".T": ["TYO"],
+  ".TA": ["TLV", "TASE"],
+  ".TO": ["TSX", "TSE"],
+  ".TW": ["TPE"],
+  ".V": ["CVE"],
+  ".VI": ["VIE"],
+  ".WA": ["WSE"],
+});
+
+const HOODLEFINANCE_PREFIXLESS_EXCHANGES_ = hoodlefinanceBuildSet_([
+  "AMEX",
+  "ARCA",
+  "BATS",
+  "INDEXDJX",
+  "INDEXNASDAQ",
+  "INDEXRUSSELL",
+  "INDEXSP",
+  "NASDAQ",
+  "NYSE",
+  "NYSEAMERICAN",
+  "NYSEARCA",
+  "OTCMKTS",
+]);
 
 const HOODLEFINANCE_IBKR_SEARCH_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=";
 const HOODLEFINANCE_IBKR_DETAIL_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=";
@@ -2304,33 +2305,29 @@ function hoodlefinanceCreateRouteAdapter_(adapterId, executeBatch) {
   };
 }
 
+function hoodlefinanceCreateIsinResolverRouteAdapter_(adapterId, resolveIsin) {
+  return hoodlefinanceCreateRouteAdapter_(adapterId, function (jobs) {
+    return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, resolveIsin);
+  });
+}
+
 const HOODLEFINANCE_ROUTE_ADAPTERS_ = {
   "google-finance-fx": hoodlefinanceCreateRouteAdapter_("google-finance-fx", hoodlefinanceExecuteGoogleFinanceFxRouteBatch_),
-  "isin-ariva": hoodlefinanceCreateRouteAdapter_("isin-ariva", function (jobs) {
-    return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, function (quote, context) {
-      return hoodlefinanceResolveArivaIsin_(quote, context);
-    });
+  "isin-ariva": hoodlefinanceCreateIsinResolverRouteAdapter_("isin-ariva", function (quote, context) {
+    return hoodlefinanceResolveArivaIsin_(quote, context);
   }),
   "isin-direct": hoodlefinanceCreateRouteAdapter_("isin-direct", hoodlefinanceExecuteDirectIsinRouteBatch_),
-  "isin-ibkr": hoodlefinanceCreateRouteAdapter_("isin-ibkr", function (jobs) {
-    return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, function (quote, context) {
-      return hoodlefinanceResolveIbkrIsin_(quote, context);
-    });
+  "isin-ibkr": hoodlefinanceCreateIsinResolverRouteAdapter_("isin-ibkr", function (quote, context) {
+    return hoodlefinanceResolveIbkrIsin_(quote, context);
   }),
-  "isin-lon": hoodlefinanceCreateRouteAdapter_("isin-lon", function (jobs) {
-    return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, function (quote, context) {
-      return hoodlefinanceResolveLonIsin_(quote, context);
-    });
+  "isin-lon": hoodlefinanceCreateIsinResolverRouteAdapter_("isin-lon", function (quote, context) {
+    return hoodlefinanceResolveLonIsin_(quote, context);
   }),
-  "isin-pse": hoodlefinanceCreateRouteAdapter_("isin-pse", function (jobs) {
-    return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, function (quote, context) {
-      return hoodlefinanceResolvePseIsin_(quote, context);
-    });
+  "isin-pse": hoodlefinanceCreateIsinResolverRouteAdapter_("isin-pse", function (quote, context) {
+    return hoodlefinanceResolvePseIsin_(quote, context);
   }),
-  "isin-tradingview": hoodlefinanceCreateRouteAdapter_("isin-tradingview", function (jobs) {
-    return hoodlefinanceExecuteIsinResolverRouteBatch_(jobs, function (quote, context) {
-      return hoodlefinanceResolveTradingviewIsin_(quote, context);
-    });
+  "isin-tradingview": hoodlefinanceCreateIsinResolverRouteAdapter_("isin-tradingview", function (quote, context) {
+    return hoodlefinanceResolveTradingviewIsin_(quote, context);
   }),
   "local-fx": hoodlefinanceCreateRouteAdapter_("local-fx", hoodlefinanceExecuteLocalFxRouteBatch_),
   "pse-isin-map": hoodlefinanceCreateRouteAdapter_("pse-isin-map", hoodlefinanceExecutePseIsinMapRouteBatch_),
