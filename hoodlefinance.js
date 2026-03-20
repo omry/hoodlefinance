@@ -4775,23 +4775,99 @@ function hoodlefinanceExtractYahooSymbolFromSearchResponse_(response, isin) {
 
 function hoodlefinanceExtractYahooSymbolFromSearchPayload_(payload, isin) {
   const quotes = payload && payload.quotes;
-  let symbol = "";
-  let i;
-
-  if (quotes && quotes.length) {
-    for (i = 0; i < quotes.length; i += 1) {
-      if (quotes[i] && quotes[i].symbol && quotes[i].isYahooFinance !== false) {
-        symbol = quotes[i].symbol;
-        break;
-      }
-    }
-  }
+  const quote = hoodlefinanceSelectYahooIsinSearchQuote_(quotes);
+  const symbol = quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
 
   if (!symbol) {
     throw new Error('No Yahoo Finance symbol was found for ISIN "' + isin + '".');
   }
 
   return symbol;
+}
+
+function hoodlefinanceSelectYahooIsinSearchQuote_(quotes) {
+  const candidates = Array.isArray(quotes) ? quotes : [];
+  let bestQuote = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let i;
+  let candidateScore;
+
+  for (i = 0; i < candidates.length; i += 1) {
+    candidateScore = hoodlefinanceScoreYahooIsinSearchQuote_(candidates[i]);
+
+    if (candidateScore > bestScore) {
+      bestQuote = candidates[i];
+      bestScore = candidateScore;
+    }
+  }
+
+  return bestQuote;
+}
+
+function hoodlefinanceScoreYahooIsinSearchQuote_(quote) {
+  const symbol = quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+  const yahooExchange = hoodlefinanceInferYahooExchangeFromSearchQuote_(quote);
+  const quoteType = quote && quote.quoteType ? String(quote.quoteType).trim().toUpperCase() : "";
+  const numericScore = Number(quote && quote.score);
+  let score = 0;
+
+  if (!symbol || (quote && quote.isYahooFinance === false)) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  if (yahooExchange && hoodlefinanceCanRenderGoogleExchangeFromYahooIdentity_(yahooExchange)) {
+    score += 1000000;
+  } else if (yahooExchange) {
+    score += 100000;
+  }
+
+  if (quoteType === "ETF" || quoteType === "EQUITY") {
+    score += 1000;
+  } else if (quoteType === "MUTUALFUND") {
+    score -= 1000;
+  }
+
+  if (!isNaN(numericScore)) {
+    score += numericScore;
+  }
+
+  return score;
+}
+
+function hoodlefinanceInferYahooExchangeFromSearchQuote_(quote) {
+  const symbol = quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+  const rawExchange = String((quote && quote.exchange) || "").trim().toUpperCase();
+  const suffixExchange = hoodlefinanceExtractYahooExchangeFromSymbol_(symbol);
+  const mappedMetaExchange = rawExchange ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[rawExchange] || "" : "";
+
+  if (suffixExchange) {
+    return suffixExchange;
+  }
+
+  if (mappedMetaExchange) {
+    return mappedMetaExchange;
+  }
+
+  if (rawExchange && (
+    HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[rawExchange] ||
+    HOODLEFINANCE_PREFIXLESS_EXCHANGES_[rawExchange] ||
+    HOODLEFINANCE_EXCHANGE_SUFFIXES_[rawExchange]
+  )) {
+    return rawExchange;
+  }
+
+  return "";
+}
+
+function hoodlefinanceCanRenderGoogleExchangeFromYahooIdentity_(yahooExchange) {
+  const identity = String(yahooExchange || "").trim().toUpperCase();
+
+  return Boolean(
+    HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[identity] ||
+    identity === "TASE" ||
+    HOODLEFINANCE_PREFIXLESS_EXCHANGES_[identity] ||
+    HOODLEFINANCE_EXCHANGE_SUFFIXES_[identity]
+  );
 }
 
 function hoodlefinanceResolvePseListingFromHtml_(html, symbol) {

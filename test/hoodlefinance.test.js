@@ -833,15 +833,17 @@ function createGoogleFinancePairHtml(pairSlug, title, marketData, previousClose,
   ].join("");
 }
 
-function createYahooIsinSearchResponse(symbol) {
-  return createHttpResponse(200, {
-    quotes: [
+function createYahooIsinSearchResponse(symbolOrQuotes) {
+  const quotes = Array.isArray(symbolOrQuotes)
+    ? symbolOrQuotes
+    : [
       {
         isYahooFinance: true,
-        symbol,
+        symbol: symbolOrQuotes,
       },
-    ],
-  });
+    ];
+
+  return createHttpResponse(200, { quotes });
 }
 
 function primeCurrencyCodeData(ctx, fetchedAtMs) {
@@ -1588,6 +1590,46 @@ test("symbol and exchange attributes format a resolved Yahoo ISIN lookup in yaho
   assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "symbol"), "LON:IJPA");
   assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "exchange:yahoo"), "LON");
   assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "exchange"), "LON");
+});
+
+test("direct ISIN lookup prefers a Google-mappable Yahoo search candidate when multiple listings match", () => {
+  const ctx = loadHoodlefinance();
+  const fixtureIsin = "IE000I8KRLL9";
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://query2.finance.yahoo.com/v1/finance/search?q=" + fixtureIsin + "&quotesCount=10&newsCount=0") {
+      return createYahooIsinSearchResponse([
+        {
+          exchange: "STU",
+          isYahooFinance: true,
+          quoteType: "MUTUALFUND",
+          score: 20003,
+          symbol: "IE000I8KRLL9.SG",
+        },
+        {
+          exchange: "AMS",
+          isYahooFinance: true,
+          quoteType: "ETF",
+          score: 20002,
+          symbol: "SEMI.AS",
+        },
+      ]);
+    }
+
+    if (url === "https://query1.finance.yahoo.com/v8/finance/chart/SEMI.AS?interval=1d&range=1d") {
+      return createYahooChartResponse("SEMI.AS", {
+        exchangeName: "AMS",
+        regularMarketPrice: 11.09,
+      });
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "symbol:yahoo"), "SEMI.AS");
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "symbol"), "AMS:SEMI");
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "exchange:yahoo"), "AMS");
+  assert.equal(ctx.HOODLEFINANCE(fixtureIsin, "exchange"), "AMS");
 });
 
 test("symbol and exchange attributes resolve SGX quotes in yahoo and google styles", () => {
