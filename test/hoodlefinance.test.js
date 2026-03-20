@@ -218,47 +218,239 @@ const ARIVA_DETAIL_ZPRV_HTML = `
 </html>
 `;
 
-const TRADINGVIEW_XETR_ZPRX_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"XETR:ZPRX","isin_displayed":"IE00BSPLC298","exchange":"XETR","short_name":"ZPRX"};
-</script>
-`;
+function createTradingviewSymbolHtml(symbolInfo, trailingHtml) {
+  return [
+    "<script>",
+    "window.initData = {};",
+    "window.initData.symbolInfo = " + JSON.stringify(symbolInfo) + ";",
+    "</script>",
+    trailingHtml || "",
+  ].join("\n");
+}
 
-const TRADINGVIEW_LSE_SJPA_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"LSE:SJPA","isin_displayed":"IE00B4L5YX21","exchange":"LSE","short_name":"SJPA"};
-</script>
-`;
+const TRADINGVIEW_XETR_ZPRX_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "XETR:ZPRX",
+  isin_displayed: "IE00BSPLC298",
+  exchange: "XETR",
+  short_name: "ZPRX",
+});
 
-const TRADINGVIEW_NASDAQ_GOOG_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"NASDAQ:GOOG","isin_displayed":"US02079K1079","exchange":"NASDAQ","short_name":"GOOG"};
-</script>
-`;
+const TRADINGVIEW_LSE_SJPA_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "LSE:SJPA",
+  isin_displayed: "IE00B4L5YX21",
+  exchange: "LSE",
+  short_name: "SJPA",
+});
 
-const TRADINGVIEW_AMEX_AVLV_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"AMEX:AVLV","isin_displayed":"US05351W1036","exchange":"AMEX","short_name":"AVLV"};
-</script>
-`;
+const TRADINGVIEW_NASDAQ_GOOG_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "NASDAQ:GOOG",
+  isin_displayed: "US02079K1079",
+  exchange: "NASDAQ",
+  short_name: "GOOG",
+});
 
-const TRADINGVIEW_OTC_RYCEY_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"OTC:RYCEY","isin_displayed":"US7757812067","exchange":"OTC","short_name":"RYCEY"};
-</script>
-`;
+const TRADINGVIEW_AMEX_AVLV_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "AMEX:AVLV",
+  isin_displayed: "US05351W1036",
+  exchange: "AMEX",
+  short_name: "AVLV",
+});
 
-const TRADINGVIEW_TASE_POLI_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"TASE:POLI","isin_displayed":"IL0006625771","exchange":"TASE","short_name":"POLI"};
-</script>
-`;
+const TRADINGVIEW_EURONEXT_SEMI_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "EURONEXT:SEMI",
+  isin_displayed: "IE000I8KRLL9",
+  exchange: "EURONEXT",
+  short_name: "SEMI",
+});
+
+const TRADINGVIEW_EURONEXT_ABI_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "EURONEXT:ABI",
+  isin_displayed: "BE0974293251",
+  exchange: "EURONEXT",
+  short_name: "ABI",
+});
+
+const TRADINGVIEW_EURONEXT_MC_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "EURONEXT:MC",
+  isin_displayed: "FR0000121014",
+  exchange: "EURONEXT",
+  short_name: "MC",
+});
+
+const TRADINGVIEW_EURONEXT_OR_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "EURONEXT:OR",
+  isin_displayed: "FR0000120321",
+  exchange: "EURONEXT",
+  short_name: "OR",
+});
+
+const TRADINGVIEW_ASX_BHP_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "ASX:BHP",
+  isin_displayed: "AU000000BHP4",
+  exchange: "ASX",
+  short_name: "BHP",
+});
+
+const TRADINGVIEW_MIL_ENEL_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "MIL:ENEL",
+  isin_displayed: "IT0003128367",
+  exchange: "MIL",
+  short_name: "ENEL",
+});
+
+const TRADINGVIEW_OMXCOP_GN_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "OMXCOP:GN",
+  isin_displayed: "DK0010272632",
+  exchange: "OMXCOP",
+  short_name: "GN",
+});
+
+const TRADINGVIEW_FWB_BMW_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "FWB:BMW",
+  isin_displayed: "DE0005190003",
+  exchange: "FWB",
+  short_name: "BMW",
+});
+
+const TRADINGVIEW_BME_SAN_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "BME:SAN",
+  isin_displayed: "ES0113900J37",
+  exchange: "BME",
+  short_name: "SAN",
+});
+
+const TRADINGVIEW_OMXHEX_NOKIA_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "OMXHEX:NOKIA",
+  isin_displayed: "FI0009000681",
+  exchange: "OMXHEX",
+  short_name: "NOKIA",
+});
+
+const TRADINGVIEW_JSE_SOL_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "JSE:SOL",
+  isin_displayed: "ZAE000006896",
+  exchange: "JSE",
+  short_name: "SOL",
+});
+
+const TRADINGVIEW_OSL_EQNR_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "OSL:EQNR",
+  isin_displayed: "NO0010096985",
+  exchange: "OSL",
+  short_name: "EQNR",
+});
+
+const TRADINGVIEW_NSE_RELIANCE_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "NSE:RELIANCE",
+  isin_displayed: "INE002A01018",
+  exchange: "NSE",
+  short_name: "RELIANCE",
+});
+
+const TRADINGVIEW_NZX_SPK_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "NZX:SPK",
+  isin_displayed: "NZTELE0001S4",
+  exchange: "NZX",
+  short_name: "SPK",
+});
+
+const TRADINGVIEW_BSE_RELIANCE_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "BSE:RELIANCE",
+  isin_displayed: "INE002A01018",
+  exchange: "BSE",
+  short_name: "RELIANCE",
+});
+
+const TRADINGVIEW_BMV_WALMEX_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "BMV:WALMEX",
+  isin_displayed: "MX01WA000038",
+  exchange: "BMV",
+  short_name: "WALMEX",
+});
+
+const TRADINGVIEW_BMFBOVESPA_PETR4_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "BMFBOVESPA:PETR4",
+  isin_displayed: "BRPETRACNPR6",
+  exchange: "BMFBOVESPA",
+  short_name: "PETR4",
+});
+
+const TRADINGVIEW_TSX_BCE_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "TSX:BCE",
+  isin_displayed: "CA05534B7604",
+  exchange: "TSX",
+  short_name: "BCE",
+});
+
+const TRADINGVIEW_SIX_NESN_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "SIX:NESN",
+  isin_displayed: "CH0038863350",
+  exchange: "SIX",
+  short_name: "NESN",
+});
+
+const TRADINGVIEW_OMXSTO_AZA_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "OMXSTO:AZA",
+  isin_displayed: "SE0012454072",
+  exchange: "OMXSTO",
+  short_name: "AZA",
+});
+
+const TRADINGVIEW_TWSE_2330_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "TWSE:2330",
+  isin_displayed: "TW0002330008",
+  exchange: "TWSE",
+  short_name: "2330",
+});
+
+const TRADINGVIEW_BIST_THYAO_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "BIST:THYAO",
+  isin_displayed: "TRATHYAO91M5",
+  exchange: "BIST",
+  short_name: "THYAO",
+});
+
+const TRADINGVIEW_KRX_005930_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "KRX:005930",
+  isin_displayed: "KR7005930003",
+  exchange: "KRX",
+  short_name: "005930",
+});
+
+const TRADINGVIEW_SSE_600519_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "SSE:600519",
+  isin_displayed: "CNE0000018R8",
+  exchange: "SSE",
+  short_name: "600519",
+});
+
+const TRADINGVIEW_SZSE_000001_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "SZSE:000001",
+  isin_displayed: "CNE000000040",
+  exchange: "SZSE",
+  short_name: "000001",
+});
+
+const TRADINGVIEW_TSE_7203_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "TSE:7203",
+  isin_displayed: "JP3633400001",
+  exchange: "TSE",
+  short_name: "7203",
+});
+
+const TRADINGVIEW_OTC_RYCEY_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "OTC:RYCEY",
+  isin_displayed: "US7757812067",
+  exchange: "OTC",
+  short_name: "RYCEY",
+});
+
+const TRADINGVIEW_TASE_POLI_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "TASE:POLI",
+  isin_displayed: "IL0006625771",
+  exchange: "TASE",
+  short_name: "POLI",
+});
 
 const TRADINGVIEW_TASE_KSM_F59_HTML = `
 <script>
@@ -270,19 +462,147 @@ window.initData.symbolInfo = {"resolved_symbol":"TASE:KSM.F59","isin_displayed":
 </script>
 `;
 
-const TRADINGVIEW_SGX_D05_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"SGX:D05","isin_displayed":"SG1L01001701","exchange":"SGX","short_name":"D05"};
-</script>
-`;
+const TRADINGVIEW_SGX_D05_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "SGX:D05",
+  isin_displayed: "SG1L01001701",
+  exchange: "SGX",
+  short_name: "D05",
+});
 
-const TRADINGVIEW_NEO_ZTL_HTML = `
-<script>
-window.initData = {};
-window.initData.symbolInfo = {"resolved_symbol":"NEO:ZTL","isin_displayed":"CA05582Y1007","exchange":"NEO","short_name":"ZTL"};
-</script>
-`;
+const TRADINGVIEW_GPW_PKN_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "GPW:PKN",
+  isin_displayed: "PLPKN0000018",
+  exchange: "GPW",
+  short_name: "PKN",
+});
+
+const TRADINGVIEW_NEO_ZTL_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "NEO:ZTL",
+  isin_displayed: "CA05582Y1007",
+  exchange: "NEO",
+  short_name: "ZTL",
+});
+
+const TRADINGVIEW_SYMBOL_HTML_CASES = [
+  { exchange: "XETR", html: TRADINGVIEW_XETR_ZPRX_HTML, isin: "IE00BSPLC298", resolvedSymbol: "XETR:ZPRX" },
+  { exchange: "LSE", html: TRADINGVIEW_LSE_SJPA_HTML, isin: "IE00B4L5YX21", resolvedSymbol: "LSE:SJPA" },
+  { exchange: "NASDAQ", html: TRADINGVIEW_NASDAQ_GOOG_HTML, isin: "US02079K1079", resolvedSymbol: "NASDAQ:GOOG" },
+  { exchange: "AMEX", html: TRADINGVIEW_AMEX_AVLV_HTML, isin: "US05351W1036", resolvedSymbol: "AMEX:AVLV" },
+  { exchange: "EURONEXT", html: TRADINGVIEW_EURONEXT_SEMI_HTML, isin: "IE000I8KRLL9", resolvedSymbol: "EURONEXT:SEMI" },
+  { exchange: "EURONEXT", html: TRADINGVIEW_EURONEXT_ABI_HTML, isin: "BE0974293251", resolvedSymbol: "EURONEXT:ABI" },
+  { exchange: "EURONEXT", html: TRADINGVIEW_EURONEXT_MC_HTML, isin: "FR0000121014", resolvedSymbol: "EURONEXT:MC" },
+  { exchange: "EURONEXT", html: TRADINGVIEW_EURONEXT_OR_HTML, isin: "FR0000120321", resolvedSymbol: "EURONEXT:OR" },
+  { exchange: "ASX", html: TRADINGVIEW_ASX_BHP_HTML, isin: "AU000000BHP4", resolvedSymbol: "ASX:BHP" },
+  { exchange: "MIL", html: TRADINGVIEW_MIL_ENEL_HTML, isin: "IT0003128367", resolvedSymbol: "MIL:ENEL" },
+  { exchange: "OMXCOP", html: TRADINGVIEW_OMXCOP_GN_HTML, isin: "DK0010272632", resolvedSymbol: "OMXCOP:GN" },
+  { exchange: "FWB", html: TRADINGVIEW_FWB_BMW_HTML, isin: "DE0005190003", resolvedSymbol: "FWB:BMW" },
+  { exchange: "BME", html: TRADINGVIEW_BME_SAN_HTML, isin: "ES0113900J37", resolvedSymbol: "BME:SAN" },
+  { exchange: "OMXHEX", html: TRADINGVIEW_OMXHEX_NOKIA_HTML, isin: "FI0009000681", resolvedSymbol: "OMXHEX:NOKIA" },
+  { exchange: "JSE", html: TRADINGVIEW_JSE_SOL_HTML, isin: "ZAE000006896", resolvedSymbol: "JSE:SOL" },
+  { exchange: "OSL", html: TRADINGVIEW_OSL_EQNR_HTML, isin: "NO0010096985", resolvedSymbol: "OSL:EQNR" },
+  { exchange: "NSE", html: TRADINGVIEW_NSE_RELIANCE_HTML, isin: "INE002A01018", resolvedSymbol: "NSE:RELIANCE" },
+  { exchange: "NZX", html: TRADINGVIEW_NZX_SPK_HTML, isin: "NZTELE0001S4", resolvedSymbol: "NZX:SPK" },
+  { exchange: "BSE", html: TRADINGVIEW_BSE_RELIANCE_HTML, isin: "INE002A01018", resolvedSymbol: "BSE:RELIANCE" },
+  { exchange: "BMV", html: TRADINGVIEW_BMV_WALMEX_HTML, isin: "MX01WA000038", resolvedSymbol: "BMV:WALMEX" },
+  { exchange: "BMFBOVESPA", html: TRADINGVIEW_BMFBOVESPA_PETR4_HTML, isin: "BRPETRACNPR6", resolvedSymbol: "BMFBOVESPA:PETR4" },
+  { exchange: "TSX", html: TRADINGVIEW_TSX_BCE_HTML, isin: "CA05534B7604", resolvedSymbol: "TSX:BCE" },
+  { exchange: "SIX", html: TRADINGVIEW_SIX_NESN_HTML, isin: "CH0038863350", resolvedSymbol: "SIX:NESN" },
+  { exchange: "OMXSTO", html: TRADINGVIEW_OMXSTO_AZA_HTML, isin: "SE0012454072", resolvedSymbol: "OMXSTO:AZA" },
+  { exchange: "TWSE", html: TRADINGVIEW_TWSE_2330_HTML, isin: "TW0002330008", resolvedSymbol: "TWSE:2330" },
+  { exchange: "BIST", html: TRADINGVIEW_BIST_THYAO_HTML, isin: "TRATHYAO91M5", resolvedSymbol: "BIST:THYAO" },
+  { exchange: "KRX", html: TRADINGVIEW_KRX_005930_HTML, isin: "KR7005930003", resolvedSymbol: "KRX:005930" },
+  { exchange: "SSE", html: TRADINGVIEW_SSE_600519_HTML, isin: "CNE0000018R8", resolvedSymbol: "SSE:600519" },
+  { exchange: "SZSE", html: TRADINGVIEW_SZSE_000001_HTML, isin: "CNE000000040", resolvedSymbol: "SZSE:000001" },
+  { exchange: "TSE", html: TRADINGVIEW_TSE_7203_HTML, isin: "JP3633400001", resolvedSymbol: "TSE:7203" },
+  { exchange: "OTC", html: TRADINGVIEW_OTC_RYCEY_HTML, isin: "US7757812067", resolvedSymbol: "OTC:RYCEY" },
+  { exchange: "TASE", html: TRADINGVIEW_TASE_POLI_HTML, isin: "IL0006625771", resolvedSymbol: "TASE:POLI" },
+  { exchange: "SGX", html: TRADINGVIEW_SGX_D05_HTML, isin: "SG1L01001701", resolvedSymbol: "SGX:D05" },
+  { exchange: "GPW", html: TRADINGVIEW_GPW_PKN_HTML, isin: "PLPKN0000018", resolvedSymbol: "GPW:PKN" },
+  { exchange: "NEO", html: TRADINGVIEW_NEO_ZTL_HTML, isin: "CA05582Y1007", resolvedSymbol: "NEO:ZTL" },
+];
+
+const TRADINGVIEW_DEFAULT_ISIN_DISPATCH_CASES = [
+  { exchange: "ETR", quote: { symbol: "ZPRX.DE" }, tickerInput: "ZPRX.DE", isin: "IE00BSPLC298" },
+  { exchange: "AMS", quote: { symbol: "SEMI.AS" }, tickerInput: "AMS:SEMI", isin: "IE000I8KRLL9" },
+  { exchange: "ASX", quote: { symbol: "BHP.AX" }, tickerInput: "ASX:BHP", isin: "AU000000BHP4" },
+  { exchange: "BIT", quote: { symbol: "ENEL.MI" }, tickerInput: "BIT:ENEL", isin: "IT0003128367" },
+  { exchange: "BMV", quote: { symbol: "WALMEX.MX" }, tickerInput: "BMV:WALMEX", isin: "MX01WA000038" },
+  { exchange: "BOM", quote: { symbol: "RELIANCE.BO" }, tickerInput: "BOM:RELIANCE", isin: "INE002A01018" },
+  { exchange: "BSE", quote: { symbol: "RELIANCE.BO" }, tickerInput: "BSE:RELIANCE", isin: "INE002A01018" },
+  { exchange: "BVMF", quote: { symbol: "PETR4.SA" }, tickerInput: "BVMF:PETR4", isin: "BRPETRACNPR6" },
+  { exchange: "BRU", quote: { symbol: "ABI.BR" }, tickerInput: "BRU:ABI", isin: "BE0974293251" },
+  { exchange: "CPH", quote: { symbol: "GN.CO" }, tickerInput: "CPH:GN", isin: "DK0010272632" },
+  { exchange: "EPA", quote: { symbol: "OR.PA" }, tickerInput: "EPA:OR", isin: "FR0000120321" },
+  { exchange: "FRA", quote: { symbol: "BMW.F" }, tickerInput: "FRA:BMW", isin: "DE0005190003" },
+  { exchange: "HEL", quote: { symbol: "NOKIA.HE" }, tickerInput: "HEL:NOKIA", isin: "FI0009000681" },
+  { exchange: "IST", quote: { symbol: "THYAO.IS" }, tickerInput: "IST:THYAO", isin: "TRATHYAO91M5" },
+  { exchange: "JSE", quote: { symbol: "SOL.JO" }, tickerInput: "JSE:SOL", isin: "ZAE000006896" },
+  { exchange: "KRX", quote: { symbol: "005930.KS" }, tickerInput: "KRX:005930", isin: "KR7005930003" },
+  { exchange: "MAD", quote: { symbol: "SAN.MC" }, tickerInput: "MAD:SAN", isin: "ES0113900J37" },
+  { exchange: "NASDAQ", quote: { symbol: "GOOG", exchangeName: "NMS" }, tickerInput: "GOOG", isin: "US02079K1079" },
+  { exchange: "NSE", quote: { symbol: "RELIANCE.NS" }, tickerInput: "NSE:RELIANCE", isin: "INE002A01018" },
+  { exchange: "NZE", quote: { symbol: "SPK.NZ" }, tickerInput: "NZE:SPK", isin: "NZTELE0001S4" },
+  { exchange: "OSL", quote: { symbol: "EQNR.OL" }, tickerInput: "OSL:EQNR", isin: "NO0010096985" },
+  { exchange: "PAR", quote: { symbol: "MC.PA" }, tickerInput: "PAR:MC", isin: "FR0000121014" },
+  { exchange: "SHA", quote: { symbol: "600519.SS" }, tickerInput: "SHA:600519", isin: "CNE0000018R8" },
+  { exchange: "SHE", quote: { symbol: "000001.SZ" }, tickerInput: "SHE:000001", isin: "CNE000000040" },
+  { exchange: "SIX", quote: { symbol: "NESN.SW" }, tickerInput: "SIX:NESN", isin: "CH0038863350" },
+  { exchange: "STO", quote: { symbol: "AZA.ST" }, tickerInput: "STO:AZA", isin: "SE0012454072" },
+  { exchange: "SWX", quote: { symbol: "NESN.SW" }, tickerInput: "SWX:NESN", isin: "CH0038863350" },
+  { exchange: "TASE", quote: { symbol: "POLI.TA" }, tickerInput: "TASE:POLI", isin: "IL0006625771" },
+  { exchange: "TPE", quote: { symbol: "2330.TW" }, tickerInput: "TPE:2330", isin: "TW0002330008" },
+  { exchange: "TSE", quote: { symbol: "BCE.TO" }, tickerInput: "TSE:BCE", isin: "CA05534B7604" },
+  { exchange: "TSX", quote: { symbol: "BCE.TO" }, tickerInput: "TSX:BCE", isin: "CA05534B7604" },
+  { exchange: "NEO", quote: { symbol: "ZTL.NE" }, tickerInput: "ZTL.NE", isin: "CA05582Y1007" },
+  { exchange: "NYSEARCA", quote: { symbol: "AVLV", exchangeName: "PCX" }, tickerInput: "AVLV", isin: "US05351W1036" },
+  { exchange: "OTCMKTS", quote: { symbol: "RYCEY", exchangeName: "PNK" }, tickerInput: "OTCMKTS:RYCEY", isin: "US7757812067" },
+  { exchange: "TYO", quote: { symbol: "7203.T" }, tickerInput: "TYO:7203", isin: "JP3633400001" },
+  { exchange: "TLV", quote: { symbol: "POLI.TA" }, tickerInput: "POLI.TA", isin: "IL0006625771" },
+  { exchange: "SGX", quote: { symbol: "D05.SI" }, tickerInput: "SGX:D05", isin: "SG1L01001701" },
+  { exchange: "WSE", quote: { symbol: "PKN.WA" }, tickerInput: "WSE:PKN", isin: "PLPKN0000018" },
+];
+
+const TRADINGVIEW_EXPLICIT_ISIN_CASES = [
+  { exchange: "XETR", quote: { symbol: "ZPRX.DE" }, tickerInput: "ZPRX.DE@TRADINGVIEW", isin: "IE00BSPLC298", url: "https://www.tradingview.com/symbols/XETR-ZPRX/", html: TRADINGVIEW_XETR_ZPRX_HTML },
+  { exchange: "AMS", quote: { symbol: "SEMI.AS" }, tickerInput: "AMS:SEMI@TRADINGVIEW", isin: "IE000I8KRLL9", url: "https://www.tradingview.com/symbols/EURONEXT-SEMI/", html: TRADINGVIEW_EURONEXT_SEMI_HTML },
+  { exchange: "ASX", quote: { symbol: "BHP.AX" }, tickerInput: "ASX:BHP@TRADINGVIEW", isin: "AU000000BHP4", url: "https://www.tradingview.com/symbols/ASX-BHP/", html: TRADINGVIEW_ASX_BHP_HTML },
+  { exchange: "BIT", quote: { symbol: "ENEL.MI" }, tickerInput: "BIT:ENEL@TRADINGVIEW", isin: "IT0003128367", url: "https://www.tradingview.com/symbols/MIL-ENEL/", html: TRADINGVIEW_MIL_ENEL_HTML },
+  { exchange: "BMV", quote: { symbol: "WALMEX.MX" }, tickerInput: "BMV:WALMEX@TRADINGVIEW", isin: "MX01WA000038", url: "https://www.tradingview.com/symbols/BMV-WALMEX/", html: TRADINGVIEW_BMV_WALMEX_HTML },
+  { exchange: "BOM", quote: { symbol: "RELIANCE.BO" }, tickerInput: "BOM:RELIANCE@TRADINGVIEW", isin: "INE002A01018", url: "https://www.tradingview.com/symbols/BSE-RELIANCE/", html: TRADINGVIEW_BSE_RELIANCE_HTML },
+  { exchange: "BSE", quote: { symbol: "RELIANCE.BO" }, tickerInput: "BSE:RELIANCE@TRADINGVIEW", isin: "INE002A01018", url: "https://www.tradingview.com/symbols/BSE-RELIANCE/", html: TRADINGVIEW_BSE_RELIANCE_HTML },
+  { exchange: "BVMF", quote: { symbol: "PETR4.SA" }, tickerInput: "BVMF:PETR4@TRADINGVIEW", isin: "BRPETRACNPR6", url: "https://www.tradingview.com/symbols/BMFBOVESPA-PETR4/", html: TRADINGVIEW_BMFBOVESPA_PETR4_HTML },
+  { exchange: "BRU", quote: { symbol: "ABI.BR" }, tickerInput: "BRU:ABI@TRADINGVIEW", isin: "BE0974293251", url: "https://www.tradingview.com/symbols/EURONEXT-ABI/", html: TRADINGVIEW_EURONEXT_ABI_HTML },
+  { exchange: "CPH", quote: { symbol: "GN.CO" }, tickerInput: "CPH:GN@TRADINGVIEW", isin: "DK0010272632", url: "https://www.tradingview.com/symbols/OMXCOP-GN/", html: TRADINGVIEW_OMXCOP_GN_HTML },
+  { exchange: "EPA", quote: { symbol: "OR.PA" }, tickerInput: "EPA:OR@TRADINGVIEW", isin: "FR0000120321", url: "https://www.tradingview.com/symbols/EURONEXT-OR/", html: TRADINGVIEW_EURONEXT_OR_HTML },
+  { exchange: "FRA", quote: { symbol: "BMW.F" }, tickerInput: "FRA:BMW@TRADINGVIEW", isin: "DE0005190003", url: "https://www.tradingview.com/symbols/FWB-BMW/", html: TRADINGVIEW_FWB_BMW_HTML },
+  { exchange: "HEL", quote: { symbol: "NOKIA.HE" }, tickerInput: "HEL:NOKIA@TRADINGVIEW", isin: "FI0009000681", url: "https://www.tradingview.com/symbols/OMXHEX-NOKIA/", html: TRADINGVIEW_OMXHEX_NOKIA_HTML },
+  { exchange: "IST", quote: { symbol: "THYAO.IS" }, tickerInput: "IST:THYAO@TRADINGVIEW", isin: "TRATHYAO91M5", url: "https://www.tradingview.com/symbols/BIST-THYAO/", html: TRADINGVIEW_BIST_THYAO_HTML },
+  { exchange: "JSE", quote: { symbol: "SOL.JO" }, tickerInput: "JSE:SOL@TRADINGVIEW", isin: "ZAE000006896", url: "https://www.tradingview.com/symbols/JSE-SOL/", html: TRADINGVIEW_JSE_SOL_HTML },
+  { exchange: "KRX", quote: { symbol: "005930.KS" }, tickerInput: "KRX:005930@TRADINGVIEW", isin: "KR7005930003", url: "https://www.tradingview.com/symbols/KRX-005930/", html: TRADINGVIEW_KRX_005930_HTML },
+  { exchange: "LON", quote: { symbol: "SJPA.L" }, tickerInput: "SJPA.L@TRADINGVIEW", isin: "IE00B4L5YX21", url: "https://www.tradingview.com/symbols/LSE-SJPA/", html: TRADINGVIEW_LSE_SJPA_HTML },
+  { exchange: "MAD", quote: { symbol: "SAN.MC" }, tickerInput: "MAD:SAN@TRADINGVIEW", isin: "ES0113900J37", url: "https://www.tradingview.com/symbols/BME-SAN/", html: TRADINGVIEW_BME_SAN_HTML },
+  { exchange: "NASDAQ", quote: { symbol: "GOOG", exchangeName: "NMS" }, tickerInput: "GOOG@TRADINGVIEW", isin: "US02079K1079", url: "https://www.tradingview.com/symbols/NASDAQ-GOOG/", html: TRADINGVIEW_NASDAQ_GOOG_HTML },
+  { exchange: "NSE", quote: { symbol: "RELIANCE.NS" }, tickerInput: "NSE:RELIANCE@TRADINGVIEW", isin: "INE002A01018", url: "https://www.tradingview.com/symbols/NSE-RELIANCE/", html: TRADINGVIEW_NSE_RELIANCE_HTML },
+  { exchange: "NZE", quote: { symbol: "SPK.NZ" }, tickerInput: "NZE:SPK@TRADINGVIEW", isin: "NZTELE0001S4", url: "https://www.tradingview.com/symbols/NZX-SPK/", html: TRADINGVIEW_NZX_SPK_HTML },
+  { exchange: "OSL", quote: { symbol: "EQNR.OL" }, tickerInput: "OSL:EQNR@TRADINGVIEW", isin: "NO0010096985", url: "https://www.tradingview.com/symbols/OSL-EQNR/", html: TRADINGVIEW_OSL_EQNR_HTML },
+  { exchange: "PAR", quote: { symbol: "MC.PA" }, tickerInput: "PAR:MC@TRADINGVIEW", isin: "FR0000121014", url: "https://www.tradingview.com/symbols/EURONEXT-MC/", html: TRADINGVIEW_EURONEXT_MC_HTML },
+  { exchange: "SHA", quote: { symbol: "600519.SS" }, tickerInput: "SHA:600519@TRADINGVIEW", isin: "CNE0000018R8", url: "https://www.tradingview.com/symbols/SSE-600519/", html: TRADINGVIEW_SSE_600519_HTML },
+  { exchange: "SHE", quote: { symbol: "000001.SZ" }, tickerInput: "SHE:000001@TRADINGVIEW", isin: "CNE000000040", url: "https://www.tradingview.com/symbols/SZSE-000001/", html: TRADINGVIEW_SZSE_000001_HTML },
+  { exchange: "SIX", quote: { symbol: "NESN.SW" }, tickerInput: "SIX:NESN@TRADINGVIEW", isin: "CH0038863350", url: "https://www.tradingview.com/symbols/SIX-NESN/", html: TRADINGVIEW_SIX_NESN_HTML },
+  { exchange: "STO", quote: { symbol: "AZA.ST" }, tickerInput: "STO:AZA@TRADINGVIEW", isin: "SE0012454072", url: "https://www.tradingview.com/symbols/OMXSTO-AZA/", html: TRADINGVIEW_OMXSTO_AZA_HTML },
+  { exchange: "SWX", quote: { symbol: "NESN.SW" }, tickerInput: "SWX:NESN@TRADINGVIEW", isin: "CH0038863350", url: "https://www.tradingview.com/symbols/SIX-NESN/", html: TRADINGVIEW_SIX_NESN_HTML },
+  { exchange: "TASE", quote: { symbol: "POLI.TA" }, tickerInput: "TASE:POLI@TRADINGVIEW", isin: "IL0006625771", url: "https://www.tradingview.com/symbols/TASE-POLI/", html: TRADINGVIEW_TASE_POLI_HTML },
+  { exchange: "TPE", quote: { symbol: "2330.TW" }, tickerInput: "TPE:2330@TRADINGVIEW", isin: "TW0002330008", url: "https://www.tradingview.com/symbols/TWSE-2330/", html: TRADINGVIEW_TWSE_2330_HTML },
+  { exchange: "TSE", quote: { symbol: "BCE.TO" }, tickerInput: "TSE:BCE@TRADINGVIEW", isin: "CA05534B7604", url: "https://www.tradingview.com/symbols/TSX-BCE/", html: TRADINGVIEW_TSX_BCE_HTML },
+  { exchange: "TSX", quote: { symbol: "BCE.TO" }, tickerInput: "TSX:BCE@TRADINGVIEW", isin: "CA05534B7604", url: "https://www.tradingview.com/symbols/TSX-BCE/", html: TRADINGVIEW_TSX_BCE_HTML },
+  { exchange: "NYSEARCA", quote: { symbol: "AVLV", exchangeName: "PCX" }, tickerInput: "AVLV@TRADINGVIEW", isin: "US05351W1036", url: "https://www.tradingview.com/symbols/AMEX-AVLV/", html: TRADINGVIEW_AMEX_AVLV_HTML },
+  { exchange: "OTCMKTS", quote: { symbol: "RYCEY", exchangeName: "PNK" }, tickerInput: "OTCMKTS:RYCEY@TRADINGVIEW", isin: "US7757812067", url: "https://www.tradingview.com/symbols/OTC-RYCEY/", html: TRADINGVIEW_OTC_RYCEY_HTML },
+  { exchange: "TYO", quote: { symbol: "7203.T" }, tickerInput: "TYO:7203@TRADINGVIEW", isin: "JP3633400001", url: "https://www.tradingview.com/symbols/TSE-7203/", html: TRADINGVIEW_TSE_7203_HTML },
+  { exchange: "SGX", quote: { symbol: "D05.SI" }, tickerInput: "SGX:D05@TRADINGVIEW", isin: "SG1L01001701", url: "https://www.tradingview.com/symbols/SGX-D05/", html: TRADINGVIEW_SGX_D05_HTML },
+  { exchange: "NEO", quote: { symbol: "ZTL.NE" }, tickerInput: "ZTL.NE@TRADINGVIEW", isin: "CA05582Y1007", url: "https://www.tradingview.com/symbols/NEO-ZTL/", html: TRADINGVIEW_NEO_ZTL_HTML },
+  { exchange: "TLV", quote: { symbol: "POLI.TA" }, tickerInput: "POLI.TA@TRADINGVIEW", isin: "IL0006625771", url: "https://www.tradingview.com/symbols/TASE-POLI/", html: TRADINGVIEW_TASE_POLI_HTML },
+  { exchange: "WSE", quote: { symbol: "PKN.WA" }, tickerInput: "WSE:PKN@TRADINGVIEW", isin: "PLPKN0000018", url: "https://www.tradingview.com/symbols/GPW-PKN/", html: TRADINGVIEW_GPW_PKN_HTML },
+];
 
 const IBKR_MODERN_SEARCH_HTML = `
 <tr class="odd">
@@ -2811,22 +3131,24 @@ test("isin@ARIVA reuses the cached string result without repeating the upstream 
   ]);
 });
 
-test("isin dispatches to TradingView for ETR tickers", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
+TRADINGVIEW_DEFAULT_ISIN_DISPATCH_CASES.forEach(function (testCase) {
+  test("isin dispatches to TradingView for " + testCase.exchange + " tickers", () => {
+    const ctx = loadHoodlefinance();
+    let capturedArgs = null;
 
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "IE00BSPLC298";
-  };
+    ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+      capturedArgs = { quote, context };
+      return testCase.isin;
+    };
 
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE" }),
-    "IE00BSPLC298"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "ZPRX.DE" },
-    context: { tickerInput: "ZPRX.DE" },
+    assert.equal(
+      ctx.hoodlefinanceExtractAttribute_(testCase.quote, "isin", { tickerInput: testCase.tickerInput }),
+      testCase.isin
+    );
+    assert.deepEqual(capturedArgs, {
+      quote: testCase.quote,
+      context: { tickerInput: testCase.tickerInput },
+    });
   });
 });
 
@@ -2849,128 +3171,14 @@ test("isin dispatches to LON for London tickers", () => {
   });
 });
 
-test("isin dispatches to TradingView for NASDAQ tickers", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
-
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "US02079K1079";
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG" }),
-    "US02079K1079"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "GOOG", exchangeName: "NMS" },
-    context: { tickerInput: "GOOG" },
-  });
-});
-
-test("isin dispatches to TradingView for NEO tickers", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
-
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "CA05582Y1007";
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZTL.NE" }, "isin", { tickerInput: "ZTL.NE" }),
-    "CA05582Y1007"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "ZTL.NE" },
-    context: { tickerInput: "ZTL.NE" },
-  });
-});
-
-test("isin dispatches to TradingView for NYSEARCA tickers inferred from metadata", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
-
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "US05351W1036";
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AVLV", exchangeName: "PCX" }, "isin", { tickerInput: "AVLV" }),
-    "US05351W1036"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "AVLV", exchangeName: "PCX" },
-    context: { tickerInput: "AVLV" },
-  });
-});
-
-test("isin dispatches to TradingView for OTCMKTS tickers", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
-
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "US7757812067";
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "isin", { tickerInput: "OTCMKTS:RYCEY" }),
-    "US7757812067"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "RYCEY", exchangeName: "PNK" },
-    context: { tickerInput: "OTCMKTS:RYCEY" },
-  });
-});
-
-test("isin dispatches to TradingView for TLV tickers", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
-
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "IL0006625771";
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "POLI.TA" }),
-    "IL0006625771"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "POLI.TA" },
-    context: { tickerInput: "POLI.TA" },
-  });
-});
-
-test("isin dispatches to TradingView for SGX tickers", () => {
-  const ctx = loadHoodlefinance();
-  let capturedArgs = null;
-
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
-    capturedArgs = { quote, context };
-    return "SG1L01001701";
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "isin", { tickerInput: "SGX:D05" }),
-    "SG1L01001701"
-  );
-  assert.deepEqual(capturedArgs, {
-    quote: { symbol: "D05.SI" },
-    context: { tickerInput: "SGX:D05" },
-  });
-});
-
 test("isin fails clearly when no exchange-specific source is implemented", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "VWRP.SW" }, "isin", { tickerInput: "VWRP.SW" });
+      ctx.hoodlefinanceExtractAttribute_({ symbol: "035720.KQ" }, "isin", { tickerInput: "KOSDAQ:035720" });
     },
-    /ISIN lookup is not supported yet for exchange "SIX"\. Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR"\./
+    /ISIN lookup is not supported yet for exchange "KOSDAQ"\. Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR"\./
   );
 });
 
@@ -2991,9 +3199,9 @@ test("isin helper errors avoid source-internal lookup jargon", () => {
   );
   assert.throws(
     function () {
-      ctx.hoodlefinanceResolveTradingviewIsin_({ symbol: "NESN" }, { tickerInput: "SIX:NESN@TRADINGVIEW" });
+      ctx.hoodlefinanceResolveTradingviewIsin_({ symbol: "035720.KQ" }, { tickerInput: "KOSDAQ:035720@TRADINGVIEW" });
     },
-    /TradingView cannot be used for ISIN lookup on exchange "SIX"\./
+    /TradingView cannot be used for ISIN lookup on exchange "KOSDAQ"\./
   );
   assert.throws(
     function () {
@@ -3006,160 +3214,29 @@ test("isin helper errors avoid source-internal lookup jargon", () => {
 test("extracts TradingView symbol metadata from the page bootstrap", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_XETR_ZPRX_HTML), "XETR:ZPRX");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_XETR_ZPRX_HTML), "IE00BSPLC298");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_OTC_RYCEY_HTML), "OTC:RYCEY");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_OTC_RYCEY_HTML), "US7757812067");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_SGX_D05_HTML), "SGX:D05");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_SGX_D05_HTML), "SG1L01001701");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_TASE_POLI_HTML), "TASE:POLI");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_TASE_POLI_HTML), "IL0006625771");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(TRADINGVIEW_NEO_ZTL_HTML), "NEO:ZTL");
-  assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(TRADINGVIEW_NEO_ZTL_HTML), "CA05582Y1007");
+  TRADINGVIEW_SYMBOL_HTML_CASES.forEach(function (testCase) {
+    assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(testCase.html), testCase.resolvedSymbol);
+    assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(testCase.html), testCase.isin);
+  });
 });
 
-test("isin@TRADINGVIEW resolves for XETR tickers", () => {
-  const ctx = loadHoodlefinance();
+TRADINGVIEW_EXPLICIT_ISIN_CASES.forEach(function (testCase) {
+  test("isin@TRADINGVIEW resolves for " + testCase.exchange + " tickers", () => {
+    const ctx = loadHoodlefinance();
 
-  ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://www.tradingview.com/symbols/XETR-ZPRX/") {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return TRADINGVIEW_XETR_ZPRX_HTML;
-        },
-      };
-    }
+    ctx.UrlFetchApp.fetch = function (url) {
+      if (url === testCase.url) {
+        return createHttpResponse(200, testCase.html);
+      }
 
-    throw new Error("Unexpected URL " + url);
-  };
+      throw new Error("Unexpected URL " + url);
+    };
 
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE@TRADINGVIEW" }),
-    "IE00BSPLC298"
-  );
-});
-
-test("isin@TRADINGVIEW resolves for LON tickers", () => {
-  const ctx = loadHoodlefinance();
-
-  ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://www.tradingview.com/symbols/LSE-SJPA/") {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return TRADINGVIEW_LSE_SJPA_HTML;
-        },
-      };
-    }
-
-    throw new Error("Unexpected URL " + url);
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@TRADINGVIEW" }),
-    "IE00B4L5YX21"
-  );
-});
-
-test("isin@TRADINGVIEW resolves for NASDAQ tickers", () => {
-  const ctx = loadHoodlefinance();
-
-  ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://www.tradingview.com/symbols/NASDAQ-GOOG/") {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return TRADINGVIEW_NASDAQ_GOOG_HTML;
-        },
-      };
-    }
-
-    throw new Error("Unexpected URL " + url);
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@TRADINGVIEW" }),
-    "US02079K1079"
-  );
-});
-
-test("isin@TRADINGVIEW resolves for NYSEARCA tickers", () => {
-  const ctx = loadHoodlefinance();
-
-  ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://www.tradingview.com/symbols/AMEX-AVLV/") {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return TRADINGVIEW_AMEX_AVLV_HTML;
-        },
-      };
-    }
-
-    throw new Error("Unexpected URL " + url);
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AVLV", exchangeName: "PCX" }, "isin", { tickerInput: "AVLV@TRADINGVIEW" }),
-    "US05351W1036"
-  );
-});
-
-test("isin@TRADINGVIEW resolves for OTCMKTS tickers", () => {
-  const ctx = loadHoodlefinance();
-
-  ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://www.tradingview.com/symbols/OTC-RYCEY/") {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return TRADINGVIEW_OTC_RYCEY_HTML;
-        },
-      };
-    }
-
-    throw new Error("Unexpected URL " + url);
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "RYCEY", exchangeName: "PNK" }, "isin", { tickerInput: "OTCMKTS:RYCEY@TRADINGVIEW" }),
-    "US7757812067"
-  );
-});
-
-test("isin@TRADINGVIEW resolves for SGX tickers", () => {
-  const ctx = loadHoodlefinance();
-
-  ctx.UrlFetchApp.fetch = function (url) {
-    if (url === "https://www.tradingview.com/symbols/SGX-D05/") {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return TRADINGVIEW_SGX_D05_HTML;
-        },
-      };
-    }
-
-    throw new Error("Unexpected URL " + url);
-  };
-
-  assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "D05.SI" }, "isin", { tickerInput: "SGX:D05@TRADINGVIEW" }),
-    "SG1L01001701"
-  );
+    assert.equal(
+      ctx.hoodlefinanceExtractAttribute_(testCase.quote, "isin", { tickerInput: testCase.tickerInput }),
+      testCase.isin
+    );
+  });
 });
 
 test("isin@TRADINGVIEW resolves for NEO tickers", () => {
