@@ -534,6 +534,60 @@ function onOpen() {
   hoodlefinanceMaybeCheckForUpdates_();
 }
 
+function onInstall(e) {
+  onOpen(e);
+}
+
+function hoodlefinanceBuildSheetsAddOnHomepage() {
+  const cardService = hoodlefinanceGetCardService_();
+  let card;
+
+  if (!cardService) {
+    return null;
+  }
+
+  card = cardService
+    .newCardBuilder()
+    .setHeader(
+      cardService
+        .newCardHeader()
+        .setTitle("Hoodlefinance")
+        .setSubtitle("International quote and identifier functions for Google Sheets")
+    )
+    .addSection(
+      cardService
+        .newCardSection()
+        .addWidget(
+          cardService
+            .newTextParagraph()
+            .setText("Installed version: <b>" + HOODLEFINANCE_VERSION_ + "</b>")
+        )
+        .addWidget(
+          cardService
+            .newTextParagraph()
+            .setText("Try formulas such as <b>=HOODLEFINANCE(\"NASDAQ:GOOG\")</b>, <b>=HOODLEFINANCE(\"SJPA.L\",\"price@USD\")</b>, and <b>=HOODLEFINANCE(\"IE000I8KRLL9\",\"symbol\")</b>.")
+        )
+        .addWidget(
+          cardService
+            .newTextParagraph()
+            .setText("The add-on homepage is a lightweight guide. The custom functions and the Hoodlefinance menu remain the main entry points inside Sheets.")
+        )
+    )
+    .addSection(
+      cardService
+        .newCardSection()
+        .addWidget(
+          hoodlefinanceBuildAddOnButtonSet_([
+            hoodlefinanceCreateAddOnLinkButtonSpec_("Open README", HOODLEFINANCE_GITHUB_README_URL_),
+            hoodlefinanceCreateAddOnLinkButtonSpec_("Release notes", HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_),
+          ])
+        )
+    )
+    .build();
+
+  return card;
+}
+
 function hoodlefinanceCheckForUpdates() {
   return hoodlefinanceRunVersionCheck_({
     force: true,
@@ -694,6 +748,45 @@ function hoodlefinanceGetUi_() {
   }
 
   return SpreadsheetApp.getUi();
+}
+
+function hoodlefinanceGetCardService_() {
+  return typeof CardService === "undefined" || !CardService ? null : CardService;
+}
+
+function hoodlefinanceCreateAddOnLinkButtonSpec_(text, url) {
+  return {
+    text: String(text || ""),
+    url: String(url || ""),
+  };
+}
+
+function hoodlefinanceBuildAddOnButtonSet_(buttonSpecs) {
+  const cardService = hoodlefinanceGetCardService_();
+  const specs = Array.isArray(buttonSpecs) ? buttonSpecs : [];
+  let buttonSet;
+  let i;
+
+  if (!cardService) {
+    return null;
+  }
+
+  buttonSet = cardService.newButtonSet();
+
+  for (i = 0; i < specs.length; i += 1) {
+    if (!specs[i] || !specs[i].text || !specs[i].url) {
+      continue;
+    }
+
+    buttonSet.addButton(
+      cardService
+        .newTextButton()
+        .setText(specs[i].text)
+        .setOpenLink(cardService.newOpenLink().setUrl(specs[i].url))
+    );
+  }
+
+  return buttonSet;
 }
 
 function hoodlefinanceGetUserProperties_() {

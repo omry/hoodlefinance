@@ -1,0 +1,1 @@
+- Added an experimental Google Sheets Editor add-on prototype, including a homepage card function and a sample add-on manifest for Marketplace-oriented packaging work.

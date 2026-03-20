@@ -1,3 +1,3 @@
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
-- If installation and update friction become a priority, prototype a Google Sheets Editor add-on as the long-term alternative to the current manual bound-script install path.
+- If installation and update friction become a priority, evaluate Marketplace packaging, review requirements, and runtime limits for the Sheets Editor add-on prototype in `docs/google-sheets-editor-addon/`.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol

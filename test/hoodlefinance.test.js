@@ -686,6 +686,92 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
       return requests.map((request) => this.fetch(typeof request === "string" ? request : request.url, request));
     },
   };
+  const cardService = {
+    newButtonSet() {
+      return {
+        buttons: [],
+        addButton(button) {
+          this.buttons.push(button);
+          return this;
+        },
+      };
+    },
+    newCardBuilder() {
+      return {
+        header: null,
+        sections: [],
+        setHeader(header) {
+          this.header = header;
+          return this;
+        },
+        addSection(section) {
+          this.sections.push(section);
+          return this;
+        },
+        build() {
+          return {
+            header: this.header,
+            sections: this.sections.slice(),
+          };
+        },
+      };
+    },
+    newCardHeader() {
+      return {
+        subtitle: "",
+        title: "",
+        setSubtitle(value) {
+          this.subtitle = value;
+          return this;
+        },
+        setTitle(value) {
+          this.title = value;
+          return this;
+        },
+      };
+    },
+    newCardSection() {
+      return {
+        widgets: [],
+        addWidget(widget) {
+          this.widgets.push(widget);
+          return this;
+        },
+      };
+    },
+    newOpenLink() {
+      return {
+        url: "",
+        setUrl(value) {
+          this.url = value;
+          return this;
+        },
+      };
+    },
+    newTextButton() {
+      return {
+        openLink: null,
+        text: "",
+        setOpenLink(value) {
+          this.openLink = value;
+          return this;
+        },
+        setText(value) {
+          this.text = value;
+          return this;
+        },
+      };
+    },
+    newTextParagraph() {
+      return {
+        text: "",
+        setText(value) {
+          this.text = value;
+          return this;
+        },
+      };
+    },
+  };
   const sandbox = {
     console,
     Date,
@@ -764,6 +850,7 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
         };
       },
     },
+    CardService: cardService,
     UrlFetchApp: urlFetchApp,
   };
 
@@ -2339,6 +2426,34 @@ test("suppression can be toggled from helper functions", () => {
 
   ctx.hoodlefinanceEnableUpdateChecks();
   assert.equal(ctx.__userPropertiesStore.has("hoodlefinance.suppressUpdateChecks"), false);
+});
+
+test("onInstall reuses the normal menu bootstrap path", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__userPropertiesStore.set("hoodlefinance.suppressUpdateChecks", "true");
+  ctx.onInstall({});
+
+  assert.equal(ctx.__uiState.menus.length, 1);
+  assert.equal(ctx.__uiState.menus[0].name, "Hoodlefinance");
+});
+
+test("the Sheets add-on homepage card summarizes the function and links to docs", () => {
+  const ctx = loadHoodlefinance();
+  const card = ctx.hoodlefinanceBuildSheetsAddOnHomepage({});
+  const buttonSet = card.sections[1].widgets[0];
+
+  assert.equal(card.header.title, "Hoodlefinance");
+  assert.match(card.header.subtitle, /Google Sheets/);
+  assert.match(card.sections[0].widgets[0].text, /Installed version/);
+  assert.match(card.sections[0].widgets[1].text, /HOODLEFINANCE/);
+  assert.deepEqual(
+    buttonSet.buttons.map((button) => [button.text, button.openLink.url]),
+    [
+      ["Open README", "https://github.com/omry/hoodlefinance/blob/main/README.md"],
+      ["Release notes", "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/RELEASE_NOTES.md"],
+    ]
+  );
 });
 
 test("maps Yahoo exchange codes to IBKR exchange hints", () => {

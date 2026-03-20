@@ -1,0 +1,26 @@
+{
+  "timeZone": "Etc/UTC",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/spreadsheets.currentonly"
+  ],
+  "addOns": {
+    "common": {
+      "name": "Hoodlefinance",
+      "logoUrl": "https://www.gstatic.com/images/icons/material/system_gm/1x/functions_black_24dp.png",
+      "useLocaleFromApp": true,
+      "layoutProperties": {
+        "primaryColor": "#0B8043",
+        "secondaryColor": "#E6F4EA"
+      }
+    },
+    "sheets": {
+      "homepageTrigger": {
+        "runFunction": "hoodlefinanceBuildSheetsAddOnHomepage"
+      }
+    }
+  }
+}
