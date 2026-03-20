@@ -1,6 +1,0 @@
-Ticker	Currency	ISIN
-'inputs in A3:A6	'=HOODLEFINANCE(A3:A6,"currency")	'=HOODLEFINANCE(A3:A6,"isin")
-SJPA.L	=HOODLEFINANCE(A3:A6,"currency")	=HOODLEFINANCE(A3:A6,"isin")
-CPXJ.L		
-ZPRX.DE		
-5MVL.DE		

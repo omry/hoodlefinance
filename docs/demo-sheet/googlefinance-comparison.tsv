@@ -1,3 +1,4 @@
+Advantages over GOOGLEFINANCE						
 Use case	GOOGLEFINANCE formula	GOOGLEFINANCE result	HOODLEFINANCE formula	HOODLEFINANCE result	Why HOODLEFINANCE wins
 PSE market access	'=GOOGLEFINANCE("PSE:BDO","name")	=GOOGLEFINANCE("PSE:BDO","name")	'=HOODLEFINANCE("PSE:BDO","name")	=HOODLEFINANCE("PSE:BDO","name")	Dedicated PSE path instead of depending on Google coverage.
 PSE direct ISIN input	'=GOOGLEFINANCE("PHY077751022","name")	=GOOGLEFINANCE("PHY077751022","name")	'=HOODLEFINANCE("PHY077751022","name")	=HOODLEFINANCE("PHY077751022","name")	Uses the GitHub-hosted cached PSE ISIN map when Yahoo search does not resolve the Philippine symbol.

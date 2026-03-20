@@ -1,6 +1,16 @@
+Coverage examples that go beyond simple U.S. tickers.				
+				
+Foreign ETFs				
 Ticker	Price	Currency	Name	ISIN
-	'=HOODLEFINANCE(A3:A,"price")	'=HOODLEFINANCE(A3:A,"currency")	'=HOODLEFINANCE(A3:A,"name")	'=HOODLEFINANCE(A3:A,"isin")
-SJPA.L	=HOODLEFINANCE(A3:A,"price")	=HOODLEFINANCE(A3:A,"currency")	=HOODLEFINANCE(A3:A,"name")	=HOODLEFINANCE(A3:A,"isin")
+'Formula	'=HOODLEFINANCE(A6:A9,"price")	'=HOODLEFINANCE(A6:A9,"currency")	'=HOODLEFINANCE(A6:A9,"name")	'=HOODLEFINANCE(A6:A9,"isin")
+SJPA.L	=HOODLEFINANCE(A6:A9,"price")	=HOODLEFINANCE(A6:A9,"currency")	=HOODLEFINANCE(A6:A9,"name")	=HOODLEFINANCE(A6:A9,"isin")
 CPXJ.L				
 ZPRX.DE				
 5MVL.DE				
+				
+Philippines Stock Exchange (PSE)				
+Ticker	Price	Currency	Name	ISIN
+'Formula	'=HOODLEFINANCE(A14:A16,"price")	'=HOODLEFINANCE(A14:A16,"currency")	'=HOODLEFINANCE(A14:A16,"name")	'=HOODLEFINANCE(A14:A16,"isin")
+PSE:BDO	=HOODLEFINANCE(A14:A16,"price")	=HOODLEFINANCE(A14:A16,"currency")	=HOODLEFINANCE(A14:A16,"name")	=HOODLEFINANCE(A14:A16,"isin")
+PSE:JFC				
+PSE:AAA				

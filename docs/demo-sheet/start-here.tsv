@@ -2,9 +2,24 @@ Action	Details
 GitHub repo	https://github.com/omry/hoodlefinance
 Make a copy	Use File -> Make a copy if you want to experiment with the formulas yourself.
 
+Identifier forms and price conversion		
 Example	Formula	Result
-Installed version	'=HOODLEFINANCE_VERSION()	=HOODLEFINANCE_VERSION()
-Sample price	'=HOODLEFINANCE("NASDAQ:GOOG","price")	=HOODLEFINANCE("NASDAQ:GOOG","price")
-Sample foreign ETF ISIN	'=HOODLEFINANCE("SJPA.L","isin")	=HOODLEFINANCE("SJPA.L","isin")
-Sample PSE ISIN	'=HOODLEFINANCE("PSE:BDO","isin")	=HOODLEFINANCE("PSE:BDO","isin")
-Sample alias form	'=HOODLEFINANCE("LON:SJPA","name")	=HOODLEFINANCE("LON:SJPA","name")
+Version	'=HOODLEFINANCE_VERSION()	=HOODLEFINANCE_VERSION()
+Google Finance-style identifier	'=HOODLEFINANCE("NASDAQ:GOOG","name")	=HOODLEFINANCE("NASDAQ:GOOG","name")
+Yahoo-style identifier	'=HOODLEFINANCE("POLI.TA","name")	=HOODLEFINANCE("POLI.TA","name")
+ISIN identifier	'=HOODLEFINANCE("IL0006625771","name")	=HOODLEFINANCE("IL0006625771","name")
+Price currency conversion	'=HOODLEFINANCE("SJPA.L","price@USD")	=HOODLEFINANCE("SJPA.L","price@USD")
+
+Coverage examples		
+Example	Formula	Result
+PSE market coverage	'=HOODLEFINANCE("PSE:BDO","name")	=HOODLEFINANCE("PSE:BDO","name")
+Foreign ETF coverage	'=HOODLEFINANCE("SJPA.L","name")	=HOODLEFINANCE("SJPA.L","name")
+Tel Aviv ETF coverage example	'=HOODLEFINANCE("TLV:KSMF59","name")	=HOODLEFINANCE("TLV:KSMF59","name")
+
+Spilled array example		
+Ticker	Currency	ISIN
+'Formula	'=HOODLEFINANCE(A22:A25,"currency")	'=HOODLEFINANCE(A22:A25,"isin")
+SJPA.L	=HOODLEFINANCE(A22:A25,"currency")	=HOODLEFINANCE(A22:A25,"isin")
+CPXJ.L		
+ZPRX.DE		
+5MVL.DE		

@@ -129,6 +129,14 @@
         }
       },
       "fields": "userEnteredFormat(backgroundColor,textFormat)"
+    },
+    "wrappedText": {
+      "cell": {
+        "userEnteredFormat": {
+          "wrapStrategy": "WRAP"
+        }
+      },
+      "fields": "userEnteredFormat(wrapStrategy)"
     }
   },
   "tabs": [
@@ -136,12 +144,22 @@
       "formatting": {
         "autoResizeColumns": false,
         "columnPixelSizes": [
-          180,
-          360,
+          218,
+          306,
           340
         ],
         "freezeRows": 1,
         "styleApplications": [
+          {
+            "style": "calloutRow",
+            "target": {
+              "rows": [
+                5,
+                13,
+                19
+              ]
+            }
+          },
           {
             "style": "headerRow",
             "target": {
@@ -151,7 +169,15 @@
                   "columns": 2
                 },
                 {
-                  "row": 5,
+                  "row": 6,
+                  "columns": 3
+                },
+                {
+                  "row": 14,
+                  "columns": 3
+                },
+                {
+                  "row": 20,
                   "columns": 3
                 }
               ]
@@ -168,8 +194,20 @@
                   "endColumn": 1
                 },
                 {
-                  "startRow": 6,
-                  "endRow": 10,
+                  "startRow": 7,
+                  "endRow": 11,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 15,
+                  "endRow": 17,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 22,
+                  "endRow": 25,
                   "startColumn": 1,
                   "endColumn": 1
                 }
@@ -190,108 +228,67 @@
             }
           },
           {
+            "style": "wrappedText",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 3,
+                  "startColumn": 2,
+                  "endColumn": 2
+                }
+              ]
+            }
+          },
+          {
             "style": "formulaResult",
             "target": {
               "ranges": [
                 {
-                  "startRow": 6,
-                  "endRow": 10,
+                  "startRow": 7,
+                  "endRow": 11,
                   "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 15,
+                  "endRow": 17,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 22,
+                  "endRow": 25,
+                  "startColumn": 2,
                   "endColumn": 3
                 }
               ]
             }
+          }
+        ],
+        "mergedRanges": [
+          {
+            "startRow": 5,
+            "endRow": 5,
+            "startColumn": 1,
+            "endColumn": 3
+          },
+          {
+            "startRow": 13,
+            "endRow": 13,
+            "startColumn": 1,
+            "endColumn": 3
+          },
+          {
+            "startRow": 19,
+            "endRow": 19,
+            "startColumn": 1,
+            "endColumn": 3
           }
         ]
       },
       "title": "Start Here",
       "path": "docs/demo-sheet/start-here.tsv",
-      "startCell": "A1"
-    },
-    {
-      "formatting": {
-        "autoResizeColumns": true,
-        "columnBackgrounds": [
-          {
-            "column": 2,
-            "startRow": 2,
-            "endRow": 10,
-            "backgroundColor": {
-              "red": 0.94,
-              "green": 0.94,
-              "blue": 0.94
-            }
-          },
-          {
-            "column": 4,
-            "startRow": 2,
-            "endRow": 10,
-            "backgroundColor": {
-              "red": 0.94,
-              "green": 0.94,
-              "blue": 0.94
-            }
-          }
-        ],
-        "freezeRows": 1,
-        "styleApplications": [
-          {
-            "style": "headerRow",
-            "target": {
-              "rows": [
-                1
-              ]
-            }
-          },
-          {
-            "style": "Text style",
-            "target": {
-              "ranges": [
-                {
-                  "startRow": 2,
-                  "endRow": 10,
-                  "startColumn": 1,
-                  "endColumn": 1
-                }
-              ]
-            }
-          },
-          {
-            "style": "Text style",
-            "target": {
-              "ranges": [
-                {
-                  "startRow": 2,
-                  "endRow": 10,
-                  "startColumn": 6,
-                  "endColumn": 6
-                }
-              ]
-            }
-          },
-          {
-            "style": "formulaResult",
-            "target": {
-              "ranges": [
-                {
-                  "startRow": 2,
-                  "endRow": 10,
-                  "startColumn": 3,
-                  "endColumn": 3
-                },
-                {
-                  "startRow": 2,
-                  "endRow": 10,
-                  "startColumn": 5,
-                  "endColumn": 5
-                }
-              ]
-            }
-          }
-        ]
-      },
-      "title": "Compared to GOOGLEFINANCE",
-      "path": "docs/demo-sheet/googlefinance-comparison.tsv",
       "startCell": "A1"
     },
     {
@@ -302,15 +299,26 @@
           300,
           260,
           360,
-          180
+          202
         ],
-        "freezeRows": 1,
+        "freezeRows": 0,
         "styleApplications": [
+          {
+            "style": "calloutRow",
+            "target": {
+              "rows": [
+                1,
+                3,
+                11
+              ]
+            }
+          },
           {
             "style": "headerRow",
             "target": {
               "rows": [
-                1
+                4,
+                12
               ]
             }
           },
@@ -319,8 +327,14 @@
             "target": {
               "ranges": [
                 {
-                  "startRow": 3,
-                  "endRow": 6,
+                  "startRow": 6,
+                  "endRow": 9,
+                  "startColumn": 1,
+                  "endColumn": 1
+                },
+                {
+                  "startRow": 14,
+                  "endRow": 16,
                   "startColumn": 1,
                   "endColumn": 1
                 }
@@ -332,17 +346,43 @@
             "target": {
               "ranges": [
                 {
-                  "startRow": 3,
-                  "endRow": 6,
+                  "startRow": 6,
+                  "endRow": 9,
+                  "startColumn": 2,
+                  "endColumn": 5
+                },
+                {
+                  "startRow": 14,
+                  "endRow": 16,
                   "startColumn": 2,
                   "endColumn": 5
                 }
               ]
             }
           }
+        ],
+        "mergedRanges": [
+          {
+            "startRow": 1,
+            "endRow": 1,
+            "startColumn": 1,
+            "endColumn": 5
+          },
+          {
+            "startRow": 3,
+            "endRow": 3,
+            "startColumn": 1,
+            "endColumn": 5
+          },
+          {
+            "startRow": 11,
+            "endRow": 11,
+            "startColumn": 1,
+            "endColumn": 5
+          }
         ]
       },
-      "title": "Foreign ETFs",
+      "title": "Market Coverage",
       "path": "docs/demo-sheet/foreign-etfs.tsv",
       "startCell": "A1"
     },
@@ -364,8 +404,8 @@
             "target": {
               "rows": [
                 1,
-                10,
-                19
+                9,
+                17
               ]
             }
           },
@@ -373,9 +413,9 @@
             "style": "headerRow",
             "target": {
               "rows": [
-                3,
-                12,
-                21
+                2,
+                10,
+                18
               ]
             }
           },
@@ -383,8 +423,8 @@
             "style": "formulaBand",
             "target": {
               "rows": [
-                13,
-                22
+                11,
+                19
               ]
             }
           },
@@ -393,32 +433,32 @@
             "target": {
               "ranges": [
                 {
-                  "startRow": 4,
-                  "endRow": 8,
+                  "startRow": 3,
+                  "endRow": 7,
                   "startColumn": 1,
                   "endColumn": 1
                 },
                 {
-                  "startRow": 14,
-                  "endRow": 17,
+                  "startRow": 12,
+                  "endRow": 15,
                   "startColumn": 1,
                   "endColumn": 1
                 },
                 {
-                  "startRow": 23,
-                  "endRow": 26,
+                  "startRow": 20,
+                  "endRow": 23,
                   "startColumn": 1,
                   "endColumn": 1
                 },
                 {
-                  "startRow": 14,
-                  "endRow": 17,
+                  "startRow": 12,
+                  "endRow": 15,
                   "startColumn": 3,
                   "endColumn": 3
                 },
                 {
-                  "startRow": 23,
-                  "endRow": 26,
+                  "startRow": 20,
+                  "endRow": 23,
                   "startColumn": 6,
                   "endColumn": 6
                 }
@@ -430,26 +470,26 @@
             "target": {
               "ranges": [
                 {
-                  "startRow": 4,
-                  "endRow": 8,
+                  "startRow": 3,
+                  "endRow": 7,
                   "startColumn": 3,
                   "endColumn": 3
                 },
                 {
-                  "startRow": 4,
-                  "endRow": 8,
+                  "startRow": 3,
+                  "endRow": 7,
                   "startColumn": 5,
                   "endColumn": 5
                 },
                 {
-                  "startRow": 14,
-                  "endRow": 17,
+                  "startRow": 12,
+                  "endRow": 15,
                   "startColumn": 2,
                   "endColumn": 2
                 },
                 {
-                  "startRow": 23,
-                  "endRow": 26,
+                  "startRow": 20,
+                  "endRow": 23,
                   "startColumn": 2,
                   "endColumn": 5
                 }
@@ -460,8 +500,8 @@
         "columnBackgrounds": [
           {
             "column": 2,
-            "startRow": 4,
-            "endRow": 8,
+            "startRow": 3,
+            "endRow": 7,
             "backgroundColor": {
               "red": 0.96,
               "green": 0.94,
@@ -470,8 +510,8 @@
           },
           {
             "column": 4,
-            "startRow": 4,
-            "endRow": 8,
+            "startRow": 3,
+            "endRow": 7,
             "backgroundColor": {
               "red": 0.96,
               "green": 0.94,
@@ -487,14 +527,14 @@
             "endColumn": 6
           },
           {
-            "startRow": 10,
-            "endRow": 10,
+            "startRow": 9,
+            "endRow": 9,
             "startColumn": 1,
             "endColumn": 6
           },
           {
-            "startRow": 19,
-            "endRow": 19,
+            "startRow": 17,
+            "endRow": 17,
             "startColumn": 1,
             "endColumn": 6
           }
@@ -502,22 +542,22 @@
         "numberFormats": [
           {
             "column": 2,
-            "startRow": 14,
-            "endRow": 17,
+            "startRow": 12,
+            "endRow": 15,
             "type": "CURRENCY",
             "pattern": "$#,##0.00"
           },
           {
             "column": 4,
-            "startRow": 23,
-            "endRow": 26,
+            "startRow": 20,
+            "endRow": 23,
             "type": "NUMBER",
             "pattern": "0.0000"
           },
           {
             "column": 5,
-            "startRow": 23,
-            "endRow": 26,
+            "startRow": 20,
+            "endRow": 23,
             "type": "CURRENCY",
             "pattern": "$#,##0.00"
           }
@@ -525,58 +565,6 @@
       },
       "title": "Currency & FX",
       "path": "docs/demo-sheet/currency.tsv",
-      "startCell": "A1"
-    },
-    {
-      "formatting": {
-        "autoResizeColumns": false,
-        "columnPixelSizes": [
-          150,
-          300,
-          120,
-          300,
-          180
-        ],
-        "freezeRows": 1,
-        "styleApplications": [
-          {
-            "style": "headerRow",
-            "target": {
-              "rows": [
-                1
-              ]
-            }
-          },
-          {
-            "style": "Text style",
-            "target": {
-              "ranges": [
-                {
-                  "startRow": 3,
-                  "endRow": 6,
-                  "startColumn": 1,
-                  "endColumn": 1
-                }
-              ]
-            }
-          },
-          {
-            "style": "formulaResult",
-            "target": {
-              "ranges": [
-                {
-                  "startRow": 3,
-                  "endRow": 5,
-                  "startColumn": 2,
-                  "endColumn": 5
-                }
-              ]
-            }
-          }
-        ]
-      },
-      "title": "Philippines Stock Exchange (PSE)",
-      "path": "docs/demo-sheet/pse.tsv",
       "startCell": "A1"
     },
     {
@@ -596,7 +584,7 @@
           {
             "column": 1,
             "startRow": 11,
-            "endRow": 16,
+            "endRow": 15,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.97,
@@ -605,8 +593,8 @@
           },
           {
             "column": 1,
-            "startRow": 19,
-            "endRow": 21,
+            "startRow": 18,
+            "endRow": 20,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.97,
@@ -626,7 +614,7 @@
           {
             "column": 2,
             "startRow": 11,
-            "endRow": 16,
+            "endRow": 15,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -635,8 +623,8 @@
           },
           {
             "column": 2,
-            "startRow": 19,
-            "endRow": 21,
+            "startRow": 18,
+            "endRow": 20,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -656,7 +644,7 @@
           {
             "column": 3,
             "startRow": 11,
-            "endRow": 16,
+            "endRow": 15,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -665,8 +653,8 @@
           },
           {
             "column": 3,
-            "startRow": 19,
-            "endRow": 21,
+            "startRow": 18,
+            "endRow": 20,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -686,7 +674,7 @@
           {
             "column": 4,
             "startRow": 11,
-            "endRow": 16,
+            "endRow": 15,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -695,8 +683,8 @@
           },
           {
             "column": 4,
-            "startRow": 19,
-            "endRow": 21,
+            "startRow": 18,
+            "endRow": 20,
             "backgroundColor": {
               "red": 0.9,
               "green": 0.95,
@@ -716,7 +704,7 @@
           {
             "column": 5,
             "startRow": 11,
-            "endRow": 16,
+            "endRow": 15,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -725,8 +713,8 @@
           },
           {
             "column": 5,
-            "startRow": 19,
-            "endRow": 21,
+            "startRow": 18,
+            "endRow": 20,
             "backgroundColor": {
               "red": 0.94,
               "green": 0.94,
@@ -735,11 +723,11 @@
           }
         ],
         "columnPixelSizes": [
-          220,
-          300,
-          180,
-          240,
-          180
+          133,
+          218,
+          207,
+          238,
+          251
         ],
         "freezeRows": 1,
         "styleApplications": [
@@ -749,7 +737,7 @@
               "rows": [
                 1,
                 9,
-                17
+                16
               ]
             }
           },
@@ -759,7 +747,7 @@
               "rows": [
                 2,
                 10,
-                18
+                17
               ]
             }
           },
@@ -775,15 +763,40 @@
                 },
                 {
                   "startRow": 11,
-                  "endRow": 15,
+                  "endRow": 14,
                   "startColumn": 1,
                   "endColumn": 1
                 },
                 {
-                  "startRow": 19,
-                  "endRow": 21,
+                  "startRow": 18,
+                  "endRow": 20,
                   "startColumn": 1,
                   "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "formulaResult",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 7,
+                  "startColumn": 2,
+                  "endColumn": 5
+                },
+                {
+                  "startRow": 11,
+                  "endRow": 14,
+                  "startColumn": 2,
+                  "endColumn": 5
+                },
+                {
+                  "startRow": 18,
+                  "endRow": 20,
+                  "startColumn": 2,
+                  "endColumn": 5
                 }
               ]
             }
@@ -798,17 +811,50 @@
       "formatting": {
         "autoResizeColumns": false,
         "columnPixelSizes": [
-          150,
-          220,
-          180
+          262,
+          262,
+          162,
+          262,
+          459,
+          625
         ],
-        "freezeRows": 1,
+        "columnBackgrounds": [
+          {
+            "column": 2,
+            "startRow": 3,
+            "endRow": 11,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          },
+          {
+            "column": 4,
+            "startRow": 3,
+            "endRow": 11,
+            "backgroundColor": {
+              "red": 0.94,
+              "green": 0.94,
+              "blue": 0.94
+            }
+          }
+        ],
+        "freezeRows": 2,
         "styleApplications": [
+          {
+            "style": "calloutRow",
+            "target": {
+              "rows": [
+                1
+              ]
+            }
+          },
           {
             "style": "headerRow",
             "target": {
               "rows": [
-                1
+                2
               ]
             }
           },
@@ -818,9 +864,22 @@
               "ranges": [
                 {
                   "startRow": 3,
-                  "endRow": 6,
+                  "endRow": 11,
                   "startColumn": 1,
                   "endColumn": 1
+                }
+              ]
+            }
+          },
+          {
+            "style": "Text style",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 11,
+                  "startColumn": 6,
+                  "endColumn": 6
                 }
               ]
             }
@@ -831,17 +890,31 @@
               "ranges": [
                 {
                   "startRow": 3,
-                  "endRow": 6,
-                  "startColumn": 2,
+                  "endRow": 11,
+                  "startColumn": 3,
                   "endColumn": 3
+                },
+                {
+                  "startRow": 3,
+                  "endRow": 11,
+                  "startColumn": 5,
+                  "endColumn": 5
                 }
               ]
             }
           }
+        ],
+        "mergedRanges": [
+          {
+            "startRow": 1,
+            "endRow": 1,
+            "startColumn": 1,
+            "endColumn": 6
+          }
         ]
       },
-      "title": "Array Usage",
-      "path": "docs/demo-sheet/array-usage.tsv",
+      "title": "Advantages over GOOGLEFINANCE",
+      "path": "docs/demo-sheet/googlefinance-comparison.tsv",
       "startCell": "A1"
     }
   ]
