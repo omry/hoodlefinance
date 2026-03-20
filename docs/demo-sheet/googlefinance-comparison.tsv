@@ -1,10 +1,10 @@
 Advantages over GOOGLEFINANCE						
 Use case	GOOGLEFINANCE formula	GOOGLEFINANCE result	HOODLEFINANCE formula	HOODLEFINANCE result	Why HOODLEFINANCE wins
 PSE market access	'=GOOGLEFINANCE("PSE:BDO","name")	=GOOGLEFINANCE("PSE:BDO","name")	'=HOODLEFINANCE("PSE:BDO","name")	=HOODLEFINANCE("PSE:BDO","name")	Dedicated PSE path instead of depending on Google coverage.
-PSE direct ISIN input	'=GOOGLEFINANCE("PHY077751022","name")	=GOOGLEFINANCE("PHY077751022","name")	'=HOODLEFINANCE("PHY077751022","name")	=HOODLEFINANCE("PHY077751022","name")	Uses the GitHub-hosted cached PSE ISIN map when Yahoo search does not resolve the Philippine symbol.
+PSE direct ISIN input	'=GOOGLEFINANCE("PHY077751022","name")	=GOOGLEFINANCE("PHY077751022","name")	'=HOODLEFINANCE("PHY077751022","name")	=HOODLEFINANCE("PHY077751022","name")	Supports ISIN lookup for PSE listings.
 Irish ETF access on LSE	'=GOOGLEFINANCE("SJPA.L","name")	=GOOGLEFINANCE("SJPA.L","name")	'=HOODLEFINANCE("SJPA.L","name")	=HOODLEFINANCE("SJPA.L","name")	Handles Irish UCITS ETFs that are awkward or unsupported in Google Sheets.
-Irish ETF access on Xetra	'=GOOGLEFINANCE("ZPRX.DE","name")	=GOOGLEFINANCE("ZPRX.DE","name")	'=HOODLEFINANCE("ZPRX.DE","name")	=HOODLEFINANCE("ZPRX.DE","name")	Handles Irish UCITS ETFs on non-U.S. exchanges and returns the name.
-Tel Aviv stock access via Yahoo-style ticker	'=GOOGLEFINANCE("POLI.TA","name")	=GOOGLEFINANCE("POLI.TA","name")	'=HOODLEFINANCE("POLI.TA","name")	=HOODLEFINANCE("POLI.TA","name")	Accepts the Yahoo-style `.TA` ticker directly.
+Irish ETF access on Xetra	'=GOOGLEFINANCE("SXR8.DE","name")	=GOOGLEFINANCE("SXR8.DE","name")	'=HOODLEFINANCE("SXR8.DE","name")	=HOODLEFINANCE("SXR8.DE","name")	Handles Irish UCITS ETFs on non-U.S. exchanges and returns the name.
+Tel Aviv stock via `.TA` ticker	'=GOOGLEFINANCE("POLI.TA","name")	=GOOGLEFINANCE("POLI.TA","name")	'=HOODLEFINANCE("POLI.TA","name")	=HOODLEFINANCE("POLI.TA","name")	Accepts the Yahoo-style `.TA` ticker directly.
 Tel Aviv ETF access via alias ticker	'=GOOGLEFINANCE("TLV:KSMF59","name")	=GOOGLEFINANCE("TLV:KSMF59","name")	'=HOODLEFINANCE("TLV:KSMF59","name")	=HOODLEFINANCE("TLV:KSMF59","name")	Normalizes the undotted TLV ETF alias and resolves the quote.
 Israeli stock direct ISIN input	'=GOOGLEFINANCE("IL0006625771","name")	=GOOGLEFINANCE("IL0006625771","name")	'=HOODLEFINANCE("IL0006625771","name")	=HOODLEFINANCE("IL0006625771","name")	Supports direct ISIN-input lookup for a Tel Aviv stock.
 Israeli ETF direct ISIN input	'=GOOGLEFINANCE("IL0011465700","name")	=GOOGLEFINANCE("IL0011465700","name")	'=HOODLEFINANCE("IL0011465700","name")	=HOODLEFINANCE("IL0011465700","name")	Supports direct ISIN-input lookup for a Tel Aviv ETF.

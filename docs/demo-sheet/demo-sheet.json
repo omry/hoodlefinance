@@ -137,6 +137,16 @@
         }
       },
       "fields": "userEnteredFormat(wrapStrategy)"
+    },
+    "wrappedTextTopLeft": {
+      "cell": {
+        "userEnteredFormat": {
+          "horizontalAlignment": "LEFT",
+          "verticalAlignment": "TOP",
+          "wrapStrategy": "WRAP"
+        }
+      },
+      "fields": "userEnteredFormat(horizontalAlignment,verticalAlignment,wrapStrategy)"
     }
   },
   "tabs": [
@@ -228,7 +238,7 @@
             }
           },
           {
-            "style": "wrappedText",
+            "style": "wrappedTextTopLeft",
             "target": {
               "ranges": [
                 {
@@ -261,6 +271,82 @@
                   "endRow": 25,
                   "startColumn": 2,
                   "endColumn": 3
+                }
+              ]
+            }
+          },
+          {
+            "style": "wrappedText",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 20,
+                  "endRow": 23,
+                  "startColumn": 6,
+                  "endColumn": 6
+                }
+              ]
+            }
+          },
+          {
+            "style": "wrappedTextTopLeft",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 3,
+                  "startColumn": 6,
+                  "endColumn": 6
+                },
+                {
+                  "startRow": 12,
+                  "endRow": 12,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 20,
+                  "endRow": 20,
+                  "startColumn": 6,
+                  "endColumn": 6
+                }
+              ]
+            }
+          },
+          {
+            "style": "wrappedTextTopLeft",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 3,
+                  "startColumn": 6,
+                  "endColumn": 6
+                },
+                {
+                  "startRow": 12,
+                  "endRow": 12,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 20,
+                  "endRow": 20,
+                  "startColumn": 6,
+                  "endColumn": 6
+                }
+              ]
+            }
+          },
+          {
+            "style": "wrappedTextTopLeft",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 20,
+                  "endRow": 23,
+                  "startColumn": 6,
+                  "endColumn": 6
                 }
               ]
             }
@@ -393,9 +479,9 @@
           200,
           280,
           240,
-          345,
+          322,
           240,
-          360
+          270
         ],
         "freezeRows": 0,
         "styleApplications": [
@@ -404,8 +490,20 @@
             "target": {
               "rows": [
                 1,
-                9,
                 17
+              ]
+            }
+          },
+          {
+            "style": "calloutRow",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 9,
+                  "endRow": 9,
+                  "startColumn": 1,
+                  "endColumn": 3
+                }
               ]
             }
           },
@@ -414,8 +512,20 @@
             "target": {
               "rows": [
                 2,
-                10,
                 18
+              ]
+            }
+          },
+          {
+            "style": "headerRow",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 10,
+                  "endRow": 10,
+                  "startColumn": 1,
+                  "endColumn": 3
+                }
               ]
             }
           },
@@ -423,8 +533,20 @@
             "style": "formulaBand",
             "target": {
               "rows": [
-                11,
                 19
+              ]
+            }
+          },
+          {
+            "style": "formulaBand",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 11,
+                  "endRow": 11,
+                  "startColumn": 1,
+                  "endColumn": 3
+                }
               ]
             }
           },
@@ -461,6 +583,12 @@
                   "endRow": 23,
                   "startColumn": 6,
                   "endColumn": 6
+                },
+                {
+                  "startRow": 3,
+                  "endRow": 7,
+                  "startColumn": 6,
+                  "endColumn": 6
                 }
               ]
             }
@@ -492,6 +620,31 @@
                   "endRow": 23,
                   "startColumn": 2,
                   "endColumn": 5
+                }
+              ]
+            }
+          },
+          {
+            "style": "wrappedTextTopLeft",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 3,
+                  "endRow": 3,
+                  "startColumn": 6,
+                  "endColumn": 6
+                },
+                {
+                  "startRow": 12,
+                  "endRow": 12,
+                  "startColumn": 3,
+                  "endColumn": 3
+                },
+                {
+                  "startRow": 20,
+                  "endRow": 20,
+                  "startColumn": 6,
+                  "endColumn": 6
                 }
               ]
             }
@@ -530,12 +683,30 @@
             "startRow": 9,
             "endRow": 9,
             "startColumn": 1,
-            "endColumn": 6
+            "endColumn": 3
           },
           {
             "startRow": 17,
             "endRow": 17,
             "startColumn": 1,
+            "endColumn": 6
+          },
+          {
+            "startRow": 3,
+            "endRow": 7,
+            "startColumn": 6,
+            "endColumn": 6
+          },
+          {
+            "startRow": 12,
+            "endRow": 15,
+            "startColumn": 3,
+            "endColumn": 3
+          },
+          {
+            "startRow": 20,
+            "endRow": 23,
+            "startColumn": 6,
             "endColumn": 6
           }
         ],
@@ -811,12 +982,12 @@
       "formatting": {
         "autoResizeColumns": false,
         "columnPixelSizes": [
-          262,
-          262,
-          162,
-          262,
-          459,
-          625
+          236,
+          302,
+          106,
+          288,
+          321,
+          438
         ],
         "columnBackgrounds": [
           {
@@ -899,6 +1070,19 @@
                   "endRow": 11,
                   "startColumn": 5,
                   "endColumn": 5
+                }
+              ]
+            }
+          },
+          {
+            "style": "wrappedText",
+            "target": {
+              "ranges": [
+                {
+                  "startRow": 2,
+                  "endRow": 2,
+                  "startColumn": 3,
+                  "endColumn": 3
                 }
               ]
             }
