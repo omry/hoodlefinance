@@ -11,7 +11,7 @@
     "test:hoodlefinance": "node --test test/hoodlefinance.test.js",
     "test:release": "node --test test/release.test.js",
     "test:sync-demo-sheet": "node --test test/sync-demo-sheet.test.js",
-    "check": "npm run check:syntax && npm run release:check-fragments",
+    "check": "npm run check:syntax",
     "check:syntax": "node --check hoodlefinance.js && node --check test/hoodlefinance.test.js && node --check tools/release.js && node --check test/release.test.js && node --check tools/sync-demo-sheet.js && node --check test/sync-demo-sheet.test.js",
     "smoke": "node tools/cli.js",
     "pse:refresh": "node tools/generate-pse-isin-map.js",

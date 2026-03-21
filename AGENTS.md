@@ -10,6 +10,24 @@ Repo-specific standing directives for coding agents working in this project.
 - If live verification is impossible in the current environment, say so explicitly and leave the change in an unverified state rather than presenting it as done.
 - Do not base implementation details on information that is unavailable locally because of sandbox restrictions. If an out-of-sandbox check could resolve the uncertainty, request escalation and inspect the real behavior before deciding.
 
+## Environment and hook verification
+
+- When validating contributor setup, shell initialization, or git-hook behavior, prefer the developer's real user environment over a temporary sandbox-only or `/tmp` toolchain.
+- Do not treat a throwaway verification environment as proof that the user's normal `git commit` or shell workflow is correctly configured.
+- If a hook depends on tools such as `node`, `npm`, or `python`, verify that those tools are available from the same environment a developer would actually use for commits.
+- If an environment override is required for one command, explain why it must be part of the same process invocation instead of implying that shell state persists across tool calls.
+
+## Escalated git operations
+
+- Keep escalated git commands minimal and single-purpose whenever possible.
+- Do not bundle staging, environment bootstrapping, dependency installation, and commit creation into one escalated shell command unless there is no practical alternative.
+- If the sandbox blocks writes to `.git`, ask only for the specific git operation that needs escalation.
+
+## Checkpoint discipline
+
+- When a behavior is covered only by local mocks or unit tests but still depends on real platform behavior, treat the work as a checkpoint rather than as fully validated.
+- Do not strengthen docs or user-facing claims beyond what was actually verified in the live platform.
+
 ## Release process
 
 - Implementing a fix is not the same as committing, pushing, merging, publishing, or otherwise sending changes outside the local working tree.
