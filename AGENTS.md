@@ -16,6 +16,7 @@ Repo-specific standing directives for coding agents working in this project.
 - Do not treat a throwaway verification environment as proof that the user's normal `git commit` or shell workflow is correctly configured.
 - If a hook depends on tools such as `node`, `npm`, or `python`, verify that those tools are available from the same environment a developer would actually use for commits.
 - If an environment override is required for one command, explain why it must be part of the same process invocation instead of implying that shell state persists across tool calls.
+- If installing a small system tool would materially simplify the workflow, it is fine to suggest or request that tool instead of repeatedly working around its absence (if sudo access is needed, ask me to run for you)
 
 ## Escalated git operations
 
