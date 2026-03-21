@@ -1,3 +1,3 @@
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
-- If installation and update friction become a priority, evaluate Marketplace packaging, review requirements, and runtime limits for the Sheets Editor add-on prototype in `docs/google-sheets-editor-addon/`.
+- If Marketplace packaging work resumes, first make the Sheets Editor add-on prototype `AuthMode.NONE`-safe and switch it to `createAddonMenu()`, then run a private internal Marketplace dry run from a dedicated standard Cloud project.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
