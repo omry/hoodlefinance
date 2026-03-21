@@ -1,12 +1,12 @@
 # Marketplace Packaging Evaluation
 
-This note evaluates what it would take to move the experimental Google Sheets Editor add-on prototype from an Apps Script test deployment to a real Google Workspace Marketplace package.
+This note evaluates what it takes to move the experimental Google Sheets Editor add-on prototype from Apps Script test deployment into a real Google Workspace Marketplace package and toward public review.
 
 It focuses on three questions:
 
 - what Google requires for Marketplace packaging and review
 - which Apps Script runtime limits still matter after packaging
-- what is still missing in this repo before a realistic publish or dry run
+- what is still missing in this repo before a realistic public submission
 
 ## Bottom Line
 
@@ -118,17 +118,19 @@ The current implementation now:
 
 That means the prototype is in better shape for a published Editor add-on where `onOpen()` can run in `AuthMode.NONE`.
 
-### 2. Marketplace Assets And Policy Links Are Missing
+### 2. Marketplace Assets And Policy Links Now Exist, But Still Need Final Review
 
-The repo currently does not include:
+The repo now includes:
 
 - branded add-on icons
 - a banner image
-- Marketplace screenshots
+- a Marketplace screenshot
 - a privacy policy page
 - a terms of service page
 - a support page
-- an application website on a verified domain
+- a stable redirect-backed domain path for public policy/support URLs
+
+What is still missing is not the existence of these materials, but the final public-review pass on their wording, presentation, and consistency.
 
 The current manifest logo URL is also still a generic Google-hosted icon, which is acceptable as a prototype placeholder but not a good review-ready identity.
 
@@ -318,7 +320,7 @@ In short:
 
 The next worthwhile step is not blind public review submission yet. It is a small publish-readiness hardening pass on top of the now-successful private Marketplace dry run.
 
-For the practical step-by-step flow, use [`private-marketplace-dry-run-checklist.md`](./private-marketplace-dry-run-checklist.md).
+For the practical step-by-step flow, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md).
 
 Recommended order:
 

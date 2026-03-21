@@ -10,7 +10,7 @@ What this prototype includes:
 - an `onInstall()` hook that reuses the normal menu bootstrap
 - a sample [`appsscript.json`](./appsscript.json) manifest for a Sheets-only Editor add-on project that can be used as a starting point for Marketplace packaging work
 - a packaging and runtime review in [`marketplace-evaluation.md`](./marketplace-evaluation.md)
-- a step-by-step private packaging checklist in [`private-marketplace-dry-run-checklist.md`](./private-marketplace-dry-run-checklist.md)
+- a step-by-step Marketplace readiness checklist in [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md)
 
 ## Manual Test Finding
 
@@ -32,12 +32,20 @@ Later on March 21, 2026, a private internal Google Workspace Marketplace dry run
 
 This answered the main product question that unpublished Apps Script test deployments could not answer: Marketplace packaging can make the custom functions discoverable in Sheets.
 
-## Notes
+## Current State
 
 - This is still a prototype scaffold, not a public Marketplace release.
 - Apps Script test deployments were sufficient for menu-level validation, but did not verify custom-function exposure in Sheets.
 - The private Marketplace dry run now validates that Marketplace packaging can expose the custom functions in Sheets.
 - Google's current Editor add-on docs say unpublished test deployments run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons run `onOpen()` in `AuthMode.NONE`. That means the unpublished manual test does not fully validate publish-time menu behavior.
 - The current prototype now uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
-- Scope review, branding, policy pages, support links, and public-review readiness are still follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`private-marketplace-dry-run-checklist.md`](./private-marketplace-dry-run-checklist.md) for the actual execution checklist.
+- Listing assets, policy pages, and support links now exist, but public-review readiness is still follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) for the actual execution checklist.
 - The runtime behavior of the custom functions is still subject to the same Apps Script execution and fetch limits described in [`docs/design/google-sheets-deployment-strategy.md`](../design/google-sheets-deployment-strategy.md).
+
+## Next Steps
+
+- finish the final public-facing listing polish
+- prepare the OAuth verification and review material needed for a public Marketplace submission
+- review the public listing end to end, then submit when ready
+
+For the step-by-step execution path, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md).
