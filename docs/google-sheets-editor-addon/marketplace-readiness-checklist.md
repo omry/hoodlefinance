@@ -33,7 +33,7 @@ Already done:
 
 Current next step:
 
-- finish the remaining public-review hardening and submit when the listing, policy, and OAuth-review surface are ready
+- prepare the OAuth verification package and then submit when the listing, policy, and review surface are ready
 
 ## 1. Cloud Project And Script Wiring
 
@@ -77,6 +77,7 @@ Checklist:
 - [X] OAuth consent configured
 - [X] Marketplace SDK enabled
 - [X] Listing configuration works for private install
+- [X] Marketplace listing reviewed end to end
 - [ ] Public-review OAuth requirements understood and prepared
 
 ## 4. Listing Material
@@ -97,13 +98,14 @@ Repo-hosted policy/support pages are available here:
 - [`support.md`](./support.md)
 - [`privacy-policy.md`](./privacy-policy.md)
 - [`terms-of-service.md`](./terms-of-service.md)
+- [`oauth-review-prep.md`](./oauth-review-prep.md)
 
 Checklist:
 
 - [X] Listing text prepared
 - [X] Support/privacy/terms links prepared
 - [X] Required visual assets prepared
-- [ ] Final public-facing wording reviewed
+- [X] Final public-facing wording reviewed
 
 ## 5. Private Validation Result
 
@@ -137,7 +139,6 @@ Focus areas:
 Checklist:
 
 - [X] Decide to proceed toward public Marketplace review
-- [ ] Review the public listing end to end
 - [ ] Prepare any required OAuth verification material
 - [ ] Submit for public review when ready
 

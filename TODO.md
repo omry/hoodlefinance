@@ -2,3 +2,4 @@
 - Continue Marketplace packaging work: finish listing and policy hardening, record the successful private Marketplace dry-run outcome, and decide whether public review is worth pursuing.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
+- convert fragment validator to pure sh and reinstate it (no dependencies so it works in sandbox)

@@ -11,6 +11,7 @@ What this prototype includes:
 - a sample [`appsscript.json`](./appsscript.json) manifest for a Sheets-only Editor add-on project that can be used as a starting point for Marketplace packaging work
 - a packaging and runtime review in [`marketplace-evaluation.md`](./marketplace-evaluation.md)
 - a step-by-step Marketplace readiness checklist in [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md)
+- an OAuth-review prep note in [`oauth-review-prep.md`](./oauth-review-prep.md)
 
 ## Manual Test Finding
 
@@ -44,8 +45,8 @@ This answered the main product question that unpublished Apps Script test deploy
 
 ## Next Steps
 
-- finish the final public-facing listing polish
 - prepare the OAuth verification and review material needed for a public Marketplace submission
-- review the public listing end to end, then submit when ready
+- capture or record the short demo video Google may request during OAuth review
+- submit for review when the OAuth package is ready
 
 For the step-by-step execution path, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md).
