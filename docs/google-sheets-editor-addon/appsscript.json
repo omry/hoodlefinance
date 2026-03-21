@@ -2,6 +2,18 @@
   "timeZone": "Etc/UTC",
   "runtimeVersion": "V8",
   "exceptionLogging": "STACKDRIVER",
+  "urlFetchWhitelist": [
+    "https://raw.githubusercontent.com/omry/hoodlefinance/",
+    "https://contract.ibkr.info/v3.10/",
+    "https://misc.interactivebrokers.com/",
+    "https://www.ariva.de/",
+    "https://www.londonstockexchange.com/exchange/",
+    "https://www.tradingview.com/symbols/",
+    "https://edge.pse.com.ph/",
+    "https://www.google.com/finance/",
+    "https://query1.finance.yahoo.com/v8/finance/",
+    "https://query2.finance.yahoo.com/v1/finance/"
+  ],
   "oauthScopes": [
     "https://www.googleapis.com/auth/script.container.ui",
     "https://www.googleapis.com/auth/script.external_request",
@@ -11,6 +23,9 @@
     "common": {
       "name": "Hoodlefinance",
       "logoUrl": "https://www.gstatic.com/images/icons/material/system_gm/1x/functions_black_24dp.png",
+      "openLinkUrlPrefixes": [
+        "https://github.com/omry/hoodlefinance/"
+      ],
       "useLocaleFromApp": true,
       "layoutProperties": {
         "primaryColor": "#0B8043",

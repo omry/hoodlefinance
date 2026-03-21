@@ -1,4 +1,4 @@
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
-- Continue Marketplace packaging work: create a dedicated standard Cloud project for the Sheets Editor add-on prototype and run a private internal Marketplace dry run to validate custom-function exposure.
+- Continue Marketplace packaging work: finish listing and policy hardening, record the successful private Marketplace dry-run outcome, and decide whether public review is worth pursuing.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol

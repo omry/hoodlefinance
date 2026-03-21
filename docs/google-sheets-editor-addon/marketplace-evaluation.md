@@ -10,15 +10,15 @@ It focuses on three questions:
 
 ## Bottom Line
 
-Marketplace packaging is still the right next validation path for this prototype, but the current prototype is not publish-ready yet.
+The private internal Marketplace dry run validated the main technical question for this prototype: Marketplace packaging can expose `HOODLEFINANCE()` custom functions in Sheets.
 
 The biggest remaining repo-local blockers are no longer the add-on open trigger or menu shape. Those lifecycle issues are now addressed in the prototype.
 
 The most important remaining blockers are now:
 
-- Marketplace/project wiring that still does not exist in the repo
-- listing assets and policy/support links
-- a real Marketplace validation pass for custom-function exposure in Sheets
+- polishing the listing/support/policy surface
+- deciding whether public Marketplace review is worth pursuing given source and policy risk
+- deciding how far to invest in dual-install-path productization
 
 ## What Google Requires For Packaging
 
@@ -132,20 +132,28 @@ The repo currently does not include:
 
 The current manifest logo URL is also still a generic Google-hosted icon, which is acceptable as a prototype placeholder but not a good review-ready identity.
 
-### 3. Cloud Project Wiring Still Needs Real Setup
+### 3. Cloud Project Wiring Needed Real Setup
 
-The repo currently has a prototype manifest and code scaffold, but not the publishing-side project setup:
+This was previously missing, but the private dry run established a working packaging path with:
 
-- no documented standard Cloud project for the add-on
-- no documented Marketplace SDK app configuration
-- no documented OAuth consent configuration for the add-on
-- no published script version or script-ID based Marketplace dry run
+- a standard Google Cloud project
+- OAuth consent configuration
+- Marketplace SDK app configuration
+- a script-ID and version-based Sheets add-on listing
 
-### 4. Marketplace Validation Still Needs To Prove Custom-Function Exposure
+### 4. Marketplace Validation Needed To Prove Custom-Function Exposure
 
-The largest unresolved product question is still whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
+The largest unresolved product question was whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
 
 The unpublished test deployment did not prove that. It still produced `Unknown function`, which matched the current public issue tracker behavior cited in the prototype README.
+
+The private Marketplace dry run did prove it. In a fresh spreadsheet with the Marketplace-installed add-on:
+
+- `HOODLEFINANCE()` was recognized by Sheets
+- the add-on menu appeared under `Extensions`
+- `Show installed version` worked from the installed add-on
+
+That means Marketplace packaging is now a technically viable distribution path for the product.
 
 ## Runtime Limits That Still Matter After Packaging
 
@@ -308,15 +316,16 @@ In short:
 
 ## Recommended Next Step
 
-The next worthwhile step is not public review submission yet. It is a small publish-readiness hardening pass plus a controlled Marketplace dry run.
+The next worthwhile step is not blind public review submission yet. It is a small publish-readiness hardening pass on top of the now-successful private Marketplace dry run.
+
+For the practical step-by-step flow, use [`private-marketplace-dry-run-checklist.md`](./private-marketplace-dry-run-checklist.md).
 
 Recommended order:
 
-1. Create a standard Google Cloud project and connect the Apps Script project to it.
-2. Prepare minimal listing assets and support links.
-3. Configure the Marketplace SDK and OAuth consent screen for a private internal dry run.
-4. Run a private internal Marketplace dry run if a Workspace domain is available.
-5. Use that dry run to answer the remaining functional question: whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
+1. Finish the support/privacy/terms surface and other listing polish.
+2. Record the private dry-run outcome cleanly with exact formulas and observed behavior.
+3. Decide whether public Marketplace review is worth pursuing despite source and policy risk.
+4. If the add-on path remains attractive, design the coexistence and migration story with the manual install path.
 
 ## Sources
 
