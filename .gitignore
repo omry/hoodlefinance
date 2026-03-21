@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+node_modules/
 .demo-sheet.local/
 tmp
 docs/demo-sheet/demo-sheet-staging.json

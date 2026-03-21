@@ -2,6 +2,60 @@
 
 This is a small Apps Script project with a Node-based local test harness.
 
+## Development Setup
+
+The repo now uses machine-readable local setup files for the main contributor toolchain:
+
+- [`package.json`](./package.json) is the source of truth for local Node-based tooling and scripts
+- [`.nvmrc`](./.nvmrc) and [`.node-version`](./.node-version) pin the supported Node release line for contributors who use `nvm`, `fnm`, `asdf`, or similar tools
+- the Python helper scripts currently use only the Python standard library, so there is no separate Python package install step yet
+
+On a fresh Ubuntu or WSL install, the most likely missing pieces for ordinary development are:
+
+- `nvm`
+- a supported `node` / `npm` toolchain, installed through `nvm`
+- `python3` if you want to run the reporting scripts under `tools/`
+
+Normal feature work does not require Google OAuth credentials or `clasp` authentication. Those are only needed for demo-sheet maintenance flows.
+
+If you do not already have `nvm`, install it first:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+exec $SHELL -l
+```
+
+Recommended bootstrap on a fresh machine after `nvm` is available:
+
+```sh
+nvm install
+nvm use
+npm install
+git config core.hooksPath .githooks
+```
+
+That gives you:
+
+- Node `24.x`, which is the current repo target
+- the repo-pinned local `clasp` binary under `node_modules/.bin/`
+- the repo-managed pre-commit hook, which runs the fragment validation check
+
+If you do not use `nvm`, install a Node `24.x` release by another method, then run:
+
+```sh
+npm install
+git config core.hooksPath .githooks
+```
+
+Quick sanity checks after bootstrap:
+
+```sh
+node -v
+npm -v
+npm test
+npm run check
+```
+
 The codebase is intentionally simple:
 
 - [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script implementation
@@ -27,36 +81,37 @@ If you are contributing changes, keep that in mind for any external code, copied
 Run the unit tests:
 
 ```sh
-node --test test/hoodlefinance.test.js
-node --test test/release.test.js
-node --test test/sync-demo-sheet.test.js
+npm test
+```
+
+If you want to run them individually:
+
+```sh
+npm run test:hoodlefinance
+npm run test:release
+npm run test:sync-demo-sheet
 ```
 
 Run syntax checks:
 
 ```sh
-node --check hoodlefinance.js
-node --check test/hoodlefinance.test.js
-node --check tools/release.js
-node --check test/release.test.js
-node --check tools/sync-demo-sheet.js
-node --check test/sync-demo-sheet.test.js
+npm run check:syntax
 ```
 
 Run the CLI for live smoke tests:
 
 ```sh
-node tools/cli.js GOOG price
-node tools/cli.js GOOG isin
-node tools/cli.js ZPRX.DE isin
-node tools/cli.js PSE:BDO isin
-node tools/cli.js PHY077751022 name
+npm run smoke -- GOOG price
+npm run smoke -- GOOG isin
+npm run smoke -- ZPRX.DE isin
+npm run smoke -- PSE:BDO isin
+npm run smoke -- PHY077751022 name
 ```
 
 Refresh the GitHub-hosted PSE ISIN map data file:
 
 ```sh
-node tools/generate-pse-isin-map.js
+npm run pse:refresh
 ```
 
 The same refresh also runs as a reviewable GitHub Actions workflow and via manual dispatch:
@@ -66,9 +121,9 @@ The same refresh also runs as a reviewable GitHub Actions workflow and via manua
 Release tooling commands:
 
 ```sh
-node tools/release.js check-fragments
-node tools/release.js prepare 0.2.6
-node tools/release.js publish 0.2.6
+npm run release:check-fragments
+npm run release:prepare -- 0.2.6
+npm run release:publish -- 0.2.6
 ```
 
 `prepare` automatically runs the release verification gate:
@@ -82,9 +137,9 @@ node tools/release.js publish 0.2.6
 Run the live benchmark for scalar-vs-range performance:
 
 ```sh
-node tools/benchmark.js
-node tools/benchmark.js --attribute price --count 50
-node tools/benchmark.js --tickers GOOG,AAPL,MSFT,AMZN,META
+npm run benchmark
+npm run benchmark -- --attribute price --count 50
+npm run benchmark -- --tickers GOOG,AAPL,MSFT,AMZN,META
 ```
 
 The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through the local Node HTTP transport, so it is useful for checking live endpoints without pasting into Google Sheets.
@@ -92,14 +147,14 @@ The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fe
 Sync the demo sheet locally. The default target is staging:
 
 ```sh
-node tools/sync-demo-sheet.js
+npm run demo:sync
 ```
 
 Publish to the real public demo only when you explicitly opt in:
 
 ```sh
-node tools/sync-demo-sheet.js --live-demo --dry-run
-node tools/sync-demo-sheet.js --live-demo
+npm run demo:sync -- --live-demo --dry-run
+npm run demo:sync -- --live-demo
 ```
 
 The production public demo should normally be synced automatically by the release workflow after a reviewed release PR is merged. For local maintainer use, `--live-demo --dry-run` is mainly a last-minute check that you are pointed at the real public sheet. Run a local `--live-demo` sync only when you are making a demo-only fix that should go live outside the normal release flow.
@@ -107,11 +162,10 @@ The production public demo should normally be synced automatically by the releas
 Before the live sync will work, set up:
 
 - Google OAuth desktop-app credentials at `.demo-sheet.local/oauth-client.json`
-- `clasp` installed from npm and authenticated:
+- the repo-pinned `clasp` binary installed by `npm install` and authenticated:
 
 ```sh
-npm install -g @google/clasp
-clasp login --no-localhost
+npm exec clasp -- login --no-localhost
 ```
 
 The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets a staging sheet recorded in the ignored local override file [`docs/demo-sheet/demo-sheet-staging.json`](./docs/demo-sheet/demo-sheet-staging.json). That keeps iterative testing away from the public demo without pretending the staging target is repo-tracked. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
@@ -121,17 +175,17 @@ For the high-level process for adding another trusted demo maintainer, see [`doc
 Generate the support matrix from live CLI probes:
 
 ```sh
-python3 tools/generate-support-matrix.py
-python3 tools/generate-support-matrix.py --details
-python3 tools/generate-support-matrix.py --update-page
+npm run support-matrix
+npm run support-matrix -- --details
+npm run support-matrix -- --update-page
 ```
 
 Map Google Finance FX page coverage across the canonical currency/crypto pair set:
 
 ```sh
-python3 tools/map-google-fx-coverage.py
-python3 tools/map-google-fx-coverage.py --codes USD,EUR,PHP,ILS
-python3 tools/map-google-fx-coverage.py --pairs EURUSD,PHPILS,USDUSD
+npm run fx-coverage
+npm run fx-coverage -- --codes USD,EUR,PHP,ILS
+npm run fx-coverage -- --pairs EURUSD,PHPILS,USDUSD
 ```
 
 The FX coverage tool writes timestamped results under [`tmp/`](./tmp/), which stays untracked.
