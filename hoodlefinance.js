@@ -529,9 +529,16 @@ function HOODLEFINANCE_ROUTES(ticker) {
   return hoodlefinanceDescribePlanSource_(plan);
 }
 
-function onOpen() {
-  hoodlefinanceAddMenu_();
-  hoodlefinanceMaybeCheckForUpdates_();
+function onOpen(e) {
+  const isAddOn = hoodlefinanceIsInstalledAsAddOn_();
+
+  hoodlefinanceAddMenu_({
+    isAddOn: isAddOn,
+  });
+
+  if (!isAddOn && hoodlefinanceShouldRunAutomaticUpdateChecks_(e)) {
+    hoodlefinanceMaybeCheckForUpdates_();
+  }
 }
 
 function onInstall(e) {
@@ -540,13 +547,12 @@ function onInstall(e) {
 
 function hoodlefinanceBuildSheetsAddOnHomepage() {
   const cardService = hoodlefinanceGetCardService_();
-  let card;
 
   if (!cardService) {
     return null;
   }
 
-  card = cardService
+  return cardService
     .newCardBuilder()
     .setHeader(
       cardService
@@ -584,8 +590,6 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
         )
     )
     .build();
-
-  return card;
 }
 
 function hoodlefinanceCheckForUpdates() {
@@ -655,6 +659,18 @@ function hoodlefinanceMaybeCheckForUpdates_() {
   });
 }
 
+function hoodlefinanceShouldRunAutomaticUpdateChecks_(e) {
+  if (hoodlefinanceIsInstalledAsAddOn_()) {
+    return false;
+  }
+
+  if (hoodlefinanceMatchesScriptEnum_(e && e.authMode, "AuthMode", "NONE")) {
+    return false;
+  }
+
+  return true;
+}
+
 function hoodlefinanceRunVersionCheck_(options) {
   const normalizedOptions = options || {};
   const interactive = !!normalizedOptions.interactive;
@@ -720,16 +736,35 @@ function hoodlefinanceRunVersionCheck_(options) {
   };
 }
 
-function hoodlefinanceAddMenu_() {
+function hoodlefinanceAddMenu_(options) {
+  const normalizedOptions = options || {};
+  const isAddOn = normalizedOptions.isAddOn == null ? hoodlefinanceIsInstalledAsAddOn_() : !!normalizedOptions.isAddOn;
   const ui = hoodlefinanceGetUi_();
-  const userProperties = hoodlefinanceGetUserProperties_();
-  const isSuppressed = hoodlefinanceIsUpdateCheckSuppressed_(userProperties);
+  let userProperties;
+  let isSuppressed;
   let menu;
 
-  if (!ui || !ui.createMenu) {
+  if (!ui) {
     return null;
   }
 
+  if (isAddOn) {
+    if (!ui.createAddonMenu) {
+      return null;
+    }
+
+    menu = ui.createAddonMenu();
+    menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
+    menu.addToUi();
+    return menu;
+  }
+
+  if (!ui.createMenu) {
+    return null;
+  }
+
+  userProperties = hoodlefinanceGetUserProperties_();
+  isSuppressed = hoodlefinanceIsUpdateCheckSuppressed_(userProperties);
   menu = ui.createMenu(HOODLEFINANCE_MENU_TITLE_);
   menu.addItem("Check for updates", "hoodlefinanceCheckForUpdates");
   menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
@@ -752,6 +787,42 @@ function hoodlefinanceGetUi_() {
 
 function hoodlefinanceGetCardService_() {
   return typeof CardService === "undefined" || !CardService ? null : CardService;
+}
+
+function hoodlefinanceGetScriptEnumValue_(groupName, valueName) {
+  if (typeof ScriptApp === "undefined" || !ScriptApp || !ScriptApp[groupName]) {
+    return valueName;
+  }
+
+  return ScriptApp[groupName][valueName] || valueName;
+}
+
+function hoodlefinanceMatchesScriptEnum_(value, groupName, valueName) {
+  const expected = hoodlefinanceGetScriptEnumValue_(groupName, valueName);
+  const normalizedValue = value == null ? "" : String(value);
+  const normalizedExpected = expected == null ? "" : String(expected);
+
+  return value === expected || normalizedValue === normalizedExpected || normalizedValue === valueName;
+}
+
+function hoodlefinanceGetInstallationSource_() {
+  if (typeof ScriptApp === "undefined" || !ScriptApp || !ScriptApp.getInstallationSource) {
+    return hoodlefinanceGetScriptEnumValue_("InstallationSource", "NONE");
+  }
+
+  try {
+    return ScriptApp.getInstallationSource();
+  } catch (error) {
+    return hoodlefinanceGetScriptEnumValue_("InstallationSource", "NONE");
+  }
+}
+
+function hoodlefinanceIsInstalledAsAddOn_() {
+  return !hoodlefinanceMatchesScriptEnum_(
+    hoodlefinanceGetInstallationSource_(),
+    "InstallationSource",
+    "NONE"
+  );
 }
 
 function hoodlefinanceCreateAddOnLinkButtonSpec_(text, url) {

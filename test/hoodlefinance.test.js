@@ -645,7 +645,9 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
   const cacheStore = new Map();
   const scriptPropertiesStore = new Map();
   const userPropertiesStore = new Map();
+  let installationSource = "NONE";
   const uiState = {
+    addonMenus: [],
     alerts: [],
     dialogs: [],
     menus: [],
@@ -671,6 +673,22 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
         },
         addToUi() {
           uiState.menus.push({ items: items.slice(), name });
+        },
+      };
+    },
+    createAddonMenu() {
+      const items = [];
+      return {
+        addItem(label, functionName) {
+          items.push({ functionName, label, type: "item" });
+          return this;
+        },
+        addSeparator() {
+          items.push({ type: "separator" });
+          return this;
+        },
+        addToUi() {
+          uiState.addonMenus.push({ items: items.slice() });
         },
       };
     },
@@ -828,6 +846,21 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
         };
       },
     },
+    ScriptApp: {
+      AuthMode: {
+        FULL: "FULL",
+        LIMITED: "LIMITED",
+        NONE: "NONE",
+      },
+      InstallationSource: {
+        APPS_MARKETPLACE_DOMAIN_ADD_ON: "APPS_MARKETPLACE_DOMAIN_ADD_ON",
+        NONE: "NONE",
+        WEB_STORE_ADD_ON: "WEB_STORE_ADD_ON",
+      },
+      getInstallationSource() {
+        return installationSource;
+      },
+    },
     SpreadsheetApp: {
       getUi() {
         return ui;
@@ -856,6 +889,9 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
 
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: "hoodlefinance.js" });
+  sandbox.__setInstallationSource = function (value) {
+    installationSource = value;
+  };
   return sandbox;
 }
 
@@ -2331,6 +2367,21 @@ test("suppressed automatic checks do not fetch remote versions", () => {
   );
 });
 
+test("bound-script onOpen keeps the normal custom menu path", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__userPropertiesStore.set("hoodlefinance.suppressUpdateChecks", "true");
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Fetch should not run while suppressed");
+  };
+
+  ctx.onOpen({ authMode: ctx.ScriptApp.AuthMode.LIMITED });
+
+  assert.equal(ctx.__uiState.menus.length, 1);
+  assert.equal(ctx.__uiState.menus[0].name, "Hoodlefinance");
+  assert.equal(ctx.__uiState.addonMenus.length, 0);
+});
+
 test("manual update checks show a dialog when a newer version exists", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
@@ -2428,14 +2479,34 @@ test("suppression can be toggled from helper functions", () => {
   assert.equal(ctx.__userPropertiesStore.has("hoodlefinance.suppressUpdateChecks"), false);
 });
 
-test("onInstall reuses the normal menu bootstrap path", () => {
+test("Editor add-on install builds the add-on menu without the bound-script update items", () => {
   const ctx = loadHoodlefinance();
 
-  ctx.__userPropertiesStore.set("hoodlefinance.suppressUpdateChecks", "true");
-  ctx.onInstall({});
+  ctx.__setInstallationSource(ctx.ScriptApp.InstallationSource.WEB_STORE_ADD_ON);
+  ctx.onInstall({ authMode: ctx.ScriptApp.AuthMode.NONE });
 
-  assert.equal(ctx.__uiState.menus.length, 1);
-  assert.equal(ctx.__uiState.menus[0].name, "Hoodlefinance");
+  assert.equal(ctx.__uiState.menus.length, 0);
+  assert.equal(ctx.__uiState.addonMenus.length, 1);
+  assert.deepEqual(ctx.__uiState.addonMenus[0].items, [
+    { functionName: "hoodlefinanceShowInstalledVersion", label: "Show installed version", type: "item" },
+  ]);
+});
+
+test("Editor add-on onOpen in AuthMode.NONE avoids restricted update-check services", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__setInstallationSource(ctx.ScriptApp.InstallationSource.WEB_STORE_ADD_ON);
+  ctx.PropertiesService.getUserProperties = function () {
+    throw new Error("User properties should not be touched in AuthMode.NONE");
+  };
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Fetch should not run in AuthMode.NONE");
+  };
+
+  ctx.onOpen({ authMode: ctx.ScriptApp.AuthMode.NONE });
+
+  assert.equal(ctx.__uiState.addonMenus.length, 1);
+  assert.equal(ctx.__uiState.menus.length, 0);
 });
 
 test("the Sheets add-on homepage card summarizes the function and links to docs", () => {

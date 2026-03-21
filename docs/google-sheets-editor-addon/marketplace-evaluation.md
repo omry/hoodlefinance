@@ -12,12 +12,13 @@ It focuses on three questions:
 
 Marketplace packaging is still the right next validation path for this prototype, but the current prototype is not publish-ready yet.
 
-The biggest repo-local blockers are not branding or paperwork first. They are add-on lifecycle issues:
+The biggest remaining repo-local blockers are no longer the add-on open trigger or menu shape. Those lifecycle issues are now addressed in the prototype.
 
-- the add-on menu code currently uses `createMenu()` instead of `createAddonMenu()`, even though Google review expects Editor add-on menu items under the add-ons menu surface
-- the current `onOpen()` path is not safe for published Editor add-ons running in `AuthMode.NONE`
+The most important remaining blockers are now:
 
-Those two issues should be fixed before spending time on screenshots, store metadata, or a review submission.
+- Marketplace/project wiring that still does not exist in the repo
+- listing assets and policy/support links
+- a real Marketplace validation pass for custom-function exposure in Sheets
 
 ## What Google Requires For Packaging
 
@@ -105,41 +106,19 @@ But there are still important gaps.
 
 ## Repo-Specific Gaps Before Packaging
 
-### 1. `onOpen()` Is Not `AuthMode.NONE`-Safe
+### 1. `onOpen()` And Menu Bootstrap
 
-Published Editor add-ons can run `onOpen()` in `AuthMode.NONE` when the add-on is installed for a user but not yet enabled in the current spreadsheet.
+This was an earlier blocker and is now addressed in the prototype runtime.
 
-Google's authorization docs say that in `AuthMode.NONE`:
+The current implementation now:
 
-- `PropertiesService` is unavailable
-- `UrlFetchApp` is unavailable
-- menu rendering can stop if restricted services are touched before the menu is added
+- uses `createAddonMenu()` for the add-on path
+- avoids the bound-script automatic update-check flow during add-on `onOpen()`
+- keeps the manual bound-script menu and automatic raw-source update checks only for the pasted-script install path
 
-The current implementation does both of these during `onOpen()`:
+That means the prototype is in better shape for a published Editor add-on where `onOpen()` can run in `AuthMode.NONE`.
 
-- [`hoodlefinance.js`](../../hoodlefinance.js) calls `hoodlefinanceAddMenu_()`
-- [`hoodlefinance.js`](../../hoodlefinance.js) calls `hoodlefinanceMaybeCheckForUpdates_()`
-
-That path currently reaches restricted services before a user explicitly clicks anything:
-
-- [`hoodlefinance.js`](../../hoodlefinance.js) `hoodlefinanceAddMenu_()` reads user properties to choose menu labels
-- [`hoodlefinance.js`](../../hoodlefinance.js) `hoodlefinanceMaybeCheckForUpdates_()` leads to version-check logic
-- [`hoodlefinance.js`](../../hoodlefinance.js) `hoodlefinanceGetUserProperties_()` uses `PropertiesService`
-- [`hoodlefinance.js`](../../hoodlefinance.js) version lookup eventually uses `UrlFetchApp.fetch(...)`
-
-That means the current unpublished test result is not enough to clear publish readiness. Google documents that unpublished Editor add-ons run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons enter `AuthMode.NONE`.
-
-### 2. The Menu Path Should Use `createAddonMenu()`
-
-Google's review checklist says Editor add-ons must place menu items under the add-ons menu surface, and Google's authorization examples use `createAddonMenu()` for Editor add-ons.
-
-The current implementation uses:
-
-- [`hoodlefinance.js`](../../hoodlefinance.js) `ui.createMenu(HOODLEFINANCE_MENU_TITLE_)`
-
-That is fine for a bound script, but it is not the packaging shape Google documents for Editor add-ons.
-
-### 3. Marketplace Assets And Policy Links Are Missing
+### 2. Marketplace Assets And Policy Links Are Missing
 
 The repo currently does not include:
 
@@ -153,7 +132,7 @@ The repo currently does not include:
 
 The current manifest logo URL is also still a generic Google-hosted icon, which is acceptable as a prototype placeholder but not a good review-ready identity.
 
-### 4. Cloud Project Wiring Still Needs Real Setup
+### 3. Cloud Project Wiring Still Needs Real Setup
 
 The repo currently has a prototype manifest and code scaffold, but not the publishing-side project setup:
 
@@ -161,6 +140,12 @@ The repo currently has a prototype manifest and code scaffold, but not the publi
 - no documented Marketplace SDK app configuration
 - no documented OAuth consent configuration for the add-on
 - no published script version or script-ID based Marketplace dry run
+
+### 4. Marketplace Validation Still Needs To Prove Custom-Function Exposure
+
+The largest unresolved product question is still whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
+
+The unpublished test deployment did not prove that. It still produced `Unknown function`, which matched the current public issue tracker behavior cited in the prototype README.
 
 ## Runtime Limits That Still Matter After Packaging
 
@@ -267,6 +252,8 @@ A spreadsheet-visible marker is more promising than script-local properties beca
 
 If conflict detection becomes important enough to implement, evaluate a document-scoped marker such as spreadsheet developer metadata or another document-visible flag that both the bound script and the add-on can read consistently.
 
+For now, the prototype intentionally does not implement that detection yet. The menu/auth hardening is small and locally testable; document-level conflict detection can wait until the Marketplace dry run confirms the add-on path is viable enough to justify more code.
+
 ## Version Checks And Migration Behavior
 
 Supporting both install paths also means the project should not treat version checks and upgrade prompts the same way in both modes.
@@ -325,13 +312,11 @@ The next worthwhile step is not public review submission yet. It is a small publ
 
 Recommended order:
 
-1. Refactor `onOpen()` to be `AuthMode.NONE`-safe.
-2. Switch the menu path to `createAddonMenu()`.
-3. Move automatic update checks behind an explicit user action or behind an authorization-mode guard.
-4. Create a standard Google Cloud project and connect the Apps Script project to it.
-5. Prepare minimal listing assets and support links.
-6. Run a private internal Marketplace dry run if a Workspace domain is available.
-7. Use that dry run to answer the remaining functional question: whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
+1. Create a standard Google Cloud project and connect the Apps Script project to it.
+2. Prepare minimal listing assets and support links.
+3. Configure the Marketplace SDK and OAuth consent screen for a private internal dry run.
+4. Run a private internal Marketplace dry run if a Workspace domain is available.
+5. Use that dry run to answer the remaining functional question: whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
 
 ## Sources
 

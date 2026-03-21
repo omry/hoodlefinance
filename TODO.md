@@ -1,3 +1,4 @@
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
-- If Marketplace packaging work resumes, first make the Sheets Editor add-on prototype `AuthMode.NONE`-safe and switch it to `createAddonMenu()`, then run a private internal Marketplace dry run from a dedicated standard Cloud project.
+- Continue Marketplace packaging work: create a dedicated standard Cloud project for the Sheets Editor add-on prototype and run a private internal Marketplace dry run to validate custom-function exposure.
+- If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol

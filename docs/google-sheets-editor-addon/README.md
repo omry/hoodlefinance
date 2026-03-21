@@ -27,6 +27,6 @@ On March 21, 2026, manual testing of the unpublished Editor add-on test deployme
 - Apps Script test deployments were sufficient for menu-level validation, but did not verify custom-function exposure in Sheets.
 - Marketplace packaging is still the next meaningful validation path for this prototype, but the current code is not publish-ready yet.
 - Google's current Editor add-on docs say unpublished test deployments run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons run `onOpen()` in `AuthMode.NONE`. That means the unpublished manual test does not fully validate publish-time menu behavior.
-- Before a Marketplace dry run, the add-on should be updated to make `onOpen()` safe in `AuthMode.NONE` and to use the documented Editor add-on menu path.
+- The current prototype now uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
 - Scope review, branding, publishing metadata, OAuth consent, and distribution are still follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the current checklist and repo-specific blockers.
 - The runtime behavior of the custom functions is still subject to the same Apps Script execution and fetch limits described in [`docs/design/google-sheets-deployment-strategy.md`](../design/google-sheets-deployment-strategy.md).
