@@ -24,11 +24,36 @@ It is most useful when your sheets mix:
 
 ## Quick Examples
 
-```gs
+```js
 =HOODLEFINANCE("NASDAQ:GOOG", "price")
 =HOODLEFINANCE("SJPA.L", "price@USD")
 =HOODLEFINANCE("IE00B4L5YX21", "symbol")
 ```
+
+## Installation
+
+HoodleFinance currently has two installation modes:
+
+- **Manual Apps Script install:** the current install path for general use.
+- **Google Workspace Marketplace add-on:** a future lower-friction install path.
+
+### Manual Apps Script Install
+
+This is the installation path you should use today.
+
+1. Open a Google Sheet.
+2. Go to `Extensions -> Apps Script`.
+3. Copy the contents of [`hoodlefinance.js` (raw)](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js) into a new script file named `HoodleFinance`.
+4. Save the Apps Script project.
+5. Reload the spreadsheet.
+
+The manual install also adds a `Hoodlefinance` menu in Sheets for version and update-related actions.
+
+### Google Workspace Marketplace Add-On
+
+The Marketplace add-on is intended to become the lower-friction install path, but it is not publicly available yet. The add-on path has already passed private Marketplace validation, while public Marketplace approval is still pending.
+
+If and when the Marketplace add-on becomes publicly available, it should be treated as an alternative install method rather than something to combine with a pasted-script install in the same spreadsheet.
 
 ## Limits
 
