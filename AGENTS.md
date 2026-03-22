@@ -29,6 +29,13 @@ Repo-specific standing directives for coding agents working in this project.
 - When a behavior is covered only by local mocks or unit tests but still depends on real platform behavior, treat the work as a checkpoint rather than as fully validated.
 - Do not strengthen docs or user-facing claims beyond what was actually verified in the live platform.
 
+## Website workflow
+
+- For the Docusaurus site, prefer the live dev server at `localhost:3000` for normal content, style, and layout iteration.
+- Do not rerun a full production build after every small website tweak just to confirm visible changes.
+- Use `npm run build` for website checkpoints, pre-commit validation, or when checking production-only behavior.
+- Keep website validation proportional to the change: use the lightest check that still verifies the claim being made.
+
 ## Release process
 
 - Implementing a fix is not the same as committing, pushing, merging, publishing, or otherwise sending changes outside the local working tree.

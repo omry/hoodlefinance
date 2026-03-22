@@ -18,6 +18,17 @@
   color: #132b1d;
 }
 
+:global([data-theme='dark']) .heroBanner {
+  background:
+    radial-gradient(circle at top right, rgba(79, 217, 139, 0.18), transparent 34%),
+    linear-gradient(180deg, #14231a 0%, #0f1611 100%);
+}
+
+:global([data-theme='dark']) .heroBanner :global(.hero__title),
+:global([data-theme='dark']) .heroBanner :global(.hero__subtitle) {
+  color: #f1f7f4;
+}
+
 @media screen and (max-width: 996px) {
   .heroBanner {
     padding: 2rem;
@@ -45,6 +56,12 @@
   box-shadow: 0 20px 50px rgba(19, 43, 29, 0.12);
 }
 
+:global([data-theme='dark']) .previewImage {
+  border-color: #355343;
+  background: #15231b;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.35);
+}
+
 .section {
   padding: 1.5rem 0 3rem;
 }
@@ -59,6 +76,13 @@
   box-shadow: 0 16px 40px rgba(19, 43, 29, 0.06);
 }
 
+:global([data-theme='dark']) .card {
+  border-color: #355343;
+  background: #15231b;
+  color: #f1f7f4;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
+}
+
 .card :global(h2),
 .card p,
 .card code {
@@ -67,4 +91,8 @@
 
 .card code {
   background: #eef7f1;
+}
+
+:global([data-theme='dark']) .card code {
+  background: #20352a;
 }

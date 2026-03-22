@@ -3,3 +3,6 @@
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
 - convert fragment validator to pure sh and reinstate it (no dependencies so it works in sandbox)
+- once website is is done, update contributing guide for how to update the content as well as basic cheat sheed (install, build, run local server)
+- acquired hoodlefinance.com, lets use it instead of the current location
+- use support@hoodlefinance.com as the public support email once domain mail is ready

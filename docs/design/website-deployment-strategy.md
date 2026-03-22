@@ -1,10 +1,10 @@
 # Website Deployment Strategy
 
-This note describes how the public `hoodlefinance.yadan.net` website will be deployed through GitHub Pages.
+This note describes how the public `hoodlefinance.com` website will be deployed through GitHub Pages.
 
 ## Goal
 
-Serve a real homepage and policy/documentation pages on `https://hoodlefinance.yadan.net/` with:
+Serve a real homepage and policy/documentation pages on `https://hoodlefinance.com/` with:
 
 - the latest site as the default
 - automatic updates after changes land on `main`
@@ -31,7 +31,7 @@ Deployment flow:
 2. A GitHub Actions workflow watches for website-related changes on `main`.
 3. That workflow installs the repo-pinned site tooling and builds the site.
 4. The workflow uploads the built static site as a GitHub Pages artifact.
-5. GitHub Pages serves the site on `hoodlefinance.yadan.net`.
+5. GitHub Pages serves the site on `hoodlefinance.com`.
 
 ## Deploy Sequence
 
@@ -49,14 +49,14 @@ The exact build output path, versioned-docs structure, and publish layout should
 
 The Docusaurus site should be configured with:
 
-- `url: 'https://hoodlefinance.yadan.net'`
+- `url: 'https://hoodlefinance.com'`
 - `baseUrl: '/'`
-- a `CNAME` file in `website/static/` containing `hoodlefinance.yadan.net`
+- a `CNAME` file in `website/static/` containing `hoodlefinance.com`
 
 The GitHub repository Pages settings should use:
 
 - a custom GitHub Actions Pages workflow as the publishing source
-- the custom domain `hoodlefinance.yadan.net`
+- the custom domain `hoodlefinance.com`
 
 ## Trigger Scope
 
@@ -119,4 +119,4 @@ Keep the GitHub Pages surface narrow:
    - API/help page
 3. Configure Docusaurus for the custom domain.
 4. Add GitHub Actions workflows for website build and Pages deploy.
-5. Point `hoodlefinance.yadan.net` DNS at GitHub Pages and configure the custom domain in repo settings.
+5. Point `hoodlefinance.com` DNS at GitHub Pages and configure the custom domain in repo settings.
