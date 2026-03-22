@@ -54,8 +54,6 @@ If Sheets reports `Unknown function: HOODLEFINANCE`, check that the script was p
 =HOODLEFINANCE_VERSION()
 ```
 
-Implemented today:
-
 - `identifier`: required
 - `attribute`: optional, defaults to `"price"`
 
@@ -65,20 +63,6 @@ Here, `identifier` means the query input accepted by the function:
 - a stock symbol with an exchange, such as `NASDAQ:GOOG` or `LON:SJPA`
 - a Yahoo-style symbol, such as `SJPA.L` or `ZPRX.DE`
 - an input ISIN, such as `IE00B4L5YX21` or `PHY077751022`
-
-The function still accepts the broader `GOOGLEFINANCE`-style call shape for compatibility:
-
-```gs
-=HOODLEFINANCE(identifier, [attribute], [startDate], [endDateOrNumDays], [interval])
-```
-
-But the historical-style arguments are not implemented:
-
-- `startDate`: unsupported
-- `endDateOrNumDays`: unsupported
-- `interval`: unsupported
-
-If any of those extra arguments are supplied, the function throws an error.
 
 `HOODLEFINANCE_VERSION()` returns the version string embedded in the pasted script.
 

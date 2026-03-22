@@ -33,6 +33,14 @@ Examples:
 
 `HOODLEFINANCE_ROUTES(identifier)` returns the planned quote route for one identifier, using the same static route introspection as `IDENTIFIER@?`.
 
+## Version Helper
+
+`HOODLEFINANCE_VERSION()` returns the version string embedded in the installed script.
+
+```gs
+=HOODLEFINANCE_VERSION()
+```
+
 ## Array Usage
 
 `HOODLEFINANCE` accepts ticker ranges directly and spills a result grid with the same shape.

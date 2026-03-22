@@ -18,6 +18,9 @@ For sampled live coverage by exchange, see the [Support Matrix](support-matrix).
 =HOODLEFINANCE(identifier, [attribute])
 ```
 
+- `identifier`: required
+- `attribute`: optional, defaults to `"price"`
+
 ## Supported Identifiers
 
 `identifier` is the thing you want to look up. Common forms include:
@@ -30,28 +33,15 @@ For sampled live coverage by exchange, see the [Support Matrix](support-matrix).
 
 For the full identifier rules, exchange-specific notes, and ISIN behavior, see [Identifiers](identifiers).
 
-# Supported attrbutes
-TODO
+# Supported Attributes
 
-```js
-/**
- * Returns the currently installed HoodleFinance version string.
- */
-=HOODLEFINANCE_VERSION()
-```
+Common quote attributes include `price`, `name`, `currency`, `high`, `low`, `close`, `change`, `changepct`, `volume`, `tradetime`, and `datadelay`.
 
-- `identifier`: required
-- `attribute`: optional, defaults to `"price"`
+HoodleFinance also supports identifier-oriented attributes such as `symbol`, `exchange`, and `isin`, plus output-currency requests such as `price@USD`.
 
-The function still accepts the broader `GOOGLEFINANCE`-style call shape for compatibility:
+Support for a specific attribute can vary by exchange and by listing. Even when an exchange is generally supported, some upstream sources may not provide every field for every instrument.
 
-```gs
-=HOODLEFINANCE(identifier, [attribute], [startDate], [endDateOrNumDays], [interval])
-```
-
-But the historical-style arguments are not implemented. If any of those extra arguments are supplied, the function throws an error.
-
-`HOODLEFINANCE_VERSION()` returns the version string embedded in the script.
+For the full attribute list and behavior notes, see [Supported Attributes](attributes).
 
 
 ## Quick Examples

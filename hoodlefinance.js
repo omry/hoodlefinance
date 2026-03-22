@@ -460,23 +460,12 @@ const HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_ = hoodlefinanceBuildGroupedMap_({
  *
  * @param {string|Array<Array<string>>} ticker Ticker symbol, optionally in GOOGLEFINANCE format.
  * @param {string|Array<Array<string>>} attribute Optional attribute name. Defaults to "price".
- * @param {*} startDate Unsupported for now.
- * @param {*} endDateOrNumDays Unsupported for now.
- * @param {*} interval Unsupported for now.
  * @return {string|number|Array<Array<string|number>>} The requested quote field or a spilled result grid.
  * @customfunction
  */
-function HOODLEFINANCE(ticker, attribute, startDate, endDateOrNumDays, interval) {
+function HOODLEFINANCE(ticker, attribute) {
   const rawAttribute = attribute == null ? "price" : hoodlefinanceCoerceScalar_(attribute, "attribute");
   const normalizedAttribute = hoodlefinanceNormalizeAttribute_(rawAttribute);
-
-  if (
-    hoodlefinanceHasValue_(startDate) ||
-    hoodlefinanceHasValue_(endDateOrNumDays) ||
-    hoodlefinanceHasValue_(interval)
-  ) {
-    throw new Error("Historical data arguments are not supported yet.");
-  }
 
   const tickerGrid = hoodlefinanceNormalizeTickerGrid_(ticker);
 
