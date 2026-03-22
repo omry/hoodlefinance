@@ -1393,7 +1393,7 @@ test("currency pairs fetch rates from Google Finance quote pages", () => {
   ]);
 });
 
-test("Google-quoted FX pairs fail clearly for attributes the page does not expose", () => {
+test("currency pairs reject unsupported high, low, and volume attributes with a direct error", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
 
@@ -1417,15 +1417,15 @@ test("Google-quoted FX pairs fail clearly for attributes the page does not expos
 
   assert.throws(
     () => ctx.HOODLEFINANCE("PHPILS", "high"),
-    /No value is available for this ticker\./
+    /Attribute "high" is not available for currency-pair identifiers\./
   );
   assert.throws(
     () => ctx.HOODLEFINANCE("PHPILS", "low"),
-    /No value is available for this ticker\./
+    /Attribute "low" is not available for currency-pair identifiers\./
   );
   assert.throws(
     () => ctx.HOODLEFINANCE("PHPILS", "volume"),
-    /No volume is available for this ticker\./
+    /Attribute "volume" is not available for currency-pair identifiers\./
   );
 });
 
@@ -2053,8 +2053,18 @@ test("bare FX pairs use canonical Google quotes with alias-aware scaling", () =>
   assert.ok(Math.abs(ctx.HOODLEFINANCE("GBpUSD", "change") - 0.000223) < 1e-12);
   assert.ok(Math.abs(ctx.HOODLEFINANCE("GBpUSD", "changepct") - 0.017153846153846186) < 1e-12);
   assert.equal(ctx.HOODLEFINANCE("GBpUSD", "currency"), "USD");
-  assert.throws(() => ctx.HOODLEFINANCE("GBpUSD", "high"), /No value is available for this ticker\./);
-  assert.throws(() => ctx.HOODLEFINANCE("GBpUSD", "low"), /No value is available for this ticker\./);
+  assert.throws(
+    () => ctx.HOODLEFINANCE("GBpUSD", "high"),
+    /Attribute "high" is not available for currency-pair identifiers\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("GBpUSD", "low"),
+    /Attribute "low" is not available for currency-pair identifiers\./
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("GBpUSD", "volume"),
+    /Attribute "volume" is not available for currency-pair identifiers\./
+  );
   assert.equal(ctx.HOODLEFINANCE("USDGBp", "price"), 75.63);
   assert.equal(ctx.HOODLEFINANCE("USDGBp", "currency"), "GBp");
   assert.equal(

@@ -95,6 +95,12 @@ const HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_ = hoodlefinanceBuildSet_([
   "price",
 ]);
 
+const HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_ = hoodlefinanceBuildSet_([
+  "high",
+  "low",
+  "volume",
+]);
+
 const HOODLEFINANCE_SOURCE_OVERRIDES_ = hoodlefinanceBuildSet_([
   "ARIVA",
   "GOOGLE",
@@ -3254,6 +3260,7 @@ function hoodlefinanceExtractRawQuote_(quote) {
 function hoodlefinanceExtractAttribute_(quote, attribute, context) {
   const attributeRequest = hoodlefinanceParseAttributeRequest_(attribute);
   const extractor = HOODLEFINANCE_SUPPORTED_ATTRIBUTES_[attributeRequest.baseAttribute];
+  const normalizedContext = context || {};
   let value;
 
   if (!extractor) {
@@ -3279,13 +3286,20 @@ function hoodlefinanceExtractAttribute_(quote, attribute, context) {
     }
   }
 
-  value = extractor(quote, context || {});
+  if (HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_[attributeRequest.baseAttribute] &&
+      hoodlefinanceIsFxContext_(quote, normalizedContext)) {
+    throw new Error(
+      'Attribute "' + attributeRequest.baseAttribute + '" is not available for currency-pair identifiers.'
+    );
+  }
+
+  value = extractor(quote, normalizedContext);
 
   if (!attributeRequest.wantsOutputCurrency) {
     return value;
   }
 
-  return hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attributeRequest, context || {});
+  return hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attributeRequest, normalizedContext);
 }
 
 function hoodlefinanceHasValue_(value) {

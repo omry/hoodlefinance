@@ -36,6 +36,7 @@ Additional `HOODLEFINANCE`-only attributes:
 - `price` supports an output currency such as `price@USD`, `price@EUR`, `price@GBP`, or `price@USDT`.
 - `close`, `high`, `low`, `change`, `changepct`, `currency`, `name`, `volume`, `tradetime`, `datadelay`, `symbol`, `exchange`, and `isin` do not support an output currency.
 - Output-currency requests are rejected for currency-pair identifiers such as `EURUSD` or `CURRENCY:BTC.USDT`.
+- Currency-pair identifiers reject `high`, `low`, and `volume` directly because the upstream FX quote pages do not expose those fields.
 - `changepct` returns a fraction such as `0.0123` for `1.23%`. Format the cell as Percent in Sheets.
 - `tradetime` returns a Sheets date-time value when the upstream source provides one.
 - `datadelay` is source-dependent and should be treated as advisory, not a guarantee of freshness.

@@ -14,7 +14,7 @@ sidebar_label: Currency & FX
 
 FX pair lookups support fields such as `price`, `currency`, `name`, `symbol`, `exchange`, `close`, `change`, `changepct`, `tradetime`, and `datadelay`.
 
-Examples:
+A few examples:
 
 ```js
 =HOODLEFINANCE("EURUSD", "price")      // exchange rate
@@ -87,6 +87,7 @@ This is useful when:
 Some practical rules are worth keeping in mind:
 
 - output-currency conversion is rejected for currency-pair identifiers such as `EURUSD` or `CURRENCY:BTC.USDT`
+- currency-pair identifiers reject `high`, `low`, and `volume` because the upstream FX quote pages do not expose those fields
 - pair coverage and quote freshness still depend on upstream sources
 
 For general attribute behavior, including the full rules for `price@<currency>`, see [Supported Attributes](attributes).
