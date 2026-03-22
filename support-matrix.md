@@ -131,7 +131,7 @@ Use it as a quick reference for current live probe results by exchange and featu
       <td style="text-align:center;"><span title="All probes passed. Attributes: high, low, close. Samples: 7203.T, 6758.T, 9984.T">✅</span></td>
       <td style="text-align:center;"><span title="All probes passed. Attributes: volume, tradetime, datadelay. Samples: 7203.T, 6758.T, 9984.T">✅</span></td>
       <td style="text-align:center;"><span title="All probes passed. Attributes: change, changepct. Samples: 7203.T, 6758.T, 9984.T">✅</span></td>
-      <td style="text-align:center;"><span title="Failing probes: isin (7203.T, 6758.T, 9984.T). Samples: 7203.T, 6758.T, 9984.T">❌</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: isin. Samples: 7203.T, 6758.T, 9984.T">✅</span></td>
     </tr>
     <tr>
       <td style="vertical-align:top;"><code>ETR</code><br><sub>Xetra</sub></td>

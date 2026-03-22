@@ -249,6 +249,13 @@ const TRADINGVIEW_NASDAQ_GOOG_HTML = createTradingviewSymbolHtml({
   short_name: "GOOG",
 });
 
+const TRADINGVIEW_NYSE_IBM_HTML = createTradingviewSymbolHtml({
+  resolved_symbol: "NYSE:IBM",
+  isin_displayed: "US4592001014",
+  exchange: "NYSE",
+  short_name: "IBM",
+});
+
 const TRADINGVIEW_AMEX_AVLV_HTML = createTradingviewSymbolHtml({
   resolved_symbol: "AMEX:AVLV",
   isin_displayed: "US05351W1036",
@@ -540,6 +547,7 @@ const TRADINGVIEW_DEFAULT_ISIN_DISPATCH_CASES = [
   { exchange: "KRX", quote: { symbol: "005930.KS" }, tickerInput: "KRX:005930", isin: "KR7005930003" },
   { exchange: "MAD", quote: { symbol: "SAN.MC" }, tickerInput: "MAD:SAN", isin: "ES0113900J37" },
   { exchange: "NASDAQ", quote: { symbol: "GOOG", exchangeName: "NMS" }, tickerInput: "GOOG", isin: "US02079K1079" },
+  { exchange: "NYSE", quote: { symbol: "IBM", exchangeName: "NYSE" }, tickerInput: "NYSE:IBM", isin: "US4592001014" },
   { exchange: "NSE", quote: { symbol: "RELIANCE.NS" }, tickerInput: "NSE:RELIANCE", isin: "INE002A01018" },
   { exchange: "NZE", quote: { symbol: "SPK.NZ" }, tickerInput: "NZE:SPK", isin: "NZTELE0001S4" },
   { exchange: "OSL", quote: { symbol: "EQNR.OL" }, tickerInput: "OSL:EQNR", isin: "NO0010096985" },
@@ -582,6 +590,7 @@ const TRADINGVIEW_EXPLICIT_ISIN_CASES = [
   { exchange: "LON", quote: { symbol: "SJPA.L" }, tickerInput: "SJPA.L@TRADINGVIEW", isin: "IE00B4L5YX21", url: "https://www.tradingview.com/symbols/LSE-SJPA/", html: TRADINGVIEW_LSE_SJPA_HTML },
   { exchange: "MAD", quote: { symbol: "SAN.MC" }, tickerInput: "MAD:SAN@TRADINGVIEW", isin: "ES0113900J37", url: "https://www.tradingview.com/symbols/BME-SAN/", html: TRADINGVIEW_BME_SAN_HTML },
   { exchange: "NASDAQ", quote: { symbol: "GOOG", exchangeName: "NMS" }, tickerInput: "GOOG@TRADINGVIEW", isin: "US02079K1079", url: "https://www.tradingview.com/symbols/NASDAQ-GOOG/", html: TRADINGVIEW_NASDAQ_GOOG_HTML },
+  { exchange: "NYSE", quote: { symbol: "IBM", exchangeName: "NYSE" }, tickerInput: "NYSE:IBM@TRADINGVIEW", isin: "US4592001014", url: "https://www.tradingview.com/symbols/NYSE-IBM/", html: TRADINGVIEW_NYSE_IBM_HTML },
   { exchange: "NSE", quote: { symbol: "RELIANCE.NS" }, tickerInput: "NSE:RELIANCE@TRADINGVIEW", isin: "INE002A01018", url: "https://www.tradingview.com/symbols/NSE-RELIANCE/", html: TRADINGVIEW_NSE_RELIANCE_HTML },
   { exchange: "NZE", quote: { symbol: "SPK.NZ" }, tickerInput: "NZE:SPK@TRADINGVIEW", isin: "NZTELE0001S4", url: "https://www.tradingview.com/symbols/NZX-SPK/", html: TRADINGVIEW_NZX_SPK_HTML },
   { exchange: "OSL", quote: { symbol: "EQNR.OL" }, tickerInput: "OSL:EQNR@TRADINGVIEW", isin: "NO0010096985", url: "https://www.tradingview.com/symbols/OSL-EQNR/", html: TRADINGVIEW_OSL_EQNR_HTML },

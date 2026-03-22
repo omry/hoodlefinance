@@ -387,6 +387,7 @@ const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = hoodlefinanceBuild
   LSE: ["LON"],
   MIL: ["BIT"],
   NASDAQ: ["NASDAQ"],
+  NYSE: ["NYSE"],
   NEO: ["NEO"],
   NSE: ["NSE"],
   NZX: ["NZE"],
