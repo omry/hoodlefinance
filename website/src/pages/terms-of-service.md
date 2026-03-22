@@ -4,10 +4,6 @@ Last updated: March 22, 2026
 
 These Terms of Service apply to the HoodleFinance Google Sheets add-on and the underlying Google Apps Script project. By installing or using the add-on, you agree to these terms.
 
-## Experimental Status
-
-HoodleFinance is an independently maintained, open-source project. Features and availability may change over time. 
-
 ## Permitted Use
 
 You may use HoodleFinance as a Google Sheets add-on for financial data retrieval, lookup, conversion, and related spreadsheet functionality, subject to:
@@ -50,7 +46,7 @@ By using this add-on, you agree to indemnify and hold harmless the project maint
 
 ## Changes to these Terms
 
-These terms may be updated as the add-on, project scope, upstream sources, or service features change.
+These terms may be updated from time to time.
 
 ## Contact
 

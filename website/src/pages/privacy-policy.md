@@ -56,7 +56,7 @@ HoodleFinance runs entirely on Google Apps Script and relies on the security mod
 
 ## Changes to this Policy
 
-This privacy policy may be updated as the add-on, supported sources, or service features evolve. Changes will be reflected by the "Last updated" date at the top of this document.
+This privacy policy may be updated from time to time. Changes will be reflected by the "Last updated" date at the top of this document.
 
 ## Contact
 
