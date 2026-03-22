@@ -15,18 +15,7 @@
  @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */
 const sidebars = {
-  tutorialSidebar: [
-    'intro',
-    {
-      type: 'category',
-      label: 'Support & Policies',
-      items: [
-        'support',
-        'privacy-policy',
-        'terms-of-service',
-      ],
-    },
-  ],
+  tutorialSidebar: ['intro'],
 };
 
 export default sidebars;

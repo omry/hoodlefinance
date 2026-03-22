@@ -97,7 +97,7 @@ const config = {
               },
               {
                 label: 'Support',
-                to: '/docs/support',
+                to: '/support',
               },
             ],
           },
@@ -110,11 +110,11 @@ const config = {
               },
               {
                 label: 'Privacy Policy',
-                to: '/docs/privacy-policy',
+                to: '/privacy-policy',
               },
               {
                 label: 'Terms of Service',
-                to: '/docs/terms-of-service',
+                to: '/terms-of-service',
               },
             ],
           },

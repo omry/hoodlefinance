@@ -95,9 +95,9 @@ Maintain the public-facing listing surface:
 
 Canonical policy/support pages are now hosted on the project website:
 
-- https://hoodlefinance.com/docs/support
-- https://hoodlefinance.com/docs/privacy-policy
-- https://hoodlefinance.com/docs/terms-of-service
+- https://hoodlefinance.com/support
+- https://hoodlefinance.com/privacy-policy
+- https://hoodlefinance.com/terms-of-service
 - [`oauth-review-prep.md`](./oauth-review-prep.md)
 
 Checklist:
