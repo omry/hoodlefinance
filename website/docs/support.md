@@ -8,15 +8,9 @@ If something looks wrong, start by checking:
 - the exact attribute you requested
 - whether the issue is specific to one market, exchange, or instrument type
 
-You can also compare behavior against the public demo sheet:
-
-https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing
-
 ## Contact
 
-Email:
-
-`support@falcon.yadan.net`
+Email: `support@falcon.yadan.net`
 
 ## Report an Issue
 
