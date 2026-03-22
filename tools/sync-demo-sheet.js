@@ -859,6 +859,7 @@ async function syncBoundScriptWithClasp(config) {
 
 async function ensureAccessToken() {
   return ensureAccessTokenWithDeps({
+    nonInteractive: process.env.CI === "true" || process.env.HOODLEFINANCE_NON_INTERACTIVE === "1",
     oauthClientPath: OAUTH_CLIENT_PATH,
     oauthTokenPath: OAUTH_TOKEN_PATH,
     readJsonSync: readJsonSync,

@@ -136,4 +136,6 @@ jobs:
           printf '%s' "${CLASP_RC_JSON}" > "${HOME}/.clasprc.json"
 
       - name: Sync public demo sheet
+        env:
+          HOODLEFINANCE_NON_INTERACTIVE: "1"
         run: node tools/sync-demo-sheet.js --live-demo

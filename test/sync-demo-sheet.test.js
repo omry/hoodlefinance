@@ -323,6 +323,33 @@ test("ensureAccessTokenWithDeps falls back to interactive auth after invalid_gra
   }
 });
 
+test("ensureAccessTokenWithDeps fails fast on invalid_grant in non-interactive mode", async function () {
+  await assert.rejects(
+    ensureAccessTokenWithDeps({
+      nonInteractive: true,
+      authorizeInteractively: async function () {
+        throw new Error("should not authorize");
+      },
+      readJsonSync: function () {
+        return { installed: { client_id: "client-id", client_secret: "secret" } };
+      },
+      readOptionalJsonSync: function () {
+        return {
+          access_token: "expired-access",
+          expiry_date: Date.now() - 1,
+          refresh_token: "stale-refresh-token",
+        };
+      },
+      refreshAccessToken: async function () {
+        const error = new Error("invalid grant");
+        error.oauthError = "invalid_grant";
+        throw error;
+      },
+    }),
+    /invalid in non-interactive mode/
+  );
+});
+
 test("ensureAccessTokenWithDeps rethrows non-invalid-grant refresh failures", async function () {
   await assert.rejects(
     ensureAccessTokenWithDeps({

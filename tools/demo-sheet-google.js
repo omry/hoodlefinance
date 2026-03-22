@@ -6,6 +6,7 @@ const crypto = require("node:crypto");
 async function ensureAccessTokenWithDeps(deps) {
   const readJson = deps.readJsonSync;
   const readOptionalJson = deps.readOptionalJsonSync;
+  const nonInteractive = deps.nonInteractive === true;
   const refreshToken = deps.refreshAccessToken || function (client, token) {
     return refreshAccessToken(client, token, deps);
   };
@@ -26,6 +27,12 @@ async function ensureAccessTokenWithDeps(deps) {
     } catch (error) {
       if (!isInvalidGrantOAuthError(error)) {
         throw error;
+      }
+
+      if (nonInteractive) {
+        throw new Error(
+          "Demo-sheet OAuth token is invalid in non-interactive mode. Update the stored demo-sheet OAuth token secret and retry."
+        );
       }
 
       process.stdout.write(
