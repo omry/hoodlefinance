@@ -20,6 +20,7 @@ const sidebars = {
     {
       type: 'category',
       label: 'API',
+      collapsed: false,
       items: [
         'api/overview',
         'api/identifiers',

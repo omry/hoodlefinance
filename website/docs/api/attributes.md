@@ -4,118 +4,152 @@ sidebar_position: 3
 
 # Attributes
 
-Attribute matching is case-insensitive.
+`attribute` is the second argument to `HOODLEFINANCE`. It tells the function which value to return after the identifier has been resolved, such as `price`, `name`, `currency`, `symbol`, or `isin`.
 
-## Quote Attributes
+Attribute matching is case-insensitive. If you omit the second argument, `HOODLEFINANCE` defaults to `price`.
 
-`GOOGLEFINANCE`-like quote attributes:
+## Basic Quote Attributes
 
-- `price`
-- `name`
-- `currency`
-- `tradetime`
-- `datadelay`
-- `volume`
-- `high`
-- `low`
-- `close`
-- `change`
-- `changepct`
+These basic quote fields provide partial parity with `GOOGLEFINANCE`:
 
-Additional `HOODLEFINANCE`-only attributes:
-
-- `symbol[:google|:yahoo]`
-- `exchange[:google|:yahoo]`
-- `isin`
-- `price@<currency>`
-
-## Behavior Notes
-
-- `price` is the default attribute.
-- `close` returns the previous close price.
-- `price` supports an output currency such as `price@USD`, `price@EUR`, `price@GBP`, or `price@USDT`.
-- `close`, `high`, `low`, `change`, `changepct`, `currency`, `name`, `volume`, `tradetime`, `datadelay`, `symbol`, `exchange`, and `isin` do not support an output currency.
-- Output-currency requests are rejected for currency-pair identifiers such as `EURUSD` or `CURRENCY:BTC.USDT`.
-- Currency-pair identifiers reject `high`, `low`, and `volume` directly because the upstream FX quote pages do not expose those fields.
-- `changepct` returns a fraction such as `0.0123` for `1.23%`. Format the cell as Percent in Sheets.
-- `tradetime` returns a Sheets date-time value when the upstream source provides one.
-- `datadelay` is source-dependent and should be treated as advisory, not a guarantee of freshness.
-- `symbol` defaults to Google-style output such as `LON:SJPA` or `CURRENCY:EURUSD`.
-- `exchange` defaults to Google-style output such as `LON`, `NASDAQ`, `PSE`, or `CURRENCY`.
-- If an upstream source does not provide a requested field, the formula returns an error for that lookup.
-- `GBp` and `ILA` are normalized to `GBP` and `ILS` respectively for money-valued attributes such as `price`, `close`, `high`, `low`, and `change`. When that normalization applies, numeric values are divided by `100`.
-
-## The `isin` Attribute
-
-`isin` is the generic ISIN attribute. It tries to infer the exchange from the input identifier, Yahoo suffix, or quote metadata, then dispatches to an exchange-specific resolver.
-
-If the exchange cannot be inferred, or if no default ISIN source is configured for that exchange, the function throws a clear error and tells you to use an explicit source attribute.
+- `price`: Current price or exchange rate.
+- `name`: Display name of the resolved instrument or pair.
+- `currency`: Quote currency.
+- `tradetime`: Last trade or last update time when the upstream source provides one.
+- `datadelay`: Advisory delay information from the upstream source.
+- `volume`: Reported trading volume when the upstream source provides it.
+- `high`: Session high.
+- `low`: Session low.
+- `close`: Previous close.
+- `change`: Price change from the previous close.
+- `changepct`: Percentage change from the previous close, returned as a fraction such as `0.0123` for `1.23%`.
 
 Examples:
 
-```gs
+```js
+=HOODLEFINANCE("NASDAQ:GOOG", "price")
+=HOODLEFINANCE("NYSE:IBM", "name")
+=HOODLEFINANCE("EURUSD", "close")
+=HOODLEFINANCE("SJPA.L", "changepct")
+```
+
+## HoodleFinance-Specific Attributes
+
+HoodleFinance adds a few attributes beyond the basic quote fields, each useful in a slightly different way:
+
+- `isin` is useful when you need to identify the exact security, especially when it is hard to find in a broker and the ISIN is the easiest way to confirm you have the right instrument.
+- `price@<currency>` simplifies price normalization for mixed-currency portfolios by turning it into a single-step lookup.
+- `symbol[:google|:yahoo]` and `exchange[:google|:yahoo]` are often the most practical way to inspect, normalize, and debug how HoodleFinance resolved an identifier.
+
+The next sections cover these in more detail, with extra focus on `price@<currency>` and `isin` because they introduce behavior beyond the basic quote fields.
+
+Examples:
+
+```js
+=HOODLEFINANCE("SJPA.L", "price@USD")
+=HOODLEFINANCE("GOOG", "isin")
+=HOODLEFINANCE("IE00B4L5YX21", "symbol")
+=HOODLEFINANCE("LON:SJPA", "exchange")
+```
+
+## Price Conversion With `price@<currency>`
+
+Use `price@<currency>` when you want a security price returned in a reporting currency rather than in the instrument's native quote currency.
+
+This is one of the most practical HoodleFinance features because it lets a sheet compare holdings across markets without pushing conversion logic into separate helper formulas.
+
+It is especially useful when:
+
+- your portfolio mixes U.S., U.K., European, or Asian listings
+- you want one reporting currency for summaries, dashboards, or allocation views
+- you want the formula itself to return the converted price instead of maintaining a separate FX-conversion layer in the sheet
+
+Examples:
+
+```js
+=HOODLEFINANCE("SJPA.L", "price@USD")
+=HOODLEFINANCE("IE00B4L5YX21", "price@GBP")
+=HOODLEFINANCE("NASDAQ:GOOG", "price@EUR")
+```
+
+Some practical rules:
+
+- `price` is the default attribute.
+- Output-currency conversion is supported only for `price`.
+- `close`, `high`, `low`, `change`, `changepct`, `currency`, `name`, `volume`, `tradetime`, `datadelay`, `symbol`, `exchange`, and `isin` do not support an output-currency suffix.
+- Output-currency requests are rejected for currency-pair identifiers such as `EURUSD` or `CURRENCY:BTC.USDT`.
+
+For more on FX pairs and converted output, see [Currency & FX](currency-fx).
+
+## Convenience Identifier Metadata
+
+The identifier-oriented metadata attributes are useful when you want to inspect what a lookup resolved to, but they are mostly a nice-to-have rather than the main reason to use HoodleFinance:
+
+- `symbol` defaults to Google-style output such as `LON:SJPA` or `CURRENCY:EURUSD`.
+- `exchange` defaults to Google-style output such as `LON`, `NASDAQ`, `PSE`, or `CURRENCY`.
+- `symbol:yahoo` and `exchange:yahoo` return Yahoo-style equivalents when that route is supported.
+
+Examples:
+
+```js
+=HOODLEFINANCE("SJPA.L", "symbol")
+=HOODLEFINANCE("LON:SJPA", "exchange")
+=HOODLEFINANCE("IE00B4L5YX21", "symbol:yahoo")
+```
+
+These are most helpful for:
+
+- debugging what a lookup resolved to
+- normalizing identifier formats in a sheet
+- checking whether a resolved listing matches the exchange you expected
+
+For identifier forms and direct ISIN input, see [Identifiers](identifiers).
+
+## The `isin` Attribute
+
+`isin` is the generic ISIN attribute. HoodleFinance tries to infer the correct resolver path from the input identifier, Yahoo suffix, exchange prefix, or resolved quote metadata.
+
+This is one of the key HoodleFinance capabilities because it makes security-first workflows possible. Instead of hard-coding every sheet around exchange-specific ticker formats, you can ask HoodleFinance to resolve or return the ISIN and use that as a more stable identifier across listings and data sources.
+
+That means the behavior depends partly on the identifier you start with:
+
+- `=HOODLEFINANCE("LON:SJPA", "isin")` already specifies the listing venue.
+- `=HOODLEFINANCE("SJPA.L", "isin")` lets the Yahoo suffix imply the venue.
+- `=HOODLEFINANCE("GOOG", "isin")` relies on resolved quote metadata.
+- `=HOODLEFINANCE("IE00B4L5YX21", "name")` starts from the security identifier itself, then resolves to one supported listing.
+
+If the exchange cannot be inferred, or if no default ISIN route exists for that exchange, HoodleFinance returns a clear error instead of guessing.
+
+Examples:
+
+```js
 =HOODLEFINANCE("ZPRX.DE", "isin")
 =HOODLEFINANCE("LON:SJPA", "isin")
 =HOODLEFINANCE("GOOG", "isin")
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
-That means the behavior depends partly on the input you start with:
+## FX And Data-Availability Rules
 
-- `=HOODLEFINANCE("LON:SJPA", "isin")` already tells the function the venue
-- `=HOODLEFINANCE("SJPA.L", "isin")` lets the suffix imply the venue
-- `=HOODLEFINANCE("GOOG", "isin")` relies on the resolved quote metadata
-- `=HOODLEFINANCE("IE00B4L5YX21", "name")` starts from the security identifier itself, then resolves to one listing
+A few attributes behave differently for currency pairs or for sources that do not expose every field:
 
-## Explicit ISIN Sources
+- Currency-pair identifiers reject `high`, `low`, and `volume` because the upstream FX quote pages do not expose those fields.
+- `tradetime` returns a Sheets date-time value when the upstream source provides one.
+- `datadelay` is source-dependent and should be treated as advisory rather than as a guarantee of freshness.
+- If an upstream source does not provide a requested field, the formula returns an error for that lookup.
 
-In normal use, `isin` should be enough. For debugging, coverage checks, and cases where you want to force a particular lookup path, use an identifier-side `@SOURCE` override.
+## Currency Normalization Notes
 
-Available source labels include:
+Money-valued attributes such as `price`, `close`, `high`, `low`, and `change` normalize `GBp` to `GBP` and `ILA` to `ILS`. When that normalization applies, numeric values are divided by `100`.
 
-- `@TRADINGVIEW`
-- `@LON`
-- `@PSE`
-- `@ARIVA`
-- `@IBKR`
+## Common Examples
 
-Examples:
-
-```gs
-=HOODLEFINANCE("ZPRX.DE@TRADINGVIEW", "isin")
-=HOODLEFINANCE("LON:SJPA@LON", "isin")
-=HOODLEFINANCE("PSE:BDO@PSE", "isin")
-=HOODLEFINANCE("ZPRV.DE@ARIVA", "isin")
-=HOODLEFINANCE("ISJP.L@IBKR", "isin")
-```
-
-Use these only when you have a specific reason to override the default behavior, such as troubleshooting a coverage gap or comparing resolver paths.
-
-## PSE And ISIN
-
-PSE content matters here because HoodleFinance has a dedicated PSE lookup path.
-
-- `PSE:` tickers use the PSE EDGE route directly
-- PSE ISIN lookups can also resolve through the built-in PSE ISIN map before falling back to other resolver paths
-
-Examples:
-
-```gs
-=HOODLEFINANCE("PSE:BDO", "isin")
-=HOODLEFINANCE("PSE:AP", "name")
-=HOODLEFINANCE("PHY0005M1090", "symbol")
-```
-
-For identifier forms and direct ISIN input, see [Identifiers](identifiers).
-
-## Examples
-
-```gs
+```js
 =HOODLEFINANCE("NASDAQ:GOOG")
 =HOODLEFINANCE("NYSE:IBM", "name")
 =HOODLEFINANCE("CURRENCY:EURUSD", "price")
 =HOODLEFINANCE("IE00B4L5YX21", "symbol")
 =HOODLEFINANCE("SJPA.L", "price@USD")
 =HOODLEFINANCE("GOOG", "isin")
-=HOODLEFINANCE("PSE:BDO@PSE", "isin")
+=HOODLEFINANCE("PSE:BDO", "isin")
 ```

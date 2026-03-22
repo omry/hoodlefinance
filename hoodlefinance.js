@@ -495,6 +495,7 @@ function HOODLEFINANCE_VERSION() {
 
 /**
  * Returns the current quote-routing table, or the planned quote route for one ticker.
+ * TODO: expose runtime trace directly from HOODLEFINANCE, similar to the CLI trace output.
  *
  * Examples:
  *   =HOODLEFINANCE_ROUTES()
