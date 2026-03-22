@@ -4,7 +4,7 @@
  */
 
 .heroBanner {
-  padding: 5rem 0 4rem;
+  padding: calc(var(--ifm-navbar-height) + 2rem) 0 4rem;
   text-align: left;
   position: relative;
   overflow: hidden;
@@ -31,25 +31,25 @@
 
 @media screen and (max-width: 996px) {
   .heroBanner {
-    padding: 2rem;
+    padding: calc(var(--ifm-navbar-height) + 1.5rem) 0 2rem;
   }
 }
 
 .buttons {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
 }
 
 .heroPreview {
-  margin-top: 2rem;
+  margin-top: 2.5rem;
 }
 
 .previewImage {
   display: block;
   width: 100%;
-  max-width: 960px;
   border: 1px solid #d8e7dd;
   border-radius: 1rem;
   background: #fff;
@@ -64,6 +64,32 @@
 
 .section {
   padding: 1.5rem 0 3rem;
+}
+
+.sectionContent {
+  max-width: var(--hf-content-width);
+  margin: 0 auto;
+}
+
+.heroContent {
+  text-align: center;
+}
+
+.heroContent :global(.hero__title) {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.heroContent :global(.hero__subtitle) {
+  max-width: 900px;
+  margin: 0 auto 2rem;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
 }
 
 .card {
@@ -95,4 +121,14 @@
 
 :global([data-theme='dark']) .card code {
   background: #20352a;
+}
+
+@media screen and (max-width: 996px) {
+  .sectionContent {
+    max-width: none;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
 }

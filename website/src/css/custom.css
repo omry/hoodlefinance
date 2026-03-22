@@ -19,6 +19,7 @@
   --ifm-navbar-link-color: #23402e;
   --ifm-navbar-link-hover-color: #0b8043;
   --ifm-navbar-title-color: #173523;
+  --hf-content-width: 1140px;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -48,4 +49,8 @@
 .navbar__brand:hover,
 .navbar__link:hover {
   color: var(--ifm-navbar-link-hover-color);
+}
+
+.footer .container {
+  max-width: var(--hf-content-width);
 }

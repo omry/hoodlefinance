@@ -10,28 +10,23 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--primary button--lg"
-            to="/docs/">
-            Read the docs
-          </Link>
-          <Link
-            className="button button--secondary button--lg"
-            href="https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing">
-            View demo sheet
-          </Link>
-        </div>
-        <div className={styles.heroPreview}>
-          <img
-            src="/img/hoodlefinance/demo-screenshot.jpeg"
-            alt="HoodleFinance demo spreadsheet"
-            className={styles.previewImage}
-          />
+        <div className={clsx(styles.sectionContent, styles.heroContent)}>
+          <Heading as="h1" className="hero__title">
+            {siteConfig.title}
+          </Heading>
+          <p className="hero__subtitle">{siteConfig.tagline}</p>
+          <div className={styles.buttons}>
+            <Link
+              className="button button--primary button--lg"
+              to="/docs/">
+              Read the docs
+            </Link>
+            <Link
+              className="button button--secondary button--lg"
+              href="https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing">
+              View demo sheet
+            </Link>
+          </div>
         </div>
       </div>
     </header>
@@ -48,8 +43,8 @@ export default function Home() {
       <main>
         <section className={styles.section}>
           <div className="container">
-            <div className="row">
-              <div className="col col--4">
+            <div className={styles.sectionContent}>
+              <div className={styles.featureGrid}>
                 <div className={styles.card}>
                   <Heading as="h2">International Coverage</Heading>
                   <p>
@@ -58,8 +53,6 @@ export default function Home() {
                     inputs, Yahoo-style symbols, and direct ISIN lookups.
                   </p>
                 </div>
-              </div>
-              <div className="col col--4">
                 <div className={styles.card}>
                   <Heading as="h2">Identifier Lookups</Heading>
                   <p>
@@ -67,15 +60,21 @@ export default function Home() {
                     such as symbol, exchange, and ISIN across supported routes.
                   </p>
                 </div>
-              </div>
-              <div className="col col--4">
                 <div className={styles.card}>
                   <Heading as="h2">Price Conversion</Heading>
                   <p>
-                    <code>price@USD</code>-style output makes it easier to compare
-                    holdings across markets in a single reporting currency.
+                    <code>price@USD</code>-style output helps clean up mixed
+                    currency sheets by converting holdings into a single
+                    reporting currency.
                   </p>
                 </div>
+              </div>
+              <div className={styles.heroPreview}>
+                <img
+                  src="/img/hoodlefinance/demo-screenshot.jpeg"
+                  alt="HoodleFinance demo spreadsheet"
+                  className={styles.previewImage}
+                />
               </div>
             </div>
           </div>
