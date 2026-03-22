@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# Supported Attributes
+# Attributes
 
 Attribute matching is case-insensitive.
 
@@ -39,10 +39,10 @@ Additional `HOODLEFINANCE`-only attributes:
 - `changepct` returns a fraction such as `0.0123` for `1.23%`. Format the cell as Percent in Sheets.
 - `tradetime` returns a Sheets date-time value when the upstream source provides one.
 - `datadelay` is source-dependent and should be treated as advisory, not a guarantee of freshness.
-- `GBp` quotes are normalized to `GBP`, and `ILA` quotes are normalized to `ILS`. Money values are divided by `100` when that normalization applies.
 - `symbol` defaults to Google-style output such as `LON:SJPA` or `CURRENCY:EURUSD`.
 - `exchange` defaults to Google-style output such as `LON`, `NASDAQ`, `PSE`, or `CURRENCY`.
 - If an upstream source does not provide a requested field, the formula returns an error for that lookup.
+- `GBp` and `ILA` are normalized to `GBP` and `ILS` respectively for money-valued attributes such as `price`, `close`, `high`, `low`, and `change`. When that normalization applies, numeric values are divided by `100`.
 
 ## The `isin` Attribute
 
@@ -104,6 +104,8 @@ Examples:
 =HOODLEFINANCE("PSE:AP", "name")
 =HOODLEFINANCE("PHY0005M1090", "symbol")
 ```
+
+For identifier forms and direct ISIN input, see [Identifiers](identifiers).
 
 ## Examples
 

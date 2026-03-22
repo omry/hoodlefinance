@@ -1,13 +1,14 @@
 ---
 sidebar_position: 2
-sidebar_label: API Overview
+sidebar_label: Overview
+slug: /api
 ---
 
 # API Overview
 
 `HOODLEFINANCE` is a Google Apps Script custom function for Google Sheets. It is built for practical current-data use cases where `GOOGLEFINANCE` is too limited, especially for non-U.S. listings, Yahoo-style symbols, direct ISIN input, and output-currency conversion.
 
-For sampled live coverage by exchange, see the [Support Matrix](support-matrix).
+For sampled live coverage by exchange, see the [Support Matrix](/docs/support-matrix).
 
 ## Functions
 
@@ -31,7 +32,7 @@ For sampled live coverage by exchange, see the [Support Matrix](support-matrix).
 - **Direct ISIN**, such as `IE00B4L5YX21`: Use this when you want to start from the security itself rather than a specific exchange ticker. HoodleFinance resolves the ISIN to one supported listing before retrieving the requested value.
 - **Currency pair**, such as `EURUSD` or `CURRENCY:BTC.USDT`: Use this for spot FX or crypto-style pair lookups.
 
-For the full identifier rules, exchange-specific notes, and ISIN behavior, see [Identifiers](identifiers).
+For the full identifier rules, exchange-specific notes, and ISIN behavior, see [Identifiers](./api/identifiers).
 
 # Supported Attributes
 
@@ -41,7 +42,7 @@ HoodleFinance also supports identifier-oriented attributes such as `symbol`, `ex
 
 Support for a specific attribute can vary by exchange and by listing. Even when an exchange is generally supported, some upstream sources may not provide every field for every instrument.
 
-For the full attribute list and behavior notes, see [Supported Attributes](attributes).
+For the full attribute list and behavior notes, see [Supported Attributes](./api/attributes).
 
 
 ## Quick Examples

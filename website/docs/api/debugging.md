@@ -1,8 +1,9 @@
 ---
 sidebar_position: 6
+sidebar_label: Debugging
 ---
 
-# Advanced Usage
+# Debugging
 
 ## Debug Source Suffixes
 

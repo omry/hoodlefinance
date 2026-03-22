@@ -63,7 +63,7 @@ The codebase is intentionally simple:
 - [`tools/map-google-fx-coverage.py`](./tools/map-google-fx-coverage.py): parallel Google FX currency pairs coverage probe
 - [`website/docs/support-matrix.md`](./website/docs/support-matrix.md): generated exchange coverage matrix
 - [`docs/demo-sheet/`](./docs/demo-sheet/): tracked demo sheet config and TSV tab data
-- [`website/docs/api.md`](./website/docs/api.md): detailed user-facing reference
+- [`website/docs/api/overview.md`](./website/docs/api/overview.md): detailed user-facing reference
 - [`version.properties`](./version.properties): release metadata source of truth
 - [`docs/release-notes/`](./docs/release-notes/): full-history release notes, template, and per-release notes
 
@@ -194,7 +194,7 @@ The generator is intentionally user-facing: it reports exchange coverage for the
 Changes should usually include:
 
 1. Unit tests for any new parsing, routing, or normalization logic.
-2. Documentation updates in [`website/docs/api.md`](./website/docs/api.md) and, when appropriate, [`README.md`](./README.md).
+2. Documentation updates in [`website/docs/api/overview.md`](./website/docs/api/overview.md) and, when appropriate, [`README.md`](./README.md).
 3. Live CLI checks for any source-backed change, especially new ISIN resolvers.
 4. A release fragment under [`changes.d/`](./changes.d/) for substantive user-facing changes.
 5. Demo-sheet TSV and config updates when the public demo should reflect the new behavior.

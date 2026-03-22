@@ -15,7 +15,7 @@ It is most useful when your sheets mix:
 - direct ISIN inputs
 - mixed-currency portfolios that benefit from `price@USD`-style output
 
-## What It Does Well
+## What It Does
 
 - quote lookups on supported exchanges
 - symbol, exchange, and ISIN resolution

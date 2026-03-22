@@ -17,11 +17,17 @@
 const sidebars = {
   tutorialSidebar: [
     'intro',
-    'api',
-    'attributes',
-    'identifiers',
-    'currency-conversion',
-    'advanced-usage',
+    {
+      type: 'category',
+      label: 'API',
+      items: [
+        'api/overview',
+        'api/identifiers',
+        'api/attributes',
+        'api/currency-fx',
+        'api/debugging',
+      ],
+    },
     'support-matrix',
   ],
 };
