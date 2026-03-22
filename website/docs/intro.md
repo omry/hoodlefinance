@@ -34,9 +34,11 @@ HoodleFinance is especially useful when you want spreadsheet formulas that map m
 ## Quick Examples
 
 ```js
-=HOODLEFINANCE("NASDAQ:GOOG", "price")
-=HOODLEFINANCE("SJPA.L", "price@USD")
-=HOODLEFINANCE("IE00B4L5YX21", "symbol")
+=HOODLEFINANCE("NASDAQ:GOOG", "price")   // U.S. stock price
+=HOODLEFINANCE("SJPA.L", "price@USD")    // U.K. listing converted to USD
+=HOODLEFINANCE("EURUSD", "price")        // FX pair price
+=HOODLEFINANCE("PSE:BDO", "isin")        // ISIN lookup for a PSE ticker
+=HOODLEFINANCE("IE00B4L5YX21", "symbol") // symbol resolved from a direct ISIN
 ```
 
 <!-- DEMO_SHEET_LINK:START -->
@@ -44,6 +46,8 @@ See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621
 <!-- DEMO_SHEET_LINK:END -->
 
 Bare tickers such as `GOOG` are often the easiest place to start. If a bare ticker does not resolve the way you want, especially for international or ambiguous symbols, switch to an explicit identifier such as `NASDAQ:GOOG` or `SJPA.L`.
+
+For mixed-currency portfolios, `price@USD`-style formulas are often one of the biggest practical wins because they let you normalize prices into one comparison currency without a separate helper-column FX step.
 
 ## Installation
 
@@ -63,6 +67,8 @@ This is the installation path you should use today.
 5. Reload the spreadsheet.
 
 The manual install also adds a `Hoodlefinance` menu in Sheets for version and update-related actions.
+
+To update a manual install, replace the Apps Script code with the latest `hoodlefinance.js` version and reload the spreadsheet.
 
 ### Google Workspace Marketplace Add-On
 
