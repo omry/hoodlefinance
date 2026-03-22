@@ -61,7 +61,7 @@ The codebase is intentionally simple:
 - [`tools/sync-demo-sheet.js`](./tools/sync-demo-sheet.js): public demo sheet sync tool
 - [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
 - [`tools/map-google-fx-coverage.py`](./tools/map-google-fx-coverage.py): parallel Google FX currency pairs coverage probe
-- [`support-matrix.md`](./support-matrix.md): generated exchange coverage matrix
+- [`website/docs/support-matrix.md`](./website/docs/support-matrix.md): generated exchange coverage matrix
 - [`docs/demo-sheet/`](./docs/demo-sheet/): tracked demo sheet config and TSV tab data
 - [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md): detailed user-facing reference
 - [`version.properties`](./version.properties): release metadata source of truth
@@ -277,4 +277,4 @@ Maintainer release checklist:
 7. Confirm that `Release Publish` ran for the merged release PR and completed both jobs:
    the publish job and the demo-sync job.
 
-If the change affects exchange coverage or source support, regenerate [`support-matrix.md`](./support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
+If the change affects exchange coverage or source support, regenerate [`website/docs/support-matrix.md`](./website/docs/support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.

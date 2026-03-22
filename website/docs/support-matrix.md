@@ -152,4 +152,3 @@ Use it as a quick reference for current live probe results by exchange and featu
 </table>
 
 Legend: `✅` all probes passed, `⚠️` mixed results, `❌` no probes passed or no implementation is configured.
-<!-- SUPPORT_MATRIX:END -->

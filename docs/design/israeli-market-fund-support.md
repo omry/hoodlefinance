@@ -52,4 +52,4 @@ The remaining Israeli-specific limitations are narrower than they were in the or
 ## Notes
 
 - This page is now a record of the implemented behavior, not the original design plan.
-- For broad user-facing coverage statements, prefer the main API doc and `support-matrix.md`.
+- For broad user-facing coverage statements, prefer the main API doc and the generated website support matrix page.

@@ -13,9 +13,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CLI_PATH = ROOT_DIR / "tools" / "cli.js"
-SUPPORT_MATRIX_PATH = ROOT_DIR / "support-matrix.md"
-MARKER_START = "<!-- SUPPORT_MATRIX:START -->"
-MARKER_END = "<!-- SUPPORT_MATRIX:END -->"
+SUPPORT_MATRIX_PATH = ROOT_DIR / "website" / "docs" / "support-matrix.md"
 
 EXCHANGES = [
     {
@@ -243,7 +241,7 @@ def format_samples(samples: list[str | dict[str, str]]) -> str:
 def format_exchange_cell(exchange: dict[str, object]) -> str:
     name = html.escape(str(exchange["name"]), quote=True)
     code = str(exchange["code"])
-    return f'<code>{code}</code><br><sub>{name}</sub>'
+    return f'<code>{code}</code><br /><sub>{name}</sub>'
 
 
 def format_samples_cell(samples: list[str | dict[str, str]]) -> str:
@@ -262,16 +260,16 @@ def format_status_cell(icon: str, tooltip: str) -> str:
 
 def format_feature_header_cell(feature: dict[str, object]) -> str:
     label = str(feature["label"])
-    attributes = "<br>".join(f"<code>{html.escape(attribute)}</code>" for attribute in feature["attributes"])
+    attributes = "<br />".join(f"<code>{html.escape(attribute)}</code>" for attribute in feature["attributes"])
     tooltip = html.escape("Grouped attributes: " + ", ".join(feature["attributes"]), quote=True)
-    return f'<span title="{tooltip}">{label}<br><sub>{attributes}</sub></span>'
+    return f'<span title="{tooltip}">{label}<br /><sub>{attributes}</sub></span>'
 
 
 def format_query_header_cell(column: dict[str, object]) -> str:
     label = str(column["label"])
     example = html.escape(str(column["example"]))
     tooltip = html.escape(str(column["tooltip"]), quote=True)
-    return f'<span title="{tooltip}">{label}<br><sub><code>{example}</code></sub></span>'
+    return f'<span title="{tooltip}">{label}<br /><sub><code>{example}</code></sub></span>'
 
 
 def column_samples(exchange: dict[str, object], column: dict[str, object]) -> list[str | dict[str, str]]:
@@ -439,31 +437,23 @@ def generate_matrix_body(show_details: bool) -> tuple[str, str]:
         "<table>",
         "  <thead>",
         "    <tr>",
-        '      <th rowspan="2" style="{}">{}</th>'.format(
-            EXCHANGE_CELL_STYLE,
+        '      <th rowspan="2">{}</th>'.format(
             format_header_cell("Exchange", "Code and full venue name."),
         ),
-        '      <th rowspan="2" style="{}">{}</th>'.format(
-            SAMPLES_CELL_STYLE,
+        '      <th rowspan="2">{}</th>'.format(
             format_header_cell("Samples", "Hover the info icon to see the sample tickers used for the feature columns."),
         ),
-        '      <th colspan="{}" style="{}">Query</th>'.format(len(QUERY_COLUMNS), QUERY_SECTION_STYLE),
-        '      <th colspan="{}" style="{}{}">Attributes</th>'.format(
-            len(FEATURES), FEATURE_SECTION_STYLE, SECTION_DIVIDER_STYLE
-        ),
+        '      <th colspan="{}">Query</th>'.format(len(QUERY_COLUMNS)),
+        '      <th colspan="{}">Attributes</th>'.format(len(FEATURES)),
         "    </tr>",
         "    <tr>",
         *[
-            '      <th style="{}vertical-align:top;">{}</th>'.format(QUERY_SECTION_STYLE, format_query_header_cell(column))
+            "      <th>{}</th>".format(format_query_header_cell(column))
             for column in QUERY_COLUMNS
         ],
-        '      <th style="{}{}vertical-align:top;">{}</th>'.format(
-            FEATURE_SECTION_STYLE, SECTION_DIVIDER_STYLE, format_feature_header_cell(FEATURES[0])
-        ),
+        "      <th>{}</th>".format(format_feature_header_cell(FEATURES[0])),
         *[
-            '      <th style="{}vertical-align:top;">{}</th>'.format(
-                FEATURE_SECTION_STYLE, format_feature_header_cell(feature)
-            )
+            "      <th>{}</th>".format(format_feature_header_cell(feature))
             for feature in FEATURES[1:]
         ],
         "    </tr>",
@@ -476,13 +466,12 @@ def generate_matrix_body(show_details: bool) -> tuple[str, str]:
     for exchange in EXCHANGES:
         row_lines = [
             "    <tr>",
-            '      <td style="{}">{}</td>'.format(EXCHANGE_CELL_STYLE, format_exchange_cell(exchange)),
-            '      <td style="{}">{}</td>'.format(SAMPLES_CELL_STYLE, format_samples_cell(list(exchange["samples"]))),
+            "      <td>{}</td>".format(format_exchange_cell(exchange)),
+            "      <td>{}</td>".format(format_samples_cell(list(exchange["samples"]))),
         ]
         for column in QUERY_COLUMNS:
             row_lines.append(
-                '      <td style="{}">{}</td>'.format(
-                    QUERY_SECTION_STYLE,
+                "      <td>{}</td>".format(
                     evaluate_column(
                         exchange,
                         column,
@@ -494,9 +483,7 @@ def generate_matrix_body(show_details: bool) -> tuple[str, str]:
             )
         for index, feature in enumerate(FEATURES):
             row_lines.append(
-                '      <td style="{}{}">{}</td>'.format(
-                    FEATURE_SECTION_STYLE,
-                    SECTION_DIVIDER_STYLE if index == 0 else "",
+                "      <td>{}</td>".format(
                     evaluate_column(
                         exchange,
                         feature,
@@ -531,17 +518,26 @@ def generate_output(show_details: bool) -> str:
     return output
 
 
+def render_support_matrix_page(generated_block: str) -> str:
+    body = generated_block.rstrip()
+    return "\n".join([
+        "---",
+        "sidebar_position: 3",
+        "---",
+        "",
+        "# Support Matrix",
+        "",
+        "This matrix is sample-based, not exhaustive. It is intended to show current practical coverage of the public interface, not a formal guarantee for every symbol on an exchange.",
+        "",
+        "Use it as a quick reference for current live probe results by exchange and feature group.",
+        "",
+        body,
+        "",
+    ])
+
+
 def update_support_matrix_page(generated_block: str) -> None:
-    content = SUPPORT_MATRIX_PATH.read_text(encoding="utf8")
-
-    if MARKER_START not in content or MARKER_END not in content:
-        raise SystemExit(f"Support-matrix markers not found in {SUPPORT_MATRIX_PATH}")
-
-    start_index = content.index(MARKER_START) + len(MARKER_START)
-    end_index = content.index(MARKER_END)
-    replacement = "\n" + generated_block.rstrip() + "\n"
-    updated = content[:start_index] + replacement + content[end_index:]
-    SUPPORT_MATRIX_PATH.write_text(updated, encoding="utf8")
+    SUPPORT_MATRIX_PATH.write_text(render_support_matrix_page(generated_block), encoding="utf8")
 
 
 def main() -> int:

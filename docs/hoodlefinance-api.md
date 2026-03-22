@@ -7,7 +7,7 @@ Current release notes: [`release-notes/v0.9.2.md`](./release-notes/v0.9.2.md)
 
 Release notes: [`release-notes/RELEASE_NOTES.md`](./release-notes/RELEASE_NOTES.md)
 
-For sampled live coverage by exchange, see [support-matrix.md](../support-matrix.md).
+For sampled live coverage by exchange, see [website/docs/support-matrix.md](../website/docs/support-matrix.md).
 
 ## What It Is Good At
 
@@ -320,7 +320,7 @@ Examples:
 =HOODLEFINANCE("PSE:BDO", "isin")
 ```
 
-For current practical coverage, see [support-matrix.md](../support-matrix.md).
+For current practical coverage, see [website/docs/support-matrix.md](../website/docs/support-matrix.md).
 
 ## Specific ISIN Sources
 

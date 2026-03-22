@@ -91,7 +91,7 @@ The resolved identifier outputs try to convert between the supported Google-styl
 ## Reference And Coverage
 
 - Full API, ticker forms, array formulas, and source-specific notes: [`docs/hoodlefinance-api.md`](./docs/hoodlefinance-api.md)
-- Sample-based exchange coverage matrix: [`support-matrix.md`](./support-matrix.md)
+- Sample-based exchange coverage matrix: [`website/docs/support-matrix.md`](./website/docs/support-matrix.md)
 - Local development, tests, CLI smoke checks, demo-sheet maintenance, and support-matrix maintenance: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 
 ## Need More Coverage?
