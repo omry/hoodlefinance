@@ -1,5 +1,7 @@
 #!/bin/sh
+
 set -eu
 
-# Release-fragment validation is part of the release workflow, not normal commits.
-exit 0
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+"$REPO_ROOT/tools/check-release-fragments.sh"

@@ -14,6 +14,7 @@ const RELEASE_NOTES_PATH = path.join(ROOT_DIR, "docs", "release-notes", "RELEASE
 const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
+const FRAGMENT_CHECKER_PATH = path.join(ROOT_DIR, "tools", "check-release-fragments.sh");
 const FRAGMENT_CATEGORIES = ["upgrade", "added", "changed", "fixed"];
 const FRAGMENT_HEADING_BY_CATEGORY = {
   upgrade: "Upgrade Notes",
@@ -24,7 +25,6 @@ const FRAGMENT_HEADING_BY_CATEGORY = {
 const FRAGMENT_FILENAME_PATTERN = /^(\d{8})-([a-z0-9][a-z0-9-]*)\.(upgrade|added|changed|fixed)\.md$/;
 const RELEASE_FILE_PATTERN = /^v(\d+\.\d+\.\d+)\.md$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
-const FRAGMENT_BULLET_PATTERN = /^- /;
 const IGNORED_CHANGE_FILES = {
   ".gitkeep": true,
   "README.md": true,
@@ -72,14 +72,8 @@ async function main() {
   let result;
 
   if (options.command === "check-fragments") {
-    result = checkReleaseFragments();
-    process.stdout.write(
-      "Validated " +
-        result.fragmentCount +
-        " release fragment" +
-        (result.fragmentCount === 1 ? "" : "s") +
-        ".\n"
-    );
+    result = await runReleaseFragmentCheck();
+    process.stdout.write(result.stdout);
     return;
   }
 
@@ -401,33 +395,6 @@ function loadReleaseFragments(changesDir) {
   return fragments;
 }
 
-function validateReleaseFragmentContent(fragment) {
-  const content = String(fragment && fragment.content || "");
-  const fileName = fragment && fragment.fileName ? fragment.fileName : "(unknown)";
-  const lines = content.split(/\r?\n/);
-  const bulletCount = lines.filter(function (line) {
-    return FRAGMENT_BULLET_PATTERN.test(line);
-  }).length;
-
-  if (!lines.length || !FRAGMENT_BULLET_PATTERN.test(lines[0])) {
-    throw new Error(
-      "Release fragment " +
-        fileName +
-        " must start with a single '- ' bullet line."
-    );
-  }
-
-  if (bulletCount !== 1) {
-    throw new Error(
-      "Release fragment " +
-        fileName +
-        " must contain exactly one top-level bullet."
-    );
-  }
-
-  return fragment;
-}
-
 function groupFragmentsByCategory(fragments) {
   const grouped = {
     added: [],
@@ -443,18 +410,12 @@ function groupFragmentsByCategory(fragments) {
   return grouped;
 }
 
-function checkReleaseFragments(options) {
+async function runReleaseFragmentCheck(options) {
   const normalizedOptions = options || {};
   const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
-  const fragments = loadReleaseFragments(changesDir);
-
-  fragments.forEach(validateReleaseFragmentContent);
-
-  return {
-    fragmentCount: fragments.length,
-    fragments: fragments,
-    groupedFragments: groupFragmentsByCategory(fragments),
-  };
+  const cwd = normalizedOptions.cwd || ROOT_DIR;
+  const runner = normalizedOptions.runCommand || runCommand;
+  return runner("sh", [FRAGMENT_CHECKER_PATH, changesDir], { cwd: cwd });
 }
 
 async function verifyReleasePreparation(options) {
@@ -590,9 +551,6 @@ async function prepareRelease(version, options) {
   const versionMetadataPath = normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
   const verifyRelease = normalizedOptions.verifyRelease || verifyReleasePreparation;
   const runner = normalizedOptions.runCommand || runCommand;
-  const fragmentCheck = checkReleaseFragments({ changesDir: changesDir });
-  const fragments = fragmentCheck.fragments;
-  const grouped = fragmentCheck.groupedFragments;
   const versionMetadata = readVersionMetadata(versionMetadataPath);
   const readmeText = readTextSync(readmePath, "README");
   const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
@@ -603,6 +561,15 @@ async function prepareRelease(version, options) {
   let releaseEntries;
 
   validateVersion(version);
+
+  await runReleaseFragmentCheck({
+    changesDir: changesDir,
+    cwd: cwd,
+    runCommand: runner,
+  });
+
+  const fragments = loadReleaseFragments(changesDir);
+  const grouped = groupFragmentsByCategory(fragments);
 
   if (!fragments.length) {
     throw new Error("No release fragments were found in changes.d/.");
@@ -862,7 +829,6 @@ module.exports = {
   buildReleaseNotesPage,
   buildReleaseNotesRelativePath,
   compareVersions,
-  checkReleaseFragments,
   ensureCleanGitWorktree,
   extractVersionFromSource,
   groupFragmentsByCategory,
@@ -878,9 +844,9 @@ module.exports = {
   renderReleaseBody,
   renderReleaseFile,
   renderVersionMetadata,
+  runReleaseFragmentCheck,
   toGitRelativePath,
   upsertCurrentReleaseNotesLine,
-  validateReleaseFragmentContent,
   replaceCurrentVersionLine,
   replaceVersionInSource,
   runCommand,

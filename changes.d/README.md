@@ -14,12 +14,13 @@ Examples:
 Fragment guidelines:
 
 - Write for end users first.
-- Keep each fragment to one short paragraph or bullet list.
+- Each fragment must be exactly one top-level bullet that starts with `- `.
 - Use `upgrade` only for notes users should read before updating.
 
 Validation:
 
-- Run `node tools/release.js check-fragments` to validate fragment filenames and contents before preparing a release.
+- Run `npm run release:check-fragments` to validate fragment filenames and contents before preparing a release.
+- The npm command runs the same zero-dependency shell validator as the local pre-commit hook.
 - `node tools/release.js prepare x.y.z` runs the same fragment validation automatically before it writes release files.
 - `prepare` starts only from a clean git worktree and uses git-backed cleanup on verification failure, so fragments should already be committed by the time you cut a release.
 

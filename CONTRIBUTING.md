@@ -10,6 +10,8 @@ The repo now uses machine-readable local setup files for the main contributor to
 - [`.nvmrc`](./.nvmrc) and [`.node-version`](./.node-version) pin the supported Node release line for contributors who use `nvm`, `fnm`, `asdf`, or similar tools
 - the Python helper scripts currently use only the Python standard library, so there is no separate Python package install step yet
 
+The repo also includes tracked local git hooks under [`.githooks/`](./.githooks/). After bootstrap, enable them once with `npm run hooks:install`.
+
 On a fresh Ubuntu or WSL install, the most likely missing pieces for ordinary development are:
 
 - `nvm`
@@ -28,9 +30,9 @@ exec $SHELL -l
 Recommended bootstrap on a fresh machine after `nvm` is available:
 
 ```sh
-nvm install
-nvm use
-npm install
+nvm install                  # install the repo-pinned Node version
+nvm use                      # switch this shell to that Node version
+npm install                  # install local development dependencies
 ```
 
 That gives you:
@@ -238,7 +240,7 @@ User-facing releases are repo-managed.
 - Local `node tools/release.js ...` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
 - Each release fragment must be exactly one top-level bullet that starts with `- `. One fragment maps to one rendered release-note bullet.
-- Run `node tools/release.js check-fragments` to validate fragment filenames and contents without mutating anything.
+- You can also run `sh tools/check-release-fragments.sh` or `npm run release:check-fragments` manually without mutating anything.
 - Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
 - `prepare` automatically runs the release verification suite and aborts without consuming fragments if verification fails.
 - `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.

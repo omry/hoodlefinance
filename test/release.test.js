@@ -9,7 +9,6 @@ const {
   DEFAULT_PREPARE_VERIFICATION_STEPS,
   buildReleaseNotesPage,
   buildReleaseNotesRelativePath,
-  checkReleaseFragments,
   loadReleaseEntries,
   loadReleaseFragments,
   parseArgs,
@@ -20,12 +19,25 @@ const {
   renderReleaseBody,
   renderReleaseFile,
   renderVersionMetadata,
+  runReleaseFragmentCheck,
   upsertCurrentReleaseNotesLine,
-  validateReleaseFragmentContent,
   replaceCurrentVersionLine,
   replaceVersionInSource,
   validateVersion,
 } = require("../tools/release.js");
+
+const FRAGMENT_CHECKER_PATH = path.join(__dirname, "..", "tools", "check-release-fragments.sh");
+
+function execFileSyncNormalized(command, args, options) {
+  try {
+    return execFileSync(command, args, options);
+  } catch (error) {
+    if (error && error.code === "EPERM" && error.status === 0) {
+      return error.stdout;
+    }
+    throw error;
+  }
+}
 
 function runGit(rootDir, args) {
   execFileSync("git", args, {
@@ -177,32 +189,63 @@ test("loadReleaseFragments rejects invalid filenames", function () {
   }, /Invalid release fragment filename/);
 });
 
-test("checkReleaseFragments validates fragments without mutating them", function () {
+test("runReleaseFragmentCheck validates fragments without mutating them", async function () {
   const fixture = createFixtureRepo();
 
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-one.added.md"), "- Added thing\n", "utf8");
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-two.fixed.md"), "- Fixed thing\n", "utf8");
 
-  const result = checkReleaseFragments({ changesDir: fixture.changesDir });
+  const result = await runReleaseFragmentCheck({ changesDir: fixture.changesDir });
 
-  assert.equal(result.fragmentCount, 2);
-  assert.equal(result.groupedFragments.added.length, 1);
-  assert.equal(result.groupedFragments.fixed.length, 1);
+  assert.match(result.stdout, /Validated 2 release fragments\./);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-one.added.md")), true);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-two.fixed.md")), true);
 });
 
-test("checkReleaseFragments rejects paragraph-style fragments", function () {
+test("runReleaseFragmentCheck rejects paragraph-style fragments", async function () {
   const fixture = createFixtureRepo();
 
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-one.added.md"), "Added thing\n", "utf8");
 
-  assert.throws(function () {
-    checkReleaseFragments({ changesDir: fixture.changesDir });
+  await assert.rejects(async function () {
+    await runReleaseFragmentCheck({ changesDir: fixture.changesDir });
   }, /must start with a single '- ' bullet line/);
 });
 
-test("checkReleaseFragments rejects fragments with multiple top-level bullets", function () {
+test("shell fragment checker validates fragments in a target changes directory", function () {
+  const fixture = createFixtureRepo();
+
+  fs.writeFileSync(
+    path.join(fixture.changesDir, "20260323-shell-checker.changed.md"),
+    "- Shell checker accepts a valid fragment.\n",
+    "utf8"
+  );
+
+  const output = execFileSyncNormalized(FRAGMENT_CHECKER_PATH, [fixture.changesDir], {
+    encoding: "utf8",
+  });
+
+  assert.match(output, /Validated 1 release fragment\./);
+});
+
+test("shell fragment checker rejects paragraph-style fragments", function () {
+  const fixture = createFixtureRepo();
+
+  fs.writeFileSync(
+    path.join(fixture.changesDir, "20260323-shell-checker.changed.md"),
+    "Paragraph-style fragment content.\n",
+    "utf8"
+  );
+
+  assert.throws(function () {
+    execFileSync(FRAGMENT_CHECKER_PATH, [fixture.changesDir], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  }, /must start with a single '- ' bullet line/);
+});
+
+test("runReleaseFragmentCheck rejects fragments with multiple top-level bullets", async function () {
   const fixture = createFixtureRepo();
 
   fs.writeFileSync(
@@ -211,43 +254,9 @@ test("checkReleaseFragments rejects fragments with multiple top-level bullets", 
     "utf8"
   );
 
-  assert.throws(function () {
-    checkReleaseFragments({ changesDir: fixture.changesDir });
+  await assert.rejects(async function () {
+    await runReleaseFragmentCheck({ changesDir: fixture.changesDir });
   }, /must contain exactly one top-level bullet/);
-});
-
-test("validateReleaseFragmentContent accepts a single bullet fragment", function () {
-  assert.doesNotThrow(function () {
-    validateReleaseFragmentContent({
-      content: "- Added thing",
-      fileName: "20260316-one.added.md",
-    });
-  });
-});
-
-test("validateReleaseFragmentContent accepts indented sub-bullets under one top-level bullet", function () {
-  assert.doesNotThrow(function () {
-    validateReleaseFragmentContent({
-      content: [
-        "- Added thing",
-        "  - More detail",
-        "  - Another detail",
-      ].join("\n"),
-      fileName: "20260316-one.added.md",
-    });
-  });
-});
-
-test("validateReleaseFragmentContent accepts continuation text under one top-level bullet", function () {
-  assert.doesNotThrow(function () {
-    validateReleaseFragmentContent({
-      content: [
-        "- Added thing",
-        "  With a little more explanation for readers.",
-      ].join("\n"),
-      fileName: "20260316-one.added.md",
-    });
-  });
 });
 
 test("prepareRelease fails when there are no release fragments", async function () {
