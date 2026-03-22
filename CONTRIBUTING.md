@@ -69,9 +69,9 @@ The codebase is intentionally simple:
 
 ## License
 
-This project should be treated as MIT-licensed.
+This project is licensed under the Mozilla Public License 2.0 (`MPL-2.0`).
 
-If you are contributing changes, keep that in mind for any external code, copied snippets, or bundled assets you introduce.
+If you contribute changes, make sure any external code, copied snippets, or bundled assets you introduce are compatible with `MPL-2.0`.
 
 ## Local Testing
 

@@ -92,3 +92,4 @@ If a market, ticker format, ETF, or identifier lookup you care about is not work
 HoodleFinance is developed in the open:
 
 - Project repository: https://github.com/omry/hoodlefinance
+- License: Mozilla Public License 2.0 (`MPL-2.0`)

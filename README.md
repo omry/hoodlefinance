@@ -27,4 +27,4 @@ See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621
 
 ## License
 
-This project is MIT-licensed.
+This project is licensed under the Mozilla Public License 2.0 (`MPL-2.0`).
