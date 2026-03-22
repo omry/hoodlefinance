@@ -92,12 +92,16 @@ const config = {
             title: 'Docs',
             items: [
               {
-                label: 'Docs',
+                label: 'Overview',
                 to: '/docs/',
               },
               {
-                label: 'Support',
-                to: '/support',
+                label: 'API Reference',
+                to: '/docs/api',
+              },
+              {
+                label: 'Support Matrix',
+                to: '/docs/support-matrix',
               },
             ],
           },
