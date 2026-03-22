@@ -2,9 +2,7 @@
 
 `HOODLEFINANCE` is a Google Apps Script custom function for Google Sheets.
 
-For installation, product overview, API docs, and user-facing guidance, start with the website introduction:
-
-- [hoodlefinance.com/docs](https://hoodlefinance.com/docs)
+For installation, product overview, API docs, and user-facing guidance, start with [hoodlefinance.com](https://hoodlefinance.com).
 
 ## Live Demo
 

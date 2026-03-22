@@ -9,7 +9,6 @@ const { spawn } = require("node:child_process");
 const ROOT_DIR = path.resolve(__dirname, "..");
 const CHANGES_DIR = path.join(ROOT_DIR, "changes.d");
 const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
-const README_PATH = path.join(ROOT_DIR, "README.md");
 const RELEASE_NOTES_PATH = path.join(ROOT_DIR, "docs", "release-notes", "RELEASE_NOTES.md");
 const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
@@ -216,11 +215,10 @@ async function restorePreparedReleaseStateWithGit(state) {
   const cwd = state.cwd || ROOT_DIR;
   const runner = state.runCommand || runCommand;
   const trackedPaths = [
-    state.readmePath,
     state.releaseNotesPath,
     state.scriptSourcePath,
     state.versionMetadataPath,
-  ].map(function (filePath) {
+  ].filter(Boolean).map(function (filePath) {
     return toGitRelativePath(cwd, filePath);
   });
   const releaseFilePath = toGitRelativePath(cwd, state.releaseFilePath);
@@ -305,26 +303,6 @@ function replaceVersionInSource(sourceText, version) {
     /const HOODLEFINANCE_VERSION_ = "[^"]+"/,
     'const HOODLEFINANCE_VERSION_ = "' + version + '"'
   );
-}
-
-function replaceCurrentVersionLine(text, version, label) {
-  if (!/Current script version:\s*`[^`]+`/.test(text)) {
-    throw new Error("Could not find current version line in " + label + ".");
-  }
-
-  return text.replace(/Current script version:\s*`[^`]+`/, "Current script version: `" + version + "`");
-}
-
-function upsertCurrentReleaseNotesLine(text, nextLine, label) {
-  if (/Current release notes:\s*\[[^\]]+\]\([^)]+\)/.test(text)) {
-    return text.replace(/Current release notes:\s*\[[^\]]+\]\([^)]+\)/, nextLine);
-  }
-
-  if (!/Current script version:\s*`[^`]+`/.test(text)) {
-    throw new Error("Could not find current version line in " + label + ".");
-  }
-
-  return text.replace(/(Current script version:\s*`[^`]+`)/, "$1\n" + nextLine);
 }
 
 function parseFragmentFilename(fileName) {
@@ -542,7 +520,6 @@ async function prepareRelease(version, options) {
   const normalizedOptions = options || {};
   const cwd = normalizedOptions.cwd || ROOT_DIR;
   const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
-  const readmePath = normalizedOptions.readmePath || README_PATH;
   const releaseDate = normalizedOptions.releaseDate || new Date().toISOString().slice(0, 10);
   const releaseNotesPath = normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
   const releasesDir = normalizedOptions.releasesDir || RELEASES_DIR;
@@ -552,7 +529,6 @@ async function prepareRelease(version, options) {
   const verifyRelease = normalizedOptions.verifyRelease || verifyReleasePreparation;
   const runner = normalizedOptions.runCommand || runCommand;
   const versionMetadata = readVersionMetadata(versionMetadataPath);
-  const readmeText = readTextSync(readmePath, "README");
   const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
   const releaseTemplateText = readTextSync(releaseTemplatePath, "release template");
   const currentScriptVersion = extractVersionFromSource(scriptSourceText);
@@ -609,14 +585,6 @@ async function prepareRelease(version, options) {
       })
     );
     await writeText(scriptSourcePath, replaceVersionInSource(scriptSourceText, version));
-    await writeText(
-      readmePath,
-      upsertCurrentReleaseNotesLine(
-        replaceCurrentVersionLine(readmeText, version, "README.md"),
-        "Current release notes: [`docs/release-notes/v" + version + ".md`](./docs/release-notes/v" + version + ".md)",
-        "README.md"
-      )
-    );
 
     releaseEntries = loadReleaseEntries(releasesDir);
     await writeText(releaseNotesPath, buildReleaseNotesPage(releaseEntries));
@@ -628,7 +596,6 @@ async function prepareRelease(version, options) {
     try {
       await restorePreparedReleaseStateWithGit({
         cwd: cwd,
-        readmePath: readmePath,
         releaseFilePath: releaseFilePath,
         releaseNotesPath: releaseNotesPath,
         runCommand: runner,
@@ -818,7 +785,6 @@ module.exports = {
   DEFAULT_PREPARE_VERIFICATION_STEPS,
   FRAGMENT_CATEGORIES,
   FRAGMENT_HEADING_BY_CATEGORY,
-  README_PATH,
   RELEASE_NOTES_INTRO,
   RELEASE_NOTES_PATH,
   RELEASES_DIR,
@@ -846,8 +812,6 @@ module.exports = {
   renderVersionMetadata,
   runReleaseFragmentCheck,
   toGitRelativePath,
-  upsertCurrentReleaseNotesLine,
-  replaceCurrentVersionLine,
   replaceVersionInSource,
   runCommand,
   validateVersion,
