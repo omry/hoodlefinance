@@ -10,11 +10,9 @@ sidebar_label: Currency & FX
 - looking up the price of an FX or crypto-style pair such as `EURUSD` or `CURRENCY:BTC.USDT`
 - converting a security price into a requested output currency with an attribute such as `price@USD`
 
-This page starts with the basic behavior, then goes deeper into the identifier forms, conversion rules, and practical edge cases.
-
 ## FX Pair Lookups
 
-Use an FX or crypto-style pair identifier when you want the pair rate directly.
+FX pair lookups support fields such as `price`, `currency`, `name`, `symbol`, `exchange`, `close`, `change`, `changepct`, `tradetime`, and `datadelay`.
 
 Examples:
 
@@ -25,8 +23,6 @@ Examples:
 =HOODLEFINANCE("EURUSD", "changepct")  // daily change %
 =HOODLEFINANCE("EURUSD", "tradetime")  // last update
 ```
-
-FX pair lookups return a single current numeric price for `price`, and depending on the pair and source data they can also return fields such as `currency`, `close`, `change`, `changepct`, and `tradetime`.
 
 ## Security Price Conversion
 
@@ -39,8 +35,6 @@ Examples:
 =HOODLEFINANCE("IE00B4L5YX21", "price@GBP")
 =HOODLEFINANCE("NASDAQ:GOOG", "price@EUR")
 ```
-
-The result is the converted price as a single numeric value.
 
 ## FX Pair Identifiers
 
@@ -69,7 +63,7 @@ Examples:
 
 ## Supported Crypto Currencies
 
-The current built-in crypto unit list is `ADA`, `BCH`, `BNB`, `BTC`, `DOGE`, `ETH`, `LTC`, `SOL`, `TUSD`, `USDC`, `USDT`, and `XRP`. These can be used in the same pair syntax as fiat currencies, including mixed pairs such as `BTCUSD`, `DOGEUSD`, and `USDUSDT`. Some 4-character legs also use explicit dotted forms such as `CURRENCY:BTC.USDT`.
+The current built-in crypto unit list is `ADA`, `BCH`, `BNB`, `BTC`, `DOGE`, `ETH`, `LTC`, `SOL`, `TUSD`, `USDC`, `USDT`, and `XRP`. These can be used in the same pair syntax as fiat currencies, including mixed pairs such as `BTCUSD`, `DOGEUSD`, and `USDUSDT`. The explicit dotted form is also available for 4-character legs, for example `CURRENCY:BTC.USDT`.
 
 ## Same-Currency Pairs
 
@@ -92,8 +86,6 @@ This is useful when:
 
 Some practical rules are worth keeping in mind:
 
-- `price@<currency>` returns a security price in the requested output currency
-- direct FX pair lookups such as `EURUSD` return the exchange rate
 - output-currency conversion is rejected for currency-pair identifiers such as `EURUSD` or `CURRENCY:BTC.USDT`
 - pair coverage and quote freshness still depend on upstream sources
 
