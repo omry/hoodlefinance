@@ -1,6 +1,10 @@
 __pycache__/
 *.py[cod]
 node_modules/
+website/node_modules/
+website/build/
+website/.docusaurus/
+website/.cache-loader/
 .demo-sheet.local/
 tmp
 docs/demo-sheet/demo-sheet-staging.json

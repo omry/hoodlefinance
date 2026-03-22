@@ -1,6 +1,6 @@
 # Website Deployment Strategy
 
-This note describes how the public `hoodlefinance.yadan.net` website will be deployed.
+This note describes how the public `hoodlefinance.yadan.net` website will be deployed through GitHub Pages.
 
 ## Goal
 
@@ -23,55 +23,40 @@ The current redirect-based setup is not sufficient for the homepage URL used in 
 
 ## Deployment Model
 
-Use Docusaurus as a static site generator and deploy it through a pull-based server workflow.
+Use Docusaurus as a static site generator and deploy the built site through GitHub Pages on the custom domain.
 
 Deployment flow:
 
 1. Markdown and site source live in this repo.
 2. A GitHub Actions workflow watches for website-related changes on `main`.
-3. That workflow calls a small webhook on the server.
-4. The server validates the webhook, throttles repeated requests, and starts a local deploy.
-5. The server fetches the latest repo state, installs the repo-pinned site tooling locally, builds the site, and atomically switches the served site to the new build.
-
-## Server Paths
-
-The server needs:
-
-- a local repo checkout used for fetch/build
-- a served site directory for the active static output
-- a small shared area for lock files, cooldown markers, logs, and temporary state
-
-The exact directory layout is an implementation detail. Apache should serve the built static site output, not the git checkout directly.
+3. That workflow installs the repo-pinned site tooling and builds the site.
+4. The workflow uploads the built static site as a GitHub Pages artifact.
+5. GitHub Pages serves the site on `hoodlefinance.yadan.net`.
 
 ## Deploy Sequence
 
 Each deploy should do this:
 
-1. acquire a deploy lock
-2. check cooldown/throttle state
-3. `git fetch origin`
-4. reset the local checkout to `origin/main`
-5. install site dependencies from the repo lockfile
-6. build the static site
-7. publish the built site output to the active served location
-8. clean up any temporary deploy state as needed
+1. check out the repo on GitHub Actions
+2. install site dependencies from the repo lockfile
+3. build the static site
+4. upload the build output to GitHub Pages
+5. let GitHub Pages serve the latest published build on the custom domain
 
 The exact build output path, versioned-docs structure, and publish layout should follow the Docusaurus setup and its recommended static deployment practices rather than being hardcoded here.
 
-## Webhook Contract
+## GitHub Pages Configuration
 
-GitHub Actions should call a small server endpoint, for example:
+The Docusaurus site should be configured with:
 
-- `POST /deploy-hook/hoodlefinance-site`
+- `url: 'https://hoodlefinance.yadan.net'`
+- `baseUrl: '/'`
+- a `CNAME` file in `website/static/` containing `hoodlefinance.yadan.net`
 
-The webhook should be minimal:
+The GitHub repository Pages settings should use:
 
-- verify a shared secret or HMAC
-- accept only the expected repo and branch
-- return quickly
-- trigger local deploy work asynchronously
-
-GitHub Actions should **not** upload site files.
+- a custom GitHub Actions Pages workflow as the publishing source
+- the custom domain `hoodlefinance.yadan.net`
 
 ## Trigger Scope
 
@@ -95,31 +80,11 @@ The important rule is still:
 - do deploy when the website source changes
 - keep unrelated application or docs changes from triggering site rebuilds once the migration is complete
 
-The GitHub Actions path filter should be treated as the primary gate. The server webhook can remain simple and assume that a webhook call already means "site-related changes occurred."
-
-## Throttling And Duplicate Control
-
-The webhook should tolerate repeated calls without repeatedly rebuilding the site.
-
-Use these controls:
-
-- a lock file via `flock` so only one deploy runs at a time
-- a cooldown window, for example 60-120 seconds
-- a "pending" marker so if multiple webhooks arrive during one deploy, they collapse into at most one follow-up deploy
-
-Webhook behavior:
-
-- if a deploy is already running, record that another deploy is pending and return `202 Accepted`
-- if a webhook arrives during cooldown and nothing new is pending, ignore it and return `202 Accepted`
+The GitHub Actions path filter should be treated as the primary gate.
 
 ## Build Location
 
-Build on the server, not in GitHub Actions.
-
-The server needs:
-
-- Node/npm
-- permission to install repo-managed site dependencies during deploy
+Build in GitHub Actions.
 
 The deploy flow should rely on the version of Docusaurus and related tooling declared in the repo, not on a globally installed copy. In practice that means the deploy should run the equivalent of:
 
@@ -136,15 +101,12 @@ The public site should treat the latest version as the default. Use this Docusau
 
 ## Security Notes
 
-Keep the deploy surface narrow:
+Keep the GitHub Pages surface narrow:
 
-- use a dedicated non-root deploy user
-- keep Apache config changes outside the normal deploy path
-- do not grant `sudo` to the webhook/deploy user
-- restrict writes to the site root only
-- log webhook calls and deploy results
-
-The webhook should never execute arbitrary shell input from the request body.
+- deploy only from the website workflow
+- restrict deploy triggers to website-related paths
+- keep the custom domain configured directly on GitHub Pages
+- avoid redirect-based homepage behavior for the OAuth-facing site
 
 ## Implementation Order
 
@@ -155,6 +117,6 @@ The webhook should never execute arbitrary shell input from the request body.
    - privacy policy page
    - terms page
    - API/help page
-3. Add a small server-side deploy script and webhook handler.
-4. Add a GitHub Actions workflow that only triggers the webhook on pushes to `main`.
-5. Point Apache at the `current/` release path.
+3. Configure Docusaurus for the custom domain.
+4. Add GitHub Actions workflows for website build and Pages deploy.
+5. Point `hoodlefinance.yadan.net` DNS at GitHub Pages and configure the custom domain in repo settings.

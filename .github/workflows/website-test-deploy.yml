@@ -1,0 +1,41 @@
+name: Website Build Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "website/**"
+      - ".github/workflows/website-test-deploy.yml"
+      - ".github/workflows/website-deploy.yml"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  test-deploy:
+    name: Website build check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: website
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install website dependencies
+        run: npm ci
+
+      - name: Test website build
+        run: npm run build
