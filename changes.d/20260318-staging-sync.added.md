@@ -1,1 +1,0 @@
-- Made `tools/sync-demo-sheet.js` target the staging demo by default, and added `--live-demo` for explicit updates to the real public demo.
