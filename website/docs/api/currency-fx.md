@@ -67,20 +67,27 @@ The current built-in crypto unit list is `ADA`, `BCH`, `BNB`, `BTC`, `DOGE`, `ET
 
 ## Same-Currency Pairs
 
-Pairs such as `USDUSD` are supported and resolve to `1`. The same pattern also extends to subunit currencies such as `GBPGBp` and `GBpGBP`.
+Pairs such as `USDUSD` are supported and resolve to `1`. The same pattern also extends to subunit currencies such as `GBP` and `GBp`, or `ILS` and `ILA`.
 
 Example:
 
 ```js
 =HOODLEFINANCE("USDUSD", "price") // 1
-=HOODLEFINANCE("GBPGBp", "price") // 100
-=HOODLEFINANCE("GBpGBP", "price") // 0.01
+=HOODLEFINANCE("CURRENCY:GBP.GBp", "price") // 100
+=HOODLEFINANCE("CURRENCY:GBp.GBP", "price") // 0.01
+=HOODLEFINANCE("CURRENCY:ILS.ILA", "price") // 100
+=HOODLEFINANCE("CURRENCY:ILA.ILS", "price") // 0.01
 ```
+
+Dotted notation makes mixed-unit pairs easier to read when both sides look similar, such as `CURRENCY:GBP.GBp` or `CURRENCY:ILS.ILA`.
 
 This is useful when:
 
 - your sheet builds pair identifiers dynamically
 - you want conversion logic that does not need a special-case branch for identical currencies
+
+Note: For money-valued attributes, fractional units such as `GBp` and `ILA` are normalized automatically to their primary currency. For example, `=HOODLEFINANCE("TASE:ESLT", "price")` returns a value in `ILS`, not `ILA`, so you do not need to divide by `100` yourself.
+
 
 ## Conversion And Pair Rules
 
