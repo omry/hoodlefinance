@@ -15,7 +15,15 @@
  @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */
 const sidebars = {
-  tutorialSidebar: ['intro', 'api', 'support-matrix'],
+  tutorialSidebar: [
+    'intro',
+    'api',
+    'attributes',
+    'identifiers-and-isin',
+    'currency-conversion',
+    'advanced-usage',
+    'support-matrix',
+  ],
 };
 
 export default sidebars;
