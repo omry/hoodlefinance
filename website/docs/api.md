@@ -23,12 +23,12 @@ For sampled live coverage by exchange, see the [Support Matrix](support-matrix).
 `identifier` is the thing you want to look up. Common forms include:
 
 - **Bare ticker**, such as `GOOG`: Best for common U.S. symbols or other identifiers that are unambiguous on their own. For non-U.S. listings, prefer an exchange-qualified, Yahoo-style, or ISIN identifier.
-- **Exchange-qualified ticker**, such as `NASDAQ:GOOG` or `LON:SJPA`: Use this when you want to specify the listing venue explicitly.
-- **Yahoo-style symbol**, such as `SJPA.L` or `ZPRX.DE`: Use this when you want to specify the listing venue explicitly in Yahoo-style notation.
+- **GoogleFinance-style ticker**, such as `LON:SJPA` or `FRA:ZPRX`: Use this when you want to specify the listing venue explicitly with an exchange prefix.
+- **Yahoo-style symbol**, such as `SJPA.L` or `ZPRX.DE`: Use this when you want to specify the listing venue explicitly with an exchange suffix.
 - **Direct ISIN**, such as `IE00B4L5YX21`: Use this when you want to start from the security itself rather than a specific exchange ticker. HoodleFinance resolves the ISIN to one supported listing before retrieving the requested value.
 - **Currency pair**, such as `EURUSD` or `CURRENCY:BTC.USDT`: Use this for spot FX or crypto-style pair lookups.
 
-For the full identifier rules, exchange-specific notes, and ISIN behavior, see [Identifier Forms and ISIN](identifiers-and-isin).
+For the full identifier rules, exchange-specific notes, and ISIN behavior, see [Identifiers](identifiers).
 
 # Supported attrbutes
 TODO
@@ -68,7 +68,7 @@ But the historical-style arguments are not implemented. If any of those extra ar
 ## What It Covers
 
 - current quote attributes such as `price`, `name`, `high`, `low`, `volume`, and `change`
-- identifier normalization across Google-style symbols, Yahoo-style symbols, direct ISIN input, and currency pairs
+- identifier normalization across GoogleFinance-style symbols, Yahoo-style symbols, direct ISIN input, and currency pairs
 - output-currency conversion through `price@<currency>`
 - array formulas over ticker ranges
 - route introspection and source forcing for troubleshooting

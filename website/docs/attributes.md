@@ -44,6 +44,67 @@ Additional `HOODLEFINANCE`-only attributes:
 - `exchange` defaults to Google-style output such as `LON`, `NASDAQ`, `PSE`, or `CURRENCY`.
 - If an upstream source does not provide a requested field, the formula returns an error for that lookup.
 
+## The `isin` Attribute
+
+`isin` is the generic ISIN attribute. It tries to infer the exchange from the input identifier, Yahoo suffix, or quote metadata, then dispatches to an exchange-specific resolver.
+
+If the exchange cannot be inferred, or if no default ISIN source is configured for that exchange, the function throws a clear error and tells you to use an explicit source attribute.
+
+Examples:
+
+```gs
+=HOODLEFINANCE("ZPRX.DE", "isin")
+=HOODLEFINANCE("LON:SJPA", "isin")
+=HOODLEFINANCE("GOOG", "isin")
+=HOODLEFINANCE("PSE:BDO", "isin")
+```
+
+That means the behavior depends partly on the input you start with:
+
+- `=HOODLEFINANCE("LON:SJPA", "isin")` already tells the function the venue
+- `=HOODLEFINANCE("SJPA.L", "isin")` lets the suffix imply the venue
+- `=HOODLEFINANCE("GOOG", "isin")` relies on the resolved quote metadata
+- `=HOODLEFINANCE("IE00B4L5YX21", "name")` starts from the security identifier itself, then resolves to one listing
+
+## Explicit ISIN Sources
+
+In normal use, `isin` should be enough. For debugging, coverage checks, and cases where you want to force a particular lookup path, use an identifier-side `@SOURCE` override.
+
+Available source labels include:
+
+- `@TRADINGVIEW`
+- `@LON`
+- `@PSE`
+- `@ARIVA`
+- `@IBKR`
+
+Examples:
+
+```gs
+=HOODLEFINANCE("ZPRX.DE@TRADINGVIEW", "isin")
+=HOODLEFINANCE("LON:SJPA@LON", "isin")
+=HOODLEFINANCE("PSE:BDO@PSE", "isin")
+=HOODLEFINANCE("ZPRV.DE@ARIVA", "isin")
+=HOODLEFINANCE("ISJP.L@IBKR", "isin")
+```
+
+Use these only when you have a specific reason to override the default behavior, such as troubleshooting a coverage gap or comparing resolver paths.
+
+## PSE And ISIN
+
+PSE content matters here because HoodleFinance has a dedicated PSE lookup path.
+
+- `PSE:` tickers use the PSE EDGE route directly
+- PSE ISIN lookups can also resolve through the built-in PSE ISIN map before falling back to other resolver paths
+
+Examples:
+
+```gs
+=HOODLEFINANCE("PSE:BDO", "isin")
+=HOODLEFINANCE("PSE:AP", "name")
+=HOODLEFINANCE("PHY0005M1090", "symbol")
+```
+
 ## Examples
 
 ```gs

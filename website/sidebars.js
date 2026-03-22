@@ -19,7 +19,7 @@ const sidebars = {
     'intro',
     'api',
     'attributes',
-    'identifiers-and-isin',
+    'identifiers',
     'currency-conversion',
     'advanced-usage',
     'support-matrix',
