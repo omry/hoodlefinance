@@ -4,11 +4,12 @@ Add one Markdown fragment here for each user-visible change that should appear i
 
 Filename format:
 
-`YYYYMMDD-slug.<upgrade|added|changed|fixed>.md`
+`YYYYMMDD-slug.<upgrade|added|changed|docs|fixed>.md`
 
 Examples:
 
 - `20260315-release-notes.added.md`
+- `20260315-api-reference.docs.md`
 - `20260315-pse-cache.fixed.md`
 
 Fragment guidelines:
@@ -16,11 +17,13 @@ Fragment guidelines:
 - Write for end users first.
 - Each fragment must be exactly one top-level bullet that starts with `- `.
 - Use `upgrade` only for notes users should read before updating.
+- Use `docs` for user-facing documentation-only changes.
 
 Validation:
 
 - Run `npm run release:check-fragments` to validate fragment filenames and contents before preparing a release.
 - The npm command runs the same zero-dependency shell validator as the local pre-commit hook.
+- Run `node tools/release.js prepare x.y.z --dry-run` to print the next per-release notes without writing or consuming anything.
 - `node tools/release.js prepare x.y.z` runs the same fragment validation automatically before it writes release files.
 - `prepare` starts only from a clean git worktree and uses git-backed cleanup on verification failure, so fragments should already be committed by the time you cut a release.
 

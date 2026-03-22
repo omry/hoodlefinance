@@ -50,8 +50,9 @@ Repo-specific standing directives for coding agents working in this project.
 - User-visible changes should usually include a release fragment under `changes.d/`, even if the current task is not cutting a release yet.
 - Keep release fragments current while making user-visible changes. Do not leave a substantive feature or fix without adding or updating the corresponding fragment.
 - Fragment filenames must follow `YYYYMMDD-slug.<category>.md`.
-- Supported fragment categories are `upgrade`, `added`, `changed`, and `fixed`.
+- Supported fragment categories are `upgrade`, `added`, `changed`, `docs`, and `fixed`.
 - Fragment text should be concise and user-facing, not an internal implementation changelog.
+- If a repo file appears unexpectedly renamed, moved, regenerated, or otherwise changed while you are working, stop and ask before reverting, reclassifying, or staging over that change.
 - Do not manually edit version numbers as part of normal feature work unless the task is explicitly a release cut.
 - Do not manually assemble release notes for a release. The primary release path is the GitHub Actions flow: run `Release Prepare`, review the generated PR, and let the merged `release/vX.Y.Z` PR trigger `Release Publish`.
 - The Actions-based release flow is the default for an actual release cut; treat `node tools/release.js prepare <x.y.z>` as repo-local release machinery and a maintainer fallback, not the primary operator workflow.

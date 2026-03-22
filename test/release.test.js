@@ -15,6 +15,7 @@ const {
   parseReleaseFile,
   parseVersionMetadataText,
   prepareRelease,
+  previewRelease,
   publishRelease,
   renderReleaseBody,
   renderReleaseFile,
@@ -97,6 +98,12 @@ test("parseArgs validates the supported release commands", function () {
   });
   assert.deepEqual(parseArgs(["prepare", "1.2.3"]), {
     command: "prepare",
+    dryRun: false,
+    version: "1.2.3",
+  });
+  assert.deepEqual(parseArgs(["prepare", "1.2.3", "--dry-run"]), {
+    command: "prepare",
+    dryRun: true,
     version: "1.2.3",
   });
   assert.deepEqual(parseArgs(["publish", "2.0.0"]), {
@@ -105,6 +112,9 @@ test("parseArgs validates the supported release commands", function () {
   });
   assert.throws(function () {
     parseArgs(["prepare"]);
+  }, /Usage/);
+  assert.throws(function () {
+    parseArgs(["prepare", "1.2.3", "--wat"]);
   }, /Usage/);
   assert.throws(function () {
     parseArgs(["check-fragments", "1.2.3"]);
@@ -139,11 +149,12 @@ test("renderReleaseBody keeps the configured section order", function () {
   const body = renderReleaseBody({
     added: ["- Added feature"],
     changed: ["- Changed behavior"],
+    docs: ["- Clarified documentation"],
     fixed: ["- Fixed bug"],
     upgrade: ["- Upgrade note"],
   });
 
-  assert.match(body, /### Upgrade Notes[\s\S]*### Added[\s\S]*### Changed[\s\S]*### Fixed/);
+  assert.match(body, /### Upgrade Notes[\s\S]*### Added[\s\S]*### Changed[\s\S]*### Fixed[\s\S]*### Documentation/);
 });
 
 test("renderReleaseBody keeps validated bullets as a tight list", function () {
@@ -188,13 +199,13 @@ test("runReleaseFragmentCheck validates fragments without mutating them", async 
   const fixture = createFixtureRepo();
 
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-one.added.md"), "- Added thing\n", "utf8");
-  fs.writeFileSync(path.join(fixture.changesDir, "20260316-two.fixed.md"), "- Fixed thing\n", "utf8");
+  fs.writeFileSync(path.join(fixture.changesDir, "20260316-two.docs.md"), "- Clarified thing\n", "utf8");
 
   const result = await runReleaseFragmentCheck({ changesDir: fixture.changesDir });
 
   assert.match(result.stdout, /Validated 2 release fragments\./);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-one.added.md")), true);
-  assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-two.fixed.md")), true);
+  assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-two.docs.md")), true);
 });
 
 test("runReleaseFragmentCheck rejects paragraph-style fragments", async function () {
@@ -263,6 +274,25 @@ test("prepareRelease fails when there are no release fragments", async function 
   );
 });
 
+test("previewRelease renders the next release without mutating files", async function () {
+  const fixture = createFixtureRepo();
+
+  fs.writeFileSync(path.join(fixture.changesDir, "20260316-market.added.md"), "- Added broader market coverage examples.\n", "utf8");
+  fs.writeFileSync(path.join(fixture.rootDir, "scratch.txt"), "dirty worktree is fine for preview\n", "utf8");
+
+  const result = await previewRelease("0.2.6", Object.assign({}, fixture, {
+    releaseDate: "2026-03-16",
+  }));
+
+  assert.match(
+    result.releaseFileText,
+    /# v0\.2\.6 - 2026-03-16[\s\S]*### Added[\s\S]*- Added broader market coverage examples\./
+  );
+  assert.equal(fs.existsSync(path.join(fixture.releasesDir, "v0.2.6.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-market.added.md")), true);
+  assert.equal(fs.readFileSync(fixture.versionMetadataPath, "utf8"), renderVersionMetadata({ version: "0.2.5" }));
+});
+
 test("prepareRelease rejects non-incrementing versions and duplicate release files", async function () {
   const fixture = createFixtureRepo();
 
@@ -289,6 +319,8 @@ test("prepareRelease updates metadata, creates a per-release file, rebuilds the 
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-upgrade.upgrade.md"), "- Review the new release notes before updating.\n", "utf8");
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-market.added.md"), "- Added broader market coverage examples.\n", "utf8");
   fs.writeFileSync(path.join(fixture.changesDir, "20260316-wording.changed.md"), "- Improved update messaging in Sheets.\n", "utf8");
+  fs.writeFileSync(path.join(fixture.changesDir, "20260316-fix.fixed.md"), "- Fixed a regression in quote lookups.\n", "utf8");
+  fs.writeFileSync(path.join(fixture.changesDir, "20260316-docs.docs.md"), "- Clarified the setup guide.\n", "utf8");
   commitAll(fixture.rootDir, "Add release fragments");
 
   await prepareRelease("0.2.6", Object.assign({}, fixture, {
@@ -305,7 +337,7 @@ test("prepareRelease updates metadata, creates a per-release file, rebuilds the 
   assert.match(fs.readFileSync(fixture.scriptSourcePath, "utf8"), /HOODLEFINANCE_VERSION_ = "0\.2\.6"/);
   assert.match(
     fs.readFileSync(path.join(fixture.releasesDir, "v0.2.6.md"), "utf8"),
-    /# v0\.2\.6 - 2026-03-16[\s\S]*### Upgrade Notes[\s\S]*### Added[\s\S]*### Changed/
+    /# v0\.2\.6 - 2026-03-16[\s\S]*### Upgrade Notes[\s\S]*### Added[\s\S]*### Changed[\s\S]*### Fixed[\s\S]*### Documentation/
   );
   assert.match(
     fs.readFileSync(fixture.releaseNotesPath, "utf8"),
@@ -314,6 +346,8 @@ test("prepareRelease updates metadata, creates a per-release file, rebuilds the 
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-upgrade.upgrade.md")), false);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-market.added.md")), false);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-wording.changed.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-fix.fixed.md")), false);
+  assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-docs.docs.md")), false);
 });
 
 test("prepareRelease rolls back generated files and preserves fragments when verification fails", async function () {

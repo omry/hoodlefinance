@@ -32,10 +32,11 @@ for fragment_path in "$CHANGES_DIR"/*; do
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[a-z0-9][a-z0-9-]*.upgrade.md|\
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[a-z0-9][a-z0-9-]*.added.md|\
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[a-z0-9][a-z0-9-]*.changed.md|\
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[a-z0-9][a-z0-9-]*.docs.md|\
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[a-z0-9][a-z0-9-]*.fixed.md)
       ;;
     *)
-      echo "Error: Invalid release fragment filename: $file_name. Expected YYYYMMDD-slug.<upgrade|added|changed|fixed>.md." >&2
+      echo "Error: Invalid release fragment filename: $file_name. Expected YYYYMMDD-slug.<upgrade|added|changed|docs|fixed>.md." >&2
       exit 1
       ;;
   esac

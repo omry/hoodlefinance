@@ -240,7 +240,9 @@ User-facing releases are repo-managed.
 - Local `node tools/release.js ...` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
 - Each release fragment must be exactly one top-level bullet that starts with `- `. One fragment maps to one rendered release-note bullet.
+- Use the `docs` fragment type for user-facing documentation-only changes.
 - You can also run `npm run release:check-fragments` manually without mutating anything.
+- Run `node tools/release.js prepare x.y.z --dry-run` to preview the next per-release notes without changing files.
 - Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
 - `prepare` automatically runs the release verification suite and aborts without consuming fragments if verification fails.
 - `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.

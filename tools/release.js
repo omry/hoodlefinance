@@ -14,14 +14,15 @@ const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const FRAGMENT_CHECKER_PATH = path.join(ROOT_DIR, "tools", "check-release-fragments.sh");
-const FRAGMENT_CATEGORIES = ["upgrade", "added", "changed", "fixed"];
+const FRAGMENT_CATEGORIES = ["upgrade", "added", "changed", "fixed", "docs"];
 const FRAGMENT_HEADING_BY_CATEGORY = {
   upgrade: "Upgrade Notes",
   added: "Added",
   changed: "Changed",
+  docs: "Documentation",
   fixed: "Fixed",
 };
-const FRAGMENT_FILENAME_PATTERN = /^(\d{8})-([a-z0-9][a-z0-9-]*)\.(upgrade|added|changed|fixed)\.md$/;
+const FRAGMENT_FILENAME_PATTERN = /^(\d{8})-([a-z0-9][a-z0-9-]*)\.(upgrade|added|changed|docs|fixed)\.md$/;
 const RELEASE_FILE_PATTERN = /^v(\d+\.\d+\.\d+)\.md$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 const IGNORED_CHANGE_FILES = {
@@ -77,6 +78,12 @@ async function main() {
   }
 
   if (options.command === "prepare") {
+    if (options.dryRun) {
+      result = await previewRelease(options.version);
+      process.stdout.write(result.releaseFileText);
+      return;
+    }
+
     result = await prepareRelease(options.version);
     process.stdout.write(
       "Prepared release v" +
@@ -103,7 +110,7 @@ async function main() {
 
 function parseArgs(argv) {
   if (!Array.isArray(argv) || !argv.length) {
-    throw new Error("Usage: node tools/release.js <check-fragments|prepare|publish> [x.y.z]");
+    throw new Error("Usage: node tools/release.js <check-fragments|prepare|publish> [x.y.z] [--dry-run]");
   }
 
   if (argv[0] !== "check-fragments" && argv[0] !== "prepare" && argv[0] !== "publish") {
@@ -120,14 +127,32 @@ function parseArgs(argv) {
     };
   }
 
-  if (argv.length !== 2) {
-    throw new Error("Usage: node tools/release.js <prepare|publish> <x.y.z>");
+  if (argv[0] === "publish") {
+    if (argv.length !== 2) {
+      throw new Error("Usage: node tools/release.js publish <x.y.z>");
+    }
+
+    validateVersion(argv[1]);
+
+    return {
+      command: "publish",
+      version: argv[1],
+    };
+  }
+
+  if (argv.length !== 2 && argv.length !== 3) {
+    throw new Error("Usage: node tools/release.js prepare <x.y.z> [--dry-run]");
   }
 
   validateVersion(argv[1]);
 
+  if (argv.length === 3 && argv[2] !== "--dry-run") {
+    throw new Error("Usage: node tools/release.js prepare <x.y.z> [--dry-run]");
+  }
+
   return {
     command: argv[0],
+    dryRun: argv[2] === "--dry-run",
     version: argv[1],
   };
 }
@@ -346,7 +371,7 @@ function loadReleaseFragments(changesDir) {
       throw new Error(
         "Invalid release fragment filename: " +
           entry.name +
-          ". Expected YYYYMMDD-slug.<upgrade|added|changed|fixed>.md."
+          ". Expected YYYYMMDD-slug.<upgrade|added|changed|docs|fixed>.md."
       );
     }
 
@@ -377,6 +402,7 @@ function groupFragmentsByCategory(fragments) {
   const grouped = {
     added: [],
     changed: [],
+    docs: [],
     fixed: [],
     upgrade: [],
   };
@@ -519,55 +545,20 @@ function buildReleaseNotesPage(releases) {
 async function prepareRelease(version, options) {
   const normalizedOptions = options || {};
   const cwd = normalizedOptions.cwd || ROOT_DIR;
-  const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
-  const releaseDate = normalizedOptions.releaseDate || new Date().toISOString().slice(0, 10);
-  const releaseNotesPath = normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
-  const releasesDir = normalizedOptions.releasesDir || RELEASES_DIR;
-  const releaseTemplatePath = normalizedOptions.releaseTemplatePath || RELEASE_TEMPLATE_PATH;
-  const scriptSourcePath = normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
-  const versionMetadataPath = normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
   const verifyRelease = normalizedOptions.verifyRelease || verifyReleasePreparation;
   const runner = normalizedOptions.runCommand || runCommand;
-  const versionMetadata = readVersionMetadata(versionMetadataPath);
-  const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
-  const releaseTemplateText = readTextSync(releaseTemplatePath, "release template");
-  const currentScriptVersion = extractVersionFromSource(scriptSourceText);
-  const releaseNotesRelativePath = buildReleaseNotesRelativePath(version);
-  const releaseFilePath = buildReleaseFilePath(releasesDir, version);
+  const draft = await previewRelease(version, normalizedOptions);
+  const releaseNotesPath = draft.releaseNotesPath;
+  const releaseFilePath = draft.releaseFilePath;
+  const scriptSourcePath = draft.scriptSourcePath;
+  const versionMetadataPath = draft.versionMetadataPath;
+  const scriptSourceText = draft.scriptSourceText;
+  const releaseNotesRelativePath = draft.releaseNotesRelativePath;
+  const releaseDate = draft.releaseDate;
+  const grouped = draft.groupedFragments;
+  const fragments = draft.fragments;
+  const releasesDir = draft.releasesDir;
   let releaseEntries;
-
-  validateVersion(version);
-
-  await runReleaseFragmentCheck({
-    changesDir: changesDir,
-    cwd: cwd,
-    runCommand: runner,
-  });
-
-  const fragments = loadReleaseFragments(changesDir);
-  const grouped = groupFragmentsByCategory(fragments);
-
-  if (!fragments.length) {
-    throw new Error("No release fragments were found in changes.d/.");
-  }
-
-  if (compareVersions(version, versionMetadata.version) <= 0) {
-    throw new Error("Target release version must be greater than the current version " + versionMetadata.version + ".");
-  }
-
-  if (currentScriptVersion !== versionMetadata.version) {
-    throw new Error(
-      "hoodlefinance.js is out of sync with version.properties. Expected " +
-        versionMetadata.version +
-        " but found " +
-        (currentScriptVersion || "(missing)") +
-        "."
-    );
-  }
-
-  if (fs.existsSync(releaseFilePath)) {
-    throw new Error("Release notes already contain v" + version + ".");
-  }
 
   await ensureCleanGitWorktree({
     cwd: cwd,
@@ -575,7 +566,7 @@ async function prepareRelease(version, options) {
   });
 
   try {
-    await writeText(releaseFilePath, renderReleaseFile(version, releaseDate, grouped, releaseTemplateText));
+    await writeText(releaseFilePath, draft.releaseFileText);
     await writeText(
       versionMetadataPath,
       renderVersionMetadata({
@@ -623,10 +614,82 @@ async function prepareRelease(version, options) {
 
   return {
     fragmentCount: fragments.length,
+    fragments: fragments,
+    groupedFragments: grouped,
+    releaseDate: releaseDate,
+    releaseFileText: draft.releaseFileText,
+    releaseFilePath: releaseFilePath,
+    version: version,
+  };
+}
+
+async function previewRelease(version, options) {
+  const normalizedOptions = options || {};
+  const cwd = normalizedOptions.cwd || ROOT_DIR;
+  const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
+  const releaseDate = normalizedOptions.releaseDate || new Date().toISOString().slice(0, 10);
+  const releaseNotesPath = normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
+  const releasesDir = normalizedOptions.releasesDir || RELEASES_DIR;
+  const releaseTemplatePath = normalizedOptions.releaseTemplatePath || RELEASE_TEMPLATE_PATH;
+  const scriptSourcePath = normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
+  const versionMetadataPath = normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
+  const runner = normalizedOptions.runCommand || runCommand;
+  const versionMetadata = readVersionMetadata(versionMetadataPath);
+  const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
+  const releaseTemplateText = readTextSync(releaseTemplatePath, "release template");
+  const currentScriptVersion = extractVersionFromSource(scriptSourceText);
+  const releaseNotesRelativePath = buildReleaseNotesRelativePath(version);
+  const releaseFilePath = buildReleaseFilePath(releasesDir, version);
+  let fragments;
+  let grouped;
+
+  validateVersion(version);
+
+  await runReleaseFragmentCheck({
+    changesDir: changesDir,
+    cwd: cwd,
+    runCommand: runner,
+  });
+
+  fragments = loadReleaseFragments(changesDir);
+  grouped = groupFragmentsByCategory(fragments);
+
+  if (!fragments.length) {
+    throw new Error("No release fragments were found in changes.d/.");
+  }
+
+  if (compareVersions(version, versionMetadata.version) <= 0) {
+    throw new Error("Target release version must be greater than the current version " + versionMetadata.version + ".");
+  }
+
+  if (currentScriptVersion !== versionMetadata.version) {
+    throw new Error(
+      "hoodlefinance.js is out of sync with version.properties. Expected " +
+        versionMetadata.version +
+        " but found " +
+        (currentScriptVersion || "(missing)") +
+        "."
+    );
+  }
+
+  if (fs.existsSync(releaseFilePath)) {
+    throw new Error("Release notes already contain v" + version + ".");
+  }
+
+  return {
+    fragmentCount: fragments.length,
+    fragments: fragments,
     groupedFragments: grouped,
     releaseDate: releaseDate,
     releaseFilePath: releaseFilePath,
+    releaseFileText: renderReleaseFile(version, releaseDate, grouped, releaseTemplateText),
+    releaseNotesPath: releaseNotesPath,
+    releaseNotesRelativePath: releaseNotesRelativePath,
+    releasesDir: releasesDir,
+    scriptSourcePath: scriptSourcePath,
+    scriptSourceText: scriptSourceText,
     version: version,
+    versionMetadataPath: versionMetadataPath,
   };
 }
 
@@ -804,6 +867,7 @@ module.exports = {
   parseReleaseFile,
   parseVersionMetadataText,
   prepareRelease,
+  previewRelease,
   publishRelease,
   readVersionMetadata,
   restorePreparedReleaseStateWithGit,
