@@ -1,0 +1,1 @@
+- Updated the website introduction with clearer onboarding guidance and wired the public demo-sheet link into the same managed sync flow used by the main README.

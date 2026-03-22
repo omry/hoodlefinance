@@ -22,6 +22,15 @@ It is most useful when your sheets mix:
 - current-price conversion into a requested output currency
 - practical coverage for many cases where `GOOGLEFINANCE` is too limited
 
+## Why It Is Useful
+
+HoodleFinance is especially useful when you want spreadsheet formulas that map more closely to the way an international portfolio is actually managed.
+
+- broader practical coverage for international listings and many foreign ETFs
+- support for multiple identifier styles, including exchange-qualified symbols, Yahoo-style tickers, and direct ISIN input
+- built-in price conversion so mixed-currency portfolios can be normalized in one formula step
+- support for workflows that need exchange-qualified symbols, Yahoo-style tickers, ISINs, and currency-aware price output in the same sheet
+
 ## Quick Examples
 
 ```js
@@ -29,6 +38,12 @@ It is most useful when your sheets mix:
 =HOODLEFINANCE("SJPA.L", "price@USD")
 =HOODLEFINANCE("IE00B4L5YX21", "symbol")
 ```
+
+<!-- DEMO_SHEET_LINK:START -->
+See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for more live examples.
+<!-- DEMO_SHEET_LINK:END -->
+
+Bare tickers such as `GOOG` are often the easiest place to start. If a bare ticker does not resolve the way you want, especially for international or ambiguous symbols, switch to an explicit identifier such as `NASDAQ:GOOG` or `SJPA.L`.
 
 ## Installation
 
@@ -61,6 +76,10 @@ If and when the Marketplace add-on becomes publicly available, it should be trea
 - upstream changes can break parts of the data surface without warning
 - not every `GOOGLEFINANCE` attribute is supported
 - support varies by market, exchange, identifier form, and source
+
+## Need More Coverage?
+
+If a market, ticker format, ETF, or identifier lookup you care about is not working yet, please open an issue or contact [Support](/support).
 
 ## Source Code
 

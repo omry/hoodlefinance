@@ -14,7 +14,7 @@ There are also some limitations; see [Limits](#limits).
 ## Live Demo
 
 <!-- DEMO_SHEET_LINK:START -->
-See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for live examples.
+See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).
 <!-- DEMO_SHEET_LINK:END -->
 
 ## Why Use It Instead Of GOOGLEFINANCE?

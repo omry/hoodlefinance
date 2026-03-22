@@ -29,6 +29,7 @@ const DEMO_DIR = path.join(ROOT_DIR, "docs", "demo-sheet");
 const CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet.json");
 const STAGING_CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet-staging.json");
 const README_PATH = path.join(ROOT_DIR, "README.md");
+const WEBSITE_INTRO_PATH = path.join(ROOT_DIR, "website", "docs", "intro.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
 const OAUTH_CLIENT_PATH = path.join(LOCAL_DIR, "oauth-client.json");
@@ -78,7 +79,7 @@ async function main() {
     await saveJson(STAGING_CONFIG_PATH, overrideConfig);
   } else {
     await saveJson(CONFIG_PATH, syncedConfig);
-    await updateReadmeDemoLink(syncedConfig.publicUrl || "");
+    await updateDemoLinks(syncedConfig.publicUrl || "");
   }
   
   printSummary(syncedConfig, options, "Demo sheet sync completed.");
@@ -903,6 +904,24 @@ function renderDemoReadmeBlock(publicUrl) {
   );
 }
 
+function renderDemoIntroBlock(publicUrl) {
+  if (publicUrl) {
+    return (
+      DEMO_MARKER_START +
+      "\nSee the [public demo sheet](" +
+      publicUrl +
+      ") for more live examples.\n" +
+      DEMO_MARKER_END
+    );
+  }
+
+  return (
+    DEMO_MARKER_START +
+    "\nThe public demo sheet will be linked here after it is created.\n" +
+    DEMO_MARKER_END
+  );
+}
+
 function replaceDemoReadmeBlock(readmeText, publicUrl) {
   const replacement = renderDemoReadmeBlock(publicUrl);
   const pattern = new RegExp(
@@ -916,12 +935,34 @@ function replaceDemoReadmeBlock(readmeText, publicUrl) {
   return readmeText.replace("## Quick Start", "## Live Demo\n\n" + replacement + "\n\n## Quick Start");
 }
 
-async function updateReadmeDemoLink(publicUrl) {
+function replaceDemoIntroBlock(introText, publicUrl) {
+  const replacement = renderDemoIntroBlock(publicUrl);
+  const pattern = new RegExp(
+    escapeRegex(DEMO_MARKER_START) + "[\\s\\S]*?" + escapeRegex(DEMO_MARKER_END)
+  );
+
+  if (pattern.test(introText)) {
+    return introText.replace(pattern, replacement);
+  }
+
+  return introText.replace(
+    "Bare tickers such as `GOOG` are often the easiest place to start.",
+    replacement + "\n\nBare tickers such as `GOOG` are often the easiest place to start."
+  );
+}
+
+async function updateDemoLinks(publicUrl) {
   const existing = await fsp.readFile(README_PATH, "utf8");
   const updated = replaceDemoReadmeBlock(existing, publicUrl);
+  const existingIntro = await fsp.readFile(WEBSITE_INTRO_PATH, "utf8");
+  const updatedIntro = replaceDemoIntroBlock(existingIntro, publicUrl);
 
   if (updated !== existing) {
     await fsp.writeFile(README_PATH, updated, "utf8");
+  }
+
+  if (updatedIntro !== existingIntro) {
+    await fsp.writeFile(WEBSITE_INTRO_PATH, updatedIntro, "utf8");
   }
 }
 
@@ -1068,7 +1109,9 @@ module.exports = {
   parseTsv,
   ensureAccessTokenWithDeps,
   isInvalidGrantOAuthError,
+  renderDemoIntroBlock,
   renderDemoReadmeBlock,
+  replaceDemoIntroBlock,
   replaceDemoReadmeBlock,
   resolveRepoPath,
   validateConfig,
