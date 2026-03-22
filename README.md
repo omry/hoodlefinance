@@ -1,15 +1,10 @@
 # HOODLEFINANCE
 
-`HOODLEFINANCE` is a Google Apps Script custom function that provides a practical alternative to `GOOGLEFINANCE`, especially for international, mixed-currency portfolios and ETF-heavy sheets.
+`HOODLEFINANCE` is a Google Apps Script custom function for Google Sheets.
 
-It uses multiple data sources to cover data, identifiers, and markets that `GOOGLEFINANCE` does not provide or does not support well.
+For installation, product overview, API docs, and user-facing guidance, start with the website introduction:
 
-Current script version: `0.9.2`
-Current release notes: [`docs/release-notes/v0.9.2.md`](./docs/release-notes/v0.9.2.md)
-
-Release notes: [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md)
-
-There are also some limitations; see [Limits](#limits).
+- [hoodlefinance.com/docs](https://hoodlefinance.com/docs)
 
 ## Live Demo
 
@@ -17,93 +12,18 @@ There are also some limitations; see [Limits](#limits).
 See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).
 <!-- DEMO_SHEET_LINK:END -->
 
-## Why Use It Instead Of GOOGLEFINANCE?
+## Docs
 
-This is most useful if your sheet spans international markets, mixes holdings quoted in different currencies, or needs identifiers that `GOOGLEFINANCE` does not expose.
+- Introduction: [hoodlefinance.com/docs](https://hoodlefinance.com/docs)
+- API Reference: [hoodlefinance.com/docs/api](https://hoodlefinance.com/docs/api)
+- Support Matrix: [hoodlefinance.com/docs/support-matrix](https://hoodlefinance.com/docs/support-matrix)
+- Release Notes: [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md)
 
-- Better practical support for many foreign ETFs, especially Yahoo-style symbols such as `.L` and `.DE`
-- Dedicated support for the Philippine Stock Exchange (`PSE`)
-- Support for direct ISIN lookups and the `isin` output attribute
-- More flexible currency conversion, including same-currency pairs such as `USDUSD` and unit-specific inputs such as `GBp` and `ILA`
-- An optional output currency on `price`, such as `price@USD`, so one formula can return the current quote in the currency you actually care about, not just the symbol's market currency
-- Support for more ticker styles and exchange aliases, for example `LON:SJPA`, `ETR:ZPRX`, `NEO:ZTL`, `HKG:9988`, and `SGX:D05`
+## Repo Guide
 
-## Quick Start
-
-1. Open a Google Sheet.
-2. Go to `Extensions -> Apps Script`.
-3. Copy the contents of [hoodlefinance.js (raw)](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js) into a new script file named `HoodleFinance`.
-4. Save the project and reload the spreadsheet.
-
-Start with a simple quote:
-
-```gs
-=HOODLEFINANCE("GOOG", "price")
-```
-
-Bare tickers such as `GOOG`, `AAPL`, `MSFT`, and `IBM` are usually the most familiar place to start. If a bare ticker does not resolve the way you want, especially for international markets or ambiguous symbols, add the exchange explicitly, for example `NASDAQ:GOOG`, or use a Yahoo-style symbol such as `SJPA.L`.
-
-Then try a few representative lookups:
-
-```gs
-=HOODLEFINANCE("GOOG", "isin")
-=HOODLEFINANCE("NYSE:IBM", "name")
-=HOODLEFINANCE("EURUSD", "price")
-=HOODLEFINANCE("SJPA.L", "price@USD")
-=HOODLEFINANCE("SGX:D05", "name")
-=HOODLEFINANCE("PSE:BDO", "isin")
-=HOODLEFINANCE("PHY077751022", "name")
-```
-
-If you hold positions across markets and currencies, especially in a mixed-currency portfolio, `price@USD`-style lookups are often one of the biggest practical wins because they let you normalize quotes into one comparison currency without a separate helper-column FX step.
-
-The script also adds a `Hoodlefinance` menu in Sheets for update-related actions.
-To update the script, review the release notes, then replace the current code in Apps Script with the latest version.
-
-## Supported Inputs
-
-`HOODLEFINANCE` takes an identifier plus an attribute.
-
-Supported identifiers:
-
-Three security identifier types are supported: Google-style symbols, Yahoo-style symbols, and ISINs.
-
-Google-style symbol examples: `NASDAQ:GOOG`, `OTCMKTS:RYCEY`, `LON:SJPA`, `ETR:ZPRX`, `HKG:9988`, `SGX:D05`, `TLV:POLI`, `EURUSD`, `CURRENCY:EURUSD`, `BTCUSD`, `DOGEUSD`, `USDUSDT`, `CURRENCY:BTC.USDT`
-
-Yahoo-style symbol examples: `GOOG`, `ISJP.L`, `ZPRX.DE`, `9988.HK`, `D05.SI`, `POLI.TA`
-
-ISIN examples: `US02079K1079`, `IE00B4L5YX21`, `PHY077751022`
-
-Supported input shapes:
-
-- Either a single identifier or an identifier range, with spilled results in the same shape
-
-Supported attributes:
-
-- Standard quote outputs such as `price`, `name`, `currency`, `high`, `low`, `close`, `tradetime`, `volume`, `change`, `changepct`, and `datadelay`
-- Resolved identifier outputs such as `symbol[:google|:yahoo]` and `exchange[:google|:yahoo]`
-- Additional outputs such as `isin`, which `GOOGLEFINANCE` does not provide directly
-
-The resolved identifier outputs try to convert between the supported Google-style, Yahoo-style, and ISIN forms. Use `:yahoo` or `:google` to request the output style explicitly, for example `=HOODLEFINANCE("SJPA.L", "symbol:google")` or `=HOODLEFINANCE("GOOG", "exchange:yahoo")`.
-
-`price` can also request an output currency, such as `price@USD`, which is especially useful when you are comparing holdings across international markets in one portfolio currency.
-
-## Reference And Coverage
-
-- Full API, ticker forms, array formulas, and source-specific notes: [hoodlefinance.com/docs/api](https://hoodlefinance.com/docs/api)
-- Sample-based exchange coverage matrix: [hoodlefinance.com/docs/support-matrix](https://hoodlefinance.com/docs/support-matrix)
-- Local development, tests, CLI smoke checks, demo-sheet maintenance, and support-matrix maintenance: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
-
-## Need More Coverage?
-
-If `GOOGLEFINANCE` falls short for a market, ticker format, ETF, or identifier lookup you care about, please file an issue with a concrete example for evaluation, or send a contribution following [`CONTRIBUTING.md`](./CONTRIBUTING.md).
-
-## Limits
-
-- Historical data arguments are not implemented
-- Not all `GOOGLEFINANCE` attributes are supported
-- Quote freshness depends on the upstream source and may be delayed by an unspecified amount of time
-- Some lookups depend on unofficial APIs or public website behavior and may break without notice
+- Local development and contribution workflow: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- Public demo-sheet source and sync flow: [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md)
+- Website source: [`website/`](./website/)
 
 ## License
 
