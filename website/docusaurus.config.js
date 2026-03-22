@@ -81,7 +81,7 @@ const config = {
           {
             href: 'https://github.com/omry/hoodlefinance',
             label: 'GitHub',
-            position: 'right',
+            position: 'left',
           },
         ],
       },
