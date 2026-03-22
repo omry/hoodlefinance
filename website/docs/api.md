@@ -46,27 +46,44 @@ For the full attribute list and behavior notes, see [Supported Attributes](attri
 
 ## Quick Examples
 
-```gs
-=HOODLEFINANCE("NASDAQ:GOOG")
-=HOODLEFINANCE("NYSE:IBM", "name")
-=HOODLEFINANCE("CURRENCY:EURUSD", "price")
-=HOODLEFINANCE("IE00B4L5YX21", "symbol")
-=HOODLEFINANCE("SJPA.L", "price@USD")
-=HOODLEFINANCE("GOOG", "isin")
+```js
+=HOODLEFINANCE("NASDAQ:GOOG")              // current GOOG price
+=HOODLEFINANCE("NYSE:IBM", "name")         // International Business Machines Corporation
+=HOODLEFINANCE("CURRENCY:EURUSD", "price") // current EUR/USD rate
+=HOODLEFINANCE("IE00B4L5YX21", "symbol")   // resolved listing symbol
+=HOODLEFINANCE("SJPA.L", "price@USD")      // current SJPA price converted to USD
+=HOODLEFINANCE("GOOG", "isin")             // US02079K1079
 ```
 
-## What It Covers
+## Array Usage
 
-- current quote attributes such as `price`, `name`, `high`, `low`, `volume`, and `change`
-- identifier normalization across GoogleFinance-style symbols, Yahoo-style symbols, direct ISIN input, and currency pairs
-- output-currency conversion through `price@<currency>`
-- array formulas over ticker ranges
-- route introspection and source forcing for troubleshooting
+`HOODLEFINANCE` accepts ticker ranges directly and spills results in the same shape.
+This is usually the recommended way to populate many rows because it typically performs better than many separate single-cell formulas.
 
-## Main Limits
+Example:
 
-- current-data attributes only; historical series are not implemented
-- `marketcap` is currently unsupported
-- quote freshness depends on upstream sources and may be delayed
-- some routes depend on public websites or unofficial endpoints and may break if those sites change
-- some attributes may be unavailable for a specific listing even when the exchange is generally supported
+```js
+=HOODLEFINANCE(A3:A5, "name")
+```
+
+This returns a 3-row by 1-column spill range aligned with `A3:A5`.
+
+Whole-column example:
+
+```js
+=HOODLEFINANCE(A3:A, "price")
+```
+
+This returns a 1-column spill range. The output shape follows the filled ticker rows starting at `A3`, while blank input rows stay blank.
+
+Range behavior:
+
+- blank ticker cells stay blank in the spilled output
+- if any populated lookup fails, Sheets surfaces a single error for the whole spill range
+
+## Limitations
+
+- Current-data lookups only; historical series are not implemented.
+- Data freshness and field availability depend on upstream sources.
+- Some lookups rely on public websites or unofficial endpoints and may change without notice.
+- Support for specific capabilities can vary by exchange and by listing.

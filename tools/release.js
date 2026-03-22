@@ -10,7 +10,6 @@ const ROOT_DIR = path.resolve(__dirname, "..");
 const CHANGES_DIR = path.join(ROOT_DIR, "changes.d");
 const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
 const README_PATH = path.join(ROOT_DIR, "README.md");
-const API_DOC_PATH = path.join(ROOT_DIR, "docs", "hoodlefinance-api.md");
 const RELEASE_NOTES_PATH = path.join(ROOT_DIR, "docs", "release-notes", "RELEASE_NOTES.md");
 const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
@@ -223,7 +222,6 @@ async function restorePreparedReleaseStateWithGit(state) {
   const cwd = state.cwd || ROOT_DIR;
   const runner = state.runCommand || runCommand;
   const trackedPaths = [
-    state.apiDocPath,
     state.readmePath,
     state.releaseNotesPath,
     state.scriptSourcePath,
@@ -582,7 +580,6 @@ function buildReleaseNotesPage(releases) {
 async function prepareRelease(version, options) {
   const normalizedOptions = options || {};
   const cwd = normalizedOptions.cwd || ROOT_DIR;
-  const apiDocPath = normalizedOptions.apiDocPath || API_DOC_PATH;
   const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
   const readmePath = normalizedOptions.readmePath || README_PATH;
   const releaseDate = normalizedOptions.releaseDate || new Date().toISOString().slice(0, 10);
@@ -599,7 +596,6 @@ async function prepareRelease(version, options) {
   const versionMetadata = readVersionMetadata(versionMetadataPath);
   const readmeText = readTextSync(readmePath, "README");
   const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
-  const apiDocText = readTextSync(apiDocPath, "API docs");
   const releaseTemplateText = readTextSync(releaseTemplatePath, "release template");
   const currentScriptVersion = extractVersionFromSource(scriptSourceText);
   const releaseNotesRelativePath = buildReleaseNotesRelativePath(version);
@@ -654,14 +650,6 @@ async function prepareRelease(version, options) {
         "README.md"
       )
     );
-    await writeText(
-      apiDocPath,
-      upsertCurrentReleaseNotesLine(
-        replaceCurrentVersionLine(apiDocText, version, "docs/hoodlefinance-api.md"),
-        "Current release notes: [`release-notes/v" + version + ".md`](./release-notes/v" + version + ".md)",
-        "docs/hoodlefinance-api.md"
-      )
-    );
 
     releaseEntries = loadReleaseEntries(releasesDir);
     await writeText(releaseNotesPath, buildReleaseNotesPage(releaseEntries));
@@ -672,7 +660,6 @@ async function prepareRelease(version, options) {
   } catch (error) {
     try {
       await restorePreparedReleaseStateWithGit({
-        apiDocPath: apiDocPath,
         cwd: cwd,
         readmePath: readmePath,
         releaseFilePath: releaseFilePath,
@@ -860,7 +847,6 @@ async function publishRelease(version, options) {
 }
 
 module.exports = {
-  API_DOC_PATH,
   CHANGES_DIR,
   DEFAULT_PREPARE_VERIFICATION_STEPS,
   FRAGMENT_CATEGORIES,

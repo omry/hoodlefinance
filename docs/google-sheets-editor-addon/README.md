@@ -2,7 +2,7 @@
 
 This folder holds an experimental prototype for a Google Sheets Editor add-on version of `HOODLEFINANCE`.
 
-It does not replace the current public install path yet. The current supported install flow is still the manual bound-script flow documented in [`README.md`](../../README.md) and [`docs/hoodlefinance-api.md`](../hoodlefinance-api.md).
+It does not replace the current public install path yet. The current supported install flow is still the manual bound-script flow documented in [`README.md`](../../README.md) and [`website/docs/api.md`](../../website/docs/api.md).
 
 What this prototype includes:
 

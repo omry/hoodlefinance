@@ -46,7 +46,6 @@ function createFixtureRepo() {
   const releasesDir = path.join(docsDir, "release-notes");
   const scriptSourcePath = path.join(rootDir, "hoodlefinance.js");
   const readmePath = path.join(rootDir, "README.md");
-  const apiDocPath = path.join(docsDir, "hoodlefinance-api.md");
   const releaseNotesPath = path.join(releasesDir, "RELEASE_NOTES.md");
   const releaseTemplatePath = path.join(releasesDir, "TEMPLATE.md");
   const versionMetadataPath = path.join(rootDir, "version.properties");
@@ -56,7 +55,6 @@ function createFixtureRepo() {
   fs.writeFileSync(path.join(changesDir, "README.md"), "# Release fragments\n", "utf8");
   fs.writeFileSync(scriptSourcePath, 'const HOODLEFINANCE_VERSION_ = "0.2.5";\n', "utf8");
   fs.writeFileSync(readmePath, "# HOODLEFINANCE\n\nCurrent script version: `0.2.5`\n", "utf8");
-  fs.writeFileSync(apiDocPath, "# API\n\nCurrent script version: `0.2.5`\n", "utf8");
   fs.writeFileSync(releaseTemplatePath, "# v{{version}} - {{release_date}}\n\n{{release_body}}\n", "utf8");
   fs.writeFileSync(
     versionMetadataPath,
@@ -74,7 +72,6 @@ function createFixtureRepo() {
   commitAll(rootDir, "Initial fixture");
 
   return {
-    apiDocPath,
     changesDir,
     cwd: rootDir,
     readmePath,
@@ -304,8 +301,6 @@ test("prepareRelease updates metadata, creates a per-release file, rebuilds the 
   assert.match(fs.readFileSync(fixture.scriptSourcePath, "utf8"), /HOODLEFINANCE_VERSION_ = "0\.2\.6"/);
   assert.match(fs.readFileSync(fixture.readmePath, "utf8"), /Current script version: `0\.2\.6`/);
   assert.match(fs.readFileSync(fixture.readmePath, "utf8"), /Current release notes: \[`docs\/release-notes\/v0\.2\.6\.md`\]\(\.\/docs\/release-notes\/v0\.2\.6\.md\)/);
-  assert.match(fs.readFileSync(fixture.apiDocPath, "utf8"), /Current script version: `0\.2\.6`/);
-  assert.match(fs.readFileSync(fixture.apiDocPath, "utf8"), /Current release notes: \[`release-notes\/v0\.2\.6\.md`\]\(\.\/release-notes\/v0\.2\.6\.md\)/);
   assert.match(
     fs.readFileSync(path.join(fixture.releasesDir, "v0.2.6.md"), "utf8"),
     /# v0\.2\.6 - 2026-03-16[\s\S]*### Upgrade Notes[\s\S]*### Added[\s\S]*### Changed/
@@ -338,7 +333,6 @@ test("prepareRelease rolls back generated files and preserves fragments when ver
   assert.equal(fs.readFileSync(fixture.versionMetadataPath, "utf8"), renderVersionMetadata({ version: "0.2.5" }));
   assert.equal(fs.readFileSync(fixture.scriptSourcePath, "utf8"), 'const HOODLEFINANCE_VERSION_ = "0.2.5";\n');
   assert.equal(fs.readFileSync(fixture.readmePath, "utf8"), "# HOODLEFINANCE\n\nCurrent script version: `0.2.5`\n");
-  assert.equal(fs.readFileSync(fixture.apiDocPath, "utf8"), "# API\n\nCurrent script version: `0.2.5`\n");
   assert.equal(fs.readFileSync(fixture.releaseNotesPath, "utf8"), buildReleaseNotesPage(loadReleaseEntries(fixture.releasesDir)));
   assert.equal(fs.existsSync(path.join(fixture.releasesDir, "v0.2.6.md")), false);
   assert.equal(fs.existsSync(path.join(fixture.changesDir, "20260316-market.added.md")), true);
