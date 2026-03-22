@@ -28,6 +28,7 @@ Repo-specific standing directives for coding agents working in this project.
 
 - When a behavior is covered only by local mocks or unit tests but still depends on real platform behavior, treat the work as a checkpoint rather than as fully validated.
 - Do not strengthen docs or user-facing claims beyond what was actually verified in the live platform.
+- Do not change the approved Privacy Policy or Terms of Service text unless the user explicitly asks for those documents to be edited.
 
 ## Website workflow
 

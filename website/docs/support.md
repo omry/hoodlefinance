@@ -1,15 +1,22 @@
 # Support
 
-## Project Home
+## Get Help
 
-HoodleFinance project repository:
+If something looks wrong, start by checking:
 
-https://github.com/omry/hoodlefinance
+- the exact identifier you used
+- the exact attribute you requested
+- whether the issue is specific to one market, exchange, or instrument type
 
-## Documentation
+You can also compare behavior against the public demo sheet:
 
-- Main project README: https://github.com/omry/hoodlefinance
-- API and usage notes: https://github.com/omry/hoodlefinance/blob/main/docs/hoodlefinance-api.md
+https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing
+
+## Contact
+
+Email:
+
+`support@falcon.yadan.net`
 
 ## Report an Issue
 

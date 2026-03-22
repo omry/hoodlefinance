@@ -93,11 +93,11 @@ Maintain the public-facing listing surface:
 - terms of service link
 - icon assets and screenshot(s)
 
-Repo-hosted policy/support pages are available here:
+Canonical policy/support pages are now hosted on the project website:
 
-- [`support.md`](./support.md)
-- [`privacy-policy.md`](./privacy-policy.md)
-- [`terms-of-service.md`](./terms-of-service.md)
+- https://hoodlefinance.com/docs/support
+- https://hoodlefinance.com/docs/privacy-policy
+- https://hoodlefinance.com/docs/terms-of-service
 - [`oauth-review-prep.md`](./oauth-review-prep.md)
 
 Checklist:

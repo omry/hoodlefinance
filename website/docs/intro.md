@@ -29,19 +29,6 @@ It is most useful when your sheets mix:
 =HOODLEFINANCE("IE00B4L5YX21", "symbol")
 ```
 
-## Documentation
-
-- Support and project links: [Support](./support.md)
-- Privacy policy: [Privacy Policy](./privacy-policy.md)
-- Terms of service: [Terms of Service](./terms-of-service.md)
-- Full project repository: https://github.com/omry/hoodlefinance
-- Public demo sheet: https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing
-
-## Current Install Paths
-
-- the current supported public path is the manual bound-script install described in the repository docs
-- the Google Sheets add-on path has been validated privately and is being prepared for public review
-
 ## Limits
 
 - some lookups depend on public websites or unofficial endpoints
@@ -49,4 +36,8 @@ It is most useful when your sheets mix:
 - not every `GOOGLEFINANCE` attribute is supported
 - support varies by market, exchange, identifier form, and source
 
-For broader usage details and examples, see the main project documentation on GitHub.
+## Source Code
+
+HoodleFinance is developed in the open:
+
+- Project repository: https://github.com/omry/hoodlefinance
