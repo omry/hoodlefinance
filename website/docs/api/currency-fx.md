@@ -12,36 +12,23 @@ sidebar_label: Currency & FX
 
 This page starts with the basic behavior, then goes deeper into the identifier forms, conversion rules, and practical edge cases.
 
-## Basic Functionality
+## FX Pair Lookups
 
-The most common currency and FX use cases are:
-
-- getting the current price of a pair such as `EURUSD`
-- requesting the current price of a security in a different output currency
+Use an FX or crypto-style pair identifier when you want the pair rate directly.
 
 Examples:
 
 ```js
-=HOODLEFINANCE("EURUSD", "price")          // FX pair
-=HOODLEFINANCE("CURRENCY:EURUSD", "price") // explicit form
-=HOODLEFINANCE("SJPA.L", "price@USD")      // convert quote
-=HOODLEFINANCE("NASDAQ:GOOG", "price@EUR") // convert quote
-```
-
-In both cases, the result is a single current numeric price.
-
-FX pair lookups are not limited to `price`. Depending on the pair and source data, they can also return fields such as `currency`, `close`, `change`, `changepct`, and `tradetime`.
-
-Examples:
-
-```js
+=HOODLEFINANCE("EURUSD", "price")      // exchange rate
 =HOODLEFINANCE("EURUSD", "currency")   // quote currency
 =HOODLEFINANCE("EURUSD", "close")      // previous close
 =HOODLEFINANCE("EURUSD", "changepct")  // daily change %
 =HOODLEFINANCE("EURUSD", "tradetime")  // last update
 ```
 
-## Output-Currency Conversion
+FX pair lookups return a single current numeric price for `price`, and depending on the pair and source data they can also return fields such as `currency`, `close`, `change`, `changepct`, and `tradetime`.
+
+## Security Price Conversion
 
 Use `price@<currency>` when you want the quote returned in a different currency from the instrument's native quote currency.
 
@@ -53,38 +40,36 @@ Examples:
 =HOODLEFINANCE("NASDAQ:GOOG", "price@EUR")
 ```
 
-How it works:
-
-- `HOODLEFINANCE` first resolves the identifier and retrieves the current price in its native quote currency
-- it then converts that price into the requested output currency
-- the result is the converted price as a single numeric value
+The result is the converted price as a single numeric value.
 
 ## FX Pair Identifiers
 
 FX and crypto-style pairs can be written in more than one supported form.
 
-Common examples:
+For example, the same pair can be written as:
 
-- `EURUSD`
-- `USDJPY`
-- `CURRENCY:EURUSD`
-- `CURRENCY:BTC.USDT`
+- `USDPHP`
+- `CURRENCY:USDPHP`
+- `CURRENCY:USD.PHP`
 
-The shorter pair form and the `CURRENCY:` form often refer to the same lookup.
+Use the shorter form when it is already clear in your sheet. Use the explicit `CURRENCY:` form when:
+
+- you want the identifier itself to make the intent obvious
+- a 4-character leg needs dotted notation such as `CURRENCY:BTC.USDT`
+- a compact form would otherwise be ambiguous
+
+When a compact form is ambiguous, you must write it explicitly. For example, `CURRENCY:USDTUSD` cannot be used because it could mean either `USD.TUSD` or `USDT.USD`.
 
 Examples:
 
 ```js
-=HOODLEFINANCE("EURUSD", "price")
-=HOODLEFINANCE("CURRENCY:EURUSD", "price")
-=HOODLEFINANCE("CURRENCY:BTC.USDT", "price")
+=HOODLEFINANCE("CURRENCY:USD.TUSD", "price")
+=HOODLEFINANCE("CURRENCY:USDT.USD", "price")
 ```
-
-Use the shorter form when it is already clear in your sheet. Use the explicit `CURRENCY:` form when you want the identifier itself to make the intent obvious.
 
 ## Supported Crypto Currencies
 
-The current built-in crypto unit list is `ADA`, `BCH`, `BNB`, `BTC`, `DOGE`, `ETH`, `LTC`, `SOL`, `TUSD`, `USDC`, `USDT`, and `XRP`. These can be used in the same pair syntax as fiat currencies, including mixed pairs such as `BTCUSD`, `DOGEUSD`, `USDUSDT`, and explicit dotted forms such as `CURRENCY:BTC.USDT`.
+The current built-in crypto unit list is `ADA`, `BCH`, `BNB`, `BTC`, `DOGE`, `ETH`, `LTC`, `SOL`, `TUSD`, `USDC`, `USDT`, and `XRP`. These can be used in the same pair syntax as fiat currencies, including mixed pairs such as `BTCUSD`, `DOGEUSD`, and `USDUSDT`. Some 4-character legs also use explicit dotted forms such as `CURRENCY:BTC.USDT`.
 
 ## Same-Currency Pairs
 
