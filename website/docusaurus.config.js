@@ -89,28 +89,11 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Docs',
+            title: 'Support & Policy',
             items: [
               {
-                label: 'Overview',
-                to: '/docs/',
-              },
-              {
-                label: 'API Reference',
-                to: '/docs/api',
-              },
-              {
-                label: 'Support Matrix',
-                to: '/docs/support-matrix',
-              },
-            ],
-          },
-          {
-            title: 'Support',
-            items: [
-              {
-                label: 'GitHub Issues',
-                href: 'https://github.com/omry/hoodlefinance/issues',
+                label: 'Support',
+                to: '/support',
               },
               {
                 label: 'Privacy Policy',
@@ -125,6 +108,10 @@ const config = {
           {
             title: 'More',
             items: [
+              {
+                label: 'Docs',
+                to: '/docs',
+              },
               {
                 label: 'GitHub',
                 href: 'https://github.com/omry/hoodlefinance',
