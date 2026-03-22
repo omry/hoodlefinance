@@ -1,1 +1,0 @@
-- Added `price@<currency>` so one `HOODLEFINANCE` formula can return the current price in the output currency or unit you want.

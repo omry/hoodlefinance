@@ -1,1 +1,0 @@
-- Fixed direct ISIN lookups to prefer a mappable market listing when Yahoo search returns multiple exchanges for the same instrument, improving `symbol` and `exchange` results for inputs such as `IE000I8KRLL9`.
