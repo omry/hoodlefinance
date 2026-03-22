@@ -1,5 +1,28 @@
 # Release Notes
 
+## v0.9.3 - 2026-03-22
+
+### Added
+
+- Introduced hoodlefinance.com as the public project website, including the initial API reference and live support matrix.
+
+### Changed
+
+- Improved several formula errors so they use user-facing language instead of internal routing or implementation terms, especially around `isin` lookups and identifier-side `@SOURCE` usage.
+- Added `price@<currency>` so one `HOODLEFINANCE` formula can return the current price in the output currency or unit you want.
+- Improved route introspection in Sheets so `IDENTIFIER@?` now shows the planned lookup path more clearly, and `HOODLEFINANCE_ROUTES()` exposes the routing table directly in Sheets.
+- Simplified the public demo sheet by folding the array example into `Start Here`, combining foreign ETF and PSE coverage examples into one coverage tab, renaming the comparison tab to `Advantages over GOOGLEFINANCE`, reorganizing `Start Here` into identifier, price-conversion, and coverage example sections, and adding clearer explanatory notes to the FX comparison examples.
+- Refreshed the public demo sheet styling with clearer text, formula, input, and result highlighting across the example tabs.
+- Currency-pair lookups now reject unsupported `high`, `low`, and `volume` attributes with a direct error instead of a missing-value fallback.
+- HoodleFinance is now licensed under the Mozilla Public License 2.0 (`MPL-2.0`), and the public docs now reflect that change.
+
+### Fixed
+
+- Fixed `isin` lookups for Amsterdam, Australian Securities Exchange, BME Madrid, Borsa Italiana, Borsa Istanbul, Borsa Mexicana, Bombay Stock Exchange, Bovespa, Brussels, Copenhagen, Frankfurt, Helsinki, Johannesburg, Korea Exchange, London, National Stock Exchange of India, New Zealand Exchange, Oslo, Paris, Shanghai, Shenzhen, SIX Swiss Exchange, Singapore Exchange, Stockholm, Swiss Exchange aliases, Taiwan Stock Exchange, Tel Aviv Stock Exchange aliases, Tokyo Stock Exchange, Toronto Stock Exchange aliases, and Warsaw by routing those markets through the existing TradingView-backed ISIN resolver.
+- Fixed direct ISIN lookups to prefer a mappable market listing when Yahoo search returns multiple exchanges for the same instrument, improving `symbol` and `exchange` results for inputs such as `IE000I8KRLL9`.
+- Fixed default `isin` lookups for `NYSE:` tickers such as `NYSE:IBM`, and refreshed the support matrix to reflect current Tokyo ISIN coverage.
+- Fixed Yahoo-style Philippine stock symbols such as `AP.PS` and `GTCAP.PS` so they route through the dedicated PSE lookup path instead of failing with a Yahoo 404.
+
 ## v0.9.2 - 2026-03-17
 
 ### Added

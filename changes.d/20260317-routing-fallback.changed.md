@@ -1,1 +1,0 @@
-- Improved route introspection in Sheets so `IDENTIFIER@?` now shows the planned lookup path more clearly, and `HOODLEFINANCE_ROUTES()` exposes the routing table directly in Sheets.

@@ -1,1 +1,0 @@
-- Simplified the public demo sheet by folding the array example into `Start Here`, combining foreign ETF and PSE coverage examples into one coverage tab, renaming the comparison tab to `Advantages over GOOGLEFINANCE`, reorganizing `Start Here` into identifier, price-conversion, and coverage example sections, and adding clearer explanatory notes to the FX comparison examples.

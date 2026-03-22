@@ -1,4 +1,4 @@
-const HOODLEFINANCE_VERSION_ = "0.9.2";
+const HOODLEFINANCE_VERSION_ = "0.9.3";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   exchange: function (quote, context) {
