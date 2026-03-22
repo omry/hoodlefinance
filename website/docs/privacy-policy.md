@@ -16,7 +16,7 @@ HoodleFinance processes spreadsheet inputs to return quote, identifier, and curr
 * Requested attributes (e.g., `price`, `name`, `exchange`, `symbol`, or `isin`).
 * Spreadsheet context strictly necessary to execute the add-on inside Google Sheets.
 
-The current add-on code is not designed to read or store Google account profile data directly, although default scopes (such as `userinfo.email` and `userinfo.profile`) may be present in the underlying Google Workspace Marketplace SDK configuration.
+The current add-on code is not designed to read or store Google account profile data directly, although Google account consent items such as `userinfo.email` and `userinfo.profile` may appear in the Google authorization flow.
 
 ## How Data Is Used
 
@@ -56,7 +56,7 @@ HoodleFinance runs entirely on Google Apps Script and relies on the security mod
 
 ## Changes to this Policy
 
-This privacy policy may be updated as the add-on, supported sources, or distribution models evolve. Changes will be reflected by the "Last updated" date at the top of this document.
+This privacy policy may be updated as the add-on, supported sources, or service features evolve. Changes will be reflected by the "Last updated" date at the top of this document.
 
 ## Contact
 

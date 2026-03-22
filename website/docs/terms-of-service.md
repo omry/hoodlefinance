@@ -6,7 +6,7 @@ These Terms of Service apply to the HoodleFinance Google Sheets add-on and the u
 
 ## Experimental Status
 
-HoodleFinance is an independently maintained, open-source project. The Google Sheets add-on distribution is currently experimental and may remain limited in scope. 
+HoodleFinance is an independently maintained, open-source project. Features and availability may change over time. 
 
 ## Permitted Use
 
@@ -50,7 +50,7 @@ By using this add-on, you agree to indemnify and hold harmless the project maint
 
 ## Changes to these Terms
 
-These terms may be updated as the add-on, project scope, upstream sources, or distribution models change.
+These terms may be updated as the add-on, project scope, upstream sources, or service features change.
 
 ## Contact
 
