@@ -87,15 +87,15 @@ Use it as a quick reference for current live probe results by exchange and featu
     </tr>
     <tr>
       <td style="vertical-align:top;"><code>PSE</code><br><sub>Philippine Stock Exchange</sub></td>
-      <td style="text-align:center;vertical-align:top;"><span title="PSE:BDO, PSE:AAA, PSE:JFC">ⓘ</span></td>
-      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: PSE:BDO, PSE:AAA, PSE:JFC">✅</span></td>
-      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: BDO.PS, AAA.PS, JFC.PS">✅</span></td>
-      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: PHY077751022 (PSE:BDO)">✅</span></td>
-      <td style="text-align:center;border-left:3px solid #6b7280;"><span title="All probes passed. Attributes: price, name, currency. Samples: PSE:BDO, PSE:AAA, PSE:JFC">✅</span></td>
-      <td style="text-align:center;"><span title="Failing probes: high (PSE:AAA); low (PSE:AAA). Samples: PSE:BDO, PSE:AAA, PSE:JFC">⚠️</span></td>
-      <td style="text-align:center;"><span title="Failing probes: volume (PSE:AAA). Samples: PSE:BDO, PSE:AAA, PSE:JFC">⚠️</span></td>
-      <td style="text-align:center;"><span title="All probes passed. Attributes: change, changepct. Samples: PSE:BDO, PSE:AAA, PSE:JFC">✅</span></td>
-      <td style="text-align:center;"><span title="All probes passed. Attributes: isin. Samples: PSE:BDO, PSE:AAA, PSE:JFC">✅</span></td>
+      <td style="text-align:center;vertical-align:top;"><span title="PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">ⓘ</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: AP.PS, CNVRG.PS, DMC.PS, GTCAP.PS">✅</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: name. Samples: PHY0005M1090 (AP)">✅</span></td>
+      <td style="text-align:center;border-left:3px solid #6b7280;"><span title="All probes passed. Attributes: price, name, currency. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: high, low, close. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: volume, tradetime, datadelay. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: change, changepct. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
+      <td style="text-align:center;"><span title="All probes passed. Attributes: isin. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
     </tr>
     <tr>
       <td style="vertical-align:top;"><code>SGX</code><br><sub>Singapore Exchange</sub></td>

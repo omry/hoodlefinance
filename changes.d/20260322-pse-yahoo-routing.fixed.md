@@ -1,0 +1,1 @@
+- Fixed Yahoo-style Philippine stock symbols such as `AP.PS` and `GTCAP.PS` so they route through the dedicated PSE lookup path instead of failing with a Yahoo 404.

@@ -100,11 +100,11 @@ EXCHANGES = [
     {
         "code": "PSE",
         "name": "Philippine Stock Exchange",
-        "samples": ["PSE:BDO", "PSE:AAA", "PSE:JFC"],
-        "google_query_samples": ["PSE:BDO", "PSE:AAA", "PSE:JFC"],
-        "yahoo_query_samples": ["BDO.PS", "AAA.PS", "JFC.PS"],
+        "samples": ["PSE:AP", "PSE:CNVRG", "PSE:DMC", "PSE:GTCAP"],
+        "google_query_samples": ["PSE:AP", "PSE:CNVRG", "PSE:DMC", "PSE:GTCAP"],
+        "yahoo_query_samples": ["AP.PS", "CNVRG.PS", "DMC.PS", "GTCAP.PS"],
         "isin_lookup_samples": [
-            {"ticker": "PHY077751022", "label": "PHY077751022 (PSE:BDO)"},
+            {"ticker": "PHY0005M1090", "label": "PHY0005M1090 (AP)"},
         ],
     },
     {

@@ -192,6 +192,7 @@ const HOODLEFINANCE_EXCHANGE_SUFFIXES_ = hoodlefinanceBuildGroupedMap_({
   ".NZ": ["NZE"],
   ".OL": ["OSL"],
   ".PA": ["EPA", "PAR"],
+  ".PS": ["PSE"],
   ".SA": ["BVMF"],
   ".SI": ["SGX"],
   ".SS": ["SHA"],
@@ -333,6 +334,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
   NZ: "NZE",
   OL: "OSL",
   PA: "PAR",
+  PS: "PSE",
   SI: "SGX",
   SA: "BVMF",
   SS: "SHA",
@@ -1798,6 +1800,21 @@ function hoodlefinanceNormalizeYahooStyleIsraeliFundTicker_(ticker) {
   return hoodlefinanceNormalizeIsraeliFundCode_(match[1]) + ".TA";
 }
 
+function hoodlefinanceIsPseYahooSymbol_(ticker) {
+  return hoodlefinanceExtractYahooExchangeFromSymbol_(ticker) === "PSE";
+}
+
+function hoodlefinanceParsePseYahooSymbol_(ticker) {
+  const match = String(hoodlefinanceStripTickerSourceOverride_(ticker) || "").trim().match(/^(.+)\.PS$/i);
+  const symbol = match ? String(match[1] || "").trim().toUpperCase() : "";
+
+  if (!symbol) {
+    throw new Error('PSE ticker "' + ticker + '" is invalid.');
+  }
+
+  return symbol;
+}
+
 function hoodlefinanceNormalizeIsraeliFundCode_(code) {
   const value = String(code || "").trim().toUpperCase();
   const undottedMatch = value.match(/^([A-Z]+)F([0-9]+)$/);
@@ -2287,6 +2304,15 @@ function hoodlefinanceClassifyTickerJob_(ticker, attribute) {
       routeClass: "PSE-TICKER",
       routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
       routeState: { symbol: hoodlefinanceParsePseSymbol_(requestTicker) },
+      routePath: "PSE",
+    });
+  }
+
+  if (hoodlefinanceIsPseYahooSymbol_(requestTicker)) {
+    return hoodlefinanceCreateRoutePlan_({
+      routeClass: "PSE-TICKER",
+      routeAttempts: [hoodlefinanceCreateRouteAttempt_("pse-quote", "PSE")],
+      routeState: { symbol: hoodlefinanceParsePseYahooSymbol_(requestTicker) },
       routePath: "PSE",
     });
   }

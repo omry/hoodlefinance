@@ -1041,6 +1041,7 @@ test("source introspection suffixes return the planned route or the supported so
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "FX -> GOOGLE");
   assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE");
   assert.equal(ctx.HOODLEFINANCE("PSE:AAA@?"), "PSE-TICKER -> PSE");
+  assert.equal(ctx.HOODLEFINANCE("AP.PS@?"), "PSE-TICKER -> PSE");
   assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "FX-SAME -> LOCAL");
   assert.equal(ctx.HOODLEFINANCE("GOOG@?"), "TICKER -> YAHOO");
   assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59@?"), "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW");
@@ -3716,6 +3717,28 @@ test("fetches PSE quotes through the direct PSE path", () => {
   assert.equal(quote.currency, "PHP");
   assert.equal(quote.isin, "PHY030431175");
   assert.equal(quote.regularMarketPrice, 1.63);
+});
+
+test("routes Yahoo-style .PS tickers through the dedicated PSE path", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (url === "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468") {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "name"), "BDO Unibank, Inc.");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "symbol"), "PSE:BDO");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "symbol:yahoo"), "BDO.PS");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "exchange"), "PSE");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "exchange:yahoo"), "PSE");
 });
 
 test("reports a clearer outage error when the PSE search page is unavailable", () => {
