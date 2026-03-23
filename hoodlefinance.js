@@ -126,6 +126,8 @@ const HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ = "https://github.com/omry
 const HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/";
 const HOODLEFINANCE_GITHUB_CURRENCY_CODES_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
 const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
+const HOODLEFINANCE_WEBSITE_URL_ = "https://hoodlefinance.com";
+const HOODLEFINANCE_SUPPORT_URL_ = "https://hoodlefinance.com/support";
 const HOODLEFINANCE_CURRENCY_CODES_PROPERTY_ = "hoodlefinance.currencyCodes";
 const HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_ = "hoodlefinance.currencyCodesFetchedAtMs";
 const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
@@ -583,8 +585,8 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
         .newCardSection()
         .addWidget(
           hoodlefinanceBuildAddOnButtonSet_([
-            hoodlefinanceCreateAddOnLinkButtonSpec_("Open README", HOODLEFINANCE_GITHUB_README_URL_),
-            hoodlefinanceCreateAddOnLinkButtonSpec_("Release notes", HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_),
+            hoodlefinanceCreateAddOnLinkButtonSpec_("Website", HOODLEFINANCE_WEBSITE_URL_),
+            hoodlefinanceCreateAddOnLinkButtonSpec_("Support", HOODLEFINANCE_SUPPORT_URL_),
           ])
         )
     )
