@@ -6,5 +6,6 @@ website/build/
 website/.docusaurus/
 website/.cache-loader/
 .demo-sheet.local/
+.clasp.local/
 tmp
 docs/demo-sheet/demo-sheet-staging.json

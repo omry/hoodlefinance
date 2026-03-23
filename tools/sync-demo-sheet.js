@@ -6,6 +6,10 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const {
+  getClaspCommand,
+  getClaspAuth,
+} = require("./clasp-auth.js");
+const {
   DEFAULT_STYLES,
   buildFormulaCellFormatRequests,
   buildResolvedStyleApplications,
@@ -34,6 +38,9 @@ const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
 const OAUTH_CLIENT_PATH = path.join(LOCAL_DIR, "oauth-client.json");
 const OAUTH_TOKEN_PATH = path.join(LOCAL_DIR, "oauth-token.json");
+const OAUTH_CLIENT_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_CLIENT_PATH";
+const OAUTH_TOKEN_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_TOKEN_PATH";
+const OAUTH_TOKEN_READ_ONLY_ENV_VAR = "HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY";
 const CLASP_WORKDIR = path.join(LOCAL_DIR, "clasp-work");
 const DEMO_MARKER_START = "<!-- DEMO_SHEET_LINK:START -->";
 const DEMO_MARKER_END = "<!-- DEMO_SHEET_LINK:END -->";
@@ -68,17 +75,9 @@ async function main() {
   const accessToken = await ensureAccessToken();
   const syncedConfig = await syncDemoSheet(accessToken, config, options);
 
-  if (!options.liveDemo) {
-    const overrideConfig = {
-      title: syncedConfig.title,
-      spreadsheetId: syncedConfig.spreadsheetId,
-      publicUrl: syncedConfig.publicUrl,
-      sharePublicReadOnly: syncedConfig.sharePublicReadOnly,
-      script: syncedConfig.script,
-    };
-    await saveJson(STAGING_CONFIG_PATH, overrideConfig);
-  } else {
-    await saveJson(CONFIG_PATH, syncedConfig);
+  await persistRuntimeDemoConfig(syncedConfig, options.liveDemo);
+
+  if (options.liveDemo) {
     await updateDemoLinks(syncedConfig.publicUrl || "");
   }
   
@@ -135,7 +134,10 @@ function loadDemoSheetConfig(isLiveDemo) {
     // Ensure we don't accidentally inherit production IDs if staging config was empty
     spreadsheetId: stagingConfig.spreadsheetId || "",
     publicUrl: stagingConfig.publicUrl || "",
-    sharePublicReadOnly: stagingConfig.sharePublicReadOnly === true,
+    sharePublicReadOnly:
+      typeof stagingConfig.sharePublicReadOnly === "boolean"
+        ? stagingConfig.sharePublicReadOnly
+        : baseConfig.sharePublicReadOnly === true,
     title: stagingConfig.title || baseConfig.title + " (Staging)",
     script: Object.assign({}, baseConfig.script, stagingConfig.script, {
       scriptId: (stagingConfig.script && stagingConfig.script.scriptId) || "",
@@ -160,7 +162,7 @@ async function syncDemoSheet(accessToken, inputConfig, options) {
   const config = JSON.parse(JSON.stringify(inputConfig));
   let sheetMap;
 
-  await ensureSpreadsheet(accessToken, config);
+  await ensureSpreadsheet(accessToken, config, options);
   await ensureTabs(accessToken, config);
   sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
   await resetTabFormatsBeforeWrite(accessToken, config, sheetMap);
@@ -171,7 +173,7 @@ async function syncDemoSheet(accessToken, inputConfig, options) {
     await ensurePublicReadPermission(accessToken, config.spreadsheetId);
   }
 
-  await ensureBoundScriptProject(accessToken, config);
+  await ensureBoundScriptProject(accessToken, config, options);
 
   if (!options.skipClasp) {
     await syncBoundScriptWithClasp(config);
@@ -235,7 +237,7 @@ async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
   );
 }
 
-async function ensureSpreadsheet(accessToken, config) {
+async function ensureSpreadsheet(accessToken, config, options) {
   const tabTitles = config.tabs.map(function (tab) {
     return tab.title;
   });
@@ -259,7 +261,7 @@ async function ensureSpreadsheet(accessToken, config) {
 
   config.spreadsheetId = created.spreadsheetId;
   config.publicUrl = created.spreadsheetUrl || buildSpreadsheetUrl(created.spreadsheetId);
-  await persistDemoSheetConfig(config);
+  await persistRuntimeDemoConfig(config, options && options.liveDemo);
 }
 
 async function ensureTabs(accessToken, config) {
@@ -819,7 +821,7 @@ async function ensurePublicReadPermission(accessToken, spreadsheetId) {
   );
 }
 
-async function ensureBoundScriptProject(accessToken, config) {
+async function ensureBoundScriptProject(accessToken, config, options) {
   if (String(config.script.scriptId || "").trim()) {
     return;
   }
@@ -830,16 +832,19 @@ async function ensureBoundScriptProject(accessToken, config) {
   });
 
   config.script.scriptId = project.scriptId;
-  await persistDemoSheetConfig(config);
+  await persistRuntimeDemoConfig(config, options && options.liveDemo);
 }
 
 async function syncBoundScriptWithClasp(config) {
   const source = await fsp.readFile(SCRIPT_SOURCE_PATH, "utf8");
+  const claspCommand = getClaspCommand(ROOT_DIR);
+  const claspAuth = getClaspAuth();
+  const claspProjectPath = path.join(CLASP_WORKDIR, ".clasp.json");
 
-  await ensureCommandExists("clasp");
+  await ensureCommandExists(claspCommand);
   await fsp.mkdir(CLASP_WORKDIR, { recursive: true });
   await fsp.writeFile(
-    path.join(CLASP_WORKDIR, ".clasp.json"),
+    claspProjectPath,
     JSON.stringify(
       {
         rootDir: ".",
@@ -852,7 +857,7 @@ async function syncBoundScriptWithClasp(config) {
   );
   await fsp.writeFile(path.join(CLASP_WORKDIR, "appsscript.json"), JSON.stringify(DEFAULT_MANIFEST, null, 2) + "\n");
   await fsp.writeFile(path.join(CLASP_WORKDIR, "hoodlefinance.js"), source, "utf8");
-  await runCommand("clasp", ["push", "--force"], {
+  await runCommand(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "push", "--force"]), {
     cwd: CLASP_WORKDIR,
   });
 }
@@ -860,11 +865,11 @@ async function syncBoundScriptWithClasp(config) {
 async function ensureAccessToken() {
   return ensureAccessTokenWithDeps({
     nonInteractive: process.env.CI === "true" || process.env.HOODLEFINANCE_NON_INTERACTIVE === "1",
-    oauthClientPath: OAUTH_CLIENT_PATH,
-    oauthTokenPath: OAUTH_TOKEN_PATH,
+    oauthClientPath: getDemoOauthClientPath(),
+    oauthTokenPath: getDemoOauthTokenPath(),
     readJsonSync: readJsonSync,
     readOptionalJsonSync: readOptionalJsonSync,
-    saveJson: saveJson,
+    saveJson: saveDemoOauthTokenJson,
     scopes: GOOGLE_SCOPES,
   });
 }
@@ -1003,8 +1008,39 @@ async function saveJson(filePath, value) {
   await fsp.writeFile(filePath, JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
-async function persistDemoSheetConfig(config) {
-  await saveJson(CONFIG_PATH, config);
+function getDemoOauthClientPath() {
+  return String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim() || OAUTH_CLIENT_PATH;
+}
+
+function getDemoOauthTokenPath() {
+  return String(process.env[OAUTH_TOKEN_PATH_ENV_VAR] || "").trim() || OAUTH_TOKEN_PATH;
+}
+
+async function saveDemoOauthTokenJson(filePath, value) {
+  if (String(process.env[OAUTH_TOKEN_READ_ONLY_ENV_VAR] || "").trim() === "1") {
+    return;
+  }
+
+  await saveJson(filePath, value);
+}
+
+function buildStagingOverrideConfig(config) {
+  return {
+    title: config.title,
+    spreadsheetId: config.spreadsheetId,
+    publicUrl: config.publicUrl,
+    sharePublicReadOnly: config.sharePublicReadOnly,
+    script: config.script,
+  };
+}
+
+async function persistRuntimeDemoConfig(config, isLiveDemo) {
+  if (isLiveDemo) {
+    await saveJson(CONFIG_PATH, config);
+    return;
+  }
+
+  await saveJson(STAGING_CONFIG_PATH, buildStagingOverrideConfig(config));
 }
 
 async function ensureCommandExists(command) {
@@ -1022,8 +1058,10 @@ async function ensureCommandExists(command) {
 
 function runCommand(command, args, options) {
   return new Promise(function (resolve, reject) {
+    const env = options && options.env ? options.env : process.env;
     const child = spawn(command, args, {
       cwd: options && options.cwd ? options.cwd : ROOT_DIR,
+      env: env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
     });

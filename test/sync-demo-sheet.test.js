@@ -691,6 +691,10 @@ test("the tracked demo-sheet config validates and its TSV paths exist", function
 
   validateConfig(config);
   validateConfig(liveConfig);
+  assert.match(config.title, /\(Staging\)$/);
+  assert.doesNotMatch(liveConfig.title, /\(Staging\)$/);
+  assert.match(config.script.title, /\(Staging\)$/);
+  assert.doesNotMatch(liveConfig.script.title, /\(Staging\)$/);
   config.tabs.forEach(function (tab) {
     assert.equal(fs.existsSync(resolveRepoPath(tab.path)), true, tab.path);
   });

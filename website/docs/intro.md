@@ -42,7 +42,7 @@ HoodleFinance is especially useful when you want spreadsheet formulas that map m
 ```
 
 <!-- DEMO_SHEET_LINK:START -->
-See the [public demo sheet](https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing) for more live examples.
+See the [public demo sheet](https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing) for more live examples.
 <!-- DEMO_SHEET_LINK:END -->
 
 Bare tickers such as `GOOG` are often the easiest place to start. If a bare ticker does not resolve the way you want, especially for international or ambiguous symbols, switch to an explicit identifier such as `NASDAQ:GOOG` or `SJPA.L`.

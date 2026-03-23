@@ -120,22 +120,25 @@ jobs:
       - name: Install clasp
         run: npm install -g @google/clasp
 
-      - name: Restore demo automation credentials
+      - name: Sync public demo sheet
         env:
           CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
           DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
+          HOODLEFINANCE_NON_INTERACTIVE: "1"
         run: |
           test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
           test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
           test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
 
-          mkdir -p .demo-sheet.local
-          printf '%s' "${DEMO_SHEET_OAUTH_CLIENT_JSON}" > .demo-sheet.local/oauth-client.json
-          printf '%s' "${DEMO_SHEET_OAUTH_TOKEN_JSON}" > .demo-sheet.local/oauth-token.json
-          printf '%s' "${CLASP_RC_JSON}" > "${HOME}/.clasprc.json"
+          exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
+          exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
+          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          trap 'exec {oauth_client_fd}<&-; exec {oauth_token_fd}<&-; exec {clasp_rc_fd}<&-' EXIT
+          unset CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
 
-      - name: Sync public demo sheet
-        env:
-          HOODLEFINANCE_NON_INTERACTIVE: "1"
-        run: node tools/sync-demo-sheet.js --live-demo
+          CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+          DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
+          DEMO_SHEET_OAUTH_TOKEN_PATH="/proc/$$/fd/${oauth_token_fd}" \
+          HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY="1" \
+          node tools/sync-demo-sheet.js --live-demo

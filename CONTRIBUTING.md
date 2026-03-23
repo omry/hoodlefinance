@@ -20,6 +20,14 @@ On a fresh Ubuntu or WSL install, the most likely missing pieces for ordinary de
 
 Normal feature work does not require Google OAuth credentials or `clasp` authentication. Those are only needed for demo-sheet maintenance flows.
 
+Maintainer-only Google flows always use the repo-local ignored `clasp` auth file at `.clasp.local/.clasprc.json`. That keeps project-specific `clasp` access separate from a contributor's normal global `~/.clasprc.json`.
+
+To confirm which repo-local maintainer account those tools will use:
+
+```sh
+npm run clasp:user
+```
+
 If you do not already have `nvm`, install it first:
 
 ```sh
@@ -164,8 +172,11 @@ Before the live sync will work, set up:
 - the repo-pinned `clasp` binary installed by `npm install` and authenticated:
 
 ```sh
-npm exec clasp -- login --no-localhost
+mkdir -p .clasp.local
+npm exec -- clasp -A .clasp.local/.clasprc.json login
 ```
+
+If the localhost callback flow does not work in your environment, retry with `--no-localhost`.
 
 The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets a staging sheet recorded in the ignored local override file [`docs/demo-sheet/demo-sheet-staging.json`](./docs/demo-sheet/demo-sheet-staging.json). That keeps iterative testing away from the public demo without pretending the staging target is repo-tracked. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
 
@@ -263,9 +274,9 @@ Demo-sync workflow secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON`
-- `CLASP_RC_JSON` from your authenticated global `~/.clasprc.json`
+- `CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.clasp.local/.clasprc.json` locally
 
-The demo-sync job writes those secret values back to the same file paths used by the local flow. All three secret values must be valid JSON.
+The demo-sync job keeps those secret values out of the checked-out workspace and off the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step. The OAuth token is treated as read-only in CI, so refreshes must be handled by updating the stored secret. All three secret values must be valid JSON.
 
 Maintainer release checklist:
 

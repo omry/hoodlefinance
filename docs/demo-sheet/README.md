@@ -29,12 +29,19 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 
 ```sh
 npm install
-npm exec clasp -- login --no-localhost
+mkdir -p .clasp.local
+npm exec -- clasp -A .clasp.local/.clasprc.json login
+```
+
+If the localhost callback flow does not work in your environment, retry with:
+
+```sh
+npm exec -- clasp -A .clasp.local/.clasprc.json login --no-localhost
 ```
 4. Run the default staging sync to confirm your credentials and access without touching the public demo:
 
 ```sh
-node tools/sync-demo-sheet.js
+npm exec -- node tools/sync-demo-sheet.js
 ```
 
 The sync command stores local-only tokens and temporary clasp files under:
@@ -45,7 +52,23 @@ The sync command stores local-only tokens and temporary clasp files under:
 
 Those files are ignored by git and must not be committed. The staging sheet ID and related staging metadata are also stored locally in the ignored file `docs/demo-sheet/demo-sheet-staging.json`.
 
-If the saved demo OAuth token is revoked or expires on the Google side, rerunning `node tools/sync-demo-sheet.js` will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
+When that staging override file omits `sharePublicReadOnly`, the staging sync now inherits the tracked public-demo sharing default. Set it explicitly to `false` only if you want a private staging sheet.
+
+If you want the repo to use a maintainer-specific `clasp` identity without replacing your global `~/.clasprc.json`, save that authenticated file instead at:
+
+```text
+.clasp.local/.clasprc.json
+```
+
+The sync tool always passes `-A .clasp.local/.clasprc.json` to `clasp`, so it uses this ignored file instead of your normal global `clasp` login. In CI, the workflow exposes the same maintainer auth JSON through a path override without writing it to the workspace.
+
+To confirm which repo-local `clasp` user the maintainer tools will use:
+
+```sh
+npm run clasp:user
+```
+
+If the saved demo OAuth token is revoked or expires on the Google side, rerunning `npm exec -- node tools/sync-demo-sheet.js` will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
 
 ## GitHub Actions Automation
 
@@ -56,17 +79,18 @@ The normal release path is:
 3. The merged PR automatically triggers `Release Publish`.
 4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job with `node tools/sync-demo-sheet.js --live-demo`.
 
-That demo-sync job uses the same credential shapes as the local flow, but restores them from GitHub Actions secrets:
+That demo-sync job uses the same credential shapes as the local flow, but keeps them out of the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step:
 
-- `DEMO_SHEET_OAUTH_CLIENT_JSON` -> `.demo-sheet.local/oauth-client.json`
-- `DEMO_SHEET_OAUTH_TOKEN_JSON` -> `.demo-sheet.local/oauth-token.json`
-- `CLASP_RC_JSON` -> `${HOME}/.clasprc.json`
+- `DEMO_SHEET_OAUTH_CLIENT_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
+- `DEMO_SHEET_OAUTH_TOKEN_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
+- `CLASP_RC_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
 
 Important distinction:
 
-- `CLASP_RC_JSON` should contain the authenticated global `clasp` login file from `~/.clasprc.json`
+- `CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local flow keeps in `.clasp.local/.clasprc.json`
 - It should not contain the generated project file at `.demo-sheet.local/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
-- All three secret values should be valid JSON. If `clasp` reports a JSON parse error in CI, re-copy the secret from the local source file.
+- The workflow treats the OAuth token as read-only in CI, so a token refresh should be handled by replacing the GitHub secret rather than by writing back through the file-descriptor path.
+- All three secret values should be valid JSON. If `clasp` or the OAuth loader reports a JSON parse error in CI, re-copy the secret from the local source file.
 
 ## Update Flow
 
@@ -74,15 +98,15 @@ Normal local development should use the default staging target:
 
 1. Update [`hoodlefinance.js`](../../hoodlefinance.js) as needed.
 2. Edit the relevant TSV files in this directory.
-3. Run `node tools/sync-demo-sheet.js`.
+3. Run `npm exec -- node tools/sync-demo-sheet.js`.
 4. Check the staging sheet referenced by your local `docs/demo-sheet/demo-sheet-staging.json` override.
 
 The production public demo should normally be updated by `Release Publish`, which runs `node tools/sync-demo-sheet.js --live-demo`.
 
 Use a direct production sync only for demo-only fixes between releases:
 
-1. Optional: run `node tools/sync-demo-sheet.js --live-demo --dry-run`.
-2. Run `node tools/sync-demo-sheet.js --live-demo`.
+1. Optional: run `npm exec -- node tools/sync-demo-sheet.js --live-demo --dry-run`.
+2. Run `npm exec -- node tools/sync-demo-sheet.js --live-demo`.
 3. Confirm the public sheet shows the intended demo-only content changes.
 
 ## Adding A Demo Maintainer
@@ -104,8 +128,11 @@ https://script.google.com/home/usersettings
 
 ```sh
 npm install
-npm exec clasp -- login --no-localhost
+mkdir -p .clasp.local
+npm exec -- clasp -A .clasp.local/.clasprc.json login
 ```
+
+If the localhost callback flow does not work in their environment, retry with `--no-localhost`.
 6. Have the maintainer save a valid OAuth desktop-client JSON at:
 
 ```text
@@ -115,7 +142,7 @@ npm exec clasp -- login --no-localhost
 7. Walk them through one successful default staging run of:
 
 ```sh
-node tools/sync-demo-sheet.js
+npm exec -- node tools/sync-demo-sheet.js
 ```
 
 After that, the maintainer should be able to refresh the demo sheet on their own.
