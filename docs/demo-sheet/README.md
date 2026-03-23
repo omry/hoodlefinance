@@ -25,18 +25,10 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 .demo-sheet.local/oauth-client.json
 ```
 
-3. Install the repo-pinned local tooling with `npm install`, then authenticate the bundled `clasp` binary:
+3. Install the repo-pinned local tooling with `npm install`, then follow the maintainer `clasp` login step in [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
 
 ```sh
 npm install
-mkdir -p .clasp.local
-npm exec -- clasp -A .clasp.local/.clasprc.json login
-```
-
-If the localhost callback flow does not work in your environment, retry with:
-
-```sh
-npm exec -- clasp -A .clasp.local/.clasprc.json login --no-localhost
 ```
 4. Run the default staging sync to confirm your credentials and access without touching the public demo:
 
@@ -124,15 +116,11 @@ To add a new maintainer, the current owner should help them with these high-leve
 https://script.google.com/home/usersettings
 ```
 
-5. Have the maintainer install the repo-pinned local tooling with `npm install` and authenticate `clasp` locally:
+5. Have the maintainer install the repo-pinned local tooling with `npm install` and complete the maintainer `clasp` login step from [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
 
 ```sh
 npm install
-mkdir -p .clasp.local
-npm exec -- clasp -A .clasp.local/.clasprc.json login
 ```
-
-If the localhost callback flow does not work in their environment, retry with `--no-localhost`.
 6. Have the maintainer save a valid OAuth desktop-client JSON at:
 
 ```text

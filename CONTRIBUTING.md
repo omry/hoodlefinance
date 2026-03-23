@@ -174,7 +174,6 @@ Before the live sync will work, set up:
 - the repo-pinned `clasp` binary installed by `npm install` and authenticated:
 
 ```sh
-mkdir -p .clasp.local
 npm exec -- clasp -A .clasp.local/.clasprc.json login
 ```
 

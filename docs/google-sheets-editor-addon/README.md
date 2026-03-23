@@ -75,11 +75,7 @@ Before using it for a real push:
 .clasp.local/.clasprc.json
 ```
 
-4. Make sure that auth blob belongs to the Google account that can edit the target Apps Script project. If you need to create it locally first, authenticate `clasp` once with:
-
-```sh
-npm exec -- clasp login --no-localhost
-```
+4. Make sure that auth blob belongs to the Google account that can edit the target Apps Script project. If you need to create it locally first, follow the maintainer `clasp` login step in [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
 
 You can confirm the repo-local maintainer identity with:
 

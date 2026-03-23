@@ -7,6 +7,7 @@ website/.docusaurus/
 website/.cache-loader/
 .demo-sheet.local/
 .addon-deploy.local/
-.clasp.local/
+.clasp.local/*
+!.clasp.local/.gitkeep
 tmp
 docs/demo-sheet/demo-sheet-staging.json

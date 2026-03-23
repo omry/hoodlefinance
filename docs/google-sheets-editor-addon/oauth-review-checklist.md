@@ -38,6 +38,10 @@ Use it right before filing for OAuth review.
 - [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
 - [X] Public-review Marketplace installation mode chosen:
   - `Individual + Admin Install`
+- [X] Public-review Apps Script target chosen for the add-on code push path
+- [X] Code push to the public-review add-on Apps Script project succeeded:
+  - `npm exec -- node tools/deploy-addon.js --push-only`
+  - pull-back verification confirmed both `hoodlefinance.js` and `appsscript.json` on the remote script project
 
 ## Remaining
 
@@ -45,9 +49,7 @@ Use it right before filing for OAuth review.
   - the current Marketplace app was saved as `Private`
   - App Visibility cannot be changed after it is saved
   - keep the current private app for internal testing if it is still useful
-- [ ] Decide the public-review Apps Script wiring:
-  - same Apps Script project or separate project
-  - which deployment/version should back the public Marketplace app
+- [ ] Create and choose the public-review Apps Script version that should back the public Marketplace app
 - [ ] Reconfirm the final submitted scope set matches across:
   - Apps Script manifest
   - OAuth consent screen

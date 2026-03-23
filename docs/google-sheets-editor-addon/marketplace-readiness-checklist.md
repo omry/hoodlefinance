@@ -38,7 +38,7 @@ Already done:
 
 Current next step:
 
-- decide the Apps Script deployment/version for the public-review app, finish the public-review Marketplace configuration in the new public project, and then repeat the install validation there before submission
+- create the Apps Script version intended for the public-review app, finish the public-review Marketplace configuration in the new public project, and then repeat the install validation there before submission
 
 ## 1. Cloud Project And Script Wiring
 
@@ -53,6 +53,10 @@ Checklist:
 - [X] Separate public-review Cloud project created
 - [X] Apps Script project linked to the dedicated standard Cloud project
 - [X] Script ID recorded
+- [X] Public-review add-on script target chosen
+- [X] Code push to the public-review add-on script project verified:
+  - `npm exec -- node tools/deploy-addon.js --push-only`
+  - pull-back verification confirmed the remote manifest and source files
 - [ ] Public-review Marketplace listing points at the intended script project and version
 
 ## 2. Manifest And Runtime Surface
@@ -98,7 +102,7 @@ Checklist:
   - `script.external_request` shown as sensitive
   - no restricted scopes shown
 - [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
-- [ ] Public-review Apps Script deployment/version chosen
+- [ ] Public-review Apps Script version created and chosen for Marketplace use
 - [ ] Public-review Marketplace configuration completed
 - [ ] Public-review OAuth requirements fully prepared
 
