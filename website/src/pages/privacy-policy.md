@@ -62,5 +62,5 @@ This privacy policy may be updated from time to time. Changes will be reflected 
 
 For questions about this policy or the add-on, contact the developer at:
 
-* **Email:** `support@falcon.yadan.net`
+* **Email:** `support@hoodlefinance.com`
 * **Project Repository:** https://github.com/omry/hoodlefinance

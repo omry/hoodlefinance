@@ -10,7 +10,7 @@ If something looks wrong, start by checking:
 
 ## Contact
 
-Email: `support@falcon.yadan.net`
+Email: `support@hoodlefinance.com`
 
 ## Report an Issue
 

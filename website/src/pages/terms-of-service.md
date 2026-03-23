@@ -52,5 +52,5 @@ These terms may be updated from time to time.
 
 For support, questions, or to report issues, please use the project repository or contact the developer directly:
 
-* **Email:** `support@falcon.yadan.net`
+* **Email:** `support@hoodlefinance.com`
 * **Project Repository:** https://github.com/omry/hoodlefinance
