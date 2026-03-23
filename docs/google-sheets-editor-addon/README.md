@@ -77,6 +77,8 @@ Before using it for a real push:
 
 4. Make sure that auth blob belongs to the Google account that can edit the target Apps Script project. If you need to create it locally first, follow the maintainer `clasp` login step in [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
 
+Keep the add-on project and demo-sync OAuth project separate. The public-review Marketplace setup belongs in `HoodleFinance Add-on Public`, while the desktop OAuth client for `tools/sync-demo-sheet.js` should live in `HoodleFinance Demo Sheets`.
+
 You can confirm the repo-local maintainer identity with:
 
 ```sh

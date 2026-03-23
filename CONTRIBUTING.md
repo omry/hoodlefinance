@@ -170,7 +170,7 @@ The production public demo should normally be synced automatically by the releas
 
 Before the live sync will work, set up:
 
-- Google OAuth desktop-app credentials at `.demo-sheet.local/oauth-client.json`
+- Google OAuth desktop-app credentials from the dedicated `HoodleFinance Demo Sheets` Google Cloud project at `.demo-sheet.local/oauth-client.json`
 - the repo-pinned `clasp` binary installed by `npm install` and authenticated:
 
 ```sh

@@ -15,7 +15,7 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 
 ## Local Bootstrap
 
-1. Create Google OAuth client credentials for a desktop app with access to:
+1. In the dedicated Google Cloud project for demo maintenance, `HoodleFinance Demo Sheets`, create Google OAuth client credentials for a desktop app with access to:
    - Google Sheets API
    - Google Drive API
    - Google Apps Script API
@@ -109,7 +109,7 @@ To add a new maintainer, the current owner should help them with these high-leve
 
 1. Share the public demo spreadsheet with edit access.
 2. Add the maintainer's Google account as a test user on the OAuth consent screen while the app remains in `Testing`.
-3. Make sure the maintainer can use the Google Cloud project that owns the OAuth client, or help them create a new desktop OAuth client in that project.
+3. Make sure the maintainer can use the dedicated `HoodleFinance Demo Sheets` Google Cloud project, or help them create a new desktop OAuth client in that project.
 4. Have the maintainer enable the Apps Script API for their own account at:
 
 ```text
@@ -142,3 +142,5 @@ In practice, a successful first sync confirms that all required access is in pla
 - Apps Script API enabled for the maintainer account
 - working local `clasp` login
 - working local OAuth credentials for the sync script
+
+Keep this project separate from the Marketplace review project. The desktop OAuth client for demo sync should live in `HoodleFinance Demo Sheets`, not in `HoodleFinance Add-on Public`.
