@@ -23,8 +23,9 @@ Already done:
   - id: `hoodlefinance-sheets-addon`
   - number: `221506477564`
 - separate public-review Cloud project created:
-  - name: `HoodleFinance Add-on Public`
-  - id: `hoodlefinance-addon-public`
+  - name: `HoodleFinance Public`
+  - id: `hoodlefinance-public`
+  - number: `826310867331`
 - dedicated Apps Script project created and linked to the standard Cloud project
 - Marketplace SDK listing configured
 - private install completed
@@ -35,10 +36,19 @@ Already done:
 - representative formulas returned data successfully
 - public support email now receives mail at `support@hoodlefinance.com`
 - decision made to proceed toward public Marketplace review
+- fresh public-review Apps Script project created and linked:
+  - name: `HoodleFinance Public`
+  - script ID: `1zB8ohVlbARtuJeNJhdLX0_xnIm9MNlslfdh0z0-OjcNcC3yKrmBNLPrW`
+- active Sheets add-on deployment created for the public-review script project
+- public-review Marketplace draft install completed successfully
+- `HOODLEFINANCE()` is recognized in Sheets from the public-review Marketplace-installed add-on
+- the add-on homepage loaded successfully from the public-review install
+- the add-on menu appeared under `Extensions` in the public-review install
+- `Show installed version` worked from the public-review add-on menu
 
 Current next step:
 
-- create the Apps Script version intended for the public-review app, finish the public-review Marketplace configuration in the new public project, and then repeat the install validation there before submission
+- do one final clean pre-submission verification pass and finish the OAuth review package
 
 ## 1. Cloud Project And Script Wiring
 
@@ -57,7 +67,8 @@ Checklist:
 - [X] Code push to the public-review add-on script project verified:
   - `npm exec -- node tools/deploy-addon.js --push-only`
   - pull-back verification confirmed the remote manifest and source files
-- [ ] Public-review Marketplace listing points at the intended script project and version
+- [X] Public-review Marketplace listing points at the intended script project and version
+- [X] Active Sheets add-on deployment created for the public-review Apps Script project
 
 ## 2. Manifest And Runtime Surface
 
@@ -76,6 +87,9 @@ Checklist:
 - [X] Manifest reset to the clean baseline
 - [X] Required fetch and open-link allowlists are present
 - [X] Runtime behavior validated through Marketplace install
+- [X] Low-auth Marketplace `onOpen()` behavior handled safely for add-on installs:
+  - early Marketplace-installed opens can run without permission to call `getInstallationSource()` or `getUserProperties()`
+  - add-on detection now falls back to the add-on menu capability in that low-auth case so menu setup still succeeds
 
 ## 3. OAuth And Marketplace Configuration
 
@@ -102,8 +116,8 @@ Checklist:
   - `script.external_request` shown as sensitive
   - no restricted scopes shown
 - [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
-- [ ] Public-review Apps Script version created and chosen for Marketplace use
-- [ ] Public-review Marketplace configuration completed
+- [X] Public-review Apps Script version created and chosen for Marketplace use
+- [X] Public-review Marketplace configuration completed
 - [ ] Public-review OAuth requirements fully prepared
 
 ## 4. Listing Material
@@ -167,8 +181,8 @@ Focus areas:
 Checklist:
 
 - [X] Decide to proceed toward public Marketplace review
-- [ ] Finish the new public-review Marketplace app configuration
-- [ ] Re-run install validation through the new public-review app path
+- [X] Finish the new public-review Marketplace app configuration
+- [X] Re-run install validation through the new public-review app path
 - [ ] Prepare any required OAuth verification material
 - [ ] Submit for public review when ready
 

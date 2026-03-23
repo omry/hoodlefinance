@@ -26,8 +26,9 @@ Use it right before filing for OAuth review.
 - [X] Listing text, icons, banner, and screenshot assets exist
 - [X] Scope justifications are documented in [`oauth-review-prep.md`](./oauth-review-prep.md)
 - [X] Separate public-review Cloud project created:
-  - name: `HoodleFinance Add-on Public`
-  - id: `hoodlefinance-addon-public`
+  - name: `HoodleFinance Public`
+  - id: `hoodlefinance-public`
+  - number: `826310867331`
 - [X] Public-review OAuth branding configured
 - [X] Public-review OAuth audience set to `External` with `omry@falcon.yadan.net` added as a test user
 - [X] Current public-review OAuth data-access view shows:
@@ -42,14 +43,24 @@ Use it right before filing for OAuth review.
 - [X] Code push to the public-review add-on Apps Script project succeeded:
   - `npm exec -- node tools/deploy-addon.js --push-only`
   - pull-back verification confirmed both `hoodlefinance.js` and `appsscript.json` on the remote script project
+- [X] Fresh public-review Apps Script project created and linked:
+  - name: `HoodleFinance Public`
+  - script ID: `1zB8ohVlbARtuJeNJhdLX0_xnIm9MNlslfdh0z0-OjcNcC3yKrmBNLPrW`
+- [X] Active Sheets add-on deployment created for the public-review Apps Script project
+- [X] Public-review Marketplace draft install now works end to end:
+  - homepage loads
+  - menu appears
+  - `Show installed version` works
+  - `HOODLEFINANCE()` is recognized
+- [X] Root cause of the earlier broken public draft install identified and fixed:
+  - the first Marketplace-installed `onOpen()` ran in a low-auth mode
+  - `getInstallationSource()` and `getUserProperties()` were not available there
+  - add-on detection was hardened so the add-on menu path still initializes safely
 
 ## Remaining
 
-- [ ] Create the new public Marketplace app for the OAuth review submission path:
-  - the current Marketplace app was saved as `Private`
-  - App Visibility cannot be changed after it is saved
-  - keep the current private app for internal testing if it is still useful
-- [ ] Create and choose the public-review Apps Script version that should back the public Marketplace app
+- [X] Create the new public Marketplace app for the OAuth review submission path
+- [X] Create and choose the public-review Apps Script version that should back the public Marketplace app
 - [ ] Reconfirm the final submitted scope set matches across:
   - Apps Script manifest
   - OAuth consent screen
@@ -80,7 +91,7 @@ Use it right before filing for OAuth review.
   - add-on homepage
   - menu entry point
   - one or two representative formulas working in Sheets
-- [ ] Re-run one clean install from the new public review app before submission and confirm the install path still works end to end:
+- [X] Re-run one clean install from the new public review app before submission and confirm the install path still works end to end:
   - homepage loads
   - menu appears
   - `HOODLEFINANCE()` is recognized
