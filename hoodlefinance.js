@@ -531,7 +531,7 @@ function HOODLEFINANCE_ROUTES(ticker) {
 }
 
 function onOpen(e) {
-  const isAddOn = hoodlefinanceIsInstalledAsAddOn_();
+  const isAddOn = hoodlefinanceInferAddOnContext_(e);
 
   hoodlefinanceAddMenu_({
     isAddOn: isAddOn,
@@ -786,6 +786,12 @@ function hoodlefinanceGetUi_() {
   return SpreadsheetApp.getUi();
 }
 
+function hoodlefinanceCanCreateAddonMenu_() {
+  const ui = hoodlefinanceGetUi_();
+
+  return !!(ui && ui.createAddonMenu);
+}
+
 function hoodlefinanceGetCardService_() {
   return typeof CardService === "undefined" || !CardService ? null : CardService;
 }
@@ -824,6 +830,18 @@ function hoodlefinanceIsInstalledAsAddOn_() {
     "InstallationSource",
     "NONE"
   );
+}
+
+function hoodlefinanceInferAddOnContext_(e) {
+  if (hoodlefinanceMatchesScriptEnum_(e && e.authMode, "AuthMode", "NONE")) {
+    return hoodlefinanceCanCreateAddonMenu_();
+  }
+
+  if (hoodlefinanceCanCreateAddonMenu_()) {
+    return true;
+  }
+
+  return hoodlefinanceIsInstalledAsAddOn_();
 }
 
 function hoodlefinanceCreateAddOnLinkButtonSpec_(text, url) {
@@ -866,7 +884,11 @@ function hoodlefinanceGetUserProperties_() {
     return null;
   }
 
-  return PropertiesService.getUserProperties();
+  try {
+    return PropertiesService.getUserProperties();
+  } catch (error) {
+    return null;
+  }
 }
 
 function hoodlefinanceIsUpdateCheckSuppressed_(userProperties) {

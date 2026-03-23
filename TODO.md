@@ -1,3 +1,4 @@
+- Investigate add-on custom-function cache misses where repeated identical `HOODLEFINANCE()` calls still take about 3 seconds on consecutive runs.
 - Update website and public marketing copy to stop framing HoodleFinance in terms of `GOOGLEFINANCE`.
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
 - Continue Marketplace packaging work: finish listing and policy hardening, record the successful private Marketplace dry-run outcome, and decide whether public review is worth pursuing.
