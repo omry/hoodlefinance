@@ -22,19 +22,44 @@ Use it right before filing for OAuth review.
   https://hoodlefinance.com/privacy-policy
 - [X] Public terms of service exists:
   https://hoodlefinance.com/terms-of-service
+- [X] Public support email now receives mail at `support@hoodlefinance.com`
 - [X] Listing text, icons, banner, and screenshot assets exist
 - [X] Scope justifications are documented in [`oauth-review-prep.md`](./oauth-review-prep.md)
+- [X] Separate public-review Cloud project created:
+  - name: `HoodleFinance Add-on Public`
+  - id: `hoodlefinance-addon-public`
+- [X] Public-review OAuth branding configured
+- [X] Public-review OAuth audience set to `External` with `omry@falcon.yadan.net` added as a test user
+- [X] Current public-review OAuth data-access view shows:
+  - `spreadsheets.currentonly` as non-sensitive
+  - `script.container.ui` as sensitive
+  - `script.external_request` as sensitive
+  - no restricted scopes
+- [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
+- [X] Public-review Marketplace installation mode chosen:
+  - `Individual + Admin Install`
 
 ## Remaining
 
+- [ ] Create the new public Marketplace app for the OAuth review submission path:
+  - the current Marketplace app was saved as `Private`
+  - App Visibility cannot be changed after it is saved
+  - keep the current private app for internal testing if it is still useful
+- [ ] Decide the public-review Apps Script wiring:
+  - same Apps Script project or separate project
+  - which deployment/version should back the public Marketplace app
 - [ ] Reconfirm the final submitted scope set matches across:
   - Apps Script manifest
   - OAuth consent screen
   - Marketplace configuration
-- [ ] Recheck whether `userinfo.email` and `userinfo.profile` are still injected by Google during the Marketplace / OAuth flow
+- [ ] Recheck `userinfo.email` and `userinfo.profile` after the public Marketplace app is fully configured:
+  - current public-review OAuth observation: they are not appearing in the Data Access view
+  - old private-app observation: removing them from the consent / Marketplace surface made them reappear after refresh
+  - contrast: removing `https://www.googleapis.com/auth/script.container.ui` did not make it reappear
+  - be ready to explain `userinfo.email` and `userinfo.profile` as Google-managed consent-surface scopes only if they reappear in the final public app path
 - [ ] Prepare the short reviewer explanation for the identity scopes:
-  - Google-managed consent items
-  - not intentionally used by add-on runtime logic
+  - only needed if `userinfo.email` and `userinfo.profile` reappear in the final public app path
+  - if they do, describe them as Google-managed consent items rather than intentionally used runtime scopes
 - [ ] Prepare the reviewer explanation for each intentional scope:
   - `script.container.ui`
   - `script.external_request`
@@ -47,15 +72,13 @@ Use it right before filing for OAuth review.
   - category
   - support/privacy/terms links
   - screenshots and banner
-- [ ] Update public-facing support and contact emails to use the `hoodlefinance.com` domain where they appear in the listing, policies, or support surface
 - [ ] Replace any remaining prototype or placeholder branding in the listing / manifest surface
 - [ ] Record the short demo video likely needed for OAuth verification:
   - install flow
   - add-on homepage
   - menu entry point
   - one or two representative formulas working in Sheets
-- [ ] Re-run one clean private Marketplace install before submission
-- [ ] Reconfirm the final validation path still works:
+- [ ] Re-run one clean install from the new public review app before submission and confirm the install path still works end to end:
   - homepage loads
   - menu appears
   - `HOODLEFINANCE()` is recognized
@@ -64,7 +87,6 @@ Use it right before filing for OAuth review.
 
 ## Blocked Or Open Questions
 
-- [ ] Confirm whether Google still treats `userinfo.email` and `userinfo.profile` as unavoidable Marketplace / consent-surface scopes for this install path
 - [ ] Decide whether the current support, privacy, and terms wording is final enough for public review or needs one more pass
 - [ ] Decide how much to invest in the Marketplace path before broader product questions are settled:
   - manual install vs Marketplace positioning
@@ -78,4 +100,4 @@ Do not file for OAuth review until:
 - the final scope set is stable
 - the listing and policy surface are final
 - the demo video is ready
-- one last private Marketplace validation pass succeeds
+- one last validation pass on the new public review app succeeds

@@ -4,7 +4,6 @@
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
 - once website is is done, update contributing guide for how to update the content as well as basic cheat sheed (install, build, run local server)
 - acquired hoodlefinance.com, lets use it instead of the current location
-- use support@hoodlefinance.com as the public support email once domain mail is ready
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
 - if we add per-file MPL notices, automate SPDX `MPL-2.0` header insertion instead of managing headers by hand
 - before inviting outside contributions at scale, decide whether to add a CLA and what scope of relicensing rights it should grant
