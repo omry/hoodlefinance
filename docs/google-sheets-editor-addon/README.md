@@ -51,3 +51,48 @@ This answered the main product question that unpublished Apps Script test deploy
 - submit for review when the OAuth package is ready
 
 For the step-by-step execution path, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md). For the final pre-submission gate, use [`oauth-review-checklist.md`](./oauth-review-checklist.md).
+
+## Maintainer Deployment Automation
+
+The repo now includes a maintainer-only `clasp` deployment helper for the public add-on script project:
+
+```sh
+npm run addon:deploy -- --dry-run
+```
+
+Before using it for a real push:
+
+1. Copy [`addon-deploy-target.example.json`](./addon-deploy-target.example.json) to:
+
+```text
+.addon-deploy.local/public-addon.json
+```
+
+2. Set the target `scriptId` in that local file.
+3. Save the maintainer `clasp` credentials in the ignored repo-local file:
+
+```text
+.clasp.local/.clasprc.json
+```
+
+4. Make sure that auth blob belongs to the Google account that can edit the target Apps Script project. If you need to create it locally first, authenticate `clasp` once with:
+
+```sh
+npm exec -- clasp login --no-localhost
+```
+
+You can confirm the repo-local maintainer identity with:
+
+```sh
+npm run clasp:user
+```
+
+The tracked deployment layout lives in [`addon-deploy-layout.json`](./addon-deploy-layout.json). Right now it deploys [`hoodlefinance.js`](../../hoodlefinance.js) plus the add-on manifest at [`appsscript.json`](./appsscript.json). If the add-on source is later split across multiple script files, update the tracked `sourceFiles` list there rather than hardcoding those paths into the deployment tool.
+
+By default, the deploy helper:
+
+- prepares a temporary `clasp` worktree under `.addon-deploy.local/`
+- pushes the configured manifest and source files to the target script project
+- creates a new Apps Script version and prints that version number for Marketplace use
+
+Use `--push-only` if you want to sync source without creating a new version.

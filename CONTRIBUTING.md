@@ -28,6 +28,8 @@ To confirm which repo-local maintainer account those tools will use:
 npm run clasp:user
 ```
 
+The public add-on deployment helper is also maintainer-only. It uses the same repo-pinned `clasp` toolchain pattern, but targets a separate add-on script project through a local config file under `.addon-deploy.local/`.
+
 If you do not already have `nvm`, install it first:
 
 ```sh

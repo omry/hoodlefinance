@@ -1,0 +1,6 @@
+{
+  "manifestPath": "docs/google-sheets-editor-addon/appsscript.json",
+  "sourceFiles": [
+    "hoodlefinance.js"
+  ]
+}
