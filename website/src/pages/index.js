@@ -3,18 +3,24 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
+import ThemedImage from '@theme/ThemedImage';
 import styles from './index.module.css';
 
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
         <div className={clsx(styles.sectionContent, styles.heroContent)}>
-          <Heading as="h1" className="hero__title">
-            {siteConfig.title}
+          <Heading as="h1" className={styles.heroLogoHeading}>
+            <ThemedImage
+              alt="HoodleFinance"
+              className={styles.heroLogo}
+              sources={{
+                light: '/img/hoodlefinance/banner-day.svg',
+                dark: '/img/hoodlefinance/banner-night.svg',
+              }}
+            />
           </Heading>
-          <p className="hero__subtitle">{siteConfig.tagline}</p>
           <div className={styles.buttons}>
             <Link
               className="button button--primary button--lg"

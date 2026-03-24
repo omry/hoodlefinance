@@ -12,7 +12,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'HoodleFinance',
   tagline: 'A practical alternative to GOOGLEFINANCE for Google Sheets',
-  favicon: 'img/hoodlefinance/icon-32.png',
+  favicon: 'img/hoodlefinance/icon.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -61,7 +61,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      image: 'img/hoodlefinance/demo-screenshot.jpeg',
+      image: 'img/hoodlefinance/banner-220x140.png',
       colorMode: {
         respectPrefersColorScheme: true,
       },
@@ -69,7 +69,7 @@ const config = {
         title: 'HoodleFinance',
         logo: {
           alt: 'HoodleFinance logo',
-          src: 'img/hoodlefinance/icon-48.png',
+          src: 'img/hoodlefinance/icon.svg',
         },
         items: [
           {
