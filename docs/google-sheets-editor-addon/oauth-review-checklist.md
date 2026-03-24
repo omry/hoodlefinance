@@ -4,6 +4,12 @@ This checklist turns the broader notes in [`oauth-review-prep.md`](./oauth-revie
 
 Use it right before filing for OAuth review.
 
+Repo-local refresh on March 24, 2026:
+
+- the public-review Marketplace app path is in place
+- the clean public-review install path has already been revalidated
+- the remaining work is now the final Google-side scope/listing check, branding polish, and the reviewer package
+
 ## Done
 
 - [X] Dedicated standard Google Cloud project created for the add-on
@@ -56,28 +62,35 @@ Use it right before filing for OAuth review.
   - the first Marketplace-installed `onOpen()` ran in a low-auth mode
   - `getInstallationSource()` and `getUserProperties()` were not available there
   - add-on detection was hardened so the add-on menu path still initializes safely
+- [X] New public Marketplace app created for the OAuth review submission path
+- [X] Public-review Apps Script version created and chosen for the public Marketplace app
+- [X] Repo-local manifest scope set remains:
+  - `script.container.ui`
+  - `script.external_request`
+  - `spreadsheets.currentonly`
+- [X] Reviewer explanation for each intentional scope is documented in [`oauth-review-prep.md`](./oauth-review-prep.md)
+- [X] Reviewer explanation for `userinfo.email` and `userinfo.profile` is drafted if they reappear:
+  - treat them as Google-managed consent items rather than intentionally requested runtime scopes
+- [X] `urlFetchWhitelist` and `openLinkUrlPrefixes` in [`appsscript.json`](./appsscript.json) still match the repo's current add-on runtime surface:
+  - fetch allowlist covers the GitHub raw, IBKR, Ariva, LSE, TradingView, PSE, Google Finance, and Yahoo endpoints referenced in [`hoodlefinance.js`](../../hoodlefinance.js)
+  - open-link allowlist covers the GitHub and `hoodlefinance.com` links exposed by the current add-on UI surface
+- [X] Re-run one clean install from the new public review app before submission and confirm the install path still works end to end:
+  - homepage loads
+  - menu appears
+  - `HOODLEFINANCE()` is recognized
+  - representative formulas work
 
 ## Remaining
 
-- [X] Create the new public Marketplace app for the OAuth review submission path
-- [X] Create and choose the public-review Apps Script version that should back the public Marketplace app
-- [ ] Reconfirm the final submitted scope set matches across:
-  - Apps Script manifest
-  - OAuth consent screen
-  - Marketplace configuration
-- [ ] Recheck `userinfo.email` and `userinfo.profile` after the public Marketplace app is fully configured:
+- [ ] Do one final Google-side scope consistency check immediately before submission:
+  - Apps Script manifest still declares only `script.container.ui`, `script.external_request`, and `spreadsheets.currentonly`
+  - OAuth consent screen matches that final submitted scope set
+  - Marketplace configuration matches that final submitted scope set
+- [ ] Do one final Google-side recheck of `userinfo.email` and `userinfo.profile` in the public-review OAuth Data Access view:
   - current public-review OAuth observation: they are not appearing in the Data Access view
   - old private-app observation: removing them from the consent / Marketplace surface made them reappear after refresh
   - contrast: removing `https://www.googleapis.com/auth/script.container.ui` did not make it reappear
   - be ready to explain `userinfo.email` and `userinfo.profile` as Google-managed consent-surface scopes only if they reappear in the final public app path
-- [ ] Prepare the short reviewer explanation for the identity scopes:
-  - only needed if `userinfo.email` and `userinfo.profile` reappear in the final public app path
-  - if they do, describe them as Google-managed consent items rather than intentionally used runtime scopes
-- [ ] Prepare the reviewer explanation for each intentional scope:
-  - `script.container.ui`
-  - `script.external_request`
-  - `spreadsheets.currentonly`
-- [ ] Reconfirm `urlFetchWhitelist` and `openLinkUrlPrefixes` still match actual runtime behavior in [`appsscript.json`](./appsscript.json)
 - [ ] Final-review the listing for wording consistency across:
   - app name
   - short description
@@ -86,16 +99,12 @@ Use it right before filing for OAuth review.
   - support/privacy/terms links
   - screenshots and banner
 - [ ] Replace any remaining prototype or placeholder branding in the listing / manifest surface
+  - current repo-local placeholder still present: the manifest `logoUrl` is still the generic Google-hosted functions icon in [`appsscript.json`](./appsscript.json)
 - [ ] Record the short demo video likely needed for OAuth verification:
   - install flow
   - add-on homepage
   - menu entry point
   - one or two representative formulas working in Sheets
-- [X] Re-run one clean install from the new public review app before submission and confirm the install path still works end to end:
-  - homepage loads
-  - menu appears
-  - `HOODLEFINANCE()` is recognized
-  - representative formulas work
 - [ ] Submit for OAuth review once the package above is ready
 
 ## Blocked Or Open Questions
