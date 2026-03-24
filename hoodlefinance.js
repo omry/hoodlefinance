@@ -551,7 +551,6 @@ function hoodlefinanceOnAddOnActivation_() {
 
   const menu = ui.createAddonMenu();
   menu.addItem("Enable", "enable_");
-  menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
   menu.addToUi();
 }
 
@@ -711,7 +710,7 @@ function hoodlefinanceRunVersionCheck_(options) {
       hoodlefinanceGetUi_().alert(
         "HOODLEFINANCE updates",
         "Unable to determine the latest published version right now." +
-          (latestInfo.error ? "\n\nDetails:\n" + latestInfo.error : ""),
+        (latestInfo.error ? "\n\nDetails:\n" + latestInfo.error : ""),
         hoodlefinanceGetUi_().ButtonSet.OK
       );
     }
@@ -1462,13 +1461,13 @@ function hoodlefinanceShowUpdateDialog_(latestVersion) {
     ui.alert(
       "HOODLEFINANCE updates",
       "A newer version is available (" +
-        latestVersion +
-        ").\n\nRelease notes: " +
-        releaseNotesUrl +
-        "\nFull history: " +
-        HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ +
-        "\nUpdate link: " +
-        HOODLEFINANCE_GITHUB_RAW_URL_,
+      latestVersion +
+      ").\n\nRelease notes: " +
+      releaseNotesUrl +
+      "\nFull history: " +
+      HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ +
+      "\nUpdate link: " +
+      HOODLEFINANCE_GITHUB_RAW_URL_,
       ui.ButtonSet.OK
     );
     return;
@@ -1492,26 +1491,26 @@ function hoodlefinanceBuildGitHubReleaseNotesUrl_(version) {
 function hoodlefinanceBuildUpdateDialogHtml_(latestVersion, releaseNotesUrl) {
   return (
     '<div style="font-family:Arial,sans-serif;padding:16px;line-height:1.5;">' +
-      "<h2 style=\"margin:0 0 12px 0;font-size:18px;\">HOODLEFINANCE update available</h2>" +
-      "<p style=\"margin:0 0 12px 0;\">Installed version: <code>" + hoodlefinanceEscapeHtml_(HOODLEFINANCE_VERSION_) + "</code><br>" +
-      "Latest version: <code>" + hoodlefinanceEscapeHtml_(latestVersion) + "</code></p>" +
-      "<p style=\"margin:0 0 16px 0;\">Read the release notes first, then open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
-      "<p style=\"margin:0 0 16px 0;\">" +
-        '<a href="' + hoodlefinanceEscapeHtml_(releaseNotesUrl) + '" target="_blank">What\'s new in ' + hoodlefinanceEscapeHtml_(latestVersion) + "</a>" +
-        " | " +
-        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_) + '" target="_blank">Release history</a>' +
-        " | " +
-        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) + '" target="_blank">Open raw source</a>' +
-        " | " +
-        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_README_URL_) + '" target="_blank">Open README</a>' +
-        " | " +
-        '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_REPO_URL_) + '" target="_blank">Open repository</a>' +
-      "</p>" +
-      "<div>" +
-        '<button onclick="google.script.run.withSuccessHandler(closeDialog).hoodlefinanceSuppressUpdateChecks()" style="margin-right:8px;">Suppress automatic checks</button>' +
-        '<button onclick="closeDialog()">Later</button>' +
-      "</div>" +
-      "<script>function closeDialog(){google.script.host.close();}</script>" +
+    "<h2 style=\"margin:0 0 12px 0;font-size:18px;\">HOODLEFINANCE update available</h2>" +
+    "<p style=\"margin:0 0 12px 0;\">Installed version: <code>" + hoodlefinanceEscapeHtml_(HOODLEFINANCE_VERSION_) + "</code><br>" +
+    "Latest version: <code>" + hoodlefinanceEscapeHtml_(latestVersion) + "</code></p>" +
+    "<p style=\"margin:0 0 16px 0;\">Read the release notes first, then open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
+    "<p style=\"margin:0 0 16px 0;\">" +
+    '<a href="' + hoodlefinanceEscapeHtml_(releaseNotesUrl) + '" target="_blank">What\'s new in ' + hoodlefinanceEscapeHtml_(latestVersion) + "</a>" +
+    " | " +
+    '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_) + '" target="_blank">Release history</a>' +
+    " | " +
+    '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) + '" target="_blank">Open raw source</a>' +
+    " | " +
+    '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_README_URL_) + '" target="_blank">Open README</a>' +
+    " | " +
+    '<a href="' + hoodlefinanceEscapeHtml_(HOODLEFINANCE_GITHUB_REPO_URL_) + '" target="_blank">Open repository</a>' +
+    "</p>" +
+    "<div>" +
+    '<button onclick="google.script.run.withSuccessHandler(closeDialog).hoodlefinanceSuppressUpdateChecks()" style="margin-right:8px;">Suppress automatic checks</button>' +
+    '<button onclick="closeDialog()">Later</button>' +
+    "</div>" +
+    "<script>function closeDialog(){google.script.host.close();}</script>" +
     "</div>"
   );
 }
@@ -1556,10 +1555,10 @@ function hoodlefinanceFetchPseQuote_(ticker) {
       listing = hoodlefinanceResolvePseListing_(symbol);
       html = hoodlefinanceFetchPseText_(
         HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-          "?cmpy_id=" +
-          encodeURIComponent(listing.companyId) +
-          "&security_id=" +
-          encodeURIComponent(listing.securityId)
+        "?cmpy_id=" +
+        encodeURIComponent(listing.companyId) +
+        "&security_id=" +
+        encodeURIComponent(listing.securityId)
       );
 
       return hoodlefinanceExtractPseQuote_(html, listing);
@@ -3253,8 +3252,8 @@ function hoodlefinanceDecorateFxQuote_(quote, fxPair) {
 
 function hoodlefinanceExtractRawQuote_(quote) {
   if (!quote || (quote.hoodlefinanceFxDisplayCurrency == null &&
-      quote.hoodlefinanceFxGoogleSymbol == null &&
-      quote.hoodlefinanceFxUnitScale == null)) {
+    quote.hoodlefinanceFxGoogleSymbol == null &&
+    quote.hoodlefinanceFxUnitScale == null)) {
     return quote;
   }
 
@@ -3276,9 +3275,9 @@ function hoodlefinanceExtractAttribute_(quote, attribute, context) {
   if (!extractor) {
     throw new Error(
       'Unsupported attribute "' +
-        attribute +
-        '". Supported attributes: ' +
-        hoodlefinanceFormatPublicAttributes_()
+      attribute +
+      '". Supported attributes: ' +
+      hoodlefinanceFormatPublicAttributes_()
     );
   }
 
@@ -3290,14 +3289,14 @@ function hoodlefinanceExtractAttribute_(quote, attribute, context) {
     if (!HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_[attributeRequest.baseAttribute]) {
       throw new Error(
         'Attribute "' +
-          attributeRequest.baseAttribute +
-          '" does not support output-currency conversion. Supported attribute is: price.'
+        attributeRequest.baseAttribute +
+        '" does not support output-currency conversion. Supported attribute is: price.'
       );
     }
   }
 
   if (HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_[attributeRequest.baseAttribute] &&
-      hoodlefinanceIsFxContext_(quote, normalizedContext)) {
+    hoodlefinanceIsFxContext_(quote, normalizedContext)) {
     throw new Error(
       'Attribute "' + attributeRequest.baseAttribute + '" is not available for currency-pair identifiers.'
     );
@@ -3442,11 +3441,11 @@ function hoodlefinanceConvertAttributeValueToOutputCurrency_(quote, value, attri
     } catch (error) {
       throw new Error(
         'Output-currency conversion from "' +
-          sourceUnit.displayCode +
-          '" to "' +
-          targetUnit.displayCode +
-          '" is unavailable. ' +
-          hoodlefinanceErrorMessage_(error)
+        sourceUnit.displayCode +
+        '" to "' +
+        targetUnit.displayCode +
+        '" is unavailable. ' +
+        hoodlefinanceErrorMessage_(error)
       );
     }
   }
@@ -3536,8 +3535,8 @@ function hoodlefinanceBuildPseUnavailableError_(detail) {
 
   return new Error(
     "The PSE data source is currently unavailable" +
-      (normalizedDetail ? " (" + normalizedDetail + ")" : "") +
-      ". Please try again later."
+    (normalizedDetail ? " (" + normalizedDetail + ")" : "") +
+    ". Please try again later."
   );
 }
 

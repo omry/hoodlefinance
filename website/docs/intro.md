@@ -76,6 +76,8 @@ The Marketplace add-on is intended to become the lower-friction install path, bu
 
 If and when the Marketplace add-on becomes publicly available, it should be treated as an alternative install method rather than something to combine with a pasted-script install in the same spreadsheet.
 
+Note: When using the Marketplace add-on, it must be enabled per spreadsheet from the Add-ons menu before the `HOODLEFINANCE` custom function becomes available for use in that specific spreadsheet.
+
 ## Limits
 
 - some lookups depend on public websites or unofficial endpoints
