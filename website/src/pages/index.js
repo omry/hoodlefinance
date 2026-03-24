@@ -77,7 +77,7 @@ export default function Home() {
               </div>
               <div className={styles.heroPreview}>
                 <img
-                  src="/img/hoodlefinance/demo-screenshot.jpeg"
+                  src="/img/hoodlefinance/demo-screenshot.png"
                   alt="HoodleFinance demo spreadsheet"
                   className={styles.previewImage}
                 />
