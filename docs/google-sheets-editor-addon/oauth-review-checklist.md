@@ -74,6 +74,8 @@ Repo-local refresh on March 24, 2026:
 - [X] `urlFetchWhitelist` and `openLinkUrlPrefixes` in [`appsscript.json`](./appsscript.json) still match the repo's current add-on runtime surface:
   - fetch allowlist covers the GitHub raw, IBKR, Ariva, LSE, TradingView, PSE, Google Finance, and Yahoo endpoints referenced in [`hoodlefinance.js`](../../hoodlefinance.js)
   - open-link allowlist covers the GitHub and `hoodlefinance.com` links exposed by the current add-on UI surface
+- [X] Manifest branding placeholder replaced in [`appsscript.json`](./appsscript.json):
+  - `logoUrl` now points at the project-hosted HoodleFinance icon instead of the generic Google-hosted functions icon
 - [X] Re-run one clean install from the new public review app before submission and confirm the install path still works end to end:
   - homepage loads
   - menu appears
@@ -98,8 +100,6 @@ Repo-local refresh on March 24, 2026:
   - category
   - support/privacy/terms links
   - screenshots and banner
-- [ ] Replace any remaining prototype or placeholder branding in the listing / manifest surface
-  - current repo-local placeholder still present: the manifest `logoUrl` is still the generic Google-hosted functions icon in [`appsscript.json`](./appsscript.json)
 - [ ] Record the short demo video likely needed for OAuth verification:
   - install flow
   - add-on homepage
