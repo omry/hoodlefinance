@@ -4,7 +4,7 @@
  */
 
 .heroBanner {
-  padding: calc(var(--ifm-navbar-height) + 2.5rem) 0 4.5rem;
+  padding: calc(var(--ifm-navbar-height) + 0.6rem) 0 2.9rem;
   text-align: left;
   position: relative;
   overflow: hidden;
@@ -40,7 +40,7 @@
 
 @media screen and (max-width: 996px) {
   .heroBanner {
-    padding: calc(var(--ifm-navbar-height) + 1.5rem) 0 3rem;
+    padding: calc(var(--ifm-navbar-height) + 0.45rem) 0 2rem;
   }
 }
 
@@ -100,7 +100,7 @@
 
 .heroLogo {
   display: block;
-  width: min(100%, 720px);
+  width: min(100%, 612px);
   height: auto;
   margin: 0 auto;
   filter: drop-shadow(0 24px 50px rgba(9, 18, 29, 0.16));

@@ -12,12 +12,33 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'HoodleFinance',
   tagline: 'A practical alternative to GOOGLEFINANCE for Google Sheets',
-  favicon: 'img/hoodlefinance/icon.svg',
+  favicon: 'img/hoodlefinance/icon-day-v2.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
   },
+
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: '/img/hoodlefinance/icon-day-v2.svg',
+        media: '(prefers-color-scheme: light)',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: '/img/hoodlefinance/icon-night-v2.svg',
+        media: '(prefers-color-scheme: dark)',
+      },
+    },
+  ],
 
   // Set the production url of your site here
   url: 'https://hoodlefinance.com',
@@ -69,7 +90,8 @@ const config = {
         title: 'HoodleFinance',
         logo: {
           alt: 'HoodleFinance logo',
-          src: 'img/hoodlefinance/icon.svg',
+          src: 'img/hoodlefinance/icon-day-v2.svg',
+          srcDark: 'img/hoodlefinance/icon-night-v2.svg',
         },
         items: [
           {

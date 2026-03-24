@@ -1,1 +1,1 @@
-- Updated the website branding to use refreshed HoodleFinance logo assets, theme-matched colors, and light/dark homepage banner variants.
+- Refreshed the HoodleFinance marketplace and website branding assets, including updated banner and icon artwork plus light/dark website variants.
