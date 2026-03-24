@@ -1,0 +1,1 @@
+- Updated the Google Sheets add-on marketplace banner and icon assets, including the website copies used for documentation and branding.
