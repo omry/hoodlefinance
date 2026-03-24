@@ -2382,7 +2382,7 @@ test("suppressed automatic checks do not fetch remote versions", () => {
   };
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceMaybeCheckForUpdates_()),
+    JSON.stringify(ctx.hoodlefinanceRunVersionCheck_({ force: false, interactive: false })),
     JSON.stringify({ status: "suppressed" })
   );
 });
@@ -2393,6 +2393,19 @@ test("bound-script onOpen keeps the normal custom menu path", () => {
   ctx.__userPropertiesStore.set("hoodlefinance.suppressUpdateChecks", "true");
   ctx.UrlFetchApp.fetch = function () {
     throw new Error("Fetch should not run while suppressed");
+  };
+
+  // The bound script only gets the script menu when not installed as an add-on
+  // and when the UI doesn't simulate add-on menu capability (which the mock does).
+  // So we override the mock to pretend it's a bound script without add-on context.
+  const originalUi = ctx.SpreadsheetApp.getUi();
+  ctx.SpreadsheetApp.getUi = function() {
+    return {
+      alert: originalUi.alert,
+      createMenu: originalUi.createMenu,
+      showModalDialog: originalUi.showModalDialog,
+      ButtonSet: originalUi.ButtonSet,
+    };
   };
 
   ctx.onOpen({ authMode: ctx.ScriptApp.AuthMode.LIMITED });
@@ -2508,6 +2521,7 @@ test("Editor add-on install builds the add-on menu without the bound-script upda
   assert.equal(ctx.__uiState.menus.length, 0);
   assert.equal(ctx.__uiState.addonMenus.length, 1);
   assert.deepEqual(ctx.__uiState.addonMenus[0].items, [
+    { functionName: "enable_", label: "Enable", type: "item" },
     { functionName: "hoodlefinanceShowInstalledVersion", label: "Show installed version", type: "item" },
   ]);
 });
@@ -2541,8 +2555,8 @@ test("the Sheets add-on homepage card summarizes the function and links to docs"
   assert.deepEqual(
     buttonSet.buttons.map((button) => [button.text, button.openLink.url]),
     [
-      ["Open README", "https://github.com/omry/hoodlefinance/blob/main/README.md"],
-      ["Release notes", "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/RELEASE_NOTES.md"],
+      ["Website", "https://hoodlefinance.com"],
+      ["Support", "https://hoodlefinance.com/support"],
     ]
   );
 });

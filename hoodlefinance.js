@@ -531,19 +531,43 @@ function HOODLEFINANCE_ROUTES(ticker) {
 }
 
 function onOpen(e) {
-  const isAddOn = hoodlefinanceInferAddOnContext_(e);
-
-  hoodlefinanceAddMenu_({
-    isAddOn: isAddOn,
-  });
-
-  if (!isAddOn && hoodlefinanceShouldRunAutomaticUpdateChecks_(e)) {
-    hoodlefinanceMaybeCheckForUpdates_();
+  if (hoodlefinanceInferAddOnContext_(e)) {
+    hoodlefinanceOnAddOnActivation_();
+  } else {
+    hoodlefinanceOnScriptActivation_(e);
   }
 }
 
 function onInstall(e) {
   onOpen(e);
+}
+
+function hoodlefinanceOnAddOnActivation_() {
+  const ui = hoodlefinanceGetUi_();
+
+  if (!ui || !ui.createAddonMenu) {
+    return;
+  }
+
+  const menu = ui.createAddonMenu();
+  menu.addItem("Enable", "enable_");
+  menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
+  menu.addToUi();
+}
+
+function hoodlefinanceOnScriptActivation_(e) {
+  hoodlefinanceBuildScriptMenu_();
+
+  if (
+    !hoodlefinanceIsInstalledAsAddOn_() &&
+    !hoodlefinanceMatchesScriptEnum_(e && e.authMode, "AuthMode", "NONE")
+  ) {
+    hoodlefinanceRunVersionCheck_({ force: false, interactive: false });
+  }
+}
+
+function enable_() {
+  SpreadsheetApp.getActive().toast('HoodleFinance ' + HOODLEFINANCE_VERSION_ + ' enabled for this spreadsheet');
 }
 
 function hoodlefinanceBuildSheetsAddOnHomepage() {
@@ -627,7 +651,7 @@ function hoodlefinanceSuppressUpdateChecks() {
     );
   }
 
-  hoodlefinanceAddMenu_();
+  hoodlefinanceBuildScriptMenu_();
 }
 
 function hoodlefinanceEnableUpdateChecks() {
@@ -646,31 +670,13 @@ function hoodlefinanceEnableUpdateChecks() {
     );
   }
 
-  hoodlefinanceAddMenu_();
+  hoodlefinanceBuildScriptMenu_();
 }
 
 function hoodlefinanceDismissUpdateNotice() {
   return true;
 }
 
-function hoodlefinanceMaybeCheckForUpdates_() {
-  return hoodlefinanceRunVersionCheck_({
-    force: false,
-    interactive: false,
-  });
-}
-
-function hoodlefinanceShouldRunAutomaticUpdateChecks_(e) {
-  if (hoodlefinanceIsInstalledAsAddOn_()) {
-    return false;
-  }
-
-  if (hoodlefinanceMatchesScriptEnum_(e && e.authMode, "AuthMode", "NONE")) {
-    return false;
-  }
-
-  return true;
-}
 
 function hoodlefinanceRunVersionCheck_(options) {
   const normalizedOptions = options || {};
@@ -737,36 +743,16 @@ function hoodlefinanceRunVersionCheck_(options) {
   };
 }
 
-function hoodlefinanceAddMenu_(options) {
-  const normalizedOptions = options || {};
-  const isAddOn = normalizedOptions.isAddOn == null ? hoodlefinanceIsInstalledAsAddOn_() : !!normalizedOptions.isAddOn;
+function hoodlefinanceBuildScriptMenu_() {
   const ui = hoodlefinanceGetUi_();
-  let userProperties;
-  let isSuppressed;
-  let menu;
 
-  if (!ui) {
-    return null;
+  if (!ui || !ui.createMenu) {
+    return;
   }
 
-  if (isAddOn) {
-    if (!ui.createAddonMenu) {
-      return null;
-    }
-
-    menu = ui.createAddonMenu();
-    menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
-    menu.addToUi();
-    return menu;
-  }
-
-  if (!ui.createMenu) {
-    return null;
-  }
-
-  userProperties = hoodlefinanceGetUserProperties_();
-  isSuppressed = hoodlefinanceIsUpdateCheckSuppressed_(userProperties);
-  menu = ui.createMenu(HOODLEFINANCE_MENU_TITLE_);
+  const userProperties = hoodlefinanceGetUserProperties_();
+  const isSuppressed = hoodlefinanceIsUpdateCheckSuppressed_(userProperties);
+  const menu = ui.createMenu(HOODLEFINANCE_MENU_TITLE_);
   menu.addItem("Check for updates", "hoodlefinanceCheckForUpdates");
   menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
   menu.addSeparator();
@@ -775,7 +761,6 @@ function hoodlefinanceAddMenu_(options) {
     isSuppressed ? "hoodlefinanceEnableUpdateChecks" : "hoodlefinanceSuppressUpdateChecks"
   );
   menu.addToUi();
-  return menu;
 }
 
 function hoodlefinanceGetUi_() {
