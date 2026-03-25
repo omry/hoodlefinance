@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.9.6 - 2026-03-25
+
+### Changed
+
+- Validate GitHub Actions production deployment pipeline
+
 ## v0.9.5 - 2026-03-25
 
 ### Changed
