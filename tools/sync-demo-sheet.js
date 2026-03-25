@@ -35,6 +35,7 @@ const CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet.json");
 const STAGING_CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet-staging.json");
 const README_PATH = path.join(ROOT_DIR, "README.md");
 const WEBSITE_INTRO_PATH = path.join(ROOT_DIR, "website", "docs", "intro.md");
+const WEBSITE_INDEX_PATH = path.join(ROOT_DIR, "website", "src", "pages", "index.js");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
 const OAUTH_CLIENT_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_CLIENT_PATH";
@@ -1016,6 +1017,11 @@ async function updateDemoLinks(publicUrl) {
   const updated = replaceDemoReadmeBlock(existing, publicUrl);
   const existingIntro = await fsp.readFile(WEBSITE_INTRO_PATH, "utf8");
   const updatedIntro = replaceDemoIntroBlock(existingIntro, publicUrl);
+  const existingIndex = await fsp.readFile(WEBSITE_INDEX_PATH, "utf8");
+  const updatedIndex = existingIndex.replace(
+    /href="https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/edit\?usp=sharing"/g,
+    'href="' + publicUrl + '"'
+  );
 
   if (updated !== existing) {
     await fsp.writeFile(README_PATH, updated, "utf8");
@@ -1023,6 +1029,10 @@ async function updateDemoLinks(publicUrl) {
 
   if (updatedIntro !== existingIntro) {
     await fsp.writeFile(WEBSITE_INTRO_PATH, updatedIntro, "utf8");
+  }
+
+  if (updatedIndex !== existingIndex) {
+    await fsp.writeFile(WEBSITE_INDEX_PATH, updatedIndex, "utf8");
   }
 }
 
