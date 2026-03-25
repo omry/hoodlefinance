@@ -19,12 +19,13 @@ function getClaspCommand(rootDir) {
   return "clasp";
 }
 
-function getClaspAuth() {
-  const authPath = String(process.env[CLASP_RC_PATH_ENV_VAR] || "").trim() || DEFAULT_CLASP_RC_PATH;
+function getClaspAuth(customDefaultPath) {
+  const defaultPath = customDefaultPath || DEFAULT_CLASP_RC_PATH;
+  const authPath = String(process.env[CLASP_RC_PATH_ENV_VAR] || "").trim() || defaultPath;
 
   return {
     authArgs: ["-A", authPath],
-    authSource: authPath === DEFAULT_CLASP_RC_PATH ? DEFAULT_CLASP_RC_PATH : CLASP_RC_PATH_ENV_VAR,
+    authSource: authPath === defaultPath && !customDefaultPath ? DEFAULT_CLASP_RC_PATH : (process.env[CLASP_RC_PATH_ENV_VAR] ? CLASP_RC_PATH_ENV_VAR : authPath),
   };
 }
 

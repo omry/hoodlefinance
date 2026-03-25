@@ -18,9 +18,9 @@ On a fresh Ubuntu or WSL install, the most likely missing pieces for ordinary de
 - a supported `node` / `npm` toolchain, installed through `nvm`
 - `python3` if you want to run the reporting scripts under `tools/`
 
-Normal feature work does not require Google OAuth credentials or `clasp` authentication. Those are only needed for demo-sheet maintenance flows.
+Normal feature work does not require Google OAuth credentials or `clasp` authentication. Those are only needed if you want to sync a personal staging demo sheet, or for maintainer deployment flows.
 
-Maintainer-only Google flows always use the repo-local ignored `clasp` auth file at `.clasp.local/.clasprc.json`. That keeps project-specific `clasp` access separate from a contributor's normal global `~/.clasprc.json`.
+Maintainer-only Google flows (like the official Add-on deployment or public `--live-demo` syncs) always use the repo-local ignored `clasp` auth file at `.clasp.local/.clasprc.json`. That safely keeps official production credentials completely separate from the normal global `~/.clasprc.json` you use for your staging demo.
 
 To confirm which repo-local maintainer account those tools will use:
 
@@ -168,16 +168,24 @@ npm run demo:sync -- --live-demo
 
 The production public demo should normally be synced automatically by the release workflow after a reviewed release PR is merged. For local maintainer use, `--live-demo --dry-run` is mainly a last-minute check that you are pointed at the real public sheet. Run a local `--live-demo` sync only when you are making a demo-only fix that should go live outside the normal release flow.
 
-Before the live sync will work, set up:
+Before a staging sync will work, you need to set up your personal Google Cloud credentials. We isolate the staging demo completely to your own account so it doesn't collide with the official production Add-on. 
 
-- Google OAuth desktop-app credentials from the dedicated `HoodleFinance Demo Sheets` Google Cloud project at `.demo-sheet.local/oauth-client.json`
-- the repo-pinned `clasp` binary installed by `npm install` and authenticated:
+Set up the following:
 
-```sh
-npm exec -- clasp -A .clasp.local/.clasprc.json login
-```
+1. **OAuth Client for Sheets API**: 
+   - Go to Google Cloud Console and create a new project (e.g. `HoodleFinance Demo Staging`).
+   - Enable the **Google Sheets API**, **Google Drive API**, and **Apps Script API**.
+   - Generate an OAuth 2.0 Client ID (Application type: "Desktop app").
+   - Download the JSON file and save it as `.demo-sheet.local/oauth-client.json` (this is ignored by `git`).
+2. **Clasp Authentication**: 
+   - Ensure you are logged into `clasp` with the same Google Account via your default home directory credentials:
+   ```sh
+   npm exec -- clasp login
+   ```
 
-If the localhost callback flow does not work in your environment, retry with `--no-localhost`.
+*(Note: The official `live-demo` and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets).*
+
+If the localhost callback flow does not work in your environment, retry the sync with `--no-localhost`.
 
 The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets a staging sheet recorded in the ignored local override file [`docs/demo-sheet/demo-sheet-staging.json`](./docs/demo-sheet/demo-sheet-staging.json). That keeps iterative testing away from the public demo without pretending the staging target is repo-tracked. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
 

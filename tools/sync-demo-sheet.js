@@ -3,6 +3,7 @@
 
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
+const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const {
@@ -63,17 +64,31 @@ const DEFAULT_ERROR_TEXT_COLOR = {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const config = loadDemoSheetConfig(options.liveDemo);
+  const claspAuth = getClaspAuth(options.liveDemo ? undefined : path.join(os.homedir(), ".clasprc.json"));
+  let claspUser = "";
+
+  if (!options.skipClasp) {
+    try {
+      const output = await runCommand(getClaspCommand(ROOT_DIR), claspAuth.authArgs.concat(["show-authorized-user"]));
+      const match = String(output.stdout || "").match(/([^ ]+@[^ ]+\.[^ \r\n]+)/);
+      if (match) {
+        claspUser = match[1];
+      }
+    } catch (error) {
+      // Ignore if not logged in; push will fail distinctly anyway
+    }
+  }
 
   validateConfig(config);
   await ensureConfiguredTabFilesExist(config);
 
   if (options.dryRun) {
-    printSummary(config, options, "Dry run completed. No network or clasp operations were performed.");
+    printSummary(config, options, "Dry run completed. No network or clasp operations were performed.", claspAuth.authSource, claspUser);
     return;
   }
 
   const accessToken = await ensureAccessToken();
-  const syncedConfig = await syncDemoSheet(accessToken, config, options);
+  const syncedConfig = await syncDemoSheet(accessToken, config, options, claspAuth);
 
   await persistRuntimeDemoConfig(syncedConfig, options.liveDemo);
 
@@ -81,7 +96,7 @@ async function main() {
     await updateDemoLinks(syncedConfig.publicUrl || "");
   }
   
-  printSummary(syncedConfig, options, "Demo sheet sync completed.");
+  printSummary(syncedConfig, options, "Demo sheet sync completed.", claspAuth.authSource, claspUser);
 }
 
 function parseArgs(argv) {
@@ -128,6 +143,9 @@ function loadDemoSheetConfig(isLiveDemo) {
   }
   
   const stagingConfig = readOptionalJsonSync(STAGING_CONFIG_PATH) || {};
+  const osUsername = String(process.env.USER || process.env.USERNAME || os.userInfo().username || "Dev");
+  const stagingTitle = stagingConfig.title || baseConfig.title + " (Staging - " + osUsername + ")";
+  const scriptTitle = (stagingConfig.script && stagingConfig.script.title) || (baseConfig.script && baseConfig.script.title) + " (Staging - " + osUsername + ")";
   
   // Merge staging overrides onto base config
   return Object.assign({}, baseConfig, stagingConfig, {
@@ -138,10 +156,10 @@ function loadDemoSheetConfig(isLiveDemo) {
       typeof stagingConfig.sharePublicReadOnly === "boolean"
         ? stagingConfig.sharePublicReadOnly
         : baseConfig.sharePublicReadOnly === true,
-    title: stagingConfig.title || baseConfig.title + " (Staging)",
+    title: stagingTitle,
     script: Object.assign({}, baseConfig.script, stagingConfig.script, {
       scriptId: (stagingConfig.script && stagingConfig.script.scriptId) || "",
-      title: (stagingConfig.script && stagingConfig.script.title) || (baseConfig.script && baseConfig.script.title) + " (Staging)"
+      title: scriptTitle
     })
   });
 }
@@ -158,7 +176,7 @@ async function ensureConfiguredTabFilesExist(config) {
   }
 }
 
-async function syncDemoSheet(accessToken, inputConfig, options) {
+async function syncDemoSheet(accessToken, inputConfig, options, claspAuth) {
   const config = JSON.parse(JSON.stringify(inputConfig));
   let sheetMap;
 
@@ -169,14 +187,14 @@ async function syncDemoSheet(accessToken, inputConfig, options) {
   await writeTabs(accessToken, config);
   await applyTabFormatting(accessToken, config, sheetMap);
 
+  await ensureBoundScriptProject(accessToken, config, options);
+
   if (config.sharePublicReadOnly && !options.skipSharing) {
     await ensurePublicReadPermission(accessToken, config.spreadsheetId);
   }
 
-  await ensureBoundScriptProject(accessToken, config, options);
-
   if (!options.skipClasp) {
-    await syncBoundScriptWithClasp(config, options);
+    await syncBoundScriptWithClasp(config, options, claspAuth);
   }
 
   config.publicUrl = buildSpreadsheetUrl(config.spreadsheetId);
@@ -835,10 +853,9 @@ async function ensureBoundScriptProject(accessToken, config, options) {
   await persistRuntimeDemoConfig(config, options && options.liveDemo);
 }
 
-async function syncBoundScriptWithClasp(config, options) {
+async function syncBoundScriptWithClasp(config, options, claspAuth) {
   let source = await fsp.readFile(SCRIPT_SOURCE_PATH, "utf8");
   const claspCommand = getClaspCommand(ROOT_DIR);
-  const claspAuth = getClaspAuth();
   const claspProjectPath = path.join(CLASP_WORKDIR, ".clasp.json");
 
   if (!options.liveDemo) {
@@ -1117,11 +1134,17 @@ function escapeRegex(text) {
   return String(text || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function printSummary(config, options, message) {
+function printSummary(config, options, message, claspAuthSource, claspUser) {
   process.stdout.write(message + "\n");
   process.stdout.write("Spreadsheet ID: " + (config.spreadsheetId || "<not created yet>") + "\n");
   process.stdout.write("Public URL: " + (config.publicUrl || "<not created yet>") + "\n");
   process.stdout.write("Script ID: " + (config.script && config.script.scriptId ? config.script.scriptId : "<not created yet>") + "\n");
+  if (claspAuthSource) {
+    process.stdout.write("Clasp credentials: " + claspAuthSource + "\n");
+    if (claspUser) {
+      process.stdout.write("Google account: " + claspUser + "\n");
+    }
+  }
   process.stdout.write("Target: " + (options.liveDemo ? "live-demo" : "staging") + "\n");
   process.stdout.write(
     "Mode: " +
