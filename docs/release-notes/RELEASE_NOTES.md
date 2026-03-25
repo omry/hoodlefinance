@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.9.6 - 2026-03-25
+
+### Changed
+
+- Decoupled `clasp` credential routing so that staging sheets default to the developer's personal OAuth client (`~/.clasprc.json`), safely isolating contributor sandbox environments from the official live demo and add-on deployments.
+
 ## v0.9.5 - 2026-03-25
 
 ### Changed
