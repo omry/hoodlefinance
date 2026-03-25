@@ -246,7 +246,7 @@ async function deployAddon(options, overrides) {
   const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
   const runner = normalizedOverrides.runCommand || runCommand;
   const claspCommand = normalizedOverrides.claspCommand || getClaspCommand(rootDir);
-  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth();
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(LOCAL_DIR, ".clasprc.json"));
   const layout = normalizedOverrides.layout || loadLayout(options.layoutPath, { rootDir: rootDir });
   const target = normalizedOverrides.target || loadTargetConfig(options.targetConfigPath);
   const versionDescription = options.createVersion

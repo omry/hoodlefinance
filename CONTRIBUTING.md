@@ -176,7 +176,7 @@ Set up the following:
    - Go to Google Cloud Console and create a new project (e.g. `HoodleFinance Demo Staging`).
    - Enable the **Google Sheets API**, **Google Drive API**, and **Apps Script API**.
    - Generate an OAuth 2.0 Client ID (Application type: "Desktop app").
-   - Download the JSON file and save it as `.demo-sheet.local/oauth-client.json` (this is ignored by `git`).
+   - Download the JSON file and save it as `.demo-sheet.local/staging/oauth-client.json` (this is ignored by `git`).
 2. **Clasp Authentication**: 
    - Ensure you are logged into `clasp` with the same Google Account via your default home directory credentials:
    ```sh

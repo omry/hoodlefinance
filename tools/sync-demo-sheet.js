@@ -37,8 +37,6 @@ const README_PATH = path.join(ROOT_DIR, "README.md");
 const WEBSITE_INTRO_PATH = path.join(ROOT_DIR, "website", "docs", "intro.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
-const OAUTH_CLIENT_PATH = path.join(LOCAL_DIR, "oauth-client.json");
-const OAUTH_TOKEN_PATH = path.join(LOCAL_DIR, "oauth-token.json");
 const OAUTH_CLIENT_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_CLIENT_PATH";
 const OAUTH_TOKEN_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_TOKEN_PATH";
 const OAUTH_TOKEN_READ_ONLY_ENV_VAR = "HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY";
@@ -54,6 +52,7 @@ const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/script.projects",
+  "https://www.googleapis.com/auth/userinfo.email",
 ];
 const DEFAULT_ERROR_TEXT_COLOR = {
   red: 0.8,
@@ -64,7 +63,7 @@ const DEFAULT_ERROR_TEXT_COLOR = {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const config = loadDemoSheetConfig(options.liveDemo);
-  const claspAuth = getClaspAuth(options.liveDemo ? undefined : path.join(os.homedir(), ".clasprc.json"));
+  const claspAuth = getClaspAuth(options.liveDemo ? path.join(LOCAL_DIR, "live-demo", ".clasprc.json") : path.join(os.homedir(), ".clasprc.json"));
   let claspUser = "";
 
   if (!options.skipClasp) {
@@ -87,7 +86,8 @@ async function main() {
     return;
   }
 
-  const accessToken = await ensureAccessToken();
+  const accessToken = await ensureAccessToken(options.liveDemo);
+  await printOAuthTokenInfo(accessToken, options.liveDemo);
   const syncedConfig = await syncDemoSheet(accessToken, config, options, claspAuth);
 
   await persistRuntimeDemoConfig(syncedConfig, options.liveDemo);
@@ -894,16 +894,38 @@ async function syncBoundScriptWithClasp(config, options, claspAuth) {
 }
 
 
-async function ensureAccessToken() {
+async function ensureAccessToken(isLiveDemo) {
   return ensureAccessTokenWithDeps({
     nonInteractive: process.env.CI === "true" || process.env.HOODLEFINANCE_NON_INTERACTIVE === "1",
-    oauthClientPath: getDemoOauthClientPath(),
-    oauthTokenPath: getDemoOauthTokenPath(),
+    oauthClientPath: getDemoOauthClientPath(isLiveDemo),
+    oauthTokenPath: getDemoOauthTokenPath(isLiveDemo),
     readJsonSync: readJsonSync,
     readOptionalJsonSync: readOptionalJsonSync,
     saveJson: saveDemoOauthTokenJson,
     scopes: GOOGLE_SCOPES,
   });
+}
+
+async function printOAuthTokenInfo(accessToken, isLiveDemo) {
+  const clientPath = getDemoOauthClientPath(isLiveDemo);
+  const tokenPath = getDemoOauthTokenPath(isLiveDemo);
+  process.stdout.write("--- OAuth Credentials Context ---\n");
+  process.stdout.write("OAuth Client config: " + clientPath + "\n");
+  process.stdout.write("OAuth Token cache: " + tokenPath + "\n");
+  process.stdout.write("Target Demo Mode: " + (isLiveDemo ? "LIVE Public Demo" : "Local Staging") + "\n");
+
+  try {
+    const res = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + accessToken);
+    const info = await res.json();
+    if (info.email) {
+      process.stdout.write("OAuth Token Identity: " + info.email + "\n");
+    } else {
+      process.stdout.write("OAuth Token Identity: (Email unknown - scope not previously requested. Delete " + tokenPath + " to re-prompt for email)\n");
+    }
+  } catch (err) {
+    process.stdout.write("OAuth Token Identity: (Failed to fetch tokeninfo)\n");
+  }
+  process.stdout.write("---------------------------------\n\n");
 }
 
 function parseTsv(text) {
@@ -1040,12 +1062,12 @@ async function saveJson(filePath, value) {
   await fsp.writeFile(filePath, JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
-function getDemoOauthClientPath() {
-  return String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim() || OAUTH_CLIENT_PATH;
+function getDemoOauthClientPath(isLiveDemo) {
+  return String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim() || path.join(LOCAL_DIR, isLiveDemo ? "live-demo" : "staging", "oauth-client.json");
 }
 
-function getDemoOauthTokenPath() {
-  return String(process.env[OAUTH_TOKEN_PATH_ENV_VAR] || "").trim() || OAUTH_TOKEN_PATH;
+function getDemoOauthTokenPath(isLiveDemo) {
+  return String(process.env[OAUTH_TOKEN_PATH_ENV_VAR] || "").trim() || path.join(LOCAL_DIR, isLiveDemo ? "live-demo" : "staging", "oauth-token.json");
 }
 
 async function saveDemoOauthTokenJson(filePath, value) {
@@ -1158,8 +1180,6 @@ function printSummary(config, options, message, claspAuthSource, claspUser) {
 module.exports = {
   CONFIG_PATH,
   STAGING_CONFIG_PATH,
-  OAUTH_CLIENT_PATH,
-  OAUTH_TOKEN_PATH,
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
   buildEnsureTabsRequests,

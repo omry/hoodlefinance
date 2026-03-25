@@ -1,0 +1,1 @@
+- Decoupled `clasp` credential routing so that staging sheets default to the developer's personal OAuth client (`~/.clasprc.json`), safely isolating contributor sandbox environments from the official live demo and add-on deployments.

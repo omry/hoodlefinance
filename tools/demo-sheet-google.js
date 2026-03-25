@@ -90,7 +90,10 @@ async function authorizeInteractively(client, deps) {
       }
 
       clearTimeout(timeout);
-      response.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      response.writeHead(200, { 
+        "Content-Type": "text/plain; charset=utf-8",
+        "Connection": "close"
+      });
       response.end("Authorization received. You can close this tab.\n");
       resolve(code);
     });
@@ -131,6 +134,9 @@ async function authorizeInteractively(client, deps) {
     await deps.saveJson(deps.oauthTokenPath, token);
     return token;
   } finally {
+    if (server.closeAllConnections) {
+      server.closeAllConnections();
+    }
     await new Promise(function (resolve) {
       server.close(resolve);
     });

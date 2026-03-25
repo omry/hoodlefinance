@@ -170,8 +170,8 @@ test("deployAddon push flow runs clasp push and clasp version", async function (
     assert.equal(result.versionNumber, "17");
     assert.deepEqual(calls, [
       ["clasp", "--version"],
-      ["clasp", "-A", path.join(path.resolve(__dirname, ".."), ".clasp.local", ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "push", "--force"],
-      ["clasp", "-A", path.join(path.resolve(__dirname, ".."), ".clasp.local", ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "version", "Release 0.9.3"],
+      ["clasp", "-A", path.join(path.resolve(__dirname, ".."), ".addon-deploy.local", ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "push", "--force"],
+      ["clasp", "-A", path.join(path.resolve(__dirname, ".."), ".addon-deploy.local", ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "version", "Release 0.9.3"],
     ]);
   } finally {
     process.chdir(previousCwd);
