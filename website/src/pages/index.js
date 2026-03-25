@@ -29,7 +29,7 @@ function HomepageHeader() {
             </Link>
             <Link
               className="button button--secondary button--lg"
-              href="https://docs.google.com/spreadsheets/d/1734VkJOGy621MGf431DCMPtB_Pp0235LIKMSG9YmRY4/edit?usp=sharing">
+              href="https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing">
               View demo sheet
             </Link>
           </div>
