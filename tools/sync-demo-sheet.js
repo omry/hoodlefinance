@@ -66,7 +66,7 @@ async function main() {
   const claspAuth = getClaspAuth(options.liveDemo ? path.join(LOCAL_DIR, "live-demo", ".clasprc.json") : path.join(os.homedir(), ".clasprc.json"));
   let claspUser = "";
 
-  if (!options.skipClasp) {
+  if (!options.skipClasp && !process.env.HOODLEFINANCE_NON_INTERACTIVE) {
     try {
       const output = await runCommand(getClaspCommand(ROOT_DIR), claspAuth.authArgs.concat(["show-authorized-user"]));
       const match = String(output.stdout || "").match(/([^ ]+@[^ ]+\.[^ \r\n]+)/);
