@@ -1,0 +1,1 @@
+- Validate GitHub Actions production deployment pipeline
