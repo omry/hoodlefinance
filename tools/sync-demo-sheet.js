@@ -176,7 +176,7 @@ async function syncDemoSheet(accessToken, inputConfig, options) {
   await ensureBoundScriptProject(accessToken, config, options);
 
   if (!options.skipClasp) {
-    await syncBoundScriptWithClasp(config);
+    await syncBoundScriptWithClasp(config, options);
   }
 
   config.publicUrl = buildSpreadsheetUrl(config.spreadsheetId);
@@ -835,11 +835,25 @@ async function ensureBoundScriptProject(accessToken, config, options) {
   await persistRuntimeDemoConfig(config, options && options.liveDemo);
 }
 
-async function syncBoundScriptWithClasp(config) {
-  const source = await fsp.readFile(SCRIPT_SOURCE_PATH, "utf8");
+async function syncBoundScriptWithClasp(config, options) {
+  let source = await fsp.readFile(SCRIPT_SOURCE_PATH, "utf8");
   const claspCommand = getClaspCommand(ROOT_DIR);
   const claspAuth = getClaspAuth();
   const claspProjectPath = path.join(CLASP_WORKDIR, ".clasp.json");
+
+  if (!options.liveDemo) {
+    const d = new Date();
+    const offset = -d.getTimezoneOffset();
+    const pad = function (n) { return String(n).padStart(2, "0"); };
+    const localIso = new Date(d.getTime() + offset * 60000).toISOString();
+    const timestamp = localIso.replace("T", "_").replace(/:/g, "-").slice(0, 19) +
+      (offset >= 0 ? "+" : "-") + pad(Math.floor(Math.abs(offset) / 60)) + pad(Math.abs(offset) % 60);
+
+    source = source.replace(
+      /const HOODLEFINANCE_VERSION_ = "([^"]+)";/,
+      "const HOODLEFINANCE_VERSION_ = \"$1-dev-" + timestamp + "\";"
+    );
+  }
 
   await ensureCommandExists(claspCommand);
   await fsp.mkdir(CLASP_WORKDIR, { recursive: true });
@@ -861,6 +875,7 @@ async function syncBoundScriptWithClasp(config) {
     cwd: CLASP_WORKDIR,
   });
 }
+
 
 async function ensureAccessToken() {
   return ensureAccessTokenWithDeps({
