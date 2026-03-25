@@ -770,11 +770,6 @@ function hoodlefinanceGetUi_() {
   return SpreadsheetApp.getUi();
 }
 
-function hoodlefinanceCanCreateAddonMenu_() {
-  const ui = hoodlefinanceGetUi_();
-
-  return !!(ui && ui.createAddonMenu);
-}
 
 function hoodlefinanceGetCardService_() {
   return typeof CardService === "undefined" || !CardService ? null : CardService;
@@ -818,10 +813,6 @@ function hoodlefinanceIsInstalledAsAddOn_() {
 
 function hoodlefinanceInferAddOnContext_(e) {
   if (hoodlefinanceMatchesScriptEnum_(e && e.authMode, "AuthMode", "NONE")) {
-    return hoodlefinanceCanCreateAddonMenu_();
-  }
-
-  if (hoodlefinanceCanCreateAddonMenu_()) {
     return true;
   }
 
