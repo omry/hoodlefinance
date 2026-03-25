@@ -990,48 +990,48 @@ test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
 
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("LON:ISJP"), "ISJP.L");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("ETR:ZPRX"), "ZPRX.DE");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("NEO:ZTL"), "ZTL.NE");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("SGX:D05"), "D05.SI");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:POLI"), "POLI.TA");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:KSM.F59"), "KSM.F59.TA");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TLV:KSMF59"), "KSM.F59.TA");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("TASE:KSMF59"), "KSM.F59.TA");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("NASDAQ:GOOG"), "GOOG");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDPHP"), "USDPHP=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("BTCUSD"), "BTCUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:ETHUSD"), "ETHUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("GBpUSD"), "GBPUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDILA"), "USDILS=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:USDUSD"), "USDUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("DOGEUSD"), "DOGEUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDUSDT"), "USDUSDT=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDCUSDT"), "USDCUSDT=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("CURRENCY:USDT.USD"), "USDTUSD=X");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("FOOUSD"), "FOOUSD");
+  assert.equal(ctx.hf_normalizeTicker_("LON:ISJP"), "ISJP.L");
+  assert.equal(ctx.hf_normalizeTicker_("ETR:ZPRX"), "ZPRX.DE");
+  assert.equal(ctx.hf_normalizeTicker_("NEO:ZTL"), "ZTL.NE");
+  assert.equal(ctx.hf_normalizeTicker_("SGX:D05"), "D05.SI");
+  assert.equal(ctx.hf_normalizeTicker_("TLV:POLI"), "POLI.TA");
+  assert.equal(ctx.hf_normalizeTicker_("TLV:KSM.F59"), "KSM.F59.TA");
+  assert.equal(ctx.hf_normalizeTicker_("TLV:KSMF59"), "KSM.F59.TA");
+  assert.equal(ctx.hf_normalizeTicker_("TASE:KSMF59"), "KSM.F59.TA");
+  assert.equal(ctx.hf_normalizeTicker_("NASDAQ:GOOG"), "GOOG");
+  assert.equal(ctx.hf_normalizeTicker_("USDPHP"), "USDPHP=X");
+  assert.equal(ctx.hf_normalizeTicker_("BTCUSD"), "BTCUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("CURRENCY:ETHUSD"), "ETHUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("GBpUSD"), "GBPUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("USDILA"), "USDILS=X");
+  assert.equal(ctx.hf_normalizeTicker_("CURRENCY:EURUSD"), "EURUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("CURRENCY:USDUSD"), "USDUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("DOGEUSD"), "DOGEUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("USDUSDT"), "USDUSDT=X");
+  assert.equal(ctx.hf_normalizeTicker_("USDCUSDT"), "USDCUSDT=X");
+  assert.equal(ctx.hf_normalizeTicker_("CURRENCY:USDT.USD"), "USDTUSD=X");
+  assert.equal(ctx.hf_normalizeTicker_("FOOUSD"), "FOOUSD");
 });
 
 test("ambiguous bare 4-character FX candidates do not auto-parse as currency pairs", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
 
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("USDTUSD"), "USDTUSD");
+  assert.equal(ctx.hf_normalizeTicker_("USDTUSD"), "USDTUSD");
 });
 
 test("source overrides are parsed separately from ticker normalization", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
 
-  assert.equal(ctx.hoodlefinanceExtractTickerSourceOverride_("BTCUSD@YAHOO"), "YAHOO");
-  assert.equal(ctx.hoodlefinanceExtractTickerSourceOverride_("GOOG@IBKR"), "IBKR");
-  assert.equal(ctx.hoodlefinanceExtractTickerSourceOverride_("BTCUSD@MYSTERY"), "");
-  assert.equal(ctx.hoodlefinanceExtractTickerInfoMode_("BTCUSD@?"), "source-name");
-  assert.equal(ctx.hoodlefinanceExtractTickerInfoMode_("BTCUSD@"), "source-list");
-  assert.equal(ctx.hoodlefinanceExtractTickerInfoMode_("BTCUSD@MYSTERY"), "source-list");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("BTCUSD@YAHOO"), "BTCUSD=X");
-  assert.equal(ctx.hoodlefinanceStripTickerSourceOverride_("ISIN:US02079K1079@YAHOO"), "ISIN:US02079K1079");
+  assert.equal(ctx.hf_extractTickerSourceOverride_("BTCUSD@YAHOO"), "YAHOO");
+  assert.equal(ctx.hf_extractTickerSourceOverride_("GOOG@IBKR"), "IBKR");
+  assert.equal(ctx.hf_extractTickerSourceOverride_("BTCUSD@MYSTERY"), "");
+  assert.equal(ctx.hf_extractTickerInfoMode_("BTCUSD@?"), "source-name");
+  assert.equal(ctx.hf_extractTickerInfoMode_("BTCUSD@"), "source-list");
+  assert.equal(ctx.hf_extractTickerInfoMode_("BTCUSD@MYSTERY"), "source-list");
+  assert.equal(ctx.hf_normalizeTicker_("BTCUSD@YAHOO"), "BTCUSD=X");
+  assert.equal(ctx.hf_stripTickerSourceOverride_("ISIN:US02079K1079@YAHOO"), "ISIN:US02079K1079");
 });
 
 test("source introspection suffixes return the planned route or the supported source list", () => {
@@ -1082,8 +1082,8 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
 test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSMF59.TA"), "KSM.F59.TA");
-  assert.equal(ctx.hoodlefinanceNormalizeTicker_("KSM.F59.TA"), "KSM.F59.TA");
+  assert.equal(ctx.hf_normalizeTicker_("KSMF59.TA"), "KSM.F59.TA");
+  assert.equal(ctx.hf_normalizeTicker_("KSM.F59.TA"), "KSM.F59.TA");
 });
 
 test("resolves Philippine ISIN input directly to a mapped PSE ticker without Yahoo search", () => {
@@ -1100,7 +1100,7 @@ test("resolves Philippine ISIN input directly to a mapped PSE ticker without Yah
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
+  assert.equal(ctx.hf_resolveIsin_("PHY077751022"), "PSE:BDO");
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"]);
   assert.equal(
     ctx.__scriptPropertiesStore.get("hoodlefinance.pseIsinMap") != null,
@@ -1123,7 +1123,7 @@ test("reuses the cached GitHub PSE ISIN map without downloading it again while f
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
+  assert.equal(ctx.hf_resolveIsin_("PHY077751022"), "PSE:BDO");
 });
 
 test("redownloads the GitHub PSE ISIN map after the 24-hour refresh window expires", () => {
@@ -1148,7 +1148,7 @@ test("redownloads the GitHub PSE ISIN map after the 24-hour refresh window expir
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.hoodlefinanceResolveIsin_("PHY077751022"), "PSE:BDO");
+  assert.equal(ctx.hf_resolveIsin_("PHY077751022"), "PSE:BDO");
   assert.deepEqual(seenUrls, ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"]);
 });
 
@@ -1166,8 +1166,8 @@ test("downloads and caches currency code data from GitHub", () => {
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("USD").canonicalCode, "USD");
-  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("GBp").canonicalCode, "GBP");
+  assert.equal(ctx.hf_resolveCurrencyUnit_("USD").canonicalCode, "USD");
+  assert.equal(ctx.hf_resolveCurrencyUnit_("GBp").canonicalCode, "GBP");
   assert.deepEqual(
     seenUrls,
     ["https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json"]
@@ -1194,8 +1194,8 @@ test("reuses the cached GitHub currency code data without downloading it again w
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("USD").canonicalCode, "USD");
-  assert.equal(ctx.hoodlefinanceResolveCurrencyUnit_("ILA").canonicalCode, "ILS");
+  assert.equal(ctx.hf_resolveCurrencyUnit_("USD").canonicalCode, "USD");
+  assert.equal(ctx.hf_resolveCurrencyUnit_("ILA").canonicalCode, "ILS");
 });
 
 test("same-currency FX pairs short-circuit to 1 without a fetch", () => {
@@ -1581,8 +1581,8 @@ test("direct Yahoo quote fetches reuse the cached JSON meta payload", () => {
     });
   };
 
-  assert.equal(ctx.hoodlefinanceFetchQuote_("NASDAQ:GOOG").regularMarketPrice, 306.93);
-  assert.equal(ctx.hoodlefinanceFetchQuote_("NASDAQ:GOOG").regularMarketPrice, 306.93);
+  assert.equal(ctx.hf_fetchQuote_("NASDAQ:GOOG").regularMarketPrice, 306.93);
+  assert.equal(ctx.hf_fetchQuote_("NASDAQ:GOOG").regularMarketPrice, 306.93);
   assert.deepEqual(seenUrls, [
     "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
   ]);
@@ -1816,11 +1816,11 @@ test("symbol and exchange google-style outputs fail clearly when no mapping is a
   const ctx = loadHoodlefinance();
 
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ symbol: "MYSTERY" }, "symbol", { tickerInput: "MYSTERY" }),
+    () => ctx.hf_extractAttribute_({ symbol: "MYSTERY" }, "symbol", { tickerInput: "MYSTERY" }),
     /No Google-style symbol is available for this instrument\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ symbol: "MYSTERY" }, "exchange", { tickerInput: "MYSTERY" }),
+    () => ctx.hf_extractAttribute_({ symbol: "MYSTERY" }, "exchange", { tickerInput: "MYSTERY" }),
     /No Google-style exchange is available for this instrument\./
   );
 });
@@ -1829,7 +1829,7 @@ test("unsupported attribute errors list only public attributes", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "yahoo:symbol", { tickerInput: "GOOG" }),
+    () => ctx.hf_extractAttribute_({ symbol: "GOOG" }, "yahoo:symbol", { tickerInput: "GOOG" }),
     (error) => {
       assert.match(
         error.message,
@@ -1843,21 +1843,21 @@ test("unsupported attribute errors list only public attributes", () => {
 test("versioned cache keys are namespaced by the current script version", () => {
   const ctx = loadHoodlefinance();
 
-  ctx.hoodlefinancePutCachedString_("hoodlefinance:test:key", "value", 60);
+  ctx.hf_putCachedString_("hoodlefinance:test:key", "value", 60);
 
   assert.equal(ctx.__scriptCacheStore.has("hoodlefinance:test:key"), false);
   assert.equal(
     ctx.__scriptCacheStore.get("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":test:key"),
     "value"
   );
-  assert.equal(ctx.hoodlefinanceGetCachedString_("hoodlefinance:test:key"), "value");
+  assert.equal(ctx.hf_getCachedString_("hoodlefinance:test:key"), "value");
 });
 
 test("versioned cache key helper rejects already-versioned cache keys", () => {
   const ctx = loadHoodlefinance();
 
   assert.throws(
-    () => ctx.hoodlefinanceVersionCacheKey_("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":test:key"),
+    () => ctx.hf_versionCacheKey_("hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":test:key"),
     /Cache key must be a normalized unversioned "hoodlefinance:" key\./
   );
 });
@@ -2348,16 +2348,16 @@ test("exposes a script version custom function", () => {
 test("compares semantic-style versions correctly", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.3", "0.2.2"), 1);
-  assert.equal(ctx.hoodlefinanceCompareVersions_("0.2.2", "0.2.3"), -1);
-  assert.equal(ctx.hoodlefinanceCompareVersions_("1.0.0", "1.0"), 0);
+  assert.equal(ctx.hf_compareVersions_("0.2.3", "0.2.2"), 1);
+  assert.equal(ctx.hf_compareVersions_("0.2.2", "0.2.3"), -1);
+  assert.equal(ctx.hf_compareVersions_("1.0.0", "1.0"), 0);
 });
 
 test("extracts the published version from raw source text", () => {
   const ctx = loadHoodlefinance();
 
   assert.equal(
-    ctx.hoodlefinanceExtractVersionFromSource_('const HOODLEFINANCE_VERSION_ = "2.3.4";'),
+    ctx.hf_extractVersionFromSource_('const HOODLEFINANCE_VERSION_ = "2.3.4";'),
     "2.3.4"
   );
 });
@@ -2365,10 +2365,10 @@ test("extracts the published version from raw source text", () => {
 test("runs automatic update checks at most once per day", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceShouldRunVersionCheckNow_(0, 1000), true);
-  assert.equal(ctx.hoodlefinanceShouldRunVersionCheckNow_(1000, 1000 + 60 * 60 * 1000), false);
+  assert.equal(ctx.hf_shouldRunVersionCheckNow_(0, 1000), true);
+  assert.equal(ctx.hf_shouldRunVersionCheckNow_(1000, 1000 + 60 * 60 * 1000), false);
   assert.equal(
-    ctx.hoodlefinanceShouldRunVersionCheckNow_(1000, 1000 + 24 * 60 * 60 * 1000),
+    ctx.hf_shouldRunVersionCheckNow_(1000, 1000 + 24 * 60 * 60 * 1000),
     true
   );
 });
@@ -2382,7 +2382,7 @@ test("suppressed automatic checks do not fetch remote versions", () => {
   };
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceRunVersionCheck_({ force: false, interactive: false })),
+    JSON.stringify(ctx.hf_runVersionCheck_({ force: false, interactive: false })),
     JSON.stringify({ status: "suppressed" })
   );
 });
@@ -2462,7 +2462,7 @@ test("manual update checks bypass stale cached latest-version info", () => {
   };
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceFetchLatestVersionInfo_()),
+    JSON.stringify(ctx.hf_fetchLatestVersionInfo_()),
     JSON.stringify({ version: "0.2.0" })
   );
   assert.equal(
@@ -2522,7 +2522,6 @@ test("Editor add-on install builds the add-on menu without the bound-script upda
   assert.equal(ctx.__uiState.addonMenus.length, 1);
   assert.deepEqual(ctx.__uiState.addonMenus[0].items, [
     { functionName: "enable_", label: "Enable", type: "item" },
-    { functionName: "hoodlefinanceShowInstalledVersion", label: "Show installed version", type: "item" },
   ]);
 });
 
@@ -2564,38 +2563,38 @@ test("the Sheets add-on homepage card summarizes the function and links to docs"
 test("maps Yahoo exchange codes to IBKR exchange hints", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("LON:ISJP", "ISJP.L"), "LSEETF");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("ETR:ZPRX", "ZPRX.DE"), "IBIS");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("NASDAQ:GOOG", "GOOG"), "NASDAQ");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("NYSE:IBM", "IBM"), "NYSE");
+  assert.equal(ctx.hf_inferIbkrExchange_("LON:ISJP", "ISJP.L"), "LSEETF");
+  assert.equal(ctx.hf_inferIbkrExchange_("ETR:ZPRX", "ZPRX.DE"), "IBIS");
+  assert.equal(ctx.hf_inferIbkrExchange_("NASDAQ:GOOG", "GOOG"), "NASDAQ");
+  assert.equal(ctx.hf_inferIbkrExchange_("NYSE:IBM", "IBM"), "NYSE");
 });
 
 test("maps Yahoo suffixes to IBKR exchange hints", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("ISJP.L", "ISJP.L"), "LSEETF");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("ZPRV.DE", "ZPRV.DE"), "IBIS");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("IUVL.L", "IUVL.L"), "LSEETF");
+  assert.equal(ctx.hf_inferIbkrExchange_("ISJP.L", "ISJP.L"), "LSEETF");
+  assert.equal(ctx.hf_inferIbkrExchange_("ZPRV.DE", "ZPRV.DE"), "IBIS");
+  assert.equal(ctx.hf_inferIbkrExchange_("IUVL.L", "IUVL.L"), "LSEETF");
 });
 
 test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceInferIsinExchange_({}, { tickerInput: "PSE:BDO" }), "PSE");
-  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ISJP.L" }, { tickerInput: "ISJP.L" }), "LON");
-  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "ZTL.NE" }, { tickerInput: "ZTL.NE" }), "NEO");
-  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "D05.SI" }, { tickerInput: "SGX:D05" }), "SGX");
-  assert.equal(ctx.hoodlefinanceInferIsinExchange_({ symbol: "POLI.TA" }, { tickerInput: "POLI.TA" }), "TLV");
+  assert.equal(ctx.hf_inferIsinExchange_({}, { tickerInput: "PSE:BDO" }), "PSE");
+  assert.equal(ctx.hf_inferIsinExchange_({ symbol: "ISJP.L" }, { tickerInput: "ISJP.L" }), "LON");
+  assert.equal(ctx.hf_inferIsinExchange_({ symbol: "ZTL.NE" }, { tickerInput: "ZTL.NE" }), "NEO");
+  assert.equal(ctx.hf_inferIsinExchange_({ symbol: "D05.SI" }, { tickerInput: "SGX:D05" }), "SGX");
+  assert.equal(ctx.hf_inferIsinExchange_({ symbol: "POLI.TA" }, { tickerInput: "POLI.TA" }), "TLV");
   assert.equal(
-    ctx.hoodlefinanceInferIsinExchange_({ symbol: "GOOG", exchangeName: "NMS" }, { tickerInput: "GOOG" }),
+    ctx.hf_inferIsinExchange_({ symbol: "GOOG", exchangeName: "NMS" }, { tickerInput: "GOOG" }),
     "NASDAQ"
   );
   assert.equal(
-    ctx.hoodlefinanceInferIsinExchange_({ symbol: "RYCEY", exchangeName: "PNK" }, { tickerInput: "OTCMKTS:RYCEY" }),
+    ctx.hf_inferIsinExchange_({ symbol: "RYCEY", exchangeName: "PNK" }, { tickerInput: "OTCMKTS:RYCEY" }),
     "OTCMKTS"
   );
   assert.equal(
-    ctx.hoodlefinanceInferIsinExchange_({ symbol: "AVLV", exchangeName: "PCX" }, { tickerInput: "AVLV" }),
+    ctx.hf_inferIsinExchange_({ symbol: "AVLV", exchangeName: "PCX" }, { tickerInput: "AVLV" }),
     "NYSEARCA"
   );
 });
@@ -2603,15 +2602,15 @@ test("deduces isin exchange from ticker, suffix, and quote metadata", () => {
 test("explicit IBKR exchange codes override Yahoo-derived mapping", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("IBIS:ZPRX", "ZPRX.DE"), "IBIS");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("LSEETF:ISJP", "ISJP.L"), "LSEETF");
+  assert.equal(ctx.hf_inferIbkrExchange_("IBIS:ZPRX", "ZPRX.DE"), "IBIS");
+  assert.equal(ctx.hf_inferIbkrExchange_("LSEETF:ISJP", "ISJP.L"), "LSEETF");
 });
 
 test("unsupported or unmapped exchanges fall back to blank hint", () => {
   const ctx = loadHoodlefinance();
 
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("SHA:600519", "600519.SS"), "");
-  assert.equal(ctx.hoodlefinanceInferIbkrExchange_("UNKNOWN:FOO", "FOO"), "");
+  assert.equal(ctx.hf_inferIbkrExchange_("SHA:600519", "600519.SS"), "");
+  assert.equal(ctx.hf_inferIbkrExchange_("UNKNOWN:FOO", "FOO"), "");
 });
 
 test("unsupported exchange prefixes fail early during ticker normalization", () => {
@@ -2619,7 +2618,7 @@ test("unsupported exchange prefixes fail early during ticker normalization", () 
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceNormalizeTicker_("PDA:BDO");
+      ctx.hf_normalizeTicker_("PDA:BDO");
     },
     /Unsupported exchange prefix "PDA"/
   );
@@ -2633,7 +2632,7 @@ test("extracts IBKR detail URLs and de-duplicates matches", () => {
     '<a href="/cstools/contract_info/index.php?action=Details&amp;conid=456&amp;site=GEN$exchangeIBIS">',
   ].join("\n");
 
-  const entries = ctx.hoodlefinanceExtractIbkrDetailUrls_(html);
+  const entries = ctx.hf_extractIbkrDetailUrls_(html);
 
   assert.equal(entries.length, 2);
   assert.equal(entries[0].url, "https://misc.interactivebrokers.com/cstools/contract_info/index.php?action=Details&conid=123&site=GEN");
@@ -2642,7 +2641,7 @@ test("extracts IBKR detail URLs and de-duplicates matches", () => {
 
 test("extracts IBKR detail URLs from the modern contract search results", () => {
   const ctx = loadHoodlefinance();
-  const entries = ctx.hoodlefinanceExtractIbkrDetailUrls_(IBKR_MODERN_SEARCH_HTML);
+  const entries = ctx.hf_extractIbkrDetailUrls_(IBKR_MODERN_SEARCH_HTML);
 
   assert.equal(entries.length, 2);
   assert.equal(entries[0].url, "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=90581046");
@@ -2659,7 +2658,7 @@ test("sorts IBKR detail entries to prefer the requested exchange", () => {
     { exchangeHint: "", url: "other" },
   ];
 
-  ctx.hoodlefinanceSortIbkrDetailEntries_(entries, "LSEETF");
+  ctx.hf_sortIbkrDetailEntries_(entries, "LSEETF");
 
   assert.deepEqual(
     entries.map((entry) => entry.url),
@@ -2671,7 +2670,7 @@ test("builds preferred and fallback IBKR search URLs", () => {
   const ctx = loadHoodlefinance();
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceBuildIbkrSearchUrls_("ISJP", "EBS")),
+    JSON.stringify(ctx.hf_buildIbkrSearchUrls_("ISJP", "EBS")),
     JSON.stringify([
       "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=ISJP&exchange=EBS",
       "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=ISJP",
@@ -2684,7 +2683,7 @@ test("detects IBKR captcha challenges and reports them explicitly", () => {
   const url = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=GOOG";
 
   assert.equal(
-    ctx.hoodlefinanceExtractIbkrSearchError_(IBKR_CAPTCHA_HTML, "GOOG", url),
+    ctx.hf_extractIbkrSearchError_(IBKR_CAPTCHA_HTML, "GOOG", url),
     'IBKR ISIN lookup is currently blocked by a captcha challenge for "GOOG". URL: ' + url
   );
 
@@ -2736,16 +2735,16 @@ test("money normalization converts GBp prices to GBP", () => {
   const ctx = loadHoodlefinance();
   const quote = { currency: "GBp" };
 
-  assert.equal(ctx.hoodlefinanceNormalizeMoney_(quote, 1234), 12.34);
-  assert.equal(ctx.hoodlefinanceNormalizeCurrency_("GBp"), "GBP");
+  assert.equal(ctx.hf_normalizeMoney_(quote, 1234), 12.34);
+  assert.equal(ctx.hf_normalizeCurrency_("GBp"), "GBP");
 });
 
 test("money normalization converts ILA prices to ILS", () => {
   const ctx = loadHoodlefinance();
   const quote = { currency: "ILA" };
 
-  assert.equal(ctx.hoodlefinanceNormalizeMoney_(quote, 12345), 123.45);
-  assert.equal(ctx.hoodlefinanceNormalizeCurrency_("ILA"), "ILS");
+  assert.equal(ctx.hf_normalizeMoney_(quote, 12345), 123.45);
+  assert.equal(ctx.hf_normalizeCurrency_("ILA"), "ILS");
 });
 
 test("supported quote attributes support output-currency conversion", () => {
@@ -2783,7 +2782,7 @@ test("supported quote attributes support output-currency conversion", () => {
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.hoodlefinanceExtractAttribute_(quote, "price@EUR", {}), 182);
+  assert.equal(ctx.hf_extractAttribute_(quote, "price@EUR", {}), 182);
   assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/USD-EUR"]);
 });
 
@@ -2796,8 +2795,8 @@ test("output-currency conversion reuses money normalization and unit aliases", (
     regularMarketPrice: 1234,
   };
 
-  assert.equal(ctx.hoodlefinanceExtractAttribute_(quote, "price@GBP", {}), 12.34);
-  assert.equal(ctx.hoodlefinanceExtractAttribute_(quote, "price@GBp", {}), 1234);
+  assert.equal(ctx.hf_extractAttribute_(quote, "price@GBP", {}), 12.34);
+  assert.equal(ctx.hf_extractAttribute_(quote, "price@GBp", {}), 1234);
 });
 
 test("output-currency conversion rejects non-money attributes and FX identifiers", () => {
@@ -2805,15 +2804,15 @@ test("output-currency conversion rejects non-money attributes and FX identifiers
   primeCurrencyCodeData(ctx);
 
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD" }, "currency@USD", {}),
+    () => ctx.hf_extractAttribute_({ currency: "USD" }, "currency@USD", {}),
     /Attribute "currency" does not support output-currency conversion\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ longName: "Alphabet" }, "name@USD", {}),
+    () => ctx.hf_extractAttribute_({ longName: "Alphabet" }, "name@USD", {}),
     /Attribute "name" does not support output-currency conversion\. Supported attribute is: price\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_(
+    () => ctx.hf_extractAttribute_(
       { currency: "USD", regularMarketPreviousClose: 9, regularMarketPrice: 10 },
       "close@USD",
       {}
@@ -2821,7 +2820,7 @@ test("output-currency conversion rejects non-money attributes and FX identifiers
     /Attribute "close" does not support output-currency conversion\. Supported attribute is: price\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_(
+    () => ctx.hf_extractAttribute_(
       { currency: "USD", regularMarketDayHigh: 11, regularMarketPrice: 10 },
       "high@USD",
       {}
@@ -2829,7 +2828,7 @@ test("output-currency conversion rejects non-money attributes and FX identifiers
     /Attribute "high" does not support output-currency conversion\. Supported attribute is: price\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_(
+    () => ctx.hf_extractAttribute_(
       { currency: "USD", regularMarketDayLow: 8, regularMarketPrice: 10 },
       "low@USD",
       {}
@@ -2837,7 +2836,7 @@ test("output-currency conversion rejects non-money attributes and FX identifiers
     /Attribute "low" does not support output-currency conversion\. Supported attribute is: price\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_(
+    () => ctx.hf_extractAttribute_(
       { currency: "USD", regularMarketPreviousClose: 9, regularMarketPrice: 10 },
       "change@USD",
       {}
@@ -2845,14 +2844,14 @@ test("output-currency conversion rejects non-money attributes and FX identifiers
     /Attribute "change" does not support output-currency conversion\. Supported attribute is: price\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_(
+    () => ctx.hf_extractAttribute_(
       {
         currency: "USD",
         regularMarketPrice: 1.0812,
       },
       "price@USD",
       {
-        plan: { routeState: { fxPair: ctx.hoodlefinanceParseFxTicker_("EURUSD") } },
+        plan: { routeState: { fxPair: ctx.hf_parseFxTicker_("EURUSD") } },
         tickerInput: "EURUSD",
       }
     ),
@@ -2865,15 +2864,15 @@ test("output-currency conversion rejects malformed or unsupported converted attr
   primeCurrencyCodeData(ctx);
 
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@", {}),
+    () => ctx.hf_extractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@", {}),
     /Converted attributes must look like price@USD\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@@USD", {}),
+    () => ctx.hf_extractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@@USD", {}),
     /Converted attributes must look like price@USD\./
   );
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@FOO", {}),
+    () => ctx.hf_extractAttribute_({ currency: "USD", regularMarketPrice: 10 }, "price@FOO", {}),
     /Output currency "FOO" is not supported\./
   );
 });
@@ -2883,7 +2882,7 @@ test("output-currency conversion fails clearly when no quote currency is availab
   primeCurrencyCodeData(ctx);
 
   assert.throws(
-    () => ctx.hoodlefinanceExtractAttribute_({ regularMarketPrice: 10 }, "price@USD", {}),
+    () => ctx.hf_extractAttribute_({ regularMarketPrice: 10 }, "price@USD", {}),
     /No quote currency is available for output-currency conversion on "price@USD"\./
   );
 });
@@ -3001,12 +3000,12 @@ test("output-currency conversion caches repeated unit resolutions and FX rates w
     USD: { assetClass: "currency", canonicalCode: "USD", displayCode: "USD", factor: 1 },
   };
 
-  ctx.hoodlefinanceResolveCurrencyUnit_ = function (code) {
+  ctx.hf_resolveCurrencyUnit_ = function (code) {
     const key = String(code || "").trim();
     seenCodes.push(key);
     return unitsByCode[key] || null;
   };
-  ctx.hoodlefinanceFetchQuote_ = function (ticker) {
+  ctx.hf_fetchQuote_ = function (ticker) {
     seenConversionTickers.push(ticker);
     return {
       currency: "EUR",
@@ -3054,12 +3053,12 @@ test("output-currency conversion still resolves distinct source currencies separ
     USD: { assetClass: "currency", canonicalCode: "USD", displayCode: "USD", factor: 1 },
   };
 
-  ctx.hoodlefinanceResolveCurrencyUnit_ = function (code) {
+  ctx.hf_resolveCurrencyUnit_ = function (code) {
     const key = String(code || "").trim();
     seenCodes.push(key);
     return unitsByCode[key] || null;
   };
-  ctx.hoodlefinanceFetchQuote_ = function (ticker) {
+  ctx.hf_fetchQuote_ = function (ticker) {
     seenConversionTickers.push(ticker);
 
     if (ticker === "CURRENCY:USDGBP") {
@@ -3156,12 +3155,12 @@ test("attribute extraction uses context-aware IBKR source override for isin", ()
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
-  ctx.hoodlefinanceResolveIbkrIsin_ = function (quote, context) {
+  ctx.hf_resolveIbkrIsin_ = function (quote, context) {
     capturedArgs = { quote, context };
     return "TESTISIN123";
   };
 
-  const result = ctx.hoodlefinanceExtractAttribute_(
+  const result = ctx.hf_extractAttribute_(
     { symbol: "ISJP.L" },
     "isin",
     { tickerInput: "LON:ISJP@IBKR" }
@@ -3178,13 +3177,13 @@ test("isin dispatches to the implemented exchange-specific source", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
-  ctx.hoodlefinanceResolvePseIsin_ = function (quote, context) {
+  ctx.hf_resolvePseIsin_ = function (quote, context) {
     capturedArgs = { quote, context };
     return "PHY030431175";
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA" }),
+    ctx.hf_extractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA" }),
     "PHY030431175"
   );
   assert.deepEqual(capturedArgs, {
@@ -3196,12 +3195,12 @@ test("isin dispatches to the implemented exchange-specific source", () => {
 test("isin returns the direct ISIN input without redispatching to a source-specific resolver", () => {
   const ctx = loadHoodlefinance();
 
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function () {
+  ctx.hf_resolveTradingviewIsin_ = function () {
     throw new Error("should not redispatch direct ISIN input");
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "IL0006625771" }),
+    ctx.hf_extractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "IL0006625771" }),
     "IL0006625771"
   );
 });
@@ -3209,12 +3208,12 @@ test("isin returns the direct ISIN input without redispatching to a source-speci
 test("isin returns the direct ISIN input for ISIN:-prefixed identifiers", () => {
   const ctx = loadHoodlefinance();
 
-  ctx.hoodlefinanceResolveTradingviewIsin_ = function () {
+  ctx.hf_resolveTradingviewIsin_ = function () {
     throw new Error("should not redispatch direct ISIN input");
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "ISIN:US02079K1079" }),
+    ctx.hf_extractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "ISIN:US02079K1079" }),
     "US02079K1079"
   );
 });
@@ -3223,13 +3222,13 @@ test("isin source overrides dispatch through the requested resolver", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
-  ctx.hoodlefinanceResolveIbkrIsin_ = function (quote, context) {
+  ctx.hf_resolveIbkrIsin_ = function (quote, context) {
     capturedArgs = { quote, context };
     return "IBKRISIN123";
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "GOOG@IBKR" }),
+    ctx.hf_extractAttribute_({ symbol: "GOOG" }, "isin", { tickerInput: "GOOG@IBKR" }),
     "IBKRISIN123"
   );
   assert.deepEqual(capturedArgs, {
@@ -3257,7 +3256,7 @@ test("extracts exact LON listings from search results", () => {
   };
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceExtractLonListings_(LON_SEARCH_SJPA_HTML)),
+    JSON.stringify(ctx.hf_extractLonListings_(LON_SEARCH_SJPA_HTML)),
     JSON.stringify([
       {
         code: "SJPA",
@@ -3273,7 +3272,7 @@ test("extracts exact LON listings from search results", () => {
   );
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceResolveLonListing_("CPXJ")),
+    JSON.stringify(ctx.hf_resolveLonListing_("CPXJ")),
     JSON.stringify({
       code: "CPXJ",
       countryCode: "IE",
@@ -3306,7 +3305,7 @@ test("isin@LON resolves from the public LSE search results", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@LON" }),
+    ctx.hf_extractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@LON" }),
     "IE00B4L5YX21"
   );
 });
@@ -3315,7 +3314,7 @@ test("extracts exact ARIVA listing matches from live search results", () => {
   const ctx = loadHoodlefinance();
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceExtractArivaListings_(ARIVA_SEARCH_ZPRV_HTML)),
+    JSON.stringify(ctx.hf_extractArivaListings_(ARIVA_SEARCH_ZPRV_HTML)),
     JSON.stringify([
       {
         code: "ZPRV",
@@ -3356,7 +3355,7 @@ test("isin@ARIVA resolves from ARIVA search and detail pages", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
+    ctx.hf_extractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
     "IE00BSPLC413"
   );
 });
@@ -3380,11 +3379,11 @@ test("isin@ARIVA reuses the cached string result without repeating the upstream 
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
+    ctx.hf_extractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
     "IE00BSPLC413"
   );
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
+    ctx.hf_extractAttribute_({ symbol: "ZPRV.DE" }, "isin", { tickerInput: "ZPRV.DE@ARIVA" }),
     "IE00BSPLC413"
   );
   assert.deepEqual(seenUrls, [
@@ -3398,13 +3397,13 @@ TRADINGVIEW_DEFAULT_ISIN_DISPATCH_CASES.forEach(function (testCase) {
     const ctx = loadHoodlefinance();
     let capturedArgs = null;
 
-    ctx.hoodlefinanceResolveTradingviewIsin_ = function (quote, context) {
+    ctx.hf_resolveTradingviewIsin_ = function (quote, context) {
       capturedArgs = { quote, context };
       return testCase.isin;
     };
 
     assert.equal(
-      ctx.hoodlefinanceExtractAttribute_(testCase.quote, "isin", { tickerInput: testCase.tickerInput }),
+      ctx.hf_extractAttribute_(testCase.quote, "isin", { tickerInput: testCase.tickerInput }),
       testCase.isin
     );
     assert.deepEqual(capturedArgs, {
@@ -3418,13 +3417,13 @@ test("isin dispatches to LON for London tickers", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
-  ctx.hoodlefinanceResolveLonIsin_ = function (quote, context) {
+  ctx.hf_resolveLonIsin_ = function (quote, context) {
     capturedArgs = { quote, context };
     return "IE00B4L5YX21";
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L" }),
+    ctx.hf_extractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L" }),
     "IE00B4L5YX21"
   );
   assert.deepEqual(capturedArgs, {
@@ -3438,7 +3437,7 @@ test("isin fails clearly when no exchange-specific source is implemented", () =>
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "035720.KQ" }, "isin", { tickerInput: "KOSDAQ:035720" });
+      ctx.hf_extractAttribute_({ symbol: "035720.KQ" }, "isin", { tickerInput: "KOSDAQ:035720" });
     },
     /ISIN lookup is not supported yet for exchange "KOSDAQ"\. Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR"\./
   );
@@ -3449,25 +3448,25 @@ test("isin helper errors avoid source-internal lookup jargon", () => {
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceResolveArivaIsin_({ exchangeName: "GER" }, { tickerInput: "ETR:@ARIVA" });
+      ctx.hf_resolveArivaIsin_({ exchangeName: "GER" }, { tickerInput: "ETR:@ARIVA" });
     },
     /Could not determine the ticker code needed for ARIVA ISIN lookup\./
   );
   assert.throws(
     function () {
-      ctx.hoodlefinanceResolveLonIsin_({ exchangeName: "LSE" }, { tickerInput: "LON:@LON" });
+      ctx.hf_resolveLonIsin_({ exchangeName: "LSE" }, { tickerInput: "LON:@LON" });
     },
     /Could not determine the ticker code needed for LON ISIN lookup\./
   );
   assert.throws(
     function () {
-      ctx.hoodlefinanceResolveTradingviewIsin_({ symbol: "035720.KQ" }, { tickerInput: "KOSDAQ:035720@TRADINGVIEW" });
+      ctx.hf_resolveTradingviewIsin_({ symbol: "035720.KQ" }, { tickerInput: "KOSDAQ:035720@TRADINGVIEW" });
     },
     /TradingView cannot be used for ISIN lookup on exchange "KOSDAQ"\./
   );
   assert.throws(
     function () {
-      ctx.hoodlefinanceResolveTradingviewIsin_({ exchangeName: "NMS" }, {});
+      ctx.hf_resolveTradingviewIsin_({ exchangeName: "NMS" }, {});
     },
     /Could not determine the ticker code needed for TradingView ISIN lookup\./
   );
@@ -3477,8 +3476,8 @@ test("extracts TradingView symbol metadata from the page bootstrap", () => {
   const ctx = loadHoodlefinance();
 
   TRADINGVIEW_SYMBOL_HTML_CASES.forEach(function (testCase) {
-    assert.equal(ctx.hoodlefinanceExtractTradingviewResolvedSymbol_(testCase.html), testCase.resolvedSymbol);
-    assert.equal(ctx.hoodlefinanceExtractTradingviewIsin_(testCase.html), testCase.isin);
+    assert.equal(ctx.hf_extractTradingviewResolvedSymbol_(testCase.html), testCase.resolvedSymbol);
+    assert.equal(ctx.hf_extractTradingviewIsin_(testCase.html), testCase.isin);
   });
 });
 
@@ -3495,7 +3494,7 @@ TRADINGVIEW_EXPLICIT_ISIN_CASES.forEach(function (testCase) {
     };
 
     assert.equal(
-      ctx.hoodlefinanceExtractAttribute_(testCase.quote, "isin", { tickerInput: testCase.tickerInput }),
+      ctx.hf_extractAttribute_(testCase.quote, "isin", { tickerInput: testCase.tickerInput }),
       testCase.isin
     );
   });
@@ -3520,7 +3519,7 @@ test("isin@TRADINGVIEW resolves for NEO tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "ZTL.NE" }, "isin", { tickerInput: "ZTL.NE@TRADINGVIEW" }),
+    ctx.hf_extractAttribute_({ symbol: "ZTL.NE" }, "isin", { tickerInput: "ZTL.NE@TRADINGVIEW" }),
     "CA05582Y1007"
   );
 });
@@ -3544,7 +3543,7 @@ test("isin@TRADINGVIEW resolves for TLV tickers", () => {
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "POLI.TA@TRADINGVIEW" }),
+    ctx.hf_extractAttribute_({ symbol: "POLI.TA" }, "isin", { tickerInput: "POLI.TA@TRADINGVIEW" }),
     "IL0006625771"
   );
 });
@@ -3568,7 +3567,7 @@ test("isin@TRADINGVIEW normalizes TLV fund aliases before TradingView lookup", (
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "KSM.F59.TA" }, "isin", { tickerInput: "TLV:KSMF59@TRADINGVIEW" }),
+    ctx.hf_extractAttribute_({ symbol: "KSM.F59.TA" }, "isin", { tickerInput: "TLV:KSMF59@TRADINGVIEW" }),
     "IL0011465700"
   );
 });
@@ -3589,7 +3588,7 @@ test("isin@TRADINGVIEW rejects mismatched TradingView symbols", () => {
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE@TRADINGVIEW" });
+      ctx.hf_extractAttribute_({ symbol: "ZPRX.DE" }, "isin", { tickerInput: "ZPRX.DE@TRADINGVIEW" });
     },
     /TradingView resolved "XETR:ZPRX" to "LSE:SJPA" instead of an exact symbol match\./
   );
@@ -3611,7 +3610,7 @@ test("extracts exact PSE listing matches from search results", () => {
   };
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceExtractPseListings_(PSE_SEARCH_AAA_HTML)),
+    JSON.stringify(ctx.hf_extractPseListings_(PSE_SEARCH_AAA_HTML)),
     JSON.stringify([
       {
         companyId: "55",
@@ -3623,7 +3622,7 @@ test("extracts exact PSE listing matches from search results", () => {
   );
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceResolvePseListing_.call(null, "AC")),
+    JSON.stringify(ctx.hf_resolvePseListing_.call(null, "AC")),
     JSON.stringify({
       companyId: "57",
       name: "Ayala Corporation",
@@ -3644,7 +3643,7 @@ test("reuses cached PSE listings without repeating the search fetch", () => {
   };
 
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceResolvePseListing_("AC")),
+    JSON.stringify(ctx.hf_resolvePseListing_("AC")),
     JSON.stringify({
       companyId: "57",
       name: "Ayala Corporation",
@@ -3653,7 +3652,7 @@ test("reuses cached PSE listings without repeating the search fetch", () => {
     })
   );
   assert.equal(
-    JSON.stringify(ctx.hoodlefinanceResolvePseListing_("AC")),
+    JSON.stringify(ctx.hf_resolvePseListing_("AC")),
     JSON.stringify({
       companyId: "57",
       name: "Ayala Corporation",
@@ -3666,7 +3665,7 @@ test("reuses cached PSE listings without repeating the search fetch", () => {
 
 test("parses active PSE stock pages into the quote model", () => {
   const ctx = loadHoodlefinance();
-  const quote = ctx.hoodlefinanceExtractPseQuote_(PSE_STOCK_BDO_HTML, {
+  const quote = ctx.hf_extractPseQuote_(PSE_STOCK_BDO_HTML, {
     companyId: "260",
     name: "BDO Unibank, Inc.",
     securityId: "468",
@@ -3689,7 +3688,7 @@ test("parses active PSE stock pages into the quote model", () => {
 
 test("parses suspended PSE stock pages and falls back to previous close for price", () => {
   const ctx = loadHoodlefinance();
-  const quote = ctx.hoodlefinanceExtractPseQuote_(PSE_STOCK_AAA_HTML, {
+  const quote = ctx.hf_extractPseQuote_(PSE_STOCK_AAA_HTML, {
     companyId: "55",
     name: "Asia Amalgamated Holdings Corporation",
     securityId: "347",
@@ -3735,7 +3734,7 @@ test("fetches PSE quotes through the direct PSE path", () => {
     throw new Error("Unexpected URL " + url);
   };
 
-  const quote = ctx.hoodlefinanceFetchQuote_("PSE:AAA");
+  const quote = ctx.hf_fetchQuote_("PSE:AAA");
 
   assert.equal(quote.symbol, "AAA");
   assert.equal(quote.currency, "PHP");
@@ -3775,7 +3774,7 @@ test("reports a clearer outage error when the PSE search page is unavailable", (
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceFetchQuote_("PSE:BDO");
+      ctx.hf_fetchQuote_("PSE:BDO");
     },
     /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./
   );
@@ -3791,7 +3790,7 @@ test("reports a clearer outage error for lower-level PSE fetch failures", () => 
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceFetchQuote_("PSE:BDO");
+      ctx.hf_fetchQuote_("PSE:BDO");
     },
     /The PSE data source is currently unavailable \(Could not resolve host: edge\.pse\.com\.ph\)\. Please try again later\./
   );
@@ -3814,7 +3813,7 @@ test("reports a clearer outage error when the PSE stock page is unavailable", ()
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceFetchQuote_("PSE:BDO");
+      ctx.hf_fetchQuote_("PSE:BDO");
     },
     /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./
   );
@@ -3839,7 +3838,7 @@ test("shared batch PSE fetches reuse a warmed listing cache", () => {
     throw new Error("Unexpected URL " + url);
   };
 
-  ctx.hoodlefinanceResolvePseListing_("BDO");
+  ctx.hf_resolvePseListing_("BDO");
   seenUrls.length = 0;
   ctx.UrlFetchApp.fetchAll = function (requests) {
     seenBatches.push(requests.map((request) => request.url));
@@ -3887,7 +3886,7 @@ test("isin@PSE returns direct quote isin", () => {
   const ctx = loadHoodlefinance();
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA@PSE" }),
+    ctx.hf_extractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA@PSE" }),
     "PHY030431175"
   );
 });
@@ -3897,7 +3896,7 @@ test("isin@PSE rejects non-PSE tickers", () => {
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@PSE" });
+      ctx.hf_extractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@PSE" });
     },
     /PSE ISIN lookup only works for PSE tickers\./
   );
@@ -3908,7 +3907,7 @@ test("isin@LON rejects non-LON tickers", () => {
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@LON" });
+      ctx.hf_extractAttribute_({ symbol: "GOOG", exchangeName: "NMS" }, "isin", { tickerInput: "GOOG@LON" });
     },
     /LON ISIN lookup only works for LON tickers\./
   );
@@ -3919,7 +3918,7 @@ test("isin@ARIVA rejects non-ETR tickers", () => {
 
   assert.throws(
     function () {
-      ctx.hoodlefinanceExtractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@ARIVA" });
+      ctx.hf_extractAttribute_({ symbol: "SJPA.L" }, "isin", { tickerInput: "SJPA.L@ARIVA" });
     },
     /ARIVA ISIN lookup only works for ETR tickers\./
   );
@@ -3929,13 +3928,13 @@ test("isin@IBKR does not short-circuit to direct quote isin", () => {
   const ctx = loadHoodlefinance();
   let capturedArgs = null;
 
-  ctx.hoodlefinanceResolveIbkrIsin_ = function (quote, context) {
+  ctx.hf_resolveIbkrIsin_ = function (quote, context) {
     capturedArgs = { quote, context };
     return "IBKRISIN123";
   };
 
   assert.equal(
-    ctx.hoodlefinanceExtractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA@IBKR" }),
+    ctx.hf_extractAttribute_({ symbol: "AAA", isin: "PHY030431175" }, "isin", { tickerInput: "PSE:AAA@IBKR" }),
     "IBKRISIN123"
   );
   assert.deepEqual(capturedArgs, {

@@ -82,7 +82,7 @@ function runLookup(ticker, attribute) {
 function getRoutingTableRows(ctx) {
   const runtime = ctx || loadHoodlefinance();
 
-  return runtime.hoodlefinanceGetRoutingTableRows_();
+  return runtime.hf_getRoutingTableRows_();
 }
 
 function formatRoutingTable(rows) {
@@ -102,10 +102,10 @@ function printRoutingTable() {
 
 function traceRoutingForSymbol(symbol, ctx) {
   const runtime = ctx || loadHoodlefinance();
-  const job = runtime.hoodlefinanceCreateQuoteRouteJob_(String(symbol).trim(), "price");
+  const job = runtime.hf_createQuoteRouteJob_(String(symbol).trim(), "price");
 
   try {
-    job.plan = runtime.hoodlefinanceClassifyTickerJob_(job.tickerInput, "price");
+    job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, "price");
   } catch (error) {
     return {
       error: error && error.message ? error.message : String(error),
@@ -125,10 +125,10 @@ function traceRoutingForSymbol(symbol, ctx) {
     };
   }
 
-  runtime.hoodlefinancePrepareRouteJob_(job, job.plan);
+  runtime.hf_prepareRouteJob_(job, job.plan);
 
   try {
-    runtime.hoodlefinanceExecuteRouteJobs_([job]);
+    runtime.hf_executeRouteJobs_([job]);
   } catch (error) {
     job.error = error && error.message ? error.message : String(error);
   }
@@ -136,7 +136,7 @@ function traceRoutingForSymbol(symbol, ctx) {
   return {
     error: job.error || "",
     ok: !job.error,
-    plannedRoute: runtime.hoodlefinanceDescribePlanSource_(job.plan),
+    plannedRoute: runtime.hf_describePlanSource_(job.plan),
     runtimeTrace: (job.routeRuntimeTrace || []).map(function (entry) {
       return {
         label: String(entry && entry.label || ""),

@@ -58,7 +58,7 @@ test("routing trace formatter emits a readable attempted-source chain", function
 
 test("trace output includes the planned route and runtime trace summary", function () {
   const fakeCtx = {
-    hoodlefinanceCreateQuoteRouteJob_(ticker, attribute) {
+    hf_createQuoteRouteJob_(ticker, attribute) {
       return {
         attribute,
         error: null,
@@ -69,7 +69,7 @@ test("trace output includes the planned route and runtime trace summary", functi
         valueResolved: false,
       };
     },
-    hoodlefinanceClassifyTickerJob_() {
+    hf_classifyTickerJob_() {
       return {
         routeAttempts: [{ adapterId: "yahoo-chart", traceLabel: "YAHOO" }],
         routeState: { yahooSymbol: "GOOG" },
@@ -77,24 +77,24 @@ test("trace output includes the planned route and runtime trace summary", functi
         source: "yahoo-chart",
       };
     },
-    hoodlefinanceCloneRouteAttempts_(attempts) {
+    hf_cloneRouteAttempts_(attempts) {
       return attempts.slice();
     },
-    hoodlefinanceCloneRouteState_(state) {
+    hf_cloneRouteState_(state) {
       return Object.assign({}, state);
     },
-    hoodlefinancePrepareRouteJob_(job, plan) {
+    hf_prepareRouteJob_(job, plan) {
       job.plan = plan;
-      job.routeAttempts = this.hoodlefinanceCloneRouteAttempts_(plan.routeAttempts || []);
+      job.routeAttempts = this.hf_cloneRouteAttempts_(plan.routeAttempts || []);
       job.routeIndex = 0;
-      job.routeState = this.hoodlefinanceCloneRouteState_(plan.routeState || {});
+      job.routeState = this.hf_cloneRouteState_(plan.routeState || {});
       job.routeRuntimeTrace = [];
       job.routeLastLookupFailure = "";
     },
-    hoodlefinanceDescribePlanSource_(plan) {
+    hf_describePlanSource_(plan) {
       return plan.routeTrace;
     },
-    hoodlefinanceExecuteRouteJobs_(jobs) {
+    hf_executeRouteJobs_(jobs) {
       jobs[0].routeRuntimeTrace.push({ label: "YAHOO", status: "success" });
       jobs[0].quote = { regularMarketPrice: 1 };
     },
