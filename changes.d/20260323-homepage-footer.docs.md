@@ -1,1 +1,0 @@
-- Simplified the website footer so the homepage now links directly to Support, Privacy Policy, and Terms of Service instead of listing doc subpages there.
