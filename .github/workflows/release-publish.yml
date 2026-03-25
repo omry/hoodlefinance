@@ -81,11 +81,18 @@ jobs:
           grep -q "^## v${VERSION} - " docs/release-notes/RELEASE_NOTES.md
 
           if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-            echo "Tag v${VERSION} already exists."
-            exit 1
+            TAG_COMMIT=$(git rev-parse "v${VERSION}^{commit}")
+            HEAD_COMMIT=$(git rev-parse HEAD)
+            if [ "${TAG_COMMIT}" != "${HEAD_COMMIT}" ]; then
+              echo "Tag v${VERSION} already exists on a different commit (${TAG_COMMIT})."
+              exit 1
+            fi
+            echo "Tag v${VERSION} exactly matches HEAD. Safe to proceed."
+            echo "skip_tag=true" >> "$GITHUB_ENV"
           fi
 
       - name: Create and push release tag
+        if: env.skip_tag != 'true'
         env:
           TAG_NAME: ${{ steps.release_context.outputs.tag_name }}
         run: |
