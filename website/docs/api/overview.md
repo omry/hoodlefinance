@@ -42,7 +42,7 @@ HoodleFinance also supports identifier-oriented attributes such as `symbol`, `ex
 
 Support for a specific attribute can vary by exchange and by listing. Even when an exchange is generally supported, some upstream sources may not provide every field for every instrument.
 
-For the full attribute list and behavior notes, see [Supported Attributes](./api/attributes).
+For the full attribute list and behavior notes, see [Attributes](./api/attributes).
 
 
 ## Quick Examples
