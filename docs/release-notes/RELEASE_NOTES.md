@@ -1,5 +1,16 @@
 # Release Notes
 
+## v0.9.5 - 2026-03-25
+
+### Changed
+
+- Refreshed the HoodleFinance marketplace and website branding assets, including updated banner and icon artwork plus light/dark website variants.
+
+### Documentation
+
+- Clarified the Currency & FX docs with same-currency examples for `ILS` and `ILA`, using dotted notation to make mixed-unit conversions easier to read.
+- Simplified the website footer so the homepage now links directly to Support, Privacy Policy, and Terms of Service instead of listing doc subpages there.
+
 ## v0.9.3 - 2026-03-22
 
 ### Added

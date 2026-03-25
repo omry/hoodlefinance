@@ -1,1 +1,0 @@
-- Clarified the Currency & FX docs with same-currency examples for `ILS` and `ILA`, using dotted notation to make mixed-unit conversions easier to read.
