@@ -122,5 +122,6 @@ By default, the deploy helper:
 - prepares a temporary `clasp` worktree under `.addon-deploy.local/<target>/`
 - pushes the configured manifest and source files to the target script project
 - creates a new Apps Script version and prints that version number for Marketplace use
+- injects a generated staging marker only for `--staging` deploys so staging installs are visibly labeled in the add-on UI without changing custom function names
 
 Use `--push-only` if you want to sync source without creating a new version.

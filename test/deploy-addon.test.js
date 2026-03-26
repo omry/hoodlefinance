@@ -5,9 +5,11 @@ const os = require("node:os");
 const path = require("node:path");
 
 const {
+  buildAddonDeploymentConfigSource,
   buildDefaultVersionDescription,
   deployAddon,
   assertNoLikelyMissingNpmArgSeparator,
+  GENERATED_DEPLOYMENT_CONFIG_FILENAME,
   getAddonClaspAuthPath,
   getAddonDeployCredentialContext,
   getAddonDeployCredentialReport,
@@ -200,8 +202,35 @@ test("prepareWorkspace writes clasp config, manifest, and source files", async f
   });
 
   assert.match(fs.readFileSync(path.join(workspace.workDir, ".clasp.json"), "utf8"), /"scriptId": "script-123"/);
+  assert.equal(
+    fs.readFileSync(path.join(workspace.workDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME), "utf8"),
+    buildAddonDeploymentConfigSource("production")
+  );
   assert.equal(fs.readFileSync(path.join(workspace.workDir, "appsscript.json"), "utf8"), fs.readFileSync(fixture.manifestPath, "utf8"));
   assert.equal(fs.readFileSync(path.join(workspace.workDir, "hoodlefinance.js"), "utf8"), fs.readFileSync(fixture.sourcePath, "utf8"));
+});
+
+test("prepareWorkspace writes a staging deployment marker file for staging targets", async function () {
+  const fixture = createFixture();
+  const layout = {
+    manifestPath: fixture.manifestPath,
+    sourceFiles: [fixture.sourcePath],
+  };
+  const target = {
+    scriptId: "script-123",
+  };
+  const stagingWorkDir = path.join(fixture.stagingDir, "work");
+
+  const workspace = await prepareWorkspace(layout, target, {
+    rootDir: fixture.rootDir,
+    targetName: "staging",
+    workDir: stagingWorkDir,
+  });
+
+  assert.equal(
+    fs.readFileSync(path.join(workspace.workDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME), "utf8"),
+    buildAddonDeploymentConfigSource("staging")
+  );
 });
 
 test("deployAddon dry run prepares the workspace without calling clasp", async function () {

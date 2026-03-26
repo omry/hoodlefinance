@@ -649,7 +649,7 @@ Text: <input type="text" name="filter">
 </form>
 `;
 
-function loadHoodlefinance() {
+function loadHoodlefinance(extraGlobals) {
 const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
   const scriptPropertiesStore = new Map();
@@ -895,6 +895,8 @@ const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "
     CardService: cardService,
     UrlFetchApp: urlFetchApp,
   };
+
+  Object.assign(sandbox, extraGlobals || {});
 
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: "hoodlefinance.js" });
@@ -2525,6 +2527,19 @@ test("Editor add-on install builds the add-on menu without the bound-script upda
   ]);
 });
 
+test("staging add-on install labels the enable menu item clearly", () => {
+  const ctx = loadHoodlefinance({
+    HF_IS_ADDON_STAGING: true,
+  });
+
+  ctx.__setInstallationSource(ctx.ScriptApp.InstallationSource.WEB_STORE_ADD_ON);
+  ctx.onInstall({ authMode: ctx.ScriptApp.AuthMode.NONE });
+
+  assert.deepEqual(ctx.__uiState.addonMenus[0].items, [
+    { functionName: "enable_", label: "Enable Hoodlefinance [Staging]", type: "item" },
+  ]);
+});
+
 test("Editor add-on onOpen in AuthMode.NONE avoids restricted update-check services", () => {
   const ctx = loadHoodlefinance();
 
@@ -2558,6 +2573,45 @@ test("the Sheets add-on homepage card summarizes the function and links to docs"
       ["Support", "https://hoodlefinance.com/support"],
     ]
   );
+});
+
+test("the staging Sheets add-on homepage and version UI include the staging marker", () => {
+  const ctx = loadHoodlefinance({
+    HF_IS_ADDON_STAGING: true,
+  });
+  const card = ctx.hoodlefinanceBuildSheetsAddOnHomepage({});
+
+  assert.equal(card.header.title, "Hoodlefinance [Staging]");
+  assert.match(card.sections[0].widgets[0].text, /Installed version: <b>0\.9\.6 \(staging\)<\/b>/);
+  assert.match(card.sections[0].widgets[2].text, /Hoodlefinance \[Staging\] menu/);
+
+  ctx.hoodlefinanceShowInstalledVersion();
+  assert.deepEqual(ctx.__uiState.alerts[0], [
+    "HOODLEFINANCE version [Staging]",
+    "Installed version: 0.9.6 (staging)",
+    "OK",
+  ]);
+});
+
+test("the staging enable toast includes the staging marker", () => {
+  const ctx = loadHoodlefinance({
+    HF_IS_ADDON_STAGING: true,
+  });
+  const seenToasts = [];
+
+  ctx.SpreadsheetApp.getActive = function () {
+    return {
+      toast(message) {
+        seenToasts.push(message);
+      },
+    };
+  };
+
+  ctx.enable_();
+
+  assert.deepEqual(seenToasts, [
+    "Hoodlefinance [Staging] 0.9.6 (staging) enabled for this spreadsheet",
+  ]);
 });
 
 test("maps Yahoo exchange codes to IBKR exchange hints", () => {

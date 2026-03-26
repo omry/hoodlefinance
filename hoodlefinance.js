@@ -147,6 +147,18 @@ const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
 const HOODLEFINANCE_FETCHALL_BATCH_SIZE_ = 50;
 
+function hf_getDeploymentUiConfig_() {
+  const staging = typeof HF_IS_ADDON_STAGING === "boolean" && HF_IS_ADDON_STAGING;
+  const menuName = HOODLEFINANCE_MENU_TITLE_ + (staging ? " [Staging]" : "");
+
+  return {
+    enable: staging ? "Enable " + menuName : "Enable",
+    version: "Installed version: " + HOODLEFINANCE_VERSION_ + (staging ? " (staging)" : ""),
+    menuName: menuName,
+    versionTitle: "HOODLEFINANCE version" + (staging ? " [Staging]" : ""),
+  };
+}
+
 function hf_buildGroupedMap_(groupedEntries, overrides) {
   const map = {};
   const groups = groupedEntries || {};
@@ -544,13 +556,14 @@ function onInstall(e) {
 
 function hf_onAddOnActivation_() {
   const ui = hf_getUi_();
+  const deploymentUi = hf_getDeploymentUiConfig_();
 
   if (!ui || !ui.createAddonMenu) {
     return;
   }
 
   const menu = ui.createAddonMenu();
-  menu.addItem("Enable", "enable_");
+  menu.addItem(deploymentUi.enable, "enable_");
   menu.addToUi();
 }
 
@@ -566,11 +579,14 @@ function hf_onScriptActivation_(e) {
 }
 
 function enable_() {
-  SpreadsheetApp.getActive().toast('HoodleFinance ' + HOODLEFINANCE_VERSION_ + ' enabled for this spreadsheet');
+  const deploymentUi = hf_getDeploymentUiConfig_();
+
+  SpreadsheetApp.getActive().toast(deploymentUi.menuName + " " + deploymentUi.version.replace(/^Installed version: /, "") + " enabled for this spreadsheet");
 }
 
 function hoodlefinanceBuildSheetsAddOnHomepage() {
   const cardService = hf_getCardService_();
+  const deploymentUi = hf_getDeploymentUiConfig_();
 
   if (!cardService) {
     return null;
@@ -581,7 +597,7 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
     .setHeader(
       cardService
         .newCardHeader()
-        .setTitle("Hoodlefinance")
+        .setTitle(deploymentUi.menuName)
         .setSubtitle("International quote and identifier functions for Google Sheets")
     )
     .addSection(
@@ -590,7 +606,7 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
         .addWidget(
           cardService
             .newTextParagraph()
-            .setText("Installed version: <b>" + HOODLEFINANCE_VERSION_ + "</b>")
+            .setText("Installed version: <b>" + deploymentUi.version.replace(/^Installed version: /, "") + "</b>")
         )
         .addWidget(
           cardService
@@ -600,7 +616,7 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
         .addWidget(
           cardService
             .newTextParagraph()
-            .setText("The add-on homepage is a lightweight guide. The custom functions and the Hoodlefinance menu remain the main entry points inside Sheets.")
+            .setText("The add-on homepage is a lightweight guide. The custom functions and the " + deploymentUi.menuName + " menu remain the main entry points inside Sheets.")
         )
     )
     .addSection(
@@ -625,12 +641,13 @@ function hoodlefinanceCheckForUpdates() {
 
 function hoodlefinanceShowInstalledVersion() {
   const ui = hf_getUi_();
+  const deploymentUi = hf_getDeploymentUiConfig_();
 
   if (!ui) {
     return HOODLEFINANCE_VERSION_;
   }
 
-  ui.alert("HOODLEFINANCE version", "Installed version: " + HOODLEFINANCE_VERSION_, ui.ButtonSet.OK);
+  ui.alert(deploymentUi.versionTitle, deploymentUi.version, ui.ButtonSet.OK);
   return HOODLEFINANCE_VERSION_;
 }
 
@@ -744,6 +761,7 @@ function hf_runVersionCheck_(options) {
 
 function hf_buildScriptMenu_() {
   const ui = hf_getUi_();
+  const deploymentUi = hf_getDeploymentUiConfig_();
 
   if (!ui || !ui.createMenu) {
     return;
@@ -751,7 +769,7 @@ function hf_buildScriptMenu_() {
 
   const userProperties = hf_getUserProperties_();
   const isSuppressed = hf_isUpdateCheckSuppressed_(userProperties);
-  const menu = ui.createMenu(HOODLEFINANCE_MENU_TITLE_);
+  const menu = ui.createMenu(deploymentUi.menuName);
   menu.addItem("Check for updates", "hoodlefinanceCheckForUpdates");
   menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
   menu.addSeparator();
