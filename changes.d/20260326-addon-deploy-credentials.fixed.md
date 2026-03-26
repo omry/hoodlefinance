@@ -1,0 +1,1 @@
+- Improved `npm run addon:deploy` credential errors so missing add-on auth files now name the expected `.addon-deploy.local` paths and the `clasp login` command needed to create them.

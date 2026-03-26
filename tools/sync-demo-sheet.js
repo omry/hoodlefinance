@@ -6,6 +6,7 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const { buildPathRows, printContextBlock } = require("./credential-context.js");
 const {
   getClaspCommand,
   getClaspAuth,
@@ -72,7 +73,7 @@ async function main() {
       const output = await runCommand(getClaspCommand(ROOT_DIR), claspAuth.authArgs.concat(["show-authorized-user"]));
       const match = String(output.stdout || "").match(/([^ ]+@[^ ]+\.[^ \r\n]+)/);
       if (match) {
-        claspUser = match[1];
+        claspUser = sanitizeIdentity(match[1]);
       }
     } catch (error) {
       // Ignore if not logged in; push will fail distinctly anyway
@@ -83,12 +84,19 @@ async function main() {
   await ensureConfiguredTabFilesExist(config);
 
   if (options.dryRun) {
+    await printDemoCredentialContext(options.liveDemo, {
+      claspUser: claspUser,
+      dryRun: true,
+    });
     printSummary(config, options, "Dry run completed. No network or clasp operations were performed.", claspAuth.authSource, claspUser);
     return;
   }
 
   const accessToken = await ensureAccessToken(options.liveDemo);
-  await printOAuthTokenInfo(accessToken, options.liveDemo);
+  await printDemoCredentialContext(options.liveDemo, {
+    accessToken: accessToken,
+    claspUser: claspUser,
+  });
   const syncedConfig = await syncDemoSheet(accessToken, config, options, claspAuth);
 
   await persistRuntimeDemoConfig(syncedConfig, options.liveDemo);
@@ -907,26 +915,47 @@ async function ensureAccessToken(isLiveDemo) {
   });
 }
 
-async function printOAuthTokenInfo(accessToken, isLiveDemo) {
+async function printDemoCredentialContext(isLiveDemo, info) {
+  const normalizedInfo = info || {};
   const clientPath = getDemoOauthClientPath(isLiveDemo);
   const tokenPath = getDemoOauthTokenPath(isLiveDemo);
-  process.stdout.write("--- OAuth Credentials Context ---\n");
-  process.stdout.write("OAuth Client config: " + clientPath + "\n");
-  process.stdout.write("OAuth Token cache: " + tokenPath + "\n");
-  process.stdout.write("Target Demo Mode: " + (isLiveDemo ? "LIVE Public Demo" : "Local Staging") + "\n");
+  const rows = buildPathRows([
+    { label: "OAuth Client config", path: clientPath },
+    { label: "OAuth Token cache", path: tokenPath },
+  ], {
+    prefixStatusIconOnLabel: true,
+  });
+  rows.push({
+    label: (isLiveDemo ? "⚠️" : "✅") + " Target Demo Mode",
+    value: isLiveDemo ? "LIVE Public Demo" : "Local Staging",
+  });
 
-  try {
-    const res = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + accessToken);
-    const info = await res.json();
-    if (info.email) {
-      process.stdout.write("OAuth Token Identity: " + info.email + "\n");
-    } else {
-      process.stdout.write("OAuth Token Identity: (Email unknown - scope not previously requested. Delete " + tokenPath + " to re-prompt for email)\n");
+  if (normalizedInfo.accessToken) {
+    try {
+      const res = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + normalizedInfo.accessToken);
+      const tokenInfo = await res.json();
+      if (tokenInfo.email) {
+        rows.push({ label: "✅ OAuth Token Identity", value: sanitizeIdentity(tokenInfo.email) });
+      } else {
+        rows.push({
+          label: "❌ OAuth Token Identity",
+          value: "(Email unknown - scope not previously requested. Delete " + tokenPath + " to re-prompt for email)",
+        });
+      }
+    } catch (err) {
+      rows.push({ label: "❌ OAuth Token Identity", value: "(Failed to fetch tokeninfo)" });
     }
-  } catch (err) {
-    process.stdout.write("OAuth Token Identity: (Failed to fetch tokeninfo)\n");
+  } else if (normalizedInfo.claspUser) {
+    rows.push({ label: "✅ Clasp Auth Identity", value: sanitizeIdentity(normalizedInfo.claspUser) });
+  } else if (normalizedInfo.dryRun) {
+    rows.push({ label: "❌ Clasp Auth Identity", value: "(Not checked during dry run)" });
   }
-  process.stdout.write("---------------------------------\n\n");
+
+  printContextBlock("OAuth Credentials Context", rows, process.stdout, { trailingBlankLine: true });
+}
+
+function sanitizeIdentity(value) {
+  return String(value || "").replace(/[.,;:]+$/, "");
 }
 
 function parseTsv(text) {

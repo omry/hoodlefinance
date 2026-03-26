@@ -7,6 +7,8 @@ const path = require("node:path");
 const {
   buildDefaultVersionDescription,
   deployAddon,
+  getAddonDeployCredentialContext,
+  getAddonDeployCredentialReport,
   loadLayout,
   loadTargetConfig,
   parseArgs,
@@ -77,6 +79,50 @@ test("loadLayout and loadTargetConfig read the tracked layout and local target",
   } finally {
     process.chdir(previousCwd);
   }
+});
+
+test("getAddonDeployCredentialContext reports the expected local credential paths", function () {
+  const fixture = createFixture();
+  const context = getAddonDeployCredentialContext(
+    {
+      targetConfigPath: fixture.targetConfigPath,
+    },
+    {
+      rootDir: fixture.rootDir,
+    }
+  );
+
+  assert.equal(context.claspAuthPath, path.join(fixture.localDir, ".clasprc.json"));
+  assert.equal(context.oauthClientPath, path.join(fixture.localDir, "oauth-client.json"));
+  assert.equal(context.targetConfigPath, fixture.targetConfigPath);
+});
+
+test("getAddonDeployCredentialReport reports status and identity details", async function () {
+  const fixture = createFixture();
+  const authPath = path.join(fixture.localDir, ".clasprc.json");
+  const oauthClientPath = path.join(fixture.localDir, "oauth-client.json");
+  fs.writeFileSync(authPath, "{}", "utf8");
+
+  const report = await getAddonDeployCredentialReport(
+    {
+      targetConfigPath: fixture.targetConfigPath,
+    },
+    {
+      rootDir: fixture.rootDir,
+      runCommand: async function () {
+        return { stdout: "You are logged in as deployer@example.com.\n", stderr: "" };
+      },
+    }
+  );
+
+  assert.equal(report.claspAuthPath, authPath);
+  assert.equal(report.claspAuthStatus, "found");
+  assert.equal(report.oauthClientPath, oauthClientPath);
+  assert.equal(report.oauthClientStatus, "missing");
+  assert.equal(report.targetConfigPath, fixture.targetConfigPath);
+  assert.equal(report.targetConfigStatus, "found");
+  assert.equal(report.targetDeployMode, "Public Add-on");
+  assert.equal(report.claspAuthIdentity, "deployer@example.com");
 });
 
 test("prepareWorkspace writes clasp config, manifest, and source files", async function () {
@@ -170,10 +216,58 @@ test("deployAddon push flow runs clasp push and clasp version", async function (
     assert.equal(result.versionNumber, "17");
     assert.deepEqual(calls, [
       ["clasp", "--version"],
-      ["clasp", "-A", path.join(path.resolve(__dirname, ".."), ".addon-deploy.local", ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "push", "--force"],
-      ["clasp", "-A", path.join(path.resolve(__dirname, ".."), ".addon-deploy.local", ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "version", "Release 0.9.3"],
+      ["clasp", "-A", path.join(fixture.localDir, ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "push", "--force"],
+      ["clasp", "-A", path.join(fixture.localDir, ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "version", "Release 0.9.3"],
     ]);
   } finally {
     process.chdir(previousCwd);
   }
 });
+
+test("deployAddon surfaces missing add-on credential paths when clasp reports no credentials", async function () {
+  const fixture = createFixture();
+  const previousCwd = process.cwd();
+
+  process.chdir(fixture.rootDir);
+  try {
+    await assert.rejects(
+      deployAddon(
+        {
+          createVersion: true,
+          dryRun: false,
+          layoutPath: fixture.layoutPath,
+          targetConfigPath: fixture.targetConfigPath,
+          versionDescription: "Release 0.9.3",
+        },
+        {
+          runCommand: async function (command, args) {
+            if (args[0] === "--version") {
+              return { stdout: "3.1.3\n", stderr: "" };
+            }
+
+            throw Object.assign(new Error("No credentials found."), {
+              code: 1,
+              stderr: "No credentials found.\n",
+              stdout: "",
+            });
+          },
+          rootDir: fixture.rootDir,
+          workDir: fixture.workDir,
+        }
+      ),
+      function (error) {
+        assert.match(error.message, /No clasp credentials found for add-on deployment\./);
+        assert.match(error.message, new RegExp("Expected auth file: " + escapeRegex(path.join(fixture.localDir, ".clasprc.json")) + " \\(missing\\)"));
+        assert.match(error.message, new RegExp("Expected OAuth client file: " + escapeRegex(path.join(fixture.localDir, "oauth-client.json")) + " \\(missing\\)"));
+        assert.match(error.message, /clasp -A \.addon-deploy\.local\/\.clasprc\.json login --creds \.addon-deploy\.local\/oauth-client\.json/);
+        return true;
+      }
+    );
+  } finally {
+    process.chdir(previousCwd);
+  }
+});
+
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

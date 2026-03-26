@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const { buildPathRows, getPathStatus, printContextBlock } = require("./credential-context.js");
 const {
   getClaspCommand,
   getClaspAuth,
@@ -15,10 +16,12 @@ const LOCAL_DIR = path.join(ROOT_DIR, ".addon-deploy.local");
 const WORK_DIR = path.join(LOCAL_DIR, "work");
 const DEFAULT_LAYOUT_PATH = path.join(ROOT_DIR, "docs", "google-sheets-editor-addon", "addon-deploy-layout.json");
 const DEFAULT_TARGET_CONFIG_PATH = path.join(LOCAL_DIR, "public-addon.json");
+const DEFAULT_OAUTH_CLIENT_PATH = path.join(LOCAL_DIR, "oauth-client.json");
 const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  await printCredentialContext(options);
   const result = await deployAddon(options);
 
   if (options.dryRun) {
@@ -176,6 +179,42 @@ function loadTargetConfig(targetConfigPath) {
   };
 }
 
+function getAddonDeployCredentialContext(options, overrides) {
+  const normalizedOptions = options || {};
+  const normalizedOverrides = overrides || {};
+  const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
+  const targetConfigPath = normalizedOverrides.targetConfigPath || normalizedOptions.targetConfigPath || DEFAULT_TARGET_CONFIG_PATH;
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
+  const claspAuthPath = getClaspAuthPath(claspAuth);
+  const oauthClientPath = normalizedOverrides.oauthClientPath || path.join(rootDir, ".addon-deploy.local", "oauth-client.json");
+
+  return {
+    claspAuthPath: claspAuthPath,
+    oauthClientPath: oauthClientPath,
+    targetConfigPath: targetConfigPath,
+  };
+}
+
+async function getAddonDeployCredentialReport(options, overrides) {
+  const normalizedOverrides = overrides || {};
+  const context = getAddonDeployCredentialContext(options, normalizedOverrides);
+  const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
+  const runner = normalizedOverrides.runCommand || runCommand;
+  const claspCommand = normalizedOverrides.claspCommand || getClaspCommand(rootDir);
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
+
+  return {
+    claspAuthPath: context.claspAuthPath,
+    claspAuthStatus: describeFileStatus(context.claspAuthPath),
+    oauthClientPath: context.oauthClientPath,
+    oauthClientStatus: describeFileStatus(context.oauthClientPath),
+    targetConfigPath: context.targetConfigPath,
+    targetConfigStatus: describeFileStatus(context.targetConfigPath),
+    targetDeployMode: "Public Add-on",
+    claspAuthIdentity: await getClaspAuthIdentity(claspCommand, claspAuth, runner),
+  };
+}
+
 function buildDefaultVersionDescription(options) {
   const normalizedOptions = options || {};
   const rootDir = normalizedOptions.rootDir || ROOT_DIR;
@@ -246,7 +285,7 @@ async function deployAddon(options, overrides) {
   const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
   const runner = normalizedOverrides.runCommand || runCommand;
   const claspCommand = normalizedOverrides.claspCommand || getClaspCommand(rootDir);
-  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(LOCAL_DIR, ".clasprc.json"));
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
   const layout = normalizedOverrides.layout || loadLayout(options.layoutPath, { rootDir: rootDir });
   const target = normalizedOverrides.target || loadTargetConfig(options.targetConfigPath);
   const versionDescription = options.createVersion
@@ -257,22 +296,38 @@ async function deployAddon(options, overrides) {
     workDir: normalizedOverrides.workDir,
   });
   const claspProjectPath = path.join(workspace.workDir, ".clasp.json");
+  const claspAuthPath = getClaspAuthPath(claspAuth);
+  const oauthClientPath = normalizedOverrides.oauthClientPath || path.join(rootDir, ".addon-deploy.local", "oauth-client.json");
   let versionOutput = "";
   let versionMatch;
 
   await ensureCommandExists(claspCommand, runner);
 
   if (!options.dryRun) {
-    await runner(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "push", "--force"]), {
-        cwd: workspace.workDir,
-    });
+    try {
+      await runner(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "push", "--force"]), {
+          cwd: workspace.workDir,
+      });
+    } catch (error) {
+      throw explainCredentialError(error, {
+        claspAuthPath: claspAuthPath,
+        oauthClientPath: oauthClientPath,
+      });
+    }
 
     if (options.createVersion) {
-      versionOutput = (
-        await runner(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "version", versionDescription]), {
-          cwd: workspace.workDir,
-        })
-      ).stdout;
+      try {
+        versionOutput = (
+          await runner(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "version", versionDescription]), {
+            cwd: workspace.workDir,
+          })
+        ).stdout;
+      } catch (error) {
+        throw explainCredentialError(error, {
+          claspAuthPath: claspAuthPath,
+          oauthClientPath: oauthClientPath,
+        });
+      }
       versionMatch = String(versionOutput).match(/Created version (\d+)/);
     }
   }
@@ -329,17 +384,131 @@ async function runCommand(command, args, options) {
   });
 }
 
+function getClaspAuthPath(claspAuth) {
+  let authFlagIndex;
+
+  if (!claspAuth || !Array.isArray(claspAuth.authArgs)) {
+    return "";
+  }
+
+  authFlagIndex = claspAuth.authArgs.indexOf("-A");
+  if (authFlagIndex === -1 || authFlagIndex + 1 >= claspAuth.authArgs.length) {
+    return "";
+  }
+
+  return String(claspAuth.authArgs[authFlagIndex + 1] || "").trim();
+}
+
+function describeCredentialFile(filePath, label) {
+  if (!filePath) {
+    return label + ": <unknown>";
+  }
+
+  return label + ": " + filePath + " (" + (fs.existsSync(filePath) ? "found" : "missing") + ")";
+}
+
+function describeFileStatus(filePath) {
+  return getPathStatus(filePath);
+}
+
+async function getClaspAuthIdentity(claspCommand, claspAuth, runner) {
+  let authPath;
+  let output;
+  let emailMatch;
+  let normalizedOutput;
+
+  authPath = getClaspAuthPath(claspAuth);
+  if (!authPath || !fs.existsSync(authPath)) {
+    return "(Not logged in or auth file missing)";
+  }
+
+  try {
+    output = await runner(claspCommand, claspAuth.authArgs.concat(["show-authorized-user"]), {
+      cwd: ROOT_DIR,
+    });
+  } catch (error) {
+    return "(Not logged in or auth file missing)";
+  }
+
+  normalizedOutput = String((output && (output.stdout || output.stderr)) || "").trim();
+  if (!normalizedOutput) {
+    return "(Logged in)";
+  }
+
+  emailMatch = normalizedOutput.match(/([^ ]+@[^ ]+\.[^ \r\n]+)/);
+  if (emailMatch) {
+    return emailMatch[1].replace(/[.,;:]+$/, "");
+  }
+
+  if (/unknown user/i.test(normalizedOutput)) {
+    return "(Unknown user)";
+  }
+
+  return normalizedOutput.split(/\r?\n/)[0];
+}
+
+async function printCredentialContext(options, overrides) {
+  const context = await getAddonDeployCredentialReport(options, overrides);
+  const rows = buildPathRows([
+    { label: "Clasp Auth config", path: context.claspAuthPath },
+    { label: "OAuth Client config", path: context.oauthClientPath },
+    { label: "Target config", path: context.targetConfigPath },
+  ], {
+    prefixStatusIconOnLabel: true,
+  });
+
+  rows.push({ label: "⚠️ Target Deploy Mode", value: context.targetDeployMode });
+  rows.push({
+    label: (context.claspAuthIdentity === "(Not logged in or auth file missing)" ? "❌" : "✅") + " Clasp Auth Identity",
+    value: context.claspAuthIdentity,
+  });
+
+  printContextBlock("Add-on Credentials Context", rows);
+}
+
+function explainCredentialError(error, paths) {
+  const message = String(error && error.message ? error.message : error);
+
+  if (!/No credentials found/i.test(message)) {
+    return error;
+  }
+
+  return Object.assign(
+    new Error(
+      "No clasp credentials found for add-on deployment.\n" +
+        describeCredentialFile(paths && paths.claspAuthPath, "Expected auth file") +
+        "\n" +
+        describeCredentialFile(paths && paths.oauthClientPath, "Expected OAuth client file") +
+        "\n" +
+        "Create the auth file with:\n" +
+        "./node_modules/.bin/clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json"
+    ),
+    {
+      cause: error,
+      code: error && error.code,
+      stderr: error && error.stderr,
+      stdout: error && error.stdout,
+    }
+  );
+}
+
 module.exports = {
   DEFAULT_LAYOUT_PATH,
+  DEFAULT_OAUTH_CLIENT_PATH,
   DEFAULT_TARGET_CONFIG_PATH,
   LOCAL_DIR,
   WORK_DIR,
   buildDefaultVersionDescription,
   deployAddon,
+  explainCredentialError,
+  getAddonDeployCredentialReport,
   getClaspCommand,
+  getAddonDeployCredentialContext,
+  getClaspAuthIdentity,
   loadLayout,
   loadTargetConfig,
   parseArgs,
+  printCredentialContext,
   prepareWorkspace,
   runCommand,
 };
