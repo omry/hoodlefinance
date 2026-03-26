@@ -4,7 +4,7 @@
 - Continue Marketplace packaging work: finish listing and policy hardening, record the successful private Marketplace dry-run outcome, and decide whether public review is worth pursuing.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
-- once website is is done, update contributing guide for how to update the content as well as basic cheat sheed (install, build, run local server)
+- rewrite `CONTRIBUTING.md` from scratch so it stays focused on everyday contributor workflow, with maintainer-only Google auth and release runbooks linked out to the dedicated docs; include the website content update basics and a short install/build/local-server cheat sheet
 - acquired hoodlefinance.com, lets use it instead of the current location
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
 - organize the `tools/` directory so demo sync, add-on deploy, release, and local runtime helpers are grouped more intentionally

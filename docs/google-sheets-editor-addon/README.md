@@ -69,17 +69,23 @@ Before using it for a real push:
 ```
 
 2. Set the target `scriptId` in that local file.
-3. Save the maintainer `clasp` credentials in the ignored repo-local file:
+3. Download the OAuth client JSON for the add-on deployment Google Cloud project and save it at:
 
 ```text
-.clasp.local/.clasprc.json
+.addon-deploy.local/oauth-client.json
 ```
 
-4. Make sure that auth blob belongs to the Google account that can edit the target Apps Script project. If you need to create it locally first, follow the maintainer `clasp` login step in [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+4. Log in with that OAuth client so `clasp` writes the ignored repo-local auth file:
+
+```sh
+./node_modules/.bin/clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json
+```
+
+5. Confirm that `clasp` created the ignored repo-local auth file at `.addon-deploy.local/.clasprc.json`, and that it belongs to the Google account that can edit the target Apps Script project.
 
 Keep the add-on project and demo-sync OAuth project separate. The public-review Marketplace setup belongs in `HoodleFinance Add-on Public`, while the desktop OAuth client for `tools/sync-demo-sheet.js` should live in `HoodleFinance Demo Sheets`.
 
-You can confirm the repo-local maintainer identity with:
+You can confirm which `clasp` account the add-on deploy flow will use, alongside the staging and live-demo auth slots, with:
 
 ```sh
 npm run clasp:user

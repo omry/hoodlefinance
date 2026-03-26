@@ -20,15 +20,21 @@ On a fresh Ubuntu or WSL install, the most likely missing pieces for ordinary de
 
 Normal feature work does not require Google OAuth credentials or `clasp` authentication. Those are only needed if you want to sync a personal staging demo sheet, or for maintainer deployment flows.
 
-Maintainer-only Google flows (like the official Add-on deployment or public `--live-demo` syncs) always use the repo-local ignored `clasp` auth file at `.clasp.local/.clasprc.json`. That safely keeps official production credentials completely separate from the normal global `~/.clasprc.json` you use for your staging demo.
+The repo separates those Google auth paths on purpose:
 
-To confirm which repo-local maintainer account those tools will use:
+- personal staging uses your normal global `~/.clasprc.json` plus `.demo-sheet.local/staging/`
+- local public `--live-demo` syncs use `.demo-sheet.local/live-demo/`
+- add-on deployment uses `.addon-deploy.local/`
+
+That keeps contributor staging credentials separate from production, while still allowing different production Google Cloud projects to keep separate auth files.
+
+To confirm which `clasp` accounts the configured staging and production flows will use:
 
 ```sh
 npm run clasp:user
 ```
 
-The public add-on deployment helper is also maintainer-only. It uses the same repo-pinned `clasp` toolchain pattern, but targets a separate add-on script project through a local config file under `.addon-deploy.local/`.
+The public add-on deployment helper is also maintainer-only. It uses the same repo-pinned `clasp` toolchain pattern, but targets a separate add-on script project and its own local auth/config files under `.addon-deploy.local/`.
 
 If you do not already have `nvm`, install it first:
 
@@ -183,7 +189,7 @@ Set up the following:
    npm exec -- clasp login
    ```
 
-*(Note: The official `live-demo` and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets).*
+*(Note: The official `live-demo` and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets.)*
 
 If the localhost callback flow does not work in your environment, retry the sync with `--no-localhost`.
 
@@ -283,7 +289,7 @@ Demo-sync workflow secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON`
-- `CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.clasp.local/.clasprc.json` locally
+- `CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.demo-sheet.local/live-demo/.clasprc.json` locally
 
 The demo-sync job keeps those secret values out of the checked-out workspace and off the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step. The OAuth token is treated as read-only in CI, so refreshes must be handled by updating the stored secret. All three secret values must be valid JSON.
 

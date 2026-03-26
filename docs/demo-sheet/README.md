@@ -19,16 +19,17 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
    - Google Sheets API
    - Google Drive API
    - Google Apps Script API
-2. Save the downloaded credentials JSON as:
+2. Save the downloaded staging credentials JSON as:
 
 ```text
-.demo-sheet.local/oauth-client.json
+.demo-sheet.local/staging/oauth-client.json
 ```
 
-3. Install the repo-pinned local tooling with `npm install`, then follow the maintainer `clasp` login step in [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+3. Install the repo-pinned local tooling with `npm install`, then log into `clasp` with your personal staging Google account so the default home-directory auth file is ready:
 
 ```sh
 npm install
+npm exec -- clasp login
 ```
 4. Run the default staging sync to confirm your credentials and access without touching the public demo:
 
@@ -42,19 +43,32 @@ The sync command stores local-only tokens and temporary clasp files under:
 .demo-sheet.local/
 ```
 
-Those files are ignored by git and must not be committed. The staging sheet ID and related staging metadata are also stored locally in the ignored file `docs/demo-sheet/demo-sheet-staging.json`.
+Those files are ignored by git and must not be committed. The staging flow uses `.demo-sheet.local/staging/oauth-client.json` and `.demo-sheet.local/staging/oauth-token.json`. The staging sheet ID and related staging metadata are also stored locally in the ignored file `docs/demo-sheet/demo-sheet-staging.json`.
 
 When that staging override file omits `sharePublicReadOnly`, the staging sync now inherits the tracked public-demo sharing default. Set it explicitly to `false` only if you want a private staging sheet.
 
-If you want the repo to use a maintainer-specific `clasp` identity without replacing your global `~/.clasprc.json`, save that authenticated file instead at:
+If you want to run a local production `--live-demo` sync, keep that production auth separate from your personal staging login. Save the live-demo `clasp` auth file at:
 
 ```text
-.clasp.local/.clasprc.json
+.demo-sheet.local/live-demo/.clasprc.json
 ```
 
-The sync tool always passes `-A .clasp.local/.clasprc.json` to `clasp`, so it uses this ignored file instead of your normal global `clasp` login. In CI, the workflow exposes the same maintainer auth JSON through a path override without writing it to the workspace.
+The local `--live-demo` flow also uses its own OAuth files under `.demo-sheet.local/live-demo/`, separate from staging:
 
-To confirm which repo-local `clasp` user the maintainer tools will use:
+```text
+.demo-sheet.local/live-demo/oauth-client.json
+.demo-sheet.local/live-demo/oauth-token.json
+```
+
+Create that repo-local live-demo `clasp` auth file with:
+
+```sh
+./node_modules/.bin/clasp -A .demo-sheet.local/live-demo/.clasprc.json login --creds .demo-sheet.local/live-demo/oauth-client.json
+```
+
+The sync tool uses your normal `~/.clasprc.json` for staging, but passes `-A .demo-sheet.local/live-demo/.clasprc.json` for local `--live-demo` runs. In CI, the workflow exposes the same live-demo credential shapes through path overrides without writing them to the workspace.
+
+To confirm which `clasp` accounts the configured staging and production flows will use:
 
 ```sh
 npm run clasp:user
@@ -79,7 +93,7 @@ That demo-sync job uses the same credential shapes as the local flow, but keeps 
 
 Important distinction:
 
-- `CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local flow keeps in `.clasp.local/.clasprc.json`
+- `CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local `--live-demo` flow keeps in `.demo-sheet.local/live-demo/.clasprc.json`
 - It should not contain the generated project file at `.demo-sheet.local/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
 - The workflow treats the OAuth token as read-only in CI, so a token refresh should be handled by replacing the GitHub secret rather than by writing back through the file-descriptor path.
 - All three secret values should be valid JSON. If `clasp` or the OAuth loader reports a JSON parse error in CI, re-copy the secret from the local source file.
@@ -97,9 +111,10 @@ The production public demo should normally be updated by `Release Publish`, whic
 
 Use a direct production sync only for demo-only fixes between releases:
 
-1. Optional: run `npm exec -- node tools/sync-demo-sheet.js --live-demo --dry-run`.
-2. Run `npm exec -- node tools/sync-demo-sheet.js --live-demo`.
-3. Confirm the public sheet shows the intended demo-only content changes.
+1. Save the live-demo OAuth client, OAuth token, and `clasp` auth files under `.demo-sheet.local/live-demo/`.
+2. Optional: run `npm exec -- node tools/sync-demo-sheet.js --live-demo --dry-run`.
+3. Run `npm exec -- node tools/sync-demo-sheet.js --live-demo`.
+4. Confirm the public sheet shows the intended demo-only content changes.
 
 ## Adding A Demo Maintainer
 
@@ -116,15 +131,16 @@ To add a new maintainer, the current owner should help them with these high-leve
 https://script.google.com/home/usersettings
 ```
 
-5. Have the maintainer install the repo-pinned local tooling with `npm install` and complete the maintainer `clasp` login step from [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+5. Have the maintainer install the repo-pinned local tooling with `npm install` and log into `clasp` with the Google account they will use for staging.
 
 ```sh
 npm install
+npm exec -- clasp login
 ```
 6. Have the maintainer save a valid OAuth desktop-client JSON at:
 
 ```text
-.demo-sheet.local/oauth-client.json
+.demo-sheet.local/staging/oauth-client.json
 ```
 
 7. Walk them through one successful default staging run of:
