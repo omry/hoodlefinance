@@ -106,6 +106,15 @@ test("loadLayout and loadTargetConfig read the tracked layout and local target",
   }
 });
 
+test("loadTargetConfig reports a clearer setup error when the target config file is missing", function () {
+  const fixture = createFixture();
+  const missingPath = path.join(fixture.stagingDir, "target.json");
+
+  assert.throws(function () {
+    loadTargetConfig(missingPath);
+  }, /Missing add-on deployment target config at .*target\.json\./);
+});
+
 test("getAddonDeployCredentialContext reports the expected production credential paths", function () {
   const fixture = createFixture();
   const context = getAddonDeployCredentialContext(
@@ -186,7 +195,7 @@ test("getOauthClientLevel treats existing but unverified add-on oauth config as 
   }), "OK");
 });
 
-test("prepareWorkspace writes clasp config, manifest, and source files", async function () {
+test("prepareWorkspace writes clasp config, manifest, and source files for production without a generated marker file", async function () {
   const fixture = createFixture();
   const layout = {
     manifestPath: fixture.manifestPath,
@@ -202,12 +211,11 @@ test("prepareWorkspace writes clasp config, manifest, and source files", async f
   });
 
   assert.match(fs.readFileSync(path.join(workspace.workDir, ".clasp.json"), "utf8"), /"scriptId": "script-123"/);
-  assert.equal(
-    fs.readFileSync(path.join(workspace.workDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME), "utf8"),
-    buildAddonDeploymentConfigSource("production")
-  );
+  assert.equal(fs.existsSync(path.join(workspace.workDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME)), false);
+  assert.equal(workspace.deploymentConfigPath, "");
   assert.equal(fs.readFileSync(path.join(workspace.workDir, "appsscript.json"), "utf8"), fs.readFileSync(fixture.manifestPath, "utf8"));
   assert.equal(fs.readFileSync(path.join(workspace.workDir, "hoodlefinance.js"), "utf8"), fs.readFileSync(fixture.sourcePath, "utf8"));
+  assert.deepEqual(workspace.bundleFiles, ["appsscript.json", "hoodlefinance.js"]);
 });
 
 test("prepareWorkspace writes a staging deployment marker file for staging targets", async function () {
@@ -227,10 +235,12 @@ test("prepareWorkspace writes a staging deployment marker file for staging targe
     workDir: stagingWorkDir,
   });
 
+  assert.equal(workspace.deploymentConfigPath, path.join(workspace.workDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME));
   assert.equal(
     fs.readFileSync(path.join(workspace.workDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME), "utf8"),
     buildAddonDeploymentConfigSource("staging")
   );
+  assert.deepEqual(workspace.bundleFiles, ["appsscript.json", GENERATED_DEPLOYMENT_CONFIG_FILENAME, "hoodlefinance.js"]);
 });
 
 test("deployAddon dry run prepares the workspace without calling clasp", async function () {
@@ -262,6 +272,8 @@ test("deployAddon dry run prepares the workspace without calling clasp", async f
     assert.equal(result.scriptId, "script-123");
     assert.equal(result.versionNumber, "");
     assert.match(result.versionDescription, /^HOODLEFINANCE 0\.9\.3 \(\d{4}-\d{2}-\d{2}\)$/);
+    assert.deepEqual(result.bundleFiles, ["appsscript.json", "hoodlefinance.js"]);
+    assert.equal(result.deploymentConfigPath, "");
     assert.deepEqual(calls, [["clasp", "--version"]]);
     assert.equal(fs.existsSync(path.join(fixture.workDir, "hoodlefinance.js")), true);
   } finally {

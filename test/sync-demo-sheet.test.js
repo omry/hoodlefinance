@@ -26,6 +26,7 @@ const {
   explainClaspPushFailure,
   getClaspIdentityLevel,
   getDemoClaspAuthPath,
+  getDemoBundleFiles,
   getDemoClaspWorkDir,
   isInvalidGrantOAuthError,
   loadDemoSheetConfig,
@@ -97,6 +98,7 @@ test("parseClaspUserIdentity preserves unknown-user results for dry-run reportin
   assert.equal(getDemoClaspAuthPath(true).endsWith(path.join(".demo-sheet.local", "production", ".clasprc.json")), true);
   assert.equal(getDemoClaspWorkDir(false).endsWith(path.join(".demo-sheet.local", "staging", "clasp-work")), true);
   assert.equal(getDemoClaspWorkDir(true).endsWith(path.join(".demo-sheet.local", "production", "clasp-work")), true);
+  assert.deepEqual(getDemoBundleFiles(), ["appsscript.json", "hoodlefinance.js"]);
 });
 
 test("explainClaspPushFailure surfaces clasp push context and raw command output", function () {

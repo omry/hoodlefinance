@@ -6,7 +6,7 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { buildPathRows, buildStatusRow, printContextBlock } = require("./credential-context.js");
+const { buildPathRows, buildStatusRow, printBundleFiles, printContextBlock } = require("./cli-reporting.js");
 const {
   getClaspCommand,
   getClaspAuth,
@@ -1319,6 +1319,10 @@ function getDemoClaspWorkDir(isProduction) {
   return path.join(isProduction ? getDemoProductionDir() : getDemoStagingDir(), "clasp-work");
 }
 
+function getDemoBundleFiles() {
+  return ["appsscript.json", "hoodlefinance.js"];
+}
+
 function getDemoOauthClientPath(isProduction) {
   if (String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim()) {
     return String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim();
@@ -1440,6 +1444,7 @@ function printSummary(config, options, message, claspAuthSource, claspUser) {
   process.stdout.write("Spreadsheet ID: " + (config.spreadsheetId || "<not created yet>") + "\n");
   process.stdout.write("Public URL: " + (config.publicUrl || "<not created yet>") + "\n");
   process.stdout.write("Script ID: " + (config.script && config.script.scriptId ? config.script.scriptId : "<not created yet>") + "\n");
+  printBundleFiles(getDemoBundleFiles());
   if (claspAuthSource) {
     process.stdout.write("Clasp credentials: " + claspAuthSource + "\n");
     if (claspUser) {
@@ -1482,6 +1487,7 @@ module.exports = {
   explainClaspPushFailure,
   getClaspIdentityLevel,
   getDemoClaspAuthPath,
+  getDemoBundleFiles,
   getDemoClaspWorkDir,
   loadDemoSheetConfig,
   normalizeStyleRegistry,

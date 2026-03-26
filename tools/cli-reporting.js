@@ -31,6 +31,17 @@ function printContextBlock(title, rows, output, options) {
   stream.write("-".repeat(String(title).length + 8) + suffix);
 }
 
+function printBundleFiles(bundleFiles, output) {
+  const stream = output || process.stdout;
+  const normalizedBundleFiles = Array.isArray(bundleFiles) ? bundleFiles : [];
+  let i;
+
+  stream.write("Files:\n");
+  for (i = 0; i < normalizedBundleFiles.length; i += 1) {
+    stream.write("- " + normalizedBundleFiles[i] + "\n");
+  }
+}
+
 function getPathStatus(filePath, existsSync) {
   const hasPath = Boolean(String(filePath || "").trim());
   const pathExists = existsSync || fs.existsSync;
@@ -142,5 +153,6 @@ module.exports = {
   getStatusIcon,
   normalizeLevel,
   pathStatusToLevel,
+  printBundleFiles,
   printContextBlock,
 };
