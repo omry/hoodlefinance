@@ -517,7 +517,6 @@ function HOODLEFINANCE_VERSION() {
  *
  * @param {string=} ticker Optional ticker identifier to introspect.
  * @return {string|Array<Array<string>>}
- * @customfunction
  */
 function HOODLEFINANCE_ROUTES(ticker) {
   let normalizedTicker;
