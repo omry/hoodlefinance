@@ -31,10 +31,10 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 npm install
 npm exec -- clasp login
 ```
-4. Run the default staging sync to confirm your credentials and access without touching the public demo:
+4. Run the staging sync to confirm your credentials and access without touching the public demo:
 
 ```sh
-npm exec -- node tools/sync-demo-sheet.js
+npm exec -- node tools/sync-demo-sheet.js --staging
 ```
 
 The sync command stores local-only tokens and temporary clasp files under:
@@ -47,26 +47,26 @@ Those files are ignored by git and must not be committed. The staging flow uses 
 
 When that staging override file omits `sharePublicReadOnly`, the staging sync now inherits the tracked public-demo sharing default. Set it explicitly to `false` only if you want a private staging sheet.
 
-If you want to run a local production `--live-demo` sync, keep that production auth separate from your personal staging login. Save the live-demo `clasp` auth file at:
+If you want to run a local production `--production` sync, keep that production auth separate from your personal staging login. Save the production `clasp` auth file at:
 
 ```text
-.demo-sheet.local/live-demo/.clasprc.json
+.demo-sheet.local/production/.clasprc.json
 ```
 
-The local `--live-demo` flow also uses its own OAuth files under `.demo-sheet.local/live-demo/`, separate from staging:
+The local `--production` flow also uses its own OAuth files under `.demo-sheet.local/production/`, separate from staging:
 
 ```text
-.demo-sheet.local/live-demo/oauth-client.json
-.demo-sheet.local/live-demo/oauth-token.json
+.demo-sheet.local/production/oauth-client.json
+.demo-sheet.local/production/oauth-token.json
 ```
 
-Create that repo-local live-demo `clasp` auth file with:
+Create that repo-local production `clasp` auth file with:
 
 ```sh
-npm exec -- clasp -A .demo-sheet.local/live-demo/.clasprc.json login --creds .demo-sheet.local/live-demo/oauth-client.json
+npm exec -- clasp -A .demo-sheet.local/production/.clasprc.json login --creds .demo-sheet.local/production/oauth-client.json
 ```
 
-The sync tool uses your normal `~/.clasprc.json` for staging, but passes `-A .demo-sheet.local/live-demo/.clasprc.json` for local `--live-demo` runs. In CI, the workflow exposes the same live-demo credential shapes through path overrides without writing them to the workspace.
+The sync tool uses your normal `~/.clasprc.json` for staging, but passes `-A .demo-sheet.local/production/.clasprc.json` for local `--production` runs. In CI, the workflow exposes the same production credential shapes through path overrides without writing them to the workspace. The old `--live-demo` flag and `.demo-sheet.local/live-demo/` path are still accepted as legacy aliases.
 
 To confirm which `clasp` accounts the configured staging and production flows will use:
 
@@ -83,7 +83,7 @@ The normal release path is:
 1. `Release Prepare` opens a `release/vX.Y.Z` PR.
 2. A maintainer reviews and merges that PR.
 3. The merged PR automatically triggers `Release Publish`.
-4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job with `node tools/sync-demo-sheet.js --live-demo`.
+4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job with `node tools/sync-demo-sheet.js --production`.
 
 That demo-sync job uses the same credential shapes as the local flow, but keeps them out of the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step:
 
@@ -93,28 +93,42 @@ That demo-sync job uses the same credential shapes as the local flow, but keeps 
 
 Important distinction:
 
-- `CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local `--live-demo` flow keeps in `.demo-sheet.local/live-demo/.clasprc.json`
-- It should not contain the generated project file at `.demo-sheet.local/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
+- `CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local `--production` flow keeps in `.demo-sheet.local/production/.clasprc.json`
+- It should not contain the generated project file at `.demo-sheet.local/production/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
 - The workflow treats the OAuth token as read-only in CI, so a token refresh should be handled by replacing the GitHub secret rather than by writing back through the file-descriptor path.
 - All three secret values should be valid JSON. If `clasp` or the OAuth loader reports a JSON parse error in CI, re-copy the secret from the local source file.
 
 ## Update Flow
 
-Normal local development should use the default staging target:
+Normal local development should use the staging target:
 
 1. Update [`hoodlefinance.js`](../../hoodlefinance.js) as needed.
 2. Edit the relevant TSV files in this directory.
-3. Run `npm exec -- node tools/sync-demo-sheet.js`.
+3. Run `npm exec -- node tools/sync-demo-sheet.js --staging`.
 4. Check the staging sheet referenced by your local `docs/demo-sheet/demo-sheet-staging.json` override.
 
-The production public demo should normally be updated by `Release Publish`, which runs `node tools/sync-demo-sheet.js --live-demo`.
+The production public demo should normally be updated by `Release Publish`, which runs `node tools/sync-demo-sheet.js --production`.
 
 Use a direct production sync only for demo-only fixes between releases:
 
-1. Save the live-demo OAuth client, OAuth token, and `clasp` auth files under `.demo-sheet.local/live-demo/`.
-2. Optional: run `npm exec -- node tools/sync-demo-sheet.js --live-demo --dry-run`.
-3. Run `npm exec -- node tools/sync-demo-sheet.js --live-demo`.
+1. Save the production OAuth client, OAuth token, and `clasp` auth files under `.demo-sheet.local/production/`.
+2. Optional: run `npm exec -- node tools/sync-demo-sheet.js --production --dry-run`.
+3. Run `npm exec -- node tools/sync-demo-sheet.js --production`.
 4. Confirm the public sheet shows the intended demo-only content changes.
+
+If you prefer `npm run`, use either:
+
+```sh
+npm run demo:sync:production:dry-run
+npm run demo:sync:production
+```
+
+If you prefer passing flags manually through `npm run`, keep the target explicit and do not omit the `--` separator:
+
+```sh
+npm run demo:sync -- --production --dry-run
+npm run demo:sync -- --production
+```
 
 ## Adding A Demo Maintainer
 
@@ -143,10 +157,10 @@ npm exec -- clasp login
 .demo-sheet.local/staging/oauth-client.json
 ```
 
-7. Walk them through one successful default staging run of:
+7. Walk them through one successful staging run of:
 
 ```sh
-npm exec -- node tools/sync-demo-sheet.js
+npm exec -- node tools/sync-demo-sheet.js --staging
 ```
 
 After that, the maintainer should be able to refresh the demo sheet on their own.

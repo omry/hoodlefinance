@@ -54,38 +54,62 @@ For the step-by-step execution path, use [`marketplace-readiness-checklist.md`](
 
 ## Maintainer Deployment Automation
 
-The repo now includes a maintainer-only `clasp` deployment helper for the public add-on script project:
+The repo now includes a maintainer-only `clasp` deployment helper for the add-on script project, with separate staging and production targets.
 
 ```sh
-npm run addon:deploy -- --dry-run
+npm run addon:deploy:production:dry-run
 ```
 
 Before using it for a real push:
 
+For production:
+
 1. Copy [`addon-deploy-target.example.json`](./addon-deploy-target.example.json) to:
 
 ```text
-.addon-deploy.local/public-addon.json
+.addon-deploy.local/production/target.json
 ```
 
 2. Set the target `scriptId` in that local file.
 3. Download the OAuth client JSON for the add-on deployment Google Cloud project and save it at:
 
 ```text
-.addon-deploy.local/oauth-client.json
+.addon-deploy.local/production/oauth-client.json
 ```
 
 4. Log in with that OAuth client so `clasp` writes the ignored repo-local auth file:
 
 ```sh
-npm exec -- clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json
+npm exec -- clasp -A .addon-deploy.local/production/.clasprc.json login --creds .addon-deploy.local/production/oauth-client.json
 ```
 
-5. Confirm that `clasp` created the ignored repo-local auth file at `.addon-deploy.local/.clasprc.json`, and that it belongs to the Google account that can edit the target Apps Script project.
+5. Confirm that `clasp` created the ignored repo-local auth file at `.addon-deploy.local/production/.clasprc.json`, and that it belongs to the Google account that can edit the target Apps Script project.
+
+For staging, use the same file names under `.addon-deploy.local/staging/` and run:
+
+```sh
+npm run addon:deploy -- --staging --dry-run
+```
+
+The production deploy flow still accepts the old root-level files under `.addon-deploy.local/` as legacy aliases during local migration, but the new canonical production layout is `.addon-deploy.local/production/`.
+
+If you prefer `npm run`, use either:
+
+```sh
+npm run addon:deploy:production:dry-run
+npm run addon:deploy:staging:dry-run
+```
+
+If you prefer passing flags manually through `npm run`, keep the target explicit and do not omit the `--` separator:
+
+```sh
+npm run addon:deploy -- --production --dry-run
+npm run addon:deploy -- --staging --dry-run
+```
 
 Keep the add-on project and demo-sync OAuth project separate. The public-review Marketplace setup belongs in `HoodleFinance Add-on Public`, while the desktop OAuth client for `tools/sync-demo-sheet.js` should live in `HoodleFinance Demo Sheets`.
 
-You can confirm which `clasp` account the add-on deploy flow will use, alongside the staging and live-demo auth slots, with:
+You can confirm which `clasp` account the add-on deploy flows will use, alongside the staging and production demo auth slots, with:
 
 ```sh
 npm run clasp:user
@@ -95,7 +119,7 @@ The tracked deployment layout lives in [`addon-deploy-layout.json`](./addon-depl
 
 By default, the deploy helper:
 
-- prepares a temporary `clasp` worktree under `.addon-deploy.local/`
+- prepares a temporary `clasp` worktree under `.addon-deploy.local/<target>/`
 - pushes the configured manifest and source files to the target script project
 - creates a new Apps Script version and prints that version number for Marketplace use
 

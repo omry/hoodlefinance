@@ -56,14 +56,14 @@ const DEFAULT_PREPARE_VERIFICATION_STEPS = [
     label: "demo-sheet test suite",
   },
   {
-    args: ["tools/sync-demo-sheet.js", "--dry-run"],
+    args: ["tools/sync-demo-sheet.js", "--staging", "--dry-run"],
     command: process.execPath,
     label: "demo-sheet staging dry run",
   },
   {
-    args: ["tools/sync-demo-sheet.js", "--live-demo", "--dry-run"],
+    args: ["tools/sync-demo-sheet.js", "--production", "--dry-run"],
     command: process.execPath,
-    label: "demo-sheet live-demo dry run",
+    label: "demo-sheet production dry run",
   },
 ];
 

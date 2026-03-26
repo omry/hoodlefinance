@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const path = require("node:path");
 
 const {
   buildAutoResizeColumnsRequest,
@@ -20,11 +21,16 @@ const {
   buildUnmergeSheetRequest,
   buildNumberFormatRequests,
   buildSheetRange,
+  assertNoLikelyMissingNpmArgSeparator,
   ensureAccessTokenWithDeps,
+  explainClaspPushFailure,
+  getClaspIdentityLevel,
+  getDemoClaspWorkDir,
   isInvalidGrantOAuthError,
   loadDemoSheetConfig,
   normalizeStyleRegistry,
   normalizeTabFormatting,
+  parseClaspUserIdentity,
   parseArgs,
   parseTsv,
   renderDemoIntroBlock,
@@ -36,21 +42,82 @@ const {
 } = require("../tools/sync-demo-sheet.js");
 
 test("parseArgs handles the supported flags", function () {
-  assert.deepEqual(parseArgs([]), {
-    dryRun: false,
-    liveDemo: false,
-    skipClasp: false,
-    skipSharing: false,
-  });
-  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--live-demo"]), {
+  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--production"]), {
     dryRun: true,
-    liveDemo: true,
+    production: true,
     skipClasp: true,
     skipSharing: true,
   });
+  assert.deepEqual(parseArgs(["--live-demo"]), {
+    dryRun: false,
+    production: true,
+    skipClasp: false,
+    skipSharing: false,
+  });
+  assert.deepEqual(parseArgs(["--staging"]), {
+    dryRun: false,
+    production: false,
+    skipClasp: false,
+    skipSharing: false,
+  });
+  assert.throws(function () {
+    parseArgs([]);
+  }, /Choose a demo target: --staging or --production/);
+  assert.throws(function () {
+    parseArgs(["--staging", "--production"]);
+  }, /Choose exactly one demo target/);
   assert.throws(function () {
     parseArgs(["--wat"]);
   }, /Unknown argument/);
+});
+
+test("assertNoLikelyMissingNpmArgSeparator catches swallowed npm dry-run flags", function () {
+  assert.throws(function () {
+    assertNoLikelyMissingNpmArgSeparator([], { npm_config_dry_run: "true" }, "demo:sync");
+  }, /required `--` separator/);
+
+  assert.doesNotThrow(function () {
+    assertNoLikelyMissingNpmArgSeparator(["--dry-run"], { npm_config_dry_run: "true" }, "demo:sync");
+  });
+});
+
+test("parseClaspUserIdentity preserves unknown-user results for dry-run reporting", function () {
+  assert.equal(parseClaspUserIdentity("You are logged in as omry@example.com.\n"), "omry@example.com");
+  assert.equal(parseClaspUserIdentity("You are logged in as an unknown user.\n"), "(Unknown user)");
+  assert.equal(parseClaspUserIdentity(""), "");
+
+  assert.equal(getClaspIdentityLevel("omry@example.com"), "OK");
+  assert.equal(getClaspIdentityLevel("(Unknown user)"), "UNKNOWN");
+  assert.equal(getClaspIdentityLevel("(Logged in)"), "UNKNOWN");
+  assert.equal(getClaspIdentityLevel(""), "ERROR");
+  assert.equal(getDemoClaspWorkDir(false).endsWith(path.join(".demo-sheet.local", "staging", "clasp-work")), true);
+  assert.equal(getDemoClaspWorkDir(true).endsWith(path.join(".demo-sheet.local", "production", "clasp-work")), true);
+});
+
+test("explainClaspPushFailure surfaces clasp push context and raw command output", function () {
+  const error = explainClaspPushFailure(
+    Object.assign(new Error("clasp failed"), {
+      stderr: '{"error":"invalid_grant"}',
+      stdout: "",
+    }),
+    {
+      claspAuthPath: "/tmp/auth.json",
+      claspProjectPath: "/tmp/.clasp.json",
+      command: "/tmp/clasp",
+      isProduction: true,
+      scriptId: "script-123",
+      spreadsheetId: "sheet-123",
+      workDir: "/tmp/work",
+    }
+  );
+
+  assert.match(error.message, /Failed to push the demo bound script with clasp/);
+  assert.match(error.message, /Mode: production/);
+  assert.match(error.message, /Clasp auth file: \/tmp\/auth\.json/);
+  assert.match(error.message, /Clasp project file: \/tmp\/\.clasp\.json/);
+  assert.match(error.message, /Spreadsheet ID: sheet-123/);
+  assert.match(error.message, /Script ID: script-123/);
+  assert.match(error.message, /invalid_grant/);
 });
 
 test("buildEnsureTabsRequests adds missing managed tabs and deletes stale unmanaged tabs", function () {

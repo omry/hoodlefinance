@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
+const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
@@ -8,18 +9,46 @@ const { getClaspCommand, getClaspAuth } = require("./clasp-auth.js");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 
+function resolvePreferredLocalPath(primaryPath, legacyPath) {
+  try {
+    fs.accessSync(primaryPath);
+    return primaryPath;
+  } catch (error) {
+    if (legacyPath) {
+      try {
+        fs.accessSync(legacyPath);
+        return legacyPath;
+      } catch (legacyError) {
+        // Fall back to the primary path shown in docs.
+      }
+    }
+  }
+
+  return primaryPath;
+}
+
 const AUTH_SLOTS = [
   {
     label: "staging (personal)",
     authPath: path.join(os.homedir(), ".clasprc.json"),
   },
   {
-    label: "live-demo",
-    authPath: path.join(ROOT_DIR, ".demo-sheet.local", "live-demo", ".clasprc.json"),
+    label: "production demo",
+    authPath: resolvePreferredLocalPath(
+      path.join(ROOT_DIR, ".demo-sheet.local", "production", ".clasprc.json"),
+      path.join(ROOT_DIR, ".demo-sheet.local", "live-demo", ".clasprc.json")
+    ),
   },
   {
-    label: "add-on deploy",
-    authPath: path.join(ROOT_DIR, ".addon-deploy.local", ".clasprc.json"),
+    label: "add-on production",
+    authPath: resolvePreferredLocalPath(
+      path.join(ROOT_DIR, ".addon-deploy.local", "production", ".clasprc.json"),
+      path.join(ROOT_DIR, ".addon-deploy.local", ".clasprc.json")
+    ),
+  },
+  {
+    label: "add-on staging",
+    authPath: path.join(ROOT_DIR, ".addon-deploy.local", "staging", ".clasprc.json"),
   },
 ];
 

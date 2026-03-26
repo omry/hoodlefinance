@@ -23,8 +23,8 @@ Normal feature work does not require Google OAuth credentials or `clasp` authent
 The repo separates those Google auth paths on purpose:
 
 - personal staging uses your normal global `~/.clasprc.json` plus `.demo-sheet.local/staging/`
-- local public `--live-demo` syncs use `.demo-sheet.local/live-demo/`
-- add-on deployment uses `.addon-deploy.local/`
+- local public `--production` syncs use `.demo-sheet.local/production/`
+- add-on deployment uses `.addon-deploy.local/production/` and `.addon-deploy.local/staging/`
 
 That keeps contributor staging credentials separate from production, while still allowing different production Google Cloud projects to keep separate auth files.
 
@@ -34,7 +34,7 @@ To confirm which `clasp` accounts the configured staging and production flows wi
 npm run clasp:user
 ```
 
-The public add-on deployment helper is also maintainer-only. It uses the same repo-pinned `clasp` toolchain pattern, but targets a separate add-on script project and its own local auth/config files under `.addon-deploy.local/`.
+The public add-on deployment helper is also maintainer-only. It uses the same repo-pinned `clasp` toolchain pattern, but now supports separate staging and production add-on targets with their own local auth/config files under `.addon-deploy.local/`.
 
 If you do not already have `nvm`, install it first:
 
@@ -146,8 +146,8 @@ npm run release:publish -- 0.2.6
 - `node --test test/hoodlefinance.test.js`
 - `node --test test/release.test.js`
 - `node --test test/sync-demo-sheet.test.js`
-- `node tools/sync-demo-sheet.js --dry-run` (staging config preflight)
-- `node tools/sync-demo-sheet.js --live-demo --dry-run` (public demo config preflight)
+- `node tools/sync-demo-sheet.js --staging --dry-run` (staging config preflight)
+- `node tools/sync-demo-sheet.js --production --dry-run` (public demo config preflight)
 
 Run the live benchmark for scalar-vs-range performance:
 
@@ -159,20 +159,22 @@ npm run benchmark -- --tickers GOOG,AAPL,MSFT,AMZN,META
 
 The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through the local Node HTTP transport, so it is useful for checking live endpoints without pasting into Google Sheets.
 
-Sync the demo sheet locally. The default target is staging:
+Sync the demo sheet locally. Choose the target explicitly. For staging:
 
 ```sh
-npm run demo:sync
+npm run demo:sync:staging
 ```
 
 Publish to the real public demo only when you explicitly opt in:
 
 ```sh
-npm run demo:sync -- --live-demo --dry-run
-npm run demo:sync -- --live-demo
+npm run demo:sync:production:dry-run
+npm run demo:sync:production
 ```
 
-The production public demo should normally be synced automatically by the release workflow after a reviewed release PR is merged. For local maintainer use, `--live-demo --dry-run` is mainly a last-minute check that you are pointed at the real public sheet. Run a local `--live-demo` sync only when you are making a demo-only fix that should go live outside the normal release flow.
+The production public demo should normally be synced automatically by the release workflow after a reviewed release PR is merged. For local maintainer use, `--production --dry-run` is mainly a last-minute check that you are pointed at the real public sheet. Run a local `--production` sync only when you are making a demo-only fix that should go live outside the normal release flow.
+
+When you pass extra flags through `npm run`, always include the `--` separator. For example, `npm run demo:sync -- --production --dry-run`. Without that separator, npm can consume flags like `--dry-run` itself instead of passing them to the sync tool.
 
 Before a staging sync will work, you need to set up your personal Google Cloud credentials. We isolate the staging demo completely to your own account so it doesn't collide with the official production Add-on. 
 
@@ -189,11 +191,11 @@ Set up the following:
    npm exec -- clasp login
    ```
 
-*(Note: The official `live-demo` and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets.)*
+*(Note: The official production demo and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets.)*
 
 If the localhost callback flow does not work in your environment, retry the sync with `--no-localhost`.
 
-The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets a staging sheet recorded in the ignored local override file [`docs/demo-sheet/demo-sheet-staging.json`](./docs/demo-sheet/demo-sheet-staging.json). That keeps iterative testing away from the public demo without pretending the staging target is repo-tracked. Use `--live-demo` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
+The sync tool treats [`docs/demo-sheet/demo-sheet.json`](./docs/demo-sheet/demo-sheet.json) and the TSV files under [`docs/demo-sheet/`](./docs/demo-sheet/) as the source of truth for the demo sheet's structure and visible content. The default local mode targets a staging sheet recorded in the ignored local override file [`docs/demo-sheet/demo-sheet-staging.json`](./docs/demo-sheet/demo-sheet-staging.json). That keeps iterative testing away from the public demo without pretending the staging target is repo-tracked. Use `--production` only for the real public sheet. The tool writes local-only OAuth tokens and temporary clasp files under `.demo-sheet.local/`, which must stay untracked.
 
 For the high-level process for adding another trusted demo maintainer, see [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md).
 
@@ -282,14 +284,14 @@ Recommended GitHub Actions flow:
 1. Commit the release fragments on `main`.
 2. Run the `Release Prepare` workflow with the target version. It opens a generated release PR from `release/vX.Y.Z`.
 3. Review and merge that release PR. Merging is the maintainer approval gate.
-4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag with `node tools/sync-demo-sheet.js --live-demo`.
+4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag with `node tools/sync-demo-sheet.js --production`.
 5. Use the manual `Release Publish` workflow only as a fallback if the automatic merge-triggered publish path needs to be rerun or repaired.
 
 Demo-sync workflow secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON`
-- `CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.demo-sheet.local/live-demo/.clasprc.json` locally
+- `CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.demo-sheet.local/production/.clasprc.json` locally
 
 The demo-sync job keeps those secret values out of the checked-out workspace and off the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step. The OAuth token is treated as read-only in CI, so refreshes must be handled by updating the stored secret. All three secret values must be valid JSON.
 

@@ -7,8 +7,13 @@ const path = require("node:path");
 const {
   buildDefaultVersionDescription,
   deployAddon,
+  assertNoLikelyMissingNpmArgSeparator,
+  getAddonClaspAuthPath,
   getAddonDeployCredentialContext,
   getAddonDeployCredentialReport,
+  getAddonOauthClientPath,
+  getAddonWorkDir,
+  getDefaultAddonTargetConfigPath,
   loadLayout,
   loadTargetConfig,
   getOauthClientLevel,
@@ -20,15 +25,18 @@ function createFixture() {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "hoodlefinance-addon-deploy-"));
   const docsDir = path.join(rootDir, "docs", "google-sheets-editor-addon");
   const localDir = path.join(rootDir, ".addon-deploy.local");
-  const workDir = path.join(localDir, "work");
+  const productionDir = path.join(localDir, "production");
+  const stagingDir = path.join(localDir, "staging");
+  const workDir = path.join(productionDir, "work");
   const manifestPath = path.join(docsDir, "appsscript.json");
   const layoutPath = path.join(docsDir, "addon-deploy-layout.json");
-  const targetConfigPath = path.join(localDir, "public-addon.json");
+  const targetConfigPath = path.join(productionDir, "target.json");
   const sourcePath = path.join(rootDir, "hoodlefinance.js");
   const versionMetadataPath = path.join(rootDir, "version.properties");
 
   fs.mkdirSync(docsDir, { recursive: true });
-  fs.mkdirSync(localDir, { recursive: true });
+  fs.mkdirSync(productionDir, { recursive: true });
+  fs.mkdirSync(stagingDir, { recursive: true });
   fs.writeFileSync(manifestPath, JSON.stringify({ timeZone: "Etc/UTC" }, null, 2) + "\n", "utf8");
   fs.writeFileSync(layoutPath, JSON.stringify({
     manifestPath: "docs/google-sheets-editor-addon/appsscript.json",
@@ -42,8 +50,10 @@ function createFixture() {
     layoutPath,
     localDir,
     manifestPath,
+    productionDir,
     rootDir,
     sourcePath,
+    stagingDir,
     targetConfigPath,
     versionMetadataPath,
     workDir,
@@ -51,18 +61,30 @@ function createFixture() {
 }
 
 test("parseArgs supports dry run and push-only flags", function () {
-  assert.deepEqual(parseArgs([]), {
-    createVersion: true,
-    dryRun: false,
-    layoutPath: path.join(path.resolve(__dirname, ".."), "docs", "google-sheets-editor-addon", "addon-deploy-layout.json"),
-    targetConfigPath: path.join(path.resolve(__dirname, ".."), ".addon-deploy.local", "public-addon.json"),
-    versionDescription: "",
-  });
-
-  const parsed = parseArgs(["--dry-run", "--push-only", "--version-description", "custom"]);
+  const parsed = parseArgs(["--dry-run", "--push-only", "--staging", "--version-description", "custom"]);
   assert.equal(parsed.dryRun, true);
   assert.equal(parsed.createVersion, false);
+  assert.equal(parsed.target, "staging");
+  assert.equal(parsed.targetConfigPath, "");
   assert.equal(parsed.versionDescription, "custom");
+
+  assert.throws(function () {
+    parseArgs([]);
+  }, /Choose an add-on target: --staging or --production/);
+
+  assert.throws(function () {
+    parseArgs(["--staging", "--production"]);
+  }, /Choose exactly one add-on target/);
+});
+
+test("assertNoLikelyMissingNpmArgSeparator catches swallowed npm dry-run flags", function () {
+  assert.throws(function () {
+    assertNoLikelyMissingNpmArgSeparator([], { npm_config_dry_run: "true" }, "addon:deploy");
+  }, /required `--` separator/);
+
+  assert.doesNotThrow(function () {
+    assertNoLikelyMissingNpmArgSeparator(["--dry-run"], { npm_config_dry_run: "true" }, "addon:deploy");
+  });
 });
 
 test("loadLayout and loadTargetConfig read the tracked layout and local target", function () {
@@ -82,7 +104,7 @@ test("loadLayout and loadTargetConfig read the tracked layout and local target",
   }
 });
 
-test("getAddonDeployCredentialContext reports the expected local credential paths", function () {
+test("getAddonDeployCredentialContext reports the expected production credential paths", function () {
   const fixture = createFixture();
   const context = getAddonDeployCredentialContext(
     {
@@ -93,15 +115,33 @@ test("getAddonDeployCredentialContext reports the expected local credential path
     }
   );
 
-  assert.equal(context.claspAuthPath, path.join(fixture.localDir, ".clasprc.json"));
-  assert.equal(context.oauthClientPath, path.join(fixture.localDir, "oauth-client.json"));
+  assert.equal(context.claspAuthPath, path.join(fixture.productionDir, ".clasprc.json"));
+  assert.equal(context.oauthClientPath, path.join(fixture.productionDir, "oauth-client.json"));
   assert.equal(context.targetConfigPath, fixture.targetConfigPath);
+  assert.equal(context.targetName, "production");
+});
+
+test("getAddonDeployCredentialContext reports the expected staging credential paths", function () {
+  const fixture = createFixture();
+  const context = getAddonDeployCredentialContext(
+    {
+      target: "staging",
+    },
+    {
+      rootDir: fixture.rootDir,
+    }
+  );
+
+  assert.equal(context.claspAuthPath, path.join(fixture.stagingDir, ".clasprc.json"));
+  assert.equal(context.oauthClientPath, path.join(fixture.stagingDir, "oauth-client.json"));
+  assert.equal(context.targetConfigPath, path.join(fixture.stagingDir, "target.json"));
+  assert.equal(context.targetName, "staging");
 });
 
 test("getAddonDeployCredentialReport reports status and identity details", async function () {
   const fixture = createFixture();
-  const authPath = path.join(fixture.localDir, ".clasprc.json");
-  const oauthClientPath = path.join(fixture.localDir, "oauth-client.json");
+  const authPath = path.join(fixture.productionDir, ".clasprc.json");
+  const oauthClientPath = path.join(fixture.productionDir, "oauth-client.json");
   fs.writeFileSync(authPath, "{}", "utf8");
 
   const report = await getAddonDeployCredentialReport(
@@ -122,7 +162,8 @@ test("getAddonDeployCredentialReport reports status and identity details", async
   assert.equal(report.oauthClientStatus, "missing");
   assert.equal(report.targetConfigPath, fixture.targetConfigPath);
   assert.equal(report.targetConfigStatus, "found");
-  assert.equal(report.targetDeployMode, "Public Add-on");
+  assert.equal(report.targetDeployMode, "Production Add-on");
+  assert.equal(report.targetName, "production");
   assert.equal(report.claspAuthIdentity, "deployer@example.com");
 });
 
@@ -234,8 +275,8 @@ test("deployAddon push flow runs clasp push and clasp version", async function (
     assert.equal(result.versionNumber, "17");
     assert.deepEqual(calls, [
       ["clasp", "--version"],
-      ["clasp", "-A", path.join(fixture.localDir, ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "push", "--force"],
-      ["clasp", "-A", path.join(fixture.localDir, ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "version", "Release 0.9.3"],
+      ["clasp", "-A", path.join(fixture.productionDir, ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "push", "--force"],
+      ["clasp", "-A", path.join(fixture.productionDir, ".clasprc.json"), "-P", path.join(fixture.workDir, ".clasp.json"), "version", "Release 0.9.3"],
     ]);
   } finally {
     process.chdir(previousCwd);
@@ -275,15 +316,28 @@ test("deployAddon surfaces missing add-on credential paths when clasp reports no
       ),
       function (error) {
         assert.match(error.message, /No clasp credentials found for add-on deployment\./);
-        assert.match(error.message, new RegExp("Expected auth file: " + escapeRegex(path.join(fixture.localDir, ".clasprc.json")) + " \\(missing\\)"));
-        assert.match(error.message, new RegExp("Expected OAuth client file: " + escapeRegex(path.join(fixture.localDir, "oauth-client.json")) + " \\(missing\\)"));
-        assert.match(error.message, /clasp -A \.addon-deploy\.local\/\.clasprc\.json login --creds \.addon-deploy\.local\/oauth-client\.json/);
+        assert.match(error.message, new RegExp("Expected auth file: " + escapeRegex(path.join(fixture.productionDir, ".clasprc.json")) + " \\(missing\\)"));
+        assert.match(error.message, new RegExp("Expected OAuth client file: " + escapeRegex(path.join(fixture.productionDir, "oauth-client.json")) + " \\(missing\\)"));
+        assert.match(error.message, /clasp -A \.addon-deploy\.local\/production\/\.clasprc\.json login --creds \.addon-deploy\.local\/production\/oauth-client\.json/);
         return true;
       }
     );
   } finally {
     process.chdir(previousCwd);
   }
+});
+
+test("addon target helpers resolve production and staging local paths", function () {
+  const fixture = createFixture();
+
+  assert.equal(getDefaultAddonTargetConfigPath(fixture.rootDir, "production"), path.join(fixture.productionDir, "target.json"));
+  assert.equal(getDefaultAddonTargetConfigPath(fixture.rootDir, "staging"), path.join(fixture.stagingDir, "target.json"));
+  assert.equal(getAddonClaspAuthPath(fixture.rootDir, "production"), path.join(fixture.productionDir, ".clasprc.json"));
+  assert.equal(getAddonClaspAuthPath(fixture.rootDir, "staging"), path.join(fixture.stagingDir, ".clasprc.json"));
+  assert.equal(getAddonOauthClientPath(fixture.rootDir, "production"), path.join(fixture.productionDir, "oauth-client.json"));
+  assert.equal(getAddonOauthClientPath(fixture.rootDir, "staging"), path.join(fixture.stagingDir, "oauth-client.json"));
+  assert.equal(getAddonWorkDir(fixture.rootDir, "production"), path.join(fixture.productionDir, "work"));
+  assert.equal(getAddonWorkDir(fixture.rootDir, "staging"), path.join(fixture.stagingDir, "work"));
 });
 
 function escapeRegex(text) {

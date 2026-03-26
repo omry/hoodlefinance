@@ -13,14 +13,14 @@ const {
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 const LOCAL_DIR = path.join(ROOT_DIR, ".addon-deploy.local");
-const WORK_DIR = path.join(LOCAL_DIR, "work");
 const DEFAULT_LAYOUT_PATH = path.join(ROOT_DIR, "docs", "google-sheets-editor-addon", "addon-deploy-layout.json");
-const DEFAULT_TARGET_CONFIG_PATH = path.join(LOCAL_DIR, "public-addon.json");
-const DEFAULT_OAUTH_CLIENT_PATH = path.join(LOCAL_DIR, "oauth-client.json");
+const DEFAULT_TARGET_NAME = "production";
 const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  const rawArgv = process.argv.slice(2);
+  assertNoLikelyMissingNpmArgSeparator(rawArgv, process.env, "addon:deploy");
+  const options = parseArgs(rawArgv);
   await printCredentialContext(options);
   const result = await deployAddon(options);
 
@@ -56,12 +56,28 @@ async function main() {
   }
 }
 
+function assertNoLikelyMissingNpmArgSeparator(argv, env, scriptName) {
+  const normalizedArgv = Array.isArray(argv) ? argv : [];
+  const normalizedEnv = env || process.env;
+
+  if (
+    String(normalizedEnv.npm_config_dry_run || "").trim() === "true" &&
+    normalizedArgv.indexOf("--dry-run") === -1
+  ) {
+    throw new Error(
+      "It looks like `--dry-run` was passed to `npm run` without the required `--` separator.\n" +
+        "Use `npm run " + scriptName + " -- --dry-run`, `npm run " + scriptName + " -- --staging --dry-run`, or a dedicated script such as `npm run " + scriptName + ":production:dry-run`."
+    );
+  }
+}
+
 function parseArgs(argv) {
   const options = {
     createVersion: true,
     dryRun: false,
     layoutPath: DEFAULT_LAYOUT_PATH,
-    targetConfigPath: DEFAULT_TARGET_CONFIG_PATH,
+    target: "",
+    targetConfigPath: "",
     versionDescription: "",
   };
   let i;
@@ -80,10 +96,26 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (current === "--production") {
+      if (options.target && options.target !== "production") {
+        throw new Error("Choose exactly one add-on target: --staging or --production.");
+      }
+      options.target = "production";
+      continue;
+    }
+
+    if (current === "--staging") {
+      if (options.target && options.target !== "staging") {
+        throw new Error("Choose exactly one add-on target: --staging or --production.");
+      }
+      options.target = "staging";
+      continue;
+    }
+
     if (current === "--target-config") {
       i += 1;
       if (i >= argv.length) {
-        throw new Error("Usage: node tools/deploy-addon.js [--dry-run] [--push-only] [--target-config <path>] [--layout <path>] [--version-description <text>]");
+        throw new Error("Usage: node tools/deploy-addon.js [--dry-run] [--push-only] [--production|--staging] [--target-config <path>] [--layout <path>] [--version-description <text>]");
       }
       options.targetConfigPath = path.resolve(ROOT_DIR, argv[i]);
       continue;
@@ -92,7 +124,7 @@ function parseArgs(argv) {
     if (current === "--layout") {
       i += 1;
       if (i >= argv.length) {
-        throw new Error("Usage: node tools/deploy-addon.js [--dry-run] [--push-only] [--target-config <path>] [--layout <path>] [--version-description <text>]");
+        throw new Error("Usage: node tools/deploy-addon.js [--dry-run] [--push-only] [--production|--staging] [--target-config <path>] [--layout <path>] [--version-description <text>]");
       }
       options.layoutPath = path.resolve(ROOT_DIR, argv[i]);
       continue;
@@ -101,13 +133,17 @@ function parseArgs(argv) {
     if (current === "--version-description") {
       i += 1;
       if (i >= argv.length) {
-        throw new Error("Usage: node tools/deploy-addon.js [--dry-run] [--push-only] [--target-config <path>] [--layout <path>] [--version-description <text>]");
+        throw new Error("Usage: node tools/deploy-addon.js [--dry-run] [--push-only] [--production|--staging] [--target-config <path>] [--layout <path>] [--version-description <text>]");
       }
       options.versionDescription = argv[i];
       continue;
     }
 
     throw new Error("Unknown argument: " + current);
+  }
+
+  if (!options.target) {
+    throw new Error("Choose an add-on target: --staging or --production.");
   }
 
   return options;
@@ -179,18 +215,85 @@ function loadTargetConfig(targetConfigPath) {
   };
 }
 
+function normalizeAddonTargetName(targetName) {
+  if (String(targetName || "").trim().toLowerCase() === "staging") {
+    return "staging";
+  }
+
+  return "production";
+}
+
+function resolvePreferredLocalPath(primaryPath, legacyPath) {
+  if (fs.existsSync(primaryPath)) {
+    return primaryPath;
+  }
+
+  if (legacyPath && fs.existsSync(legacyPath)) {
+    return legacyPath;
+  }
+
+  return primaryPath;
+}
+
+function getAddonTargetDir(rootDir, targetName) {
+  return path.join(rootDir, ".addon-deploy.local", normalizeAddonTargetName(targetName));
+}
+
+function getDefaultAddonTargetConfigPath(rootDir, targetName) {
+  const normalizedTarget = normalizeAddonTargetName(targetName);
+  const primaryPath = path.join(getAddonTargetDir(rootDir, normalizedTarget), "target.json");
+
+  if (normalizedTarget === "production") {
+    return resolvePreferredLocalPath(primaryPath, path.join(rootDir, ".addon-deploy.local", "public-addon.json"));
+  }
+
+  return primaryPath;
+}
+
+function getAddonClaspAuthPath(rootDir, targetName) {
+  const normalizedTarget = normalizeAddonTargetName(targetName);
+  const primaryPath = path.join(getAddonTargetDir(rootDir, normalizedTarget), ".clasprc.json");
+
+  if (normalizedTarget === "production") {
+    return resolvePreferredLocalPath(primaryPath, path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
+  }
+
+  return primaryPath;
+}
+
+function getAddonOauthClientPath(rootDir, targetName) {
+  const normalizedTarget = normalizeAddonTargetName(targetName);
+  const primaryPath = path.join(getAddonTargetDir(rootDir, normalizedTarget), "oauth-client.json");
+
+  if (normalizedTarget === "production") {
+    return resolvePreferredLocalPath(primaryPath, path.join(rootDir, ".addon-deploy.local", "oauth-client.json"));
+  }
+
+  return primaryPath;
+}
+
+function getAddonWorkDir(rootDir, targetName) {
+  return path.join(getAddonTargetDir(rootDir, targetName), "work");
+}
+
+function getAddonDeployModeLabel(targetName) {
+  return normalizeAddonTargetName(targetName) === "staging" ? "Staging Add-on" : "Production Add-on";
+}
+
 function getAddonDeployCredentialContext(options, overrides) {
   const normalizedOptions = options || {};
   const normalizedOverrides = overrides || {};
   const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
-  const targetConfigPath = normalizedOverrides.targetConfigPath || normalizedOptions.targetConfigPath || DEFAULT_TARGET_CONFIG_PATH;
-  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
+  const targetName = normalizeAddonTargetName(normalizedOverrides.targetName || normalizedOptions.target || DEFAULT_TARGET_NAME);
+  const targetConfigPath = normalizedOverrides.targetConfigPath || normalizedOptions.targetConfigPath || getDefaultAddonTargetConfigPath(rootDir, targetName);
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(getAddonClaspAuthPath(rootDir, targetName));
   const claspAuthPath = getClaspAuthPath(claspAuth);
-  const oauthClientPath = normalizedOverrides.oauthClientPath || path.join(rootDir, ".addon-deploy.local", "oauth-client.json");
+  const oauthClientPath = normalizedOverrides.oauthClientPath || getAddonOauthClientPath(rootDir, targetName);
 
   return {
     claspAuthPath: claspAuthPath,
     oauthClientPath: oauthClientPath,
+    targetName: targetName,
     targetConfigPath: targetConfigPath,
   };
 }
@@ -201,7 +304,7 @@ async function getAddonDeployCredentialReport(options, overrides) {
   const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
   const runner = normalizedOverrides.runCommand || runCommand;
   const claspCommand = normalizedOverrides.claspCommand || getClaspCommand(rootDir);
-  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(getAddonClaspAuthPath(rootDir, context.targetName));
 
   return {
     claspAuthPath: context.claspAuthPath,
@@ -210,7 +313,8 @@ async function getAddonDeployCredentialReport(options, overrides) {
     oauthClientStatus: describeFileStatus(context.oauthClientPath),
     targetConfigPath: context.targetConfigPath,
     targetConfigStatus: describeFileStatus(context.targetConfigPath),
-    targetDeployMode: "Public Add-on",
+    targetDeployMode: getAddonDeployModeLabel(context.targetName),
+    targetName: context.targetName,
     claspAuthIdentity: await getClaspAuthIdentity(claspCommand, claspAuth, runner),
   };
 }
@@ -241,7 +345,7 @@ async function ensureCommandExists(command, runner) {
 async function prepareWorkspace(layout, target, options) {
   const normalizedOptions = options || {};
   const rootDir = normalizedOptions.rootDir || ROOT_DIR;
-  const workDir = options.workDir || WORK_DIR;
+  const workDir = normalizedOptions.workDir || getAddonWorkDir(rootDir, normalizedOptions.targetName || DEFAULT_TARGET_NAME);
   const claspConfigPath = path.join(workDir, ".clasp.json");
   const manifestTargetPath = path.join(workDir, "appsscript.json");
   let i;
@@ -285,19 +389,21 @@ async function deployAddon(options, overrides) {
   const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
   const runner = normalizedOverrides.runCommand || runCommand;
   const claspCommand = normalizedOverrides.claspCommand || getClaspCommand(rootDir);
-  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(path.join(rootDir, ".addon-deploy.local", ".clasprc.json"));
+  const targetName = normalizeAddonTargetName(normalizedOverrides.targetName || options.target || DEFAULT_TARGET_NAME);
+  const claspAuth = normalizedOverrides.claspAuth || getClaspAuth(getAddonClaspAuthPath(rootDir, targetName));
   const layout = normalizedOverrides.layout || loadLayout(options.layoutPath, { rootDir: rootDir });
-  const target = normalizedOverrides.target || loadTargetConfig(options.targetConfigPath);
+  const targetConfigPath = normalizedOverrides.targetConfigPath || options.targetConfigPath || getDefaultAddonTargetConfigPath(rootDir, targetName);
+  const target = normalizedOverrides.target || loadTargetConfig(targetConfigPath);
   const versionDescription = options.createVersion
     ? String(options.versionDescription || normalizedOverrides.versionDescription || buildDefaultVersionDescription({ rootDir: rootDir })).trim()
     : "";
   const workspace = await prepareWorkspace(layout, target, {
     rootDir: rootDir,
-    workDir: normalizedOverrides.workDir,
+    workDir: normalizedOverrides.workDir || getAddonWorkDir(rootDir, targetName),
   });
   const claspProjectPath = path.join(workspace.workDir, ".clasp.json");
   const claspAuthPath = getClaspAuthPath(claspAuth);
-  const oauthClientPath = normalizedOverrides.oauthClientPath || path.join(rootDir, ".addon-deploy.local", "oauth-client.json");
+  const oauthClientPath = normalizedOverrides.oauthClientPath || getAddonOauthClientPath(rootDir, targetName);
   let versionOutput = "";
   let versionMatch;
 
@@ -312,6 +418,7 @@ async function deployAddon(options, overrides) {
       throw explainCredentialError(error, {
         claspAuthPath: claspAuthPath,
         oauthClientPath: oauthClientPath,
+        targetName: targetName,
       });
     }
 
@@ -326,6 +433,7 @@ async function deployAddon(options, overrides) {
         throw explainCredentialError(error, {
           claspAuthPath: claspAuthPath,
           oauthClientPath: oauthClientPath,
+          targetName: targetName,
         });
       }
       versionMatch = String(versionOutput).match(/Created version (\d+)/);
@@ -338,6 +446,7 @@ async function deployAddon(options, overrides) {
     sourceFiles: layout.sourceFiles.map(function (filePath) {
       return toRepoRelative(filePath, rootDir);
     }),
+    targetName: targetName,
     versionDescription: versionDescription,
     versionNumber: versionMatch ? versionMatch[1] : "",
     workDir: workspace.workDir,
@@ -482,7 +591,7 @@ async function printCredentialContext(options, overrides) {
 
   rows.push(buildStatusRow({
     label: "Target Deploy Mode",
-    level: "ATTENTION",
+    level: context.targetName === "staging" ? "OK" : "ATTENTION",
     value: context.targetDeployMode,
   }));
 
@@ -504,7 +613,7 @@ function explainCredentialError(error, paths) {
         describeCredentialFile(paths && paths.oauthClientPath, "Expected OAuth client file") +
         "\n" +
         "Create the auth file with:\n" +
-        "npm exec -- clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json"
+        "npm exec -- clasp -A .addon-deploy.local/" + normalizeAddonTargetName(paths && paths.targetName) + "/.clasprc.json login --creds .addon-deploy.local/" + normalizeAddonTargetName(paths && paths.targetName) + "/oauth-client.json"
     ),
     {
       cause: error,
@@ -517,17 +626,22 @@ function explainCredentialError(error, paths) {
 
 module.exports = {
   DEFAULT_LAYOUT_PATH,
-  DEFAULT_OAUTH_CLIENT_PATH,
-  DEFAULT_TARGET_CONFIG_PATH,
+  DEFAULT_TARGET_NAME,
   LOCAL_DIR,
-  WORK_DIR,
   buildDefaultVersionDescription,
   deployAddon,
   explainCredentialError,
+  assertNoLikelyMissingNpmArgSeparator,
   getAddonDeployCredentialReport,
   getClaspCommand,
   getAddonDeployCredentialContext,
   getClaspAuthIdentity,
+  getAddonClaspAuthPath,
+  getAddonOauthClientPath,
+  getAddonTargetDir,
+  getAddonWorkDir,
+  getDefaultAddonTargetConfigPath,
+  getAddonDeployModeLabel,
   getOauthClientLevel,
   loadLayout,
   loadTargetConfig,

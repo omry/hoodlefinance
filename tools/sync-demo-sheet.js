@@ -42,7 +42,6 @@ const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
 const OAUTH_CLIENT_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_CLIENT_PATH";
 const OAUTH_TOKEN_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_TOKEN_PATH";
 const OAUTH_TOKEN_READ_ONLY_ENV_VAR = "HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY";
-const CLASP_WORKDIR = path.join(LOCAL_DIR, "clasp-work");
 const DEMO_MARKER_START = "<!-- DEMO_SHEET_LINK:START -->";
 const DEMO_MARKER_END = "<!-- DEMO_SHEET_LINK:END -->";
 const DEFAULT_MANIFEST = {
@@ -63,18 +62,17 @@ const DEFAULT_ERROR_TEXT_COLOR = {
 };
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
-  const config = loadDemoSheetConfig(options.liveDemo);
-  const claspAuth = getClaspAuth(options.liveDemo ? path.join(LOCAL_DIR, "live-demo", ".clasprc.json") : path.join(os.homedir(), ".clasprc.json"));
+  const rawArgv = process.argv.slice(2);
+  assertNoLikelyMissingNpmArgSeparator(rawArgv, process.env, "demo:sync");
+  const options = parseArgs(rawArgv);
+  const config = loadDemoSheetConfig(options.production);
+  const claspAuth = getClaspAuth(getDemoClaspAuthPath(options.production));
   let claspUser = "";
 
   if (!options.skipClasp && !process.env.HOODLEFINANCE_NON_INTERACTIVE) {
     try {
       const output = await runCommand(getClaspCommand(ROOT_DIR), claspAuth.authArgs.concat(["show-authorized-user"]));
-      const match = String(output.stdout || "").match(/([^ ]+@[^ ]+\.[^ \r\n]+)/);
-      if (match) {
-        claspUser = sanitizeIdentity(match[1]);
-      }
+      claspUser = parseClaspUserIdentity(String((output && (output.stdout || output.stderr)) || "")) || "(Logged in)";
     } catch (error) {
       // Ignore if not logged in; push will fail distinctly anyway
     }
@@ -84,7 +82,7 @@ async function main() {
   await ensureConfiguredTabFilesExist(config);
 
   if (options.dryRun) {
-    await printDemoCredentialContext(options.liveDemo, {
+    await printDemoCredentialContext(options.production, {
       claspUser: claspUser,
       dryRun: true,
     });
@@ -92,30 +90,46 @@ async function main() {
     return;
   }
 
-  const accessToken = await ensureAccessToken(options.liveDemo);
-  await printDemoCredentialContext(options.liveDemo, {
+  const accessToken = await ensureAccessToken(options.production);
+  await printDemoCredentialContext(options.production, {
     accessToken: accessToken,
     claspUser: claspUser,
   });
   const syncedConfig = await syncDemoSheet(accessToken, config, options, claspAuth);
 
-  await persistRuntimeDemoConfig(syncedConfig, options.liveDemo);
+  await persistRuntimeDemoConfig(syncedConfig, options.production);
 
-  if (options.liveDemo) {
+  if (options.production) {
     await updateDemoLinks(syncedConfig.publicUrl || "");
   }
   
   printSummary(syncedConfig, options, "Demo sheet sync completed.", claspAuth.authSource, claspUser);
 }
 
+function assertNoLikelyMissingNpmArgSeparator(argv, env, scriptName) {
+  const normalizedArgv = Array.isArray(argv) ? argv : [];
+  const normalizedEnv = env || process.env;
+
+  if (
+    String(normalizedEnv.npm_config_dry_run || "").trim() === "true" &&
+    normalizedArgv.indexOf("--dry-run") === -1
+  ) {
+    throw new Error(
+      "It looks like `--dry-run` was passed to `npm run` without the required `--` separator.\n" +
+        "Use `npm run " + scriptName + " -- --dry-run`, `npm run " + scriptName + " -- --production --dry-run`, or a dedicated script such as `npm run " + scriptName + ":production:dry-run`."
+    );
+  }
+}
+
 function parseArgs(argv) {
   const options = {
     dryRun: false,
-    liveDemo: false,
+    production: false,
     skipClasp: false,
     skipSharing: false,
   };
   let i;
+  let targetName = "";
 
   for (i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--dry-run") {
@@ -133,21 +147,38 @@ function parseArgs(argv) {
       continue;
     }
 
-    if (argv[i] === "--live-demo") {
-      options.liveDemo = true;
+    if (argv[i] === "--production" || argv[i] === "--live-demo") {
+      if (targetName && targetName !== "production") {
+        throw new Error("Choose exactly one demo target: --staging or --production.");
+      }
+      options.production = true;
+      targetName = "production";
+      continue;
+    }
+
+    if (argv[i] === "--staging") {
+      if (targetName && targetName !== "staging") {
+        throw new Error("Choose exactly one demo target: --staging or --production.");
+      }
+      options.production = false;
+      targetName = "staging";
       continue;
     }
 
     throw new Error("Unknown argument: " + argv[i]);
   }
 
+  if (!targetName) {
+    throw new Error("Choose a demo target: --staging or --production.");
+  }
+
   return options;
 }
 
-function loadDemoSheetConfig(isLiveDemo) {
+function loadDemoSheetConfig(isProduction) {
   const baseConfig = readJsonSync(CONFIG_PATH, "demo-sheet config");
   
-  if (isLiveDemo) {
+  if (isProduction) {
     return baseConfig;
   }
   
@@ -288,7 +319,7 @@ async function ensureSpreadsheet(accessToken, config, options) {
 
   config.spreadsheetId = created.spreadsheetId;
   config.publicUrl = created.spreadsheetUrl || buildSpreadsheetUrl(created.spreadsheetId);
-  await persistRuntimeDemoConfig(config, options && options.liveDemo);
+  await persistRuntimeDemoConfig(config, options && options.production);
 }
 
 async function ensureTabs(accessToken, config) {
@@ -859,15 +890,17 @@ async function ensureBoundScriptProject(accessToken, config, options) {
   });
 
   config.script.scriptId = project.scriptId;
-  await persistRuntimeDemoConfig(config, options && options.liveDemo);
+  await persistRuntimeDemoConfig(config, options && options.production);
 }
 
 async function syncBoundScriptWithClasp(config, options, claspAuth) {
   let source = await fsp.readFile(SCRIPT_SOURCE_PATH, "utf8");
   const claspCommand = getClaspCommand(ROOT_DIR);
-  const claspProjectPath = path.join(CLASP_WORKDIR, ".clasp.json");
+  const claspWorkDir = getDemoClaspWorkDir(options.production);
+  const claspProjectPath = path.join(claspWorkDir, ".clasp.json");
+  const claspAuthPath = getClaspAuthPath(claspAuth);
 
-  if (!options.liveDemo) {
+  if (!options.production) {
     const d = new Date();
     const offset = -d.getTimezoneOffset();
     const pad = function (n) { return String(n).padStart(2, "0"); };
@@ -882,7 +915,7 @@ async function syncBoundScriptWithClasp(config, options, claspAuth) {
   }
 
   await ensureCommandExists(claspCommand);
-  await fsp.mkdir(CLASP_WORKDIR, { recursive: true });
+  await fsp.mkdir(claspWorkDir, { recursive: true });
   await fsp.writeFile(
     claspProjectPath,
     JSON.stringify(
@@ -895,19 +928,39 @@ async function syncBoundScriptWithClasp(config, options, claspAuth) {
     ) + "\n",
     "utf8"
   );
-  await fsp.writeFile(path.join(CLASP_WORKDIR, "appsscript.json"), JSON.stringify(DEFAULT_MANIFEST, null, 2) + "\n");
-  await fsp.writeFile(path.join(CLASP_WORKDIR, "hoodlefinance.js"), source, "utf8");
-  await runCommand(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "push", "--force"]), {
-    cwd: CLASP_WORKDIR,
+  await fsp.writeFile(path.join(claspWorkDir, "appsscript.json"), JSON.stringify(DEFAULT_MANIFEST, null, 2) + "\n");
+  await fsp.writeFile(path.join(claspWorkDir, "hoodlefinance.js"), source, "utf8");
+  printClaspPushContext({
+    claspAuthPath: claspAuthPath,
+    claspProjectPath: claspProjectPath,
+    isProduction: options.production,
+    scriptId: config.script.scriptId,
+    spreadsheetId: config.spreadsheetId,
+    workDir: claspWorkDir,
   });
+  try {
+    await runCommand(claspCommand, claspAuth.authArgs.concat(["-P", claspProjectPath, "push", "--force"]), {
+      cwd: claspWorkDir,
+    });
+  } catch (error) {
+    throw explainClaspPushFailure(error, {
+      claspAuthPath: claspAuthPath,
+      claspProjectPath: claspProjectPath,
+      command: claspCommand,
+      isProduction: options.production,
+      scriptId: config.script.scriptId,
+      spreadsheetId: config.spreadsheetId,
+      workDir: claspWorkDir,
+    });
+  }
 }
 
 
-async function ensureAccessToken(isLiveDemo) {
+async function ensureAccessToken(isProduction) {
   return ensureAccessTokenWithDeps({
     nonInteractive: process.env.CI === "true" || process.env.HOODLEFINANCE_NON_INTERACTIVE === "1",
-    oauthClientPath: getDemoOauthClientPath(isLiveDemo),
-    oauthTokenPath: getDemoOauthTokenPath(isLiveDemo),
+    oauthClientPath: getDemoOauthClientPath(isProduction),
+    oauthTokenPath: getDemoOauthTokenPath(isProduction),
     readJsonSync: readJsonSync,
     readOptionalJsonSync: readOptionalJsonSync,
     saveJson: saveDemoOauthTokenJson,
@@ -915,10 +968,10 @@ async function ensureAccessToken(isLiveDemo) {
   });
 }
 
-async function printDemoCredentialContext(isLiveDemo, info) {
+async function printDemoCredentialContext(isProduction, info) {
   const normalizedInfo = info || {};
-  const clientPath = getDemoOauthClientPath(isLiveDemo);
-  const tokenPath = getDemoOauthTokenPath(isLiveDemo);
+  const clientPath = getDemoOauthClientPath(isProduction);
+  const tokenPath = getDemoOauthTokenPath(isProduction);
   const rows = buildPathRows([
     { label: "OAuth Client config", path: clientPath },
     { label: "OAuth Token cache", path: tokenPath },
@@ -927,8 +980,8 @@ async function printDemoCredentialContext(isLiveDemo, info) {
   });
   rows.push(buildStatusRow({
     label: "Target Demo Mode",
-    level: isLiveDemo ? "ATTENTION" : "OK",
-    value: isLiveDemo ? "LIVE Public Demo" : "Local Staging",
+    level: isProduction ? "ATTENTION" : "OK",
+    value: isProduction ? "Production Public Demo" : "Local Staging",
   }));
 
   if (normalizedInfo.accessToken) {
@@ -958,8 +1011,8 @@ async function printDemoCredentialContext(isLiveDemo, info) {
   } else if (normalizedInfo.claspUser) {
     rows.push(buildStatusRow({
       label: "Clasp Auth Identity",
-      level: "OK",
-      value: sanitizeIdentity(normalizedInfo.claspUser),
+      level: getClaspIdentityLevel(normalizedInfo.claspUser),
+      value: normalizedInfo.claspUser,
     }));
   } else if (normalizedInfo.dryRun) {
     rows.push(buildStatusRow({
@@ -974,6 +1027,101 @@ async function printDemoCredentialContext(isLiveDemo, info) {
 
 function sanitizeIdentity(value) {
   return String(value || "").replace(/[.,;:]+$/, "");
+}
+
+function parseClaspUserIdentity(outputText) {
+  const normalizedOutput = String(outputText || "").trim();
+  const emailMatch = normalizedOutput.match(/([^ ]+@[^ ]+\.[^ \r\n]+)/);
+
+  if (emailMatch) {
+    return sanitizeIdentity(emailMatch[1]);
+  }
+
+  if (/unknown user/i.test(normalizedOutput)) {
+    return "(Unknown user)";
+  }
+
+  if (normalizedOutput) {
+    return normalizedOutput.split(/\r?\n/)[0];
+  }
+
+  return "";
+}
+
+function getClaspIdentityLevel(identity) {
+  if (!String(identity || "").trim()) {
+    return "ERROR";
+  }
+
+  if (/^\(.*\)$/.test(String(identity).trim())) {
+    return "UNKNOWN";
+  }
+
+  return "OK";
+}
+
+function getClaspAuthPath(claspAuth) {
+  const authArgs = claspAuth && Array.isArray(claspAuth.authArgs) ? claspAuth.authArgs : [];
+  const authFlagIndex = authArgs.indexOf("-A");
+
+  if (authFlagIndex === -1 || authFlagIndex + 1 >= authArgs.length) {
+    return "";
+  }
+
+  return String(authArgs[authFlagIndex + 1] || "").trim();
+}
+
+function printClaspPushContext(context) {
+  const normalizedContext = context || {};
+  const rows = buildPathRows([
+    { label: "Clasp Auth config", path: normalizedContext.claspAuthPath || "" },
+    { label: "Clasp Project config", path: normalizedContext.claspProjectPath || "" },
+  ], {
+    prefixStatusIconOnLabel: true,
+  });
+
+  rows.push(buildStatusRow({
+    label: "Target Demo Mode",
+    level: normalizedContext.isProduction ? "ATTENTION" : "OK",
+    value: normalizedContext.isProduction ? "Production Public Demo" : "Local Staging",
+  }));
+  rows.push(buildStatusRow({
+    label: "Spreadsheet ID",
+    level: normalizedContext.spreadsheetId ? "OK" : "ERROR",
+    value: normalizedContext.spreadsheetId || "<not set>",
+  }));
+  rows.push(buildStatusRow({
+    label: "Script ID",
+    level: normalizedContext.scriptId ? "OK" : "ERROR",
+    value: normalizedContext.scriptId || "<not set>",
+  }));
+  rows.push(buildStatusRow({
+    label: "Work Dir",
+    level: normalizedContext.workDir ? "OK" : "UNKNOWN",
+    value: normalizedContext.workDir || "<unknown>",
+  }));
+
+  printContextBlock("Clasp Push Context", rows, process.stdout, { trailingBlankLine: true });
+}
+
+function explainClaspPushFailure(error, context) {
+  const normalizedContext = context || {};
+  const output = String(
+    (error && (error.stderr || error.stdout || error.message)) || ""
+  ).trim();
+
+  return new Error(
+    "Failed to push the demo bound script with clasp.\n" +
+      "Mode: " + (normalizedContext.isProduction ? "production" : "staging") + "\n" +
+      "Clasp auth file: " + (normalizedContext.claspAuthPath || "<unknown>") + "\n" +
+      "Clasp project file: " + (normalizedContext.claspProjectPath || "<unknown>") + "\n" +
+      "Work dir: " + (normalizedContext.workDir || "<unknown>") + "\n" +
+      "Spreadsheet ID: " + (normalizedContext.spreadsheetId || "<not set>") + "\n" +
+      "Script ID: " + (normalizedContext.scriptId || "<not set>") + "\n" +
+      "Command: " + String(normalizedContext.command || "clasp") + " -A <auth> -P <project> push --force\n" +
+      "Command output:\n" +
+      (output || "(no stdout/stderr captured)")
+  );
 }
 
 function parseTsv(text) {
@@ -1007,7 +1155,7 @@ function renderDemoReadmeBlock(publicUrl) {
 
   return (
     DEMO_MARKER_START +
-    "\nThe public demo sheet will be linked here after it is created with `node tools/sync-demo-sheet.js --live-demo`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
+    "\nThe public demo sheet will be linked here after it is created with `node tools/sync-demo-sheet.js --production`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
       DEMO_MARKER_END
   );
 }
@@ -1119,12 +1267,69 @@ async function saveJson(filePath, value) {
   await fsp.writeFile(filePath, JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
-function getDemoOauthClientPath(isLiveDemo) {
-  return String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim() || path.join(LOCAL_DIR, isLiveDemo ? "live-demo" : "staging", "oauth-client.json");
+function resolvePreferredLocalPath(primaryPath, legacyPath) {
+  if (fs.existsSync(primaryPath)) {
+    return primaryPath;
+  }
+
+  if (legacyPath && fs.existsSync(legacyPath)) {
+    return legacyPath;
+  }
+
+  return primaryPath;
 }
 
-function getDemoOauthTokenPath(isLiveDemo) {
-  return String(process.env[OAUTH_TOKEN_PATH_ENV_VAR] || "").trim() || path.join(LOCAL_DIR, isLiveDemo ? "live-demo" : "staging", "oauth-token.json");
+function getDemoProductionDir() {
+  return path.join(LOCAL_DIR, "production");
+}
+
+function getDemoLegacyProductionDir() {
+  return path.join(LOCAL_DIR, "live-demo");
+}
+
+function getDemoClaspAuthPath(isProduction) {
+  if (!isProduction) {
+    return path.join(os.homedir(), ".clasprc.json");
+  }
+
+  return resolvePreferredLocalPath(
+    path.join(getDemoProductionDir(), ".clasprc.json"),
+    path.join(getDemoLegacyProductionDir(), ".clasprc.json")
+  );
+}
+
+function getDemoClaspWorkDir(isProduction) {
+  return path.join(isProduction ? getDemoProductionDir() : path.join(LOCAL_DIR, "staging"), "clasp-work");
+}
+
+function getDemoOauthClientPath(isProduction) {
+  if (String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim()) {
+    return String(process.env[OAUTH_CLIENT_PATH_ENV_VAR] || "").trim();
+  }
+
+  if (!isProduction) {
+    return path.join(LOCAL_DIR, "staging", "oauth-client.json");
+  }
+
+  return resolvePreferredLocalPath(
+    path.join(getDemoProductionDir(), "oauth-client.json"),
+    path.join(getDemoLegacyProductionDir(), "oauth-client.json")
+  );
+}
+
+function getDemoOauthTokenPath(isProduction) {
+  if (String(process.env[OAUTH_TOKEN_PATH_ENV_VAR] || "").trim()) {
+    return String(process.env[OAUTH_TOKEN_PATH_ENV_VAR] || "").trim();
+  }
+
+  if (!isProduction) {
+    return path.join(LOCAL_DIR, "staging", "oauth-token.json");
+  }
+
+  return resolvePreferredLocalPath(
+    path.join(getDemoProductionDir(), "oauth-token.json"),
+    path.join(getDemoLegacyProductionDir(), "oauth-token.json")
+  );
 }
 
 async function saveDemoOauthTokenJson(filePath, value) {
@@ -1145,8 +1350,8 @@ function buildStagingOverrideConfig(config) {
   };
 }
 
-async function persistRuntimeDemoConfig(config, isLiveDemo) {
-  if (isLiveDemo) {
+async function persistRuntimeDemoConfig(config, isProduction) {
+  if (isProduction) {
     await saveJson(CONFIG_PATH, config);
     return;
   }
@@ -1224,7 +1429,7 @@ function printSummary(config, options, message, claspAuthSource, claspUser) {
       process.stdout.write("Google account: " + claspUser + "\n");
     }
   }
-  process.stdout.write("Target: " + (options.liveDemo ? "live-demo" : "staging") + "\n");
+  process.stdout.write("Target: " + (options.production ? "production" : "staging") + "\n");
   process.stdout.write(
     "Mode: " +
       (options.dryRun ? "dry-run" : "live") +
@@ -1256,9 +1461,14 @@ module.exports = {
   buildSpreadsheetUrl,
   buildUnmergeCellsRequest,
   buildUnmergeSheetRequest,
+  assertNoLikelyMissingNpmArgSeparator,
+  explainClaspPushFailure,
+  getClaspIdentityLevel,
+  getDemoClaspWorkDir,
   loadDemoSheetConfig,
   normalizeStyleRegistry,
   normalizeTabFormatting,
+  parseClaspUserIdentity,
   parseArgs,
   parseTsv,
   ensureAccessTokenWithDeps,
