@@ -103,11 +103,13 @@ function buildPathRows(entries, options) {
   for (i = 0; i < entries.length; i += 1) {
     entry = entries[i];
     status = getPathStatus(entry.path, normalizedOptions.existsSync);
-    level = pathStatusToLevel(status, {
-      foundLevel: entry.foundLevel || normalizedOptions.foundLevel,
-      missingLevel: entry.missingLevel || normalizedOptions.missingLevel,
-      unknownLevel: entry.unknownLevel || normalizedOptions.unknownLevel,
-    });
+    level = entry.level
+      ? normalizeLevel(entry.level)
+      : pathStatusToLevel(status, {
+          foundLevel: entry.foundLevel || normalizedOptions.foundLevel,
+          missingLevel: entry.missingLevel || normalizedOptions.missingLevel,
+          unknownLevel: entry.unknownLevel || normalizedOptions.unknownLevel,
+        });
     label = entry.label;
     value = String(entry.path || "").trim() || pathFallback;
     if (prefixStatusIconOnLabel) {

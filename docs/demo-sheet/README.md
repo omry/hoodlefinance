@@ -63,7 +63,7 @@ The local `--live-demo` flow also uses its own OAuth files under `.demo-sheet.lo
 Create that repo-local live-demo `clasp` auth file with:
 
 ```sh
-./node_modules/.bin/clasp -A .demo-sheet.local/live-demo/.clasprc.json login --creds .demo-sheet.local/live-demo/oauth-client.json
+npm exec -- clasp -A .demo-sheet.local/live-demo/.clasprc.json login --creds .demo-sheet.local/live-demo/oauth-client.json
 ```
 
 The sync tool uses your normal `~/.clasprc.json` for staging, but passes `-A .demo-sheet.local/live-demo/.clasprc.json` for local `--live-demo` runs. In CI, the workflow exposes the same live-demo credential shapes through path overrides without writing them to the workspace.

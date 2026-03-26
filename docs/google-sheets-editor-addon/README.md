@@ -78,7 +78,7 @@ Before using it for a real push:
 4. Log in with that OAuth client so `clasp` writes the ignored repo-local auth file:
 
 ```sh
-./node_modules/.bin/clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json
+npm exec -- clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json
 ```
 
 5. Confirm that `clasp` created the ignored repo-local auth file at `.addon-deploy.local/.clasprc.json`, and that it belongs to the Google account that can edit the target Apps Script project.

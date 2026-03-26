@@ -11,6 +11,7 @@ const {
   getAddonDeployCredentialReport,
   loadLayout,
   loadTargetConfig,
+  getOauthClientLevel,
   parseArgs,
   prepareWorkspace,
 } = require("../tools/deploy-addon.js");
@@ -123,6 +124,23 @@ test("getAddonDeployCredentialReport reports status and identity details", async
   assert.equal(report.targetConfigStatus, "found");
   assert.equal(report.targetDeployMode, "Public Add-on");
   assert.equal(report.claspAuthIdentity, "deployer@example.com");
+});
+
+test("getOauthClientLevel treats existing but unverified add-on oauth config as unknown", function () {
+  assert.equal(getOauthClientLevel({
+    oauthClientStatus: "missing",
+    claspAuthIdentity: "(Not logged in or auth file missing)",
+  }), "ERROR");
+
+  assert.equal(getOauthClientLevel({
+    oauthClientStatus: "found",
+    claspAuthIdentity: "(Not logged in or auth file missing)",
+  }), "UNKNOWN");
+
+  assert.equal(getOauthClientLevel({
+    oauthClientStatus: "found",
+    claspAuthIdentity: "deployer@example.com",
+  }), "OK");
 });
 
 test("prepareWorkspace writes clasp config, manifest, and source files", async function () {

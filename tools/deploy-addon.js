@@ -411,6 +411,18 @@ function describeFileStatus(filePath) {
   return getPathStatus(filePath);
 }
 
+function getOauthClientLevel(report) {
+  if (!report || report.oauthClientStatus === "missing") {
+    return "ERROR";
+  }
+
+  if (report.claspAuthIdentity && report.claspAuthIdentity !== "(Not logged in or auth file missing)") {
+    return "OK";
+  }
+
+  return "UNKNOWN";
+}
+
 async function getClaspAuthIdentity(claspCommand, claspAuth, runner) {
   let authPath;
   let output;
@@ -450,22 +462,28 @@ async function getClaspAuthIdentity(claspCommand, claspAuth, runner) {
 async function printCredentialContext(options, overrides) {
   const context = await getAddonDeployCredentialReport(options, overrides);
   const rows = buildPathRows([
+    { label: "OAuth Client config", path: context.oauthClientPath, level: getOauthClientLevel(context) },
     { label: "Clasp Auth config", path: context.claspAuthPath },
-    { label: "OAuth Client config", path: context.oauthClientPath },
-    { label: "Target config", path: context.targetConfigPath },
   ], {
     prefixStatusIconOnLabel: true,
   });
 
   rows.push(buildStatusRow({
-    label: "Target Deploy Mode",
-    level: "ATTENTION",
-    value: context.targetDeployMode,
-  }));
-  rows.push(buildStatusRow({
     label: "Clasp Auth Identity",
     level: context.claspAuthIdentity === "(Not logged in or auth file missing)" ? "ERROR" : "OK",
     value: context.claspAuthIdentity,
+  }));
+
+  rows.push.apply(rows, buildPathRows([
+    { label: "Target config", path: context.targetConfigPath },
+  ], {
+    prefixStatusIconOnLabel: true,
+  }));
+
+  rows.push(buildStatusRow({
+    label: "Target Deploy Mode",
+    level: "ATTENTION",
+    value: context.targetDeployMode,
   }));
 
   printContextBlock("Add-on Credentials Context", rows);
@@ -486,7 +504,7 @@ function explainCredentialError(error, paths) {
         describeCredentialFile(paths && paths.oauthClientPath, "Expected OAuth client file") +
         "\n" +
         "Create the auth file with:\n" +
-        "./node_modules/.bin/clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json"
+        "npm exec -- clasp -A .addon-deploy.local/.clasprc.json login --creds .addon-deploy.local/oauth-client.json"
     ),
     {
       cause: error,
@@ -510,6 +528,7 @@ module.exports = {
   getClaspCommand,
   getAddonDeployCredentialContext,
   getClaspAuthIdentity,
+  getOauthClientLevel,
   loadLayout,
   loadTargetConfig,
   parseArgs,
