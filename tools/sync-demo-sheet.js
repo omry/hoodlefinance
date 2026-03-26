@@ -6,7 +6,7 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { buildPathRows, printContextBlock } = require("./credential-context.js");
+const { buildPathRows, buildStatusRow, printContextBlock } = require("./credential-context.js");
 const {
   getClaspCommand,
   getClaspAuth,
@@ -925,30 +925,48 @@ async function printDemoCredentialContext(isLiveDemo, info) {
   ], {
     prefixStatusIconOnLabel: true,
   });
-  rows.push({
-    label: (isLiveDemo ? "⚠️" : "✅") + " Target Demo Mode",
+  rows.push(buildStatusRow({
+    label: "Target Demo Mode",
+    level: isLiveDemo ? "ATTENTION" : "OK",
     value: isLiveDemo ? "LIVE Public Demo" : "Local Staging",
-  });
+  }));
 
   if (normalizedInfo.accessToken) {
     try {
       const res = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + normalizedInfo.accessToken);
       const tokenInfo = await res.json();
       if (tokenInfo.email) {
-        rows.push({ label: "✅ OAuth Token Identity", value: sanitizeIdentity(tokenInfo.email) });
+        rows.push(buildStatusRow({
+          label: "OAuth Token Identity",
+          level: "OK",
+          value: sanitizeIdentity(tokenInfo.email),
+        }));
       } else {
-        rows.push({
-          label: "❌ OAuth Token Identity",
+        rows.push(buildStatusRow({
+          label: "OAuth Token Identity",
+          level: "ERROR",
           value: "(Email unknown - scope not previously requested. Delete " + tokenPath + " to re-prompt for email)",
-        });
+        }));
       }
     } catch (err) {
-      rows.push({ label: "❌ OAuth Token Identity", value: "(Failed to fetch tokeninfo)" });
+      rows.push(buildStatusRow({
+        label: "OAuth Token Identity",
+        level: "ERROR",
+        value: "(Failed to fetch tokeninfo)",
+      }));
     }
   } else if (normalizedInfo.claspUser) {
-    rows.push({ label: "✅ Clasp Auth Identity", value: sanitizeIdentity(normalizedInfo.claspUser) });
+    rows.push(buildStatusRow({
+      label: "Clasp Auth Identity",
+      level: "OK",
+      value: sanitizeIdentity(normalizedInfo.claspUser),
+    }));
   } else if (normalizedInfo.dryRun) {
-    rows.push({ label: "❌ Clasp Auth Identity", value: "(Not checked during dry run)" });
+    rows.push(buildStatusRow({
+      label: "Clasp Auth Identity",
+      level: "ERROR",
+      value: "(Not checked during dry run)",
+    }));
   }
 
   printContextBlock("OAuth Credentials Context", rows, process.stdout, { trailingBlankLine: true });

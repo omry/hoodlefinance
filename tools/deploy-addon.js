@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { buildPathRows, getPathStatus, printContextBlock } = require("./credential-context.js");
+const { buildPathRows, buildStatusRow, getPathStatus, printContextBlock } = require("./credential-context.js");
 const {
   getClaspCommand,
   getClaspAuth,
@@ -457,11 +457,16 @@ async function printCredentialContext(options, overrides) {
     prefixStatusIconOnLabel: true,
   });
 
-  rows.push({ label: "⚠️ Target Deploy Mode", value: context.targetDeployMode });
-  rows.push({
-    label: (context.claspAuthIdentity === "(Not logged in or auth file missing)" ? "❌" : "✅") + " Clasp Auth Identity",
+  rows.push(buildStatusRow({
+    label: "Target Deploy Mode",
+    level: "ATTENTION",
+    value: context.targetDeployMode,
+  }));
+  rows.push(buildStatusRow({
+    label: "Clasp Auth Identity",
+    level: context.claspAuthIdentity === "(Not logged in or auth file missing)" ? "ERROR" : "OK",
     value: context.claspAuthIdentity,
-  });
+  }));
 
   printContextBlock("Add-on Credentials Context", rows);
 }
