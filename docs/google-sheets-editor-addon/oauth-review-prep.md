@@ -6,24 +6,17 @@ This note captures the current OAuth-review surface for the Google Sheets Editor
 
 Apps Script manifest scopes in [`appsscript.json`](./appsscript.json):
 
-- `https://www.googleapis.com/auth/script.container.ui`
 - `https://www.googleapis.com/auth/script.external_request`
 - `https://www.googleapis.com/auth/spreadsheets.currentonly`
 
-Marketplace/OAuth consent behavior observed during the private dry run:
+Older Marketplace/OAuth consent behavior observed during the private dry run:
 
 - `https://www.googleapis.com/auth/userinfo.email`
 - `https://www.googleapis.com/auth/userinfo.profile`
 
-The two identity scopes above were not added intentionally to the Apps Script manifest. They reappeared in the Marketplace configuration after removal attempts, so they should currently be treated as Google-managed consent items rather than product-chosen runtime scopes.
+The two identity scopes above were not added intentionally to the Apps Script manifest. They were seen in earlier Google-side configuration despite not being part of the repo-local manifest, so they should be treated as Google-managed consent items if they reappear rather than as product-chosen runtime scopes.
 
 ## Scope Justifications
-
-### `https://www.googleapis.com/auth/script.container.ui`
-
-This scope is used so the add-on can integrate with the Google Sheets container UI and expose user-facing add-on entry points such as the homepage card and add-on menu actions.
-
-Without this scope, the add-on cannot present its installed UI surface inside Sheets.
 
 ### `https://www.googleapis.com/auth/script.external_request`
 
@@ -39,18 +32,18 @@ This is the narrowest spreadsheet scope that still allows the add-on to run insi
 
 ## Identity Scope Note
 
-The current add-on code does not intentionally use Google profile data. The Marketplace/OAuth flow nevertheless displays `userinfo.email` and `userinfo.profile`, and those items reappear in configuration after removal attempts.
+The current add-on code does not intentionally use Google profile data. Earlier Google-side Marketplace/OAuth configuration showed `userinfo.email` and `userinfo.profile` despite those scopes not being part of the repo-local manifest.
 
 Working assumption for review:
 
 - the manifest scopes above are the product's intentional runtime scopes
-- the identity scopes are currently mandated by Google's Marketplace/OAuth consent flow for this install surface
+- the identity scopes should be treated as Google-managed consent behavior only if they reappear in the final public-review path
 
 If Google asks about the identity scopes during OAuth verification, the safest explanation is:
 
 - they were surfaced automatically by the Google Workspace Marketplace / OAuth consent flow
 - they are not currently consumed directly by the add-on logic
-- the product's functional scope requirements are the three manifest scopes listed above
+- the product's functional scope requirements are the two manifest scopes listed above
 
 ## Other Likely OAuth Review Material
 

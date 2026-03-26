@@ -37,11 +37,9 @@ Repo-local refresh on March 24, 2026:
   - number: `826310867331`
 - [X] Public-review OAuth branding configured
 - [X] Public-review OAuth audience set to `External` with `omry@falcon.yadan.net` added as a test user
-- [X] Current public-review OAuth data-access view shows:
-  - `spreadsheets.currentonly` as non-sensitive
-  - `script.container.ui` as sensitive
-  - `script.external_request` as sensitive
-  - no restricted scopes
+- [X] Repo-local manifest scope set remains:
+  - `script.external_request`
+  - `spreadsheets.currentonly`
 - [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
 - [X] Public-review Marketplace installation mode chosen:
   - `Individual + Admin Install`
@@ -64,10 +62,6 @@ Repo-local refresh on March 24, 2026:
   - add-on detection was hardened so the add-on menu path still initializes safely
 - [X] New public Marketplace app created for the OAuth review submission path
 - [X] Public-review Apps Script version created and chosen for the public Marketplace app
-- [X] Repo-local manifest scope set remains:
-  - `script.container.ui`
-  - `script.external_request`
-  - `spreadsheets.currentonly`
 - [X] Reviewer explanation for each intentional scope is documented in [`oauth-review-prep.md`](./oauth-review-prep.md)
 - [X] Reviewer explanation for `userinfo.email` and `userinfo.profile` is drafted if they reappear:
   - treat them as Google-managed consent items rather than intentionally requested runtime scopes
@@ -85,13 +79,12 @@ Repo-local refresh on March 24, 2026:
 ## Remaining
 
 - [ ] Do one final Google-side scope consistency check immediately before submission:
-  - Apps Script manifest still declares only `script.container.ui`, `script.external_request`, and `spreadsheets.currentonly`
+  - Apps Script manifest still declares only `script.external_request` and `spreadsheets.currentonly`
   - OAuth consent screen matches that final submitted scope set
   - Marketplace configuration matches that final submitted scope set
 - [ ] Do one final Google-side recheck of `userinfo.email` and `userinfo.profile` in the public-review OAuth Data Access view:
   - current public-review OAuth observation: they are not appearing in the Data Access view
   - old private-app observation: removing them from the consent / Marketplace surface made them reappear after refresh
-  - contrast: removing `https://www.googleapis.com/auth/script.container.ui` did not make it reappear
   - be ready to explain `userinfo.email` and `userinfo.profile` as Google-managed consent-surface scopes only if they reappear in the final public app path
 - [ ] Final-review the listing for wording consistency across:
   - app name

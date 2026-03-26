@@ -110,11 +110,9 @@ Checklist:
 - [X] Public-review OAuth audience set to `External` with a test user
 - [X] Public-review Marketplace installation mode chosen:
   - `Individual + Admin Install`
-- [X] Current scope classification observed in the public-review OAuth path:
-  - `spreadsheets.currentonly` shown as non-sensitive
-  - `script.container.ui` shown as sensitive
-  - `script.external_request` shown as sensitive
-  - no restricted scopes shown
+- [X] Repo-local manifest scope set remains:
+  - `script.external_request`
+  - `spreadsheets.currentonly`
 - [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
 - [X] Public-review Apps Script version created and chosen for Marketplace use
 - [X] Public-review Marketplace configuration completed
