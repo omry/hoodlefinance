@@ -2,7 +2,6 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { getClaspCommand, getClaspAuth } = require("./clasp-auth.js");
@@ -29,8 +28,8 @@ function resolvePreferredLocalPath(primaryPath, legacyPath) {
 
 const AUTH_SLOTS = [
   {
-    label: "staging (personal)",
-    authPath: path.join(os.homedir(), ".clasprc.json"),
+    label: "staging demo",
+    authPath: path.join(ROOT_DIR, ".demo-sheet.local", "staging", ".clasprc.json"),
   },
   {
     label: "production demo",

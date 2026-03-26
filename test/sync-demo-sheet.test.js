@@ -25,6 +25,7 @@ const {
   ensureAccessTokenWithDeps,
   explainClaspPushFailure,
   getClaspIdentityLevel,
+  getDemoClaspAuthPath,
   getDemoClaspWorkDir,
   isInvalidGrantOAuthError,
   loadDemoSheetConfig,
@@ -84,12 +85,16 @@ test("assertNoLikelyMissingNpmArgSeparator catches swallowed npm dry-run flags",
 test("parseClaspUserIdentity preserves unknown-user results for dry-run reporting", function () {
   assert.equal(parseClaspUserIdentity("You are logged in as omry@example.com.\n"), "omry@example.com");
   assert.equal(parseClaspUserIdentity("You are logged in as an unknown user.\n"), "(Unknown user)");
+  assert.equal(parseClaspUserIdentity("Not logged in.\n"), "(Not logged in)");
   assert.equal(parseClaspUserIdentity(""), "");
 
   assert.equal(getClaspIdentityLevel("omry@example.com"), "OK");
+  assert.equal(getClaspIdentityLevel("(Not logged in)"), "ERROR");
   assert.equal(getClaspIdentityLevel("(Unknown user)"), "UNKNOWN");
   assert.equal(getClaspIdentityLevel("(Logged in)"), "UNKNOWN");
   assert.equal(getClaspIdentityLevel(""), "ERROR");
+  assert.equal(getDemoClaspAuthPath(false).endsWith(path.join(".demo-sheet.local", "staging", ".clasprc.json")), true);
+  assert.equal(getDemoClaspAuthPath(true).endsWith(path.join(".demo-sheet.local", "production", ".clasprc.json")), true);
   assert.equal(getDemoClaspWorkDir(false).endsWith(path.join(".demo-sheet.local", "staging", "clasp-work")), true);
   assert.equal(getDemoClaspWorkDir(true).endsWith(path.join(".demo-sheet.local", "production", "clasp-work")), true);
 });

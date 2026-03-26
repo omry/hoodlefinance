@@ -67,14 +67,19 @@ async function main() {
   const options = parseArgs(rawArgv);
   const config = loadDemoSheetConfig(options.production);
   const claspAuth = getClaspAuth(getDemoClaspAuthPath(options.production));
+  const claspAuthPath = getClaspAuthPath(claspAuth);
   let claspUser = "";
 
   if (!options.skipClasp && !process.env.HOODLEFINANCE_NON_INTERACTIVE) {
-    try {
-      const output = await runCommand(getClaspCommand(ROOT_DIR), claspAuth.authArgs.concat(["show-authorized-user"]));
-      claspUser = parseClaspUserIdentity(String((output && (output.stdout || output.stderr)) || "")) || "(Logged in)";
-    } catch (error) {
-      // Ignore if not logged in; push will fail distinctly anyway
+    if (claspAuthPath && !fs.existsSync(claspAuthPath)) {
+      claspUser = "(Not logged in)";
+    } else {
+      try {
+        const output = await runCommand(getClaspCommand(ROOT_DIR), claspAuth.authArgs.concat(["show-authorized-user"]));
+        claspUser = parseClaspUserIdentity(String((output && (output.stdout || output.stderr)) || "")) || "(Logged in)";
+      } catch (error) {
+        // Ignore if not logged in; push will fail distinctly anyway
+      }
     }
   }
 
@@ -1041,6 +1046,10 @@ function parseClaspUserIdentity(outputText) {
     return "(Unknown user)";
   }
 
+  if (/not logged in/i.test(normalizedOutput)) {
+    return "(Not logged in)";
+  }
+
   if (normalizedOutput) {
     return normalizedOutput.split(/\r?\n/)[0];
   }
@@ -1050,6 +1059,10 @@ function parseClaspUserIdentity(outputText) {
 
 function getClaspIdentityLevel(identity) {
   if (!String(identity || "").trim()) {
+    return "ERROR";
+  }
+
+  if (String(identity).trim() === "(Not logged in)") {
     return "ERROR";
   }
 
@@ -1283,13 +1296,17 @@ function getDemoProductionDir() {
   return path.join(LOCAL_DIR, "production");
 }
 
+function getDemoStagingDir() {
+  return path.join(LOCAL_DIR, "staging");
+}
+
 function getDemoLegacyProductionDir() {
   return path.join(LOCAL_DIR, "live-demo");
 }
 
 function getDemoClaspAuthPath(isProduction) {
   if (!isProduction) {
-    return path.join(os.homedir(), ".clasprc.json");
+    return path.join(getDemoStagingDir(), ".clasprc.json");
   }
 
   return resolvePreferredLocalPath(
@@ -1299,7 +1316,7 @@ function getDemoClaspAuthPath(isProduction) {
 }
 
 function getDemoClaspWorkDir(isProduction) {
-  return path.join(isProduction ? getDemoProductionDir() : path.join(LOCAL_DIR, "staging"), "clasp-work");
+  return path.join(isProduction ? getDemoProductionDir() : getDemoStagingDir(), "clasp-work");
 }
 
 function getDemoOauthClientPath(isProduction) {
@@ -1308,7 +1325,7 @@ function getDemoOauthClientPath(isProduction) {
   }
 
   if (!isProduction) {
-    return path.join(LOCAL_DIR, "staging", "oauth-client.json");
+    return path.join(getDemoStagingDir(), "oauth-client.json");
   }
 
   return resolvePreferredLocalPath(
@@ -1323,7 +1340,7 @@ function getDemoOauthTokenPath(isProduction) {
   }
 
   if (!isProduction) {
-    return path.join(LOCAL_DIR, "staging", "oauth-token.json");
+    return path.join(getDemoStagingDir(), "oauth-token.json");
   }
 
   return resolvePreferredLocalPath(
@@ -1464,6 +1481,7 @@ module.exports = {
   assertNoLikelyMissingNpmArgSeparator,
   explainClaspPushFailure,
   getClaspIdentityLevel,
+  getDemoClaspAuthPath,
   getDemoClaspWorkDir,
   loadDemoSheetConfig,
   normalizeStyleRegistry,

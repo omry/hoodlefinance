@@ -1,0 +1,1 @@
+- Changed demo sync staging and production to use fully isolated repo-local credential directories, including separate `clasp` auth and `clasp-work` files under `.demo-sheet.local/<target>/`.

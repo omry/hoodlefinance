@@ -25,11 +25,11 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 .demo-sheet.local/staging/oauth-client.json
 ```
 
-3. Install the repo-pinned local tooling with `npm install`, then log into `clasp` with your personal staging Google account so the default home-directory auth file is ready:
+3. Install the repo-pinned local tooling with `npm install`, then create the staging target's repo-local `clasp` auth file with the same Google account:
 
 ```sh
 npm install
-npm exec -- clasp login
+npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo-sheet.local/staging/oauth-client.json
 ```
 4. Run the staging sync to confirm your credentials and access without touching the public demo:
 
@@ -43,11 +43,11 @@ The sync command stores local-only tokens and temporary clasp files under:
 .demo-sheet.local/
 ```
 
-Those files are ignored by git and must not be committed. The staging flow uses `.demo-sheet.local/staging/oauth-client.json` and `.demo-sheet.local/staging/oauth-token.json`. The staging sheet ID and related staging metadata are also stored locally in the ignored file `docs/demo-sheet/demo-sheet-staging.json`.
+Those files are ignored by git and must not be committed. The staging flow uses its own `.demo-sheet.local/staging/` directory for `clasp` auth, OAuth credentials, OAuth tokens, and temporary `clasp-work/` files. The staging sheet ID and related staging metadata are also stored locally in the ignored file `docs/demo-sheet/demo-sheet-staging.json`.
 
 When that staging override file omits `sharePublicReadOnly`, the staging sync now inherits the tracked public-demo sharing default. Set it explicitly to `false` only if you want a private staging sheet.
 
-If you want to run a local production `--production` sync, keep that production auth separate from your personal staging login. Save the production `clasp` auth file at:
+If you want to run a local production `--production` sync, keep that production auth separate from staging. Save the production `clasp` auth file at:
 
 ```text
 .demo-sheet.local/production/.clasprc.json
@@ -66,7 +66,12 @@ Create that repo-local production `clasp` auth file with:
 npm exec -- clasp -A .demo-sheet.local/production/.clasprc.json login --creds .demo-sheet.local/production/oauth-client.json
 ```
 
-The sync tool uses your normal `~/.clasprc.json` for staging, but passes `-A .demo-sheet.local/production/.clasprc.json` for local `--production` runs. In CI, the workflow exposes the same production credential shapes through path overrides without writing them to the workspace. The old `--live-demo` flag and `.demo-sheet.local/live-demo/` path are still accepted as legacy aliases.
+The sync tool now keeps both demo targets fully repo-local:
+
+- staging uses `.demo-sheet.local/staging/.clasprc.json`, `.demo-sheet.local/staging/oauth-client.json`, `.demo-sheet.local/staging/oauth-token.json`, and `.demo-sheet.local/staging/clasp-work/`
+- production uses `.demo-sheet.local/production/.clasprc.json`, `.demo-sheet.local/production/oauth-client.json`, `.demo-sheet.local/production/oauth-token.json`, and `.demo-sheet.local/production/clasp-work/`
+
+In CI, the workflow exposes the production credential shapes through path overrides without writing them to the workspace. The old `--live-demo` flag and `.demo-sheet.local/live-demo/` path are still accepted as legacy aliases.
 
 To confirm which `clasp` accounts the configured staging and production flows will use:
 
@@ -138,18 +143,18 @@ To add a new maintainer, the current owner should help them with these high-leve
 
 1. Share the public demo spreadsheet with edit access.
 2. Add the maintainer's Google account as a test user on the OAuth consent screen while the app remains in `Testing`.
-3. Make sure the maintainer can use the dedicated `HoodleFinance Demo Sheets` Google Cloud project, or help them create a new desktop OAuth client in that project.
+3. Make sure the maintainer can use the dedicated staging Google Cloud project for demo maintenance, or help them create a new desktop OAuth client in that project.
 4. Have the maintainer enable the Apps Script API for their own account at:
 
 ```text
 https://script.google.com/home/usersettings
 ```
 
-5. Have the maintainer install the repo-pinned local tooling with `npm install` and log into `clasp` with the Google account they will use for staging.
+5. Have the maintainer install the repo-pinned local tooling with `npm install` and create the staging target's repo-local `clasp` auth file with the Google account they will use for staging.
 
 ```sh
 npm install
-npm exec -- clasp login
+npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo-sheet.local/staging/oauth-client.json
 ```
 6. Have the maintainer save a valid OAuth desktop-client JSON at:
 
@@ -170,7 +175,7 @@ In practice, a successful first sync confirms that all required access is in pla
 - spreadsheet edit access
 - OAuth test-user access
 - Apps Script API enabled for the maintainer account
-- working local `clasp` login
+- working staging-local `clasp` login
 - working local OAuth credentials for the sync script
 
 Keep this project separate from the Marketplace review project. The desktop OAuth client for demo sync should live in `HoodleFinance Demo Sheets`, not in `HoodleFinance Add-on Public`.
