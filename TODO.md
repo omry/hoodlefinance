@@ -1,4 +1,4 @@
-- before inviting outside contributions at scale, decide whether to add a CLA and what scope of relicensing rights it should grant
+- before inviting outside contributions at scale, install and enforce the CLA Assistant flow on GitHub
 - if the project moves to a pull-request-based workflow later, add broader server-side CI checks for release and workflow preflights
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
 - Investigate add-on custom-function cache misses where repeated identical `HOODLEFINANCE()` calls still take about 3 seconds on consecutive runs.

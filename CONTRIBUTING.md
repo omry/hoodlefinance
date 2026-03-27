@@ -1,6 +1,22 @@
-# Contributing to hoodlefinance
+# Contributing to HoodleFinance
 
-This is a small Apps Script project with a Node-based local test harness.
+This is an Apps Script project with a Node-based local test harness, maintainer deployment tooling, and a Docusaurus-based website.
+
+## Contributor Agreement
+
+External contributions are expected to go through a Contributor License Agreement (CLA) before merge.
+
+Use the project Individual CLA at [`docs/legal/individual-cla.md`](./docs/legal/individual-cla.md).
+
+The intended merge policy is:
+
+- outside code contributions require a signed CLA before merge
+- contributors keep copyright to their work
+- the CLA grants HoodleFinance broad reuse, sublicensing, and relicensing rights, including proprietary relicensing
+
+That broad relicensing scope is intentional. It keeps the project compatible with future open-source, source-available, and commercial distribution models without requiring a contributor-by-contributor relicensing cleanup later.
+
+Once the GitHub-side signing flow is live, the pull request checks will direct contributors through the signing step automatically.
 
 ## Development Setup
 
