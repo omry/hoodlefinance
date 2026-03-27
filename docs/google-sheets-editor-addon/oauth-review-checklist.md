@@ -45,7 +45,7 @@ Repo-local refresh on March 24, 2026:
   - `Individual + Admin Install`
 - [X] Public-review Apps Script target chosen for the add-on code push path
 - [X] Code push to the public-review add-on Apps Script project succeeded:
-  - `npm exec -- node tools/deploy-addon.js --push-only`
+  - `npm run addon:deploy -- --production --push-only`
   - pull-back verification confirmed both `hoodlefinance.js` and `appsscript.json` on the remote script project
 - [X] Fresh public-review Apps Script project created and linked:
   - name: `HoodleFinance Public`

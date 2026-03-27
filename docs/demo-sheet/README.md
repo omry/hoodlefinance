@@ -34,7 +34,7 @@ npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo
 4. Run the staging sync to confirm your credentials and access without touching the public demo:
 
 ```sh
-npm exec -- node tools/sync-demo-sheet.js --staging
+npm run demo:sync:staging
 ```
 
 The sync command stores local-only tokens and temporary clasp files under:
@@ -79,7 +79,7 @@ To confirm which `clasp` accounts the configured staging and production flows wi
 npm run clasp:user
 ```
 
-If the saved demo OAuth token is revoked or expires on the Google side, rerunning `npm exec -- node tools/sync-demo-sheet.js` will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
+If the saved demo OAuth token is revoked or expires on the Google side, rerunning the relevant `npm run demo:sync:<target>` command will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
 
 ## GitHub Actions Automation
 
@@ -88,7 +88,7 @@ The normal release path is:
 1. `Release Prepare` opens a `release/vX.Y.Z` PR.
 2. A maintainer reviews and merges that PR.
 3. The merged PR automatically triggers `Release Publish`.
-4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the demo-sync job with `node tools/sync-demo-sheet.js --production`.
+4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the production demo-sync job.
 
 That demo-sync job uses the same credential shapes as the local flow, but keeps them out of the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step:
 
@@ -109,16 +109,16 @@ Normal local development should use the staging target:
 
 1. Update [`hoodlefinance.js`](../../hoodlefinance.js) as needed.
 2. Edit the relevant TSV files in this directory.
-3. Run `npm exec -- node tools/sync-demo-sheet.js --staging`.
+3. Run `npm run demo:sync:staging`.
 4. Check the staging sheet referenced by your local `docs/demo-sheet/demo-sheet-staging.json` override.
 
-The production public demo should normally be updated by `Release Publish`, which runs `node tools/sync-demo-sheet.js --production`.
+The production public demo should normally be updated by `Release Publish`, which runs the production demo-sync flow.
 
 Use a direct production sync only for demo-only fixes between releases:
 
 1. Save the production OAuth client, OAuth token, and `clasp` auth files under `.demo-sheet.local/production/`.
-2. Optional: run `npm exec -- node tools/sync-demo-sheet.js --production --dry-run`.
-3. Run `npm exec -- node tools/sync-demo-sheet.js --production`.
+2. Optional: run `npm run demo:sync:production:dry-run`.
+3. Run `npm run demo:sync:production`.
 4. Confirm the public sheet shows the intended demo-only content changes.
 
 If you prefer `npm run`, use either:
@@ -165,7 +165,7 @@ npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo
 7. Walk them through one successful staging run of:
 
 ```sh
-npm exec -- node tools/sync-demo-sheet.js --staging
+npm run demo:sync:staging
 ```
 
 After that, the maintainer should be able to refresh the demo sheet on their own.

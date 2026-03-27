@@ -146,8 +146,8 @@ npm run release:publish -- 0.2.6
 - `node --test test/hoodlefinance.test.js`
 - `node --test test/release.test.js`
 - `node --test test/sync-demo-sheet.test.js`
-- `node tools/sync-demo-sheet.js --staging --dry-run` (staging config preflight)
-- `node tools/sync-demo-sheet.js --production --dry-run` (public demo config preflight)
+- `npm run demo:sync:staging:dry-run` (staging config preflight)
+- `npm run demo:sync:production:dry-run` (public demo config preflight)
 
 Run the live benchmark for scalar-vs-range performance:
 
@@ -236,7 +236,7 @@ If a change adds a new source or exchange path, include both:
 - fixture-based tests in `test/hoodlefinance.test.js`
 - at least one real-world smoke-test example you actually verified
 
-For any new or changed functionality that depends on a live/public endpoint, live verification is mandatory before calling the change done. A mocked unit test is not enough on its own. Run at least one real check through the project tooling, usually `node tools/cli.js ...`, and if that is not possible in the current environment, state explicitly that the behavior is unverified.
+For any new or changed functionality that depends on a live/public endpoint, live verification is mandatory before calling the change done. A mocked unit test is not enough on its own. Run at least one real check through the project tooling, usually `npm run smoke -- ...`, and if that is not possible in the current environment, state explicitly that the behavior is unverified.
 
 ## What to Be Careful About
 
@@ -265,18 +265,18 @@ If the user-facing behavior changed and the docs did not, the change is incomple
 User-facing releases are repo-managed.
 
 - Preferred path: use the GitHub Actions workflows under `.github/workflows/` to prepare the release PR and let the merged release PR trigger publish plus demo sync automatically.
-- Local `node tools/release.js ...` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
+- Local `npm run release:*` commands remain available as a maintainer fallback and as the implementation engine behind the prepare step.
 - Add one release fragment under [`changes.d/`](./changes.d/) for each user-visible change that should appear in the next release.
 - Each release fragment must be exactly one top-level bullet that starts with `- `. One fragment maps to one rendered release-note bullet.
 - Use the `docs` fragment type for user-facing documentation-only changes.
 - You can also run `npm run release:check-fragments` manually without mutating anything.
-- Run `node tools/release.js prepare x.y.z --dry-run` to preview the next per-release notes without changing files.
-- Run `node tools/release.js prepare x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
+- Run `npm run release:prepare -- x.y.z --dry-run` to preview the next per-release notes without changing files.
+- Run `npm run release:prepare -- x.y.z` from a clean git worktree to update [`version.properties`](./version.properties), stamp the runtime/docs version fields, create [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/), regenerate [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md), and consume the fragments.
 - `prepare` automatically runs the release verification suite and aborts without consuming fragments if verification fails.
 - `prepare` relies on git-backed cleanup if verification fails, so release fragments should already be committed before a release cut.
 - The per-release file is rendered through the tracked template at [`docs/release-notes/TEMPLATE.md`](./docs/release-notes/TEMPLATE.md), similar in spirit to a towncrier-style release template.
 - `prepare` does not create a git commit. Review and commit the release changes before publishing.
-- `node tools/release.js publish x.y.z` remains as a local maintainer fallback, but the normal GitHub Actions path is to merge the prepared release PR and let `Release Publish` handle the tag, GitHub Release, and demo sync.
+- `npm run release:publish -- x.y.z` remains as a local maintainer fallback, but the normal GitHub Actions path is to merge the prepared release PR and let `Release Publish` handle the tag, GitHub Release, and demo sync.
 - Do not edit GitHub Release notes independently from the repo-managed release files.
 
 Recommended GitHub Actions flow:
@@ -284,7 +284,7 @@ Recommended GitHub Actions flow:
 1. Commit the release fragments on `main`.
 2. Run the `Release Prepare` workflow with the target version. It opens a generated release PR from `release/vX.Y.Z`.
 3. Review and merge that release PR. Merging is the maintainer approval gate.
-4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag with `node tools/sync-demo-sheet.js --production`.
+4. The merged `release/vX.Y.Z` PR automatically triggers `Release Publish`, which tags the merge commit, creates the GitHub Release, and syncs the public demo from the released tag with the production demo-sync flow.
 5. Use the manual `Release Publish` workflow only as a fallback if the automatic merge-triggered publish path needs to be rerun or repaired.
 
 Demo-sync workflow secrets:
@@ -298,9 +298,9 @@ The demo-sync job keeps those secret values out of the checked-out workspace and
 Maintainer release checklist:
 
 1. Review pending fragments under [`changes.d/`](./changes.d/) and make sure each user-visible change is covered once, with end-user wording.
-2. Optional: run `node tools/release.js check-fragments`.
+2. Optional: run `npm run release:check-fragments`.
 3. Optional: run any extra smoke checks beyond the built-in `prepare` verification gate.
-4. Run the `Release Prepare` workflow for `x.y.z`, or make sure the git worktree is clean and run `node tools/release.js prepare x.y.z`.
+4. Run the `Release Prepare` workflow for `x.y.z`, or make sure the git worktree is clean and run `npm run release:prepare -- x.y.z`.
 5. Inspect the meaningful generated release artifacts:
    [version.properties](./version.properties),
    [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/),

@@ -1168,7 +1168,7 @@ function renderDemoReadmeBlock(publicUrl) {
 
   return (
     DEMO_MARKER_START +
-    "\nThe public demo sheet will be linked here after it is created with `node tools/sync-demo-sheet.js --production`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
+    "\nThe public demo sheet will be linked here after it is created with `npm run demo:sync:production`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
       DEMO_MARKER_END
   );
 }

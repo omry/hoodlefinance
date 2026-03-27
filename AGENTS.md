@@ -11,7 +11,7 @@ Repo-specific directives for coding agents working in this project.
 
 - For any new or changed functionality that depends on a live or public endpoint, test it in two layers:
   - run fixture-based or unit tests for the local logic
-  - run at least one real smoke test through the project tooling, usually `node tools/cli.js ...`
+  - run at least one real smoke test through the project tooling, usually `npm run smoke -- ...`
 - If the real smoke test disagrees with the mocked or fixture-based tests, trust the real result and do not call the change verified.
 - If live verification is blocked by the current environment, request escalation if that would unblock it. If not, stop and ask for guidance
 

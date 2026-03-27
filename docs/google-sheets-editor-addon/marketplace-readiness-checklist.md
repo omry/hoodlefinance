@@ -65,7 +65,7 @@ Checklist:
 - [X] Script ID recorded
 - [X] Public-review add-on script target chosen
 - [X] Code push to the public-review add-on script project verified:
-  - `npm exec -- node tools/deploy-addon.js --push-only`
+  - `npm run addon:deploy -- --production --push-only`
   - pull-back verification confirmed the remote manifest and source files
 - [X] Public-review Marketplace listing points at the intended script project and version
 - [X] Active Sheets add-on deployment created for the public-review Apps Script project
