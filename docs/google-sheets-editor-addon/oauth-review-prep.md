@@ -54,3 +54,4 @@ Prepare these alongside the scope justifications:
 - public terms of service URL
 - short demo video showing install and basic use
 - confirmation that the public-facing URLs remain stable
+- confirmation that contributor-facing repository policies remain documented and publicly reachable
