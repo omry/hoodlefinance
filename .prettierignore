@@ -1,0 +1,10 @@
+.addon-deploy.local
+.demo-sheet.local
+.pytest_cache
+node_modules
+tmp
+tools/__pycache__
+website/.docusaurus
+website/.cache-loader
+website/build
+website/node_modules

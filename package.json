@@ -14,8 +14,10 @@
     "test:sync-demo-sheet": "node --test test/sync-demo-sheet.test.js",
     "test:deploy-addon": "node --test test/deploy-addon.test.js",
     "test:clasp-user-login": "node --test test/clasp-user-login.test.js",
-    "check": "npm run check:syntax",
+    "check": "npm run check:syntax && npm run format:check",
     "check:syntax": "node --check hoodlefinance.js && node --check test/hoodlefinance.test.js && node --check tools/release/release.js && node --check test/release.test.js && node --check tools/cli-reporting.js && node --check tools/clasp-user-slots.js && node --check tools/clasp-user-login.js && node --check test/clasp-user-login.test.js && node --check tools/demo/sync.js && node --check test/sync-demo-sheet.test.js && node --check tools/addon/deploy.js && node --check tools/show-clasp-user.js && node --check test/deploy-addon.test.js",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
     "smoke": "node tools/_shared/cli.js",
     "pse:refresh": "node tools/generate-pse-isin-map.js",
     "release:check-fragments": "sh tools/release/check-release-fragments.sh",
@@ -39,6 +41,7 @@
     "fx-coverage": "python3 tools/map-google-fx-coverage.py"
   },
   "devDependencies": {
-    "@google/clasp": "3.1.3"
+    "@google/clasp": "3.1.3",
+    "prettier": "^3.8.1"
   }
 }
