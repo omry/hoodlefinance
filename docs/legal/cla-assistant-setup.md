@@ -17,6 +17,7 @@ This note is for maintainers configuring CLA enforcement on GitHub.
 3. Enable the PR status check for CLA signing.
 4. Mark the CLA Assistant check as required in branch protection before accepting outside contributions at scale.
 5. Confirm the contributor-facing wording in [`CONTRIBUTING.md`](../../CONTRIBUTING.md) matches the live signing flow.
+6. Re-test the flow after major branch-protection or repository-policy changes.
 
 ## Contributor-facing expectation
 
