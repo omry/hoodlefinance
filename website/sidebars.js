@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+
 // @ts-check
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)

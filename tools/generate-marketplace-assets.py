@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MPL-2.0
+
 """Generate simple Marketplace PNG assets for the Sheets add-on prototype."""
 
 from __future__ import annotations

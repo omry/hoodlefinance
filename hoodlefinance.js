@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+
 const HOODLEFINANCE_VERSION_ = "0.9.6";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {

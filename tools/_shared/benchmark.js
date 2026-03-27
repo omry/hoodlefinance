@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+/* SPDX-License-Identifier: MPL-2.0 */
+
 
 const fs = require("fs");
 const http = require("http");
