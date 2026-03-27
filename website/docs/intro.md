@@ -6,7 +6,7 @@ slug: /
 
 # HoodleFinance for Google Sheets
 
-`HOODLEFINANCE` is a practical alternative to `GOOGLEFINANCE` for spreadsheets that need broader international coverage, identifier lookups, and built-in price conversion.
+`HOODLEFINANCE` brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets.
 
 It is most useful when your sheets mix:
 

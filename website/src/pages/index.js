@@ -21,6 +21,10 @@ function HomepageHeader() {
               }}
             />
           </Heading>
+          <p className={styles.heroText}>
+            Market data for U.S. and international listings, identifier
+            lookups, and built-in currency conversion for Google Sheets.
+          </p>
           <div className={styles.buttons}>
             <Link
               className="button button--primary button--lg"
@@ -44,7 +48,7 @@ export default function Home() {
   return (
     <Layout
       title={siteConfig.title}
-      description="HoodleFinance is a practical alternative to GOOGLEFINANCE for international quotes, identifiers, and output-currency conversion in Google Sheets.">
+      description="HoodleFinance brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets.">
       <HomepageHeader />
       <main>
         <section className={styles.section}>
@@ -67,11 +71,10 @@ export default function Home() {
                   </p>
                 </div>
                 <div className={styles.card}>
-                  <Heading as="h2">Price Conversion</Heading>
+                  <Heading as="h2">Currency Conversion</Heading>
                   <p>
-                    <code>price@USD</code>-style output helps clean up mixed
-                    currency sheets by converting holdings into a single
-                    reporting currency.
+                    <code>price@USD</code>-style output helps normalize mixed-
+                    currency sheets without separate FX helper columns.
                   </p>
                 </div>
               </div>

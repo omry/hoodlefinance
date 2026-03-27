@@ -11,7 +11,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'HoodleFinance',
-  tagline: 'A practical alternative to GOOGLEFINANCE for Google Sheets',
+  tagline: 'Market data for U.S. and international listings in Google Sheets',
   favicon: 'img/hoodlefinance/icon-day-v2.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future

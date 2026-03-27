@@ -78,14 +78,13 @@ Repo-local refresh on March 24, 2026:
 
 ## Remaining
 
-- [ ] Do one final Google-side scope consistency check immediately before submission:
+- [X] Do one final Google-side scope consistency check immediately before submission:
   - Apps Script manifest still declares only `script.external_request` and `spreadsheets.currentonly`
   - OAuth consent screen matches that final submitted scope set
   - Marketplace configuration matches that final submitted scope set
-- [ ] Do one final Google-side recheck of `userinfo.email` and `userinfo.profile` in the public-review OAuth Data Access view:
-  - current public-review OAuth observation: they are not appearing in the Data Access view
-  - old private-app observation: removing them from the consent / Marketplace surface made them reappear after refresh
-  - be ready to explain `userinfo.email` and `userinfo.profile` as Google-managed consent-surface scopes only if they reappear in the final public app path
+- [X] Treat `userinfo.email` and `userinfo.profile` as Google-managed default consent items rather than a repo-controlled scope decision:
+  - they are not part of the repo-local manifest scope set
+  - if they appear in the public-review OAuth Data Access view, explain them as default Google-managed consent-surface items rather than intentionally requested runtime scopes
 - [ ] Final-review the listing for wording consistency across:
   - app name
   - short description

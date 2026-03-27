@@ -106,6 +106,18 @@
   filter: drop-shadow(0 24px 50px rgba(9, 18, 29, 0.16));
 }
 
+.heroText {
+  max-width: 40rem;
+  margin: 1rem auto 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #203247;
+}
+
+:global([data-theme='dark']) .heroText {
+  color: #d6e3ef;
+}
+
 .heroContent :global(.button) {
   min-width: 16rem;
   border-radius: 0.95rem;
