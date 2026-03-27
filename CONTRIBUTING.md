@@ -180,18 +180,18 @@ Before a staging sync will work, you need to set up the staging target's own Goo
 
 Set up the following:
 
-1. **OAuth Client for Sheets API**: 
+1. **OAuth Client for Sheets API**:
    - Go to Google Cloud Console and create a new project (e.g. `HoodleFinance Demo Staging`).
    - Enable the **Google Sheets API**, **Google Drive API**, and **Apps Script API**.
    - Generate an OAuth 2.0 Client ID (Application type: "Desktop app").
    - Download the JSON file and save it as `.demo-sheet.local/staging/oauth-client.json` (this is ignored by `git`).
-2. **Clasp Authentication**: 
+2. **Clasp Authentication**:
    - Create the staging target's dedicated `clasp` auth file with the same Google account:
    ```sh
    npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo-sheet.local/staging/oauth-client.json
    ```
 
-*(Note: The official production demo and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets.)*
+_(Note: The official production demo and automated add-on release pipelines use their own dedicated repo-level credentials securely managed through GitHub Secrets.)_
 
 If the localhost callback flow does not work in your environment, retry the sync with `--no-localhost`.
 

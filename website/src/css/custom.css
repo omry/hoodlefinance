@@ -26,7 +26,7 @@
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
-[data-theme='dark'] {
+[data-theme="dark"] {
   --ifm-color-primary: #7bd4e4;
   --ifm-color-primary-dark: #5cc9dd;
   --ifm-color-primary-darker: #4bc3d9;
@@ -62,7 +62,7 @@
   color: var(--ifm-navbar-link-hover-color);
 }
 
-[data-theme='dark'] .navbar {
+[data-theme="dark"] .navbar {
   background: rgba(13, 20, 29, 0.92);
   border-bottom: 1px solid rgba(123, 212, 228, 0.14);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);

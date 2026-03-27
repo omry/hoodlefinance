@@ -151,21 +151,13 @@
     {
       "formatting": {
         "autoResizeColumns": false,
-        "columnPixelSizes": [
-          218,
-          306,
-          340
-        ],
+        "columnPixelSizes": [218, 306, 340],
         "freezeRows": 1,
         "styleApplications": [
           {
             "style": "calloutRow",
             "target": {
-              "rows": [
-                5,
-                13,
-                19
-              ]
+              "rows": [5, 13, 19]
             }
           },
           {
@@ -378,32 +370,19 @@
     {
       "formatting": {
         "autoResizeColumns": false,
-        "columnPixelSizes": [
-          150,
-          300,
-          260,
-          360,
-          202
-        ],
+        "columnPixelSizes": [150, 300, 260, 360, 202],
         "freezeRows": 0,
         "styleApplications": [
           {
             "style": "calloutRow",
             "target": {
-              "rows": [
-                1,
-                3,
-                11
-              ]
+              "rows": [1, 3, 11]
             }
           },
           {
             "style": "headerRow",
             "target": {
-              "rows": [
-                4,
-                12
-              ]
+              "rows": [4, 12]
             }
           },
           {
@@ -473,23 +452,13 @@
     {
       "formatting": {
         "autoResizeColumns": false,
-        "columnPixelSizes": [
-          200,
-          280,
-          240,
-          322,
-          240,
-          270
-        ],
+        "columnPixelSizes": [200, 280, 240, 322, 240, 270],
         "freezeRows": 0,
         "styleApplications": [
           {
             "style": "calloutRow",
             "target": {
-              "rows": [
-                1,
-                17
-              ]
+              "rows": [1, 17]
             }
           },
           {
@@ -508,10 +477,7 @@
           {
             "style": "headerRow",
             "target": {
-              "rows": [
-                2,
-                18
-              ]
+              "rows": [2, 18]
             }
           },
           {
@@ -530,9 +496,7 @@
           {
             "style": "formulaBand",
             "target": {
-              "rows": [
-                19
-              ]
+              "rows": [19]
             }
           },
           {
@@ -891,33 +855,19 @@
             }
           }
         ],
-        "columnPixelSizes": [
-          133,
-          218,
-          207,
-          238,
-          251
-        ],
+        "columnPixelSizes": [133, 218, 207, 238, 251],
         "freezeRows": 1,
         "styleApplications": [
           {
             "style": "headerRow",
             "target": {
-              "rows": [
-                1,
-                9,
-                16
-              ]
+              "rows": [1, 9, 16]
             }
           },
           {
             "style": "formulaBand",
             "target": {
-              "rows": [
-                2,
-                10,
-                17
-              ]
+              "rows": [2, 10, 17]
             }
           },
           {
@@ -979,14 +929,7 @@
     {
       "formatting": {
         "autoResizeColumns": false,
-        "columnPixelSizes": [
-          236,
-          302,
-          106,
-          288,
-          321,
-          438
-        ],
+        "columnPixelSizes": [236, 302, 106, 288, 321, 438],
         "columnBackgrounds": [
           {
             "column": 2,
@@ -1014,17 +957,13 @@
           {
             "style": "calloutRow",
             "target": {
-              "rows": [
-                1
-              ]
+              "rows": [1]
             }
           },
           {
             "style": "headerRow",
             "target": {
-              "rows": [
-                2
-              ]
+              "rows": [2]
             }
           },
           {

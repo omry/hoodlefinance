@@ -7,12 +7,16 @@ async function ensureAccessTokenWithDeps(deps) {
   const readJson = deps.readJsonSync;
   const readOptionalJson = deps.readOptionalJsonSync;
   const nonInteractive = deps.nonInteractive === true;
-  const refreshToken = deps.refreshAccessToken || function (client, token) {
-    return refreshAccessToken(client, token, deps);
-  };
-  const authorize = deps.authorizeInteractively || function (client) {
-    return authorizeInteractively(client, deps);
-  };
+  const refreshToken =
+    deps.refreshAccessToken ||
+    function (client, token) {
+      return refreshAccessToken(client, token, deps);
+    };
+  const authorize =
+    deps.authorizeInteractively ||
+    function (client) {
+      return authorizeInteractively(client, deps);
+    };
   const clientConfig = readJson(deps.oauthClientPath, "OAuth client config");
   const client = normalizeOAuthClient(clientConfig);
   const existingToken = readOptionalJson(deps.oauthTokenPath);
@@ -31,12 +35,12 @@ async function ensureAccessTokenWithDeps(deps) {
 
       if (nonInteractive) {
         throw new Error(
-          "Demo-sheet OAuth token is invalid in non-interactive mode. Update the stored demo-sheet OAuth token secret and retry."
+          "Demo-sheet OAuth token is invalid in non-interactive mode. Update the stored demo-sheet OAuth token secret and retry.",
         );
       }
 
       process.stdout.write(
-        "Saved demo-sheet OAuth token is no longer valid. Starting interactive reauthorization.\n"
+        "Saved demo-sheet OAuth token is no longer valid. Starting interactive reauthorization.\n",
       );
     }
   }
@@ -65,9 +69,12 @@ async function authorizeInteractively(client, deps) {
   const state = crypto.randomBytes(16).toString("hex");
   const server = http.createServer();
   const codePromise = new Promise(function (resolve, reject) {
-    const timeout = setTimeout(function () {
-      reject(new Error("Timed out waiting for OAuth callback."));
-    }, 5 * 60 * 1000);
+    const timeout = setTimeout(
+      function () {
+        reject(new Error("Timed out waiting for OAuth callback."));
+      },
+      5 * 60 * 1000,
+    );
 
     server.on("request", function (request, response) {
       const url = new URL(request.url, "http://localhost");
@@ -77,22 +84,26 @@ async function authorizeInteractively(client, deps) {
 
       if (error) {
         clearTimeout(timeout);
-        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        response.writeHead(400, {
+          "Content-Type": "text/plain; charset=utf-8",
+        });
         response.end("Authorization failed: " + error + "\n");
         reject(new Error("OAuth authorization failed: " + error));
         return;
       }
 
       if (returnedState !== state || !code) {
-        response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        response.writeHead(400, {
+          "Content-Type": "text/plain; charset=utf-8",
+        });
         response.end("Invalid OAuth callback.\n");
         return;
       }
 
       clearTimeout(timeout);
-      response.writeHead(200, { 
+      response.writeHead(200, {
         "Content-Type": "text/plain; charset=utf-8",
-        "Connection": "close"
+        Connection: "close",
       });
       response.end("Authorization received. You can close this tab.\n");
       resolve(code);
@@ -119,7 +130,9 @@ async function authorizeInteractively(client, deps) {
       }).toString();
 
     process.stdout.write(
-      "Open this URL in a browser to authorize demo-sheet automation:\n" + authUrl + "\n\n"
+      "Open this URL in a browser to authorize demo-sheet automation:\n" +
+        authUrl +
+        "\n\n",
     );
 
     const code = await codePromise;
@@ -158,7 +171,9 @@ async function exchangeToken(label, params) {
       "OAuth token exchange failed for " +
         label +
         ": " +
-        JSON.stringify(payload && payload.error ? payload : { error: response.statusText })
+        JSON.stringify(
+          payload && payload.error ? payload : { error: response.statusText },
+        ),
     );
     authError.oauthError = payload && payload.error ? payload.error : "";
     authError.oauthPayload = payload;
@@ -190,17 +205,27 @@ async function googleApiJson(accessToken, method, url, body) {
   text = await response.text();
 
   if (!response.ok) {
-    throw new Error("Google API request failed (" + response.status + " " + response.statusText + "): " + text);
+    throw new Error(
+      "Google API request failed (" +
+        response.status +
+        " " +
+        response.statusText +
+        "): " +
+        text,
+    );
   }
 
   return text ? JSON.parse(text) : {};
 }
 
 function normalizeOAuthClient(rawConfig) {
-  const client = rawConfig && (rawConfig.installed || rawConfig.web || rawConfig);
+  const client =
+    rawConfig && (rawConfig.installed || rawConfig.web || rawConfig);
 
   if (!client || !client.client_id) {
-    throw new Error("OAuth client JSON must contain an installed or web client with client_id.");
+    throw new Error(
+      "OAuth client JSON must contain an installed or web client with client_id.",
+    );
   }
 
   return {
@@ -211,7 +236,11 @@ function normalizeOAuthClient(rawConfig) {
 
 function tokenExpired(token) {
   const expiry = Number(token && token.expiry_date ? token.expiry_date : 0);
-  return !token || !token.access_token || (expiry && expiry <= Date.now() + 60 * 1000);
+  return (
+    !token ||
+    !token.access_token ||
+    (expiry && expiry <= Date.now() + 60 * 1000)
+  );
 }
 
 module.exports = {

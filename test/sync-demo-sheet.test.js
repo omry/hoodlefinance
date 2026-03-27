@@ -44,12 +44,15 @@ const {
 } = require("../tools/demo/sync.js");
 
 test("parseArgs handles the supported flags", function () {
-  assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--production"]), {
-    dryRun: true,
-    production: true,
-    skipClasp: true,
-    skipSharing: true,
-  });
+  assert.deepEqual(
+    parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--production"]),
+    {
+      dryRun: true,
+      production: true,
+      skipClasp: true,
+      skipSharing: true,
+    },
+  );
   assert.deepEqual(parseArgs(["--live-demo"]), {
     dryRun: false,
     production: true,
@@ -75,17 +78,31 @@ test("parseArgs handles the supported flags", function () {
 
 test("assertNoLikelyMissingNpmArgSeparator catches swallowed npm dry-run flags", function () {
   assert.throws(function () {
-    assertNoLikelyMissingNpmArgSeparator([], { npm_config_dry_run: "true" }, "demo:sync");
+    assertNoLikelyMissingNpmArgSeparator(
+      [],
+      { npm_config_dry_run: "true" },
+      "demo:sync",
+    );
   }, /required `--` separator/);
 
   assert.doesNotThrow(function () {
-    assertNoLikelyMissingNpmArgSeparator(["--dry-run"], { npm_config_dry_run: "true" }, "demo:sync");
+    assertNoLikelyMissingNpmArgSeparator(
+      ["--dry-run"],
+      { npm_config_dry_run: "true" },
+      "demo:sync",
+    );
   });
 });
 
 test("parseClaspUserIdentity preserves unknown-user results for dry-run reporting", function () {
-  assert.equal(parseClaspUserIdentity("You are logged in as omry@example.com.\n"), "omry@example.com");
-  assert.equal(parseClaspUserIdentity("You are logged in as an unknown user.\n"), "(Unknown user)");
+  assert.equal(
+    parseClaspUserIdentity("You are logged in as omry@example.com.\n"),
+    "omry@example.com",
+  );
+  assert.equal(
+    parseClaspUserIdentity("You are logged in as an unknown user.\n"),
+    "(Unknown user)",
+  );
   assert.equal(parseClaspUserIdentity("Not logged in.\n"), "(Not logged in)");
   assert.equal(parseClaspUserIdentity(""), "");
 
@@ -94,11 +111,34 @@ test("parseClaspUserIdentity preserves unknown-user results for dry-run reportin
   assert.equal(getClaspIdentityLevel("(Unknown user)"), "UNKNOWN");
   assert.equal(getClaspIdentityLevel("(Logged in)"), "UNKNOWN");
   assert.equal(getClaspIdentityLevel(""), "ERROR");
-  assert.equal(getDemoClaspAuthPath(false).endsWith(path.join(".demo-sheet.local", "staging", ".clasprc.json")), true);
-  assert.equal(getDemoClaspAuthPath(true).endsWith(path.join(".demo-sheet.local", "production", ".clasprc.json")), true);
-  assert.equal(getDemoClaspWorkDir(false).endsWith(path.join(".demo-sheet.local", "staging", "clasp-work")), true);
-  assert.equal(getDemoClaspWorkDir(true).endsWith(path.join(".demo-sheet.local", "production", "clasp-work")), true);
-  assert.deepEqual(getDemoBundleFiles(), ["appsscript.json", "hoodlefinance.js"]);
+  assert.equal(
+    getDemoClaspAuthPath(false).endsWith(
+      path.join(".demo-sheet.local", "staging", ".clasprc.json"),
+    ),
+    true,
+  );
+  assert.equal(
+    getDemoClaspAuthPath(true).endsWith(
+      path.join(".demo-sheet.local", "production", ".clasprc.json"),
+    ),
+    true,
+  );
+  assert.equal(
+    getDemoClaspWorkDir(false).endsWith(
+      path.join(".demo-sheet.local", "staging", "clasp-work"),
+    ),
+    true,
+  );
+  assert.equal(
+    getDemoClaspWorkDir(true).endsWith(
+      path.join(".demo-sheet.local", "production", "clasp-work"),
+    ),
+    true,
+  );
+  assert.deepEqual(getDemoBundleFiles(), [
+    "appsscript.json",
+    "hoodlefinance.js",
+  ]);
 });
 
 test("explainClaspPushFailure surfaces clasp push context and raw command output", function () {
@@ -115,10 +155,13 @@ test("explainClaspPushFailure surfaces clasp push context and raw command output
       scriptId: "script-123",
       spreadsheetId: "sheet-123",
       workDir: "/tmp/work",
-    }
+    },
   );
 
-  assert.match(error.message, /Failed to push the demo bound script with clasp/);
+  assert.match(
+    error.message,
+    /Failed to push the demo bound script with clasp/,
+  );
   assert.match(error.message, /Mode: production/);
   assert.match(error.message, /Clasp auth file: \/tmp\/auth\.json/);
   assert.match(error.message, /Clasp project file: \/tmp\/\.clasp\.json/);
@@ -134,11 +177,8 @@ test("buildEnsureTabsRequests adds missing managed tabs and deletes stale unmana
       "Currencies and FX": { sheetId: 2 },
     },
     {
-      tabs: [
-        { title: "Start Here" },
-        { title: "Currency & FX" },
-      ],
-    }
+      tabs: [{ title: "Start Here" }, { title: "Currency & FX" }],
+    },
   );
 
   assert.deepEqual(requests, [
@@ -172,7 +212,7 @@ test("buildReorderTabsRequests moves managed tabs into config order", function (
         { title: "Foreign ETFs" },
         { title: "Currency & FX" },
       ],
-    }
+    },
   );
 
   assert.deepEqual(requests, [
@@ -202,102 +242,115 @@ test("style applications compile named styles to repeatCell requests", function 
     },
   });
 
-  assert.deepEqual(buildStyleApplicationRequests(12, styleRegistry, [
-    {
-      style: "emphasis",
-      target: {
-        rows: [2],
-      },
-    },
-    {
-      style: "emphasis",
-      target: {
-        ranges: [
-          {
-            startRow: 5,
-            endRow: 6,
-            startColumn: 3,
-            endColumn: 4,
+  assert.deepEqual(
+    buildStyleApplicationRequests(
+      12,
+      styleRegistry,
+      [
+        {
+          style: "emphasis",
+          target: {
+            rows: [2],
           },
-        ],
+        },
+        {
+          style: "emphasis",
+          target: {
+            ranges: [
+              {
+                startRow: 5,
+                endRow: 6,
+                startColumn: 3,
+                endColumn: 4,
+              },
+            ],
+          },
+        },
+      ],
+      {
+        maxColumns: 3,
+        sheetColumnCount: 5,
+        sheetRowCount: 100,
+        values: [["a", "b", "c"]],
       },
-    },
-  ], {
-    maxColumns: 3,
-    sheetColumnCount: 5,
-    sheetRowCount: 100,
-    values: [["a", "b", "c"]],
-  }), [
-    {
-      repeatCell: {
-        cell: {
-          userEnteredFormat: {
-            textFormat: {
-              bold: true,
+    ),
+    [
+      {
+        repeatCell: {
+          cell: {
+            userEnteredFormat: {
+              textFormat: {
+                bold: true,
+              },
             },
           },
-        },
-        fields: "userEnteredFormat.textFormat",
-        range: {
-          startRowIndex: 1,
-          endRowIndex: 2,
-          startColumnIndex: 0,
-          endColumnIndex: 3,
-          sheetId: 12,
-        },
-      },
-    },
-    {
-      repeatCell: {
-        cell: {
-          userEnteredFormat: {
-            textFormat: {
-              bold: true,
-            },
+          fields: "userEnteredFormat.textFormat",
+          range: {
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+            sheetId: 12,
           },
         },
-        fields: "userEnteredFormat.textFormat",
-        range: {
-          startRowIndex: 4,
-          endRowIndex: 6,
-          startColumnIndex: 2,
-          endColumnIndex: 4,
-          sheetId: 12,
+      },
+      {
+        repeatCell: {
+          cell: {
+            userEnteredFormat: {
+              textFormat: {
+                bold: true,
+              },
+            },
+          },
+          fields: "userEnteredFormat.textFormat",
+          range: {
+            startRowIndex: 4,
+            endRowIndex: 6,
+            startColumnIndex: 2,
+            endColumnIndex: 4,
+            sheetId: 12,
+          },
         },
       },
-    },
-  ]);
+    ],
+  );
 });
 
 test("resolved style applications add default sheet and formula-cell styles", function () {
-  assert.deepEqual(buildResolvedStyleApplications(normalizeTabFormatting({
-    styleApplications: [
+  assert.deepEqual(
+    buildResolvedStyleApplications(
+      normalizeTabFormatting({
+        styleApplications: [
+          {
+            style: "headerRow",
+            target: { rows: [3] },
+          },
+        ],
+      }),
+    ),
+    [
+      {
+        style: "sheetBody",
+        target: { sheet: true },
+      },
       {
         style: "headerRow",
-        target: { rows: [3] },
+        target: {
+          columns: null,
+          formulaCells: false,
+          ranges: null,
+          rows: [3],
+          sections: null,
+          sheet: false,
+        },
+      },
+      {
+        style: "formulaCell",
+        target: { formulaCells: true },
       },
     ],
-  })), [
-    {
-      style: "sheetBody",
-      target: { sheet: true },
-    },
-    {
-      style: "headerRow",
-      target: {
-        columns: null,
-        formulaCells: false,
-        ranges: null,
-        rows: [3],
-        sections: null,
-        sheet: false,
-      },
-    },
-    {
-      style: "formulaCell",
-      target: { formulaCells: true },
-    },
-  ]);
+  );
 });
 
 test("ensureAccessTokenWithDeps returns a valid cached token without refreshing", async function () {
@@ -373,7 +426,9 @@ test("ensureAccessTokenWithDeps falls back to interactive auth after invalid_gra
         };
       },
       readJsonSync: function () {
-        return { installed: { client_id: "client-id", client_secret: "secret" } };
+        return {
+          installed: { client_id: "client-id", client_secret: "secret" },
+        };
       },
       readOptionalJsonSync: function () {
         return {
@@ -405,7 +460,9 @@ test("ensureAccessTokenWithDeps fails fast on invalid_grant in non-interactive m
         throw new Error("should not authorize");
       },
       readJsonSync: function () {
-        return { installed: { client_id: "client-id", client_secret: "secret" } };
+        return {
+          installed: { client_id: "client-id", client_secret: "secret" },
+        };
       },
       readOptionalJsonSync: function () {
         return {
@@ -420,7 +477,7 @@ test("ensureAccessTokenWithDeps fails fast on invalid_grant in non-interactive m
         throw error;
       },
     }),
-    /invalid in non-interactive mode/
+    /invalid in non-interactive mode/,
   );
 });
 
@@ -431,7 +488,9 @@ test("ensureAccessTokenWithDeps rethrows non-invalid-grant refresh failures", as
         throw new Error("should not authorize");
       },
       readJsonSync: function () {
-        return { installed: { client_id: "client-id", client_secret: "secret" } };
+        return {
+          installed: { client_id: "client-id", client_secret: "secret" },
+        };
       },
       readOptionalJsonSync: function () {
         return {
@@ -446,13 +505,16 @@ test("ensureAccessTokenWithDeps rethrows non-invalid-grant refresh failures", as
         throw error;
       },
     }),
-    /access denied/
+    /access denied/,
   );
 });
 
 test("isInvalidGrantOAuthError only matches invalid_grant", function () {
   assert.equal(isInvalidGrantOAuthError({ oauthError: "invalid_grant" }), true);
-  assert.equal(isInvalidGrantOAuthError({ oauthError: "access_denied" }), false);
+  assert.equal(
+    isInvalidGrantOAuthError({ oauthError: "access_denied" }),
+    false,
+  );
   assert.equal(isInvalidGrantOAuthError(new Error("plain error")), false);
 });
 
@@ -530,18 +592,24 @@ test("formatting helpers build the expected Sheets API requests", function () {
     },
   });
 
-  assert.equal(buildMergeCellsRequest(12, {
-    startRow: 8,
-    endRow: 8,
-    startColumn: 1,
-    endColumn: 5,
-  }).mergeCells.range.endColumnIndex, 5);
-  assert.equal(buildUnmergeCellsRequest(12, {
-    startRow: 8,
-    endRow: 8,
-    startColumn: 1,
-    endColumn: 5,
-  }).unmergeCells.range.startColumnIndex, 0);
+  assert.equal(
+    buildMergeCellsRequest(12, {
+      startRow: 8,
+      endRow: 8,
+      startColumn: 1,
+      endColumn: 5,
+    }).mergeCells.range.endColumnIndex,
+    5,
+  );
+  assert.equal(
+    buildUnmergeCellsRequest(12, {
+      startRow: 8,
+      endRow: 8,
+      startColumn: 1,
+      endColumn: 5,
+    }).unmergeCells.range.startColumnIndex,
+    0,
+  );
   assert.deepEqual(buildUnmergeSheetRequest(12, 100, 8), {
     unmergeCells: {
       range: {
@@ -554,28 +622,39 @@ test("formatting helpers build the expected Sheets API requests", function () {
     },
   });
 
-  assert.deepEqual(normalizeTabFormatting({ styleApplications: [{ style: "headerRow", target: { rows: [1, 7] } }] }), {
-    autoResizeColumns: true,
-    columnBackgrounds: [],
-    columnPixelSizes: [],
-    errorConditionalFormats: [],
-    freezeRows: 0,
-    mergedRanges: [],
-    numberFormats: [],
-    styleApplications: [{
-      style: "headerRow",
-      target: {
-        columns: null,
-        formulaCells: false,
-        ranges: null,
-        rows: [1, 7],
-        sections: null,
-        sheet: false,
-      },
-    }],
-  });
+  assert.deepEqual(
+    normalizeTabFormatting({
+      styleApplications: [{ style: "headerRow", target: { rows: [1, 7] } }],
+    }),
+    {
+      autoResizeColumns: true,
+      columnBackgrounds: [],
+      columnPixelSizes: [],
+      errorConditionalFormats: [],
+      freezeRows: 0,
+      mergedRanges: [],
+      numberFormats: [],
+      styleApplications: [
+        {
+          style: "headerRow",
+          target: {
+            columns: null,
+            formulaCells: false,
+            ranges: null,
+            rows: [1, 7],
+            sections: null,
+            sheet: false,
+          },
+        },
+      ],
+    },
+  );
 
-  assert.equal(buildColumnWidthRequests(12, [120, 240])[1].updateDimensionProperties.properties.pixelSize, 240);
+  assert.equal(
+    buildColumnWidthRequests(12, [120, 240])[1].updateDimensionProperties
+      .properties.pixelSize,
+    240,
+  );
   assert.deepEqual(buildDeleteConditionalFormatRuleRequests(12, 2), [
     {
       deleteConditionalFormatRule: {
@@ -626,106 +705,142 @@ test("formatting helpers build the expected Sheets API requests", function () {
       },
     },
   });
-  assert.deepEqual(buildErrorConditionalFormatRequests(12, [{
-    startRow: 2,
-    endRow: 1000,
-    startColumn: 3,
-    endColumn: 3,
-  }])[0], {
-    addConditionalFormatRule: {
-      index: 0,
-      rule: {
-        booleanRule: {
-          condition: {
-            type: "CUSTOM_FORMULA",
-            values: [
-              {
-                userEnteredValue: "=ISERROR(C2)",
-              },
-            ],
-          },
-          format: {
-            textFormat: {
-              bold: true,
-              foregroundColor: {
-                red: 0.8,
-                green: 0.2,
-                blue: 0.2,
+  assert.deepEqual(
+    buildErrorConditionalFormatRequests(12, [
+      {
+        startRow: 2,
+        endRow: 1000,
+        startColumn: 3,
+        endColumn: 3,
+      },
+    ])[0],
+    {
+      addConditionalFormatRule: {
+        index: 0,
+        rule: {
+          booleanRule: {
+            condition: {
+              type: "CUSTOM_FORMULA",
+              values: [
+                {
+                  userEnteredValue: "=ISERROR(C2)",
+                },
+              ],
+            },
+            format: {
+              textFormat: {
+                bold: true,
+                foregroundColor: {
+                  red: 0.8,
+                  green: 0.2,
+                  blue: 0.2,
+                },
               },
             },
           },
+          ranges: [
+            {
+              startRowIndex: 1,
+              endRowIndex: 1000,
+              startColumnIndex: 2,
+              endColumnIndex: 3,
+              sheetId: 12,
+            },
+          ],
         },
-        ranges: [
-          {
-            startRowIndex: 1,
-            endRowIndex: 1000,
-            startColumnIndex: 2,
-            endColumnIndex: 3,
-            sheetId: 12,
-          },
-        ],
       },
     },
-  });
-  assert.equal(buildErrorConditionalFormatRequests(12, [{
-    startRow: 2,
-    endRow: 1000,
-    startColumn: 3,
-    endColumn: 3,
-  }], 1)[0].addConditionalFormatRule.index, 1);
-  assert.deepEqual(buildNumberFormatRequests(12, [{
-    column: 4,
-    endRow: 13,
-    pattern: "$#,##0.00",
-    startRow: 10,
-    type: "CURRENCY",
-  }])[0].repeatCell.range, {
-    endColumnIndex: 4,
-    endRowIndex: 13,
-    sheetId: 12,
-    startColumnIndex: 3,
-    startRowIndex: 9,
-  });
-  assert.deepEqual(buildFormulaCellFormatRequests(12, [["'=A1", ""], ["x", "'HOODLEFINANCE(B2,\"name\")"]]).map(function (request) {
-    return request.repeatCell.range;
-  }), [
-    {
-      endColumnIndex: 1,
-      endRowIndex: 1,
-      sheetId: 12,
-      startColumnIndex: 0,
-      startRowIndex: 0,
-    },
-    {
-      endColumnIndex: 2,
-      endRowIndex: 2,
-      sheetId: 12,
-      startColumnIndex: 1,
-      startRowIndex: 1,
-    },
-  ]);
-  assert.equal(
-    buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.cell.userEnteredFormat.wrapStrategy,
-    "CLIP"
   );
   assert.equal(
-    Object.hasOwn(buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.cell.userEnteredFormat, "backgroundColor"),
-    false
+    buildErrorConditionalFormatRequests(
+      12,
+      [
+        {
+          startRow: 2,
+          endRow: 1000,
+          startColumn: 3,
+          endColumn: 3,
+        },
+      ],
+      1,
+    )[0].addConditionalFormatRule.index,
+    1,
+  );
+  assert.deepEqual(
+    buildNumberFormatRequests(12, [
+      {
+        column: 4,
+        endRow: 13,
+        pattern: "$#,##0.00",
+        startRow: 10,
+        type: "CURRENCY",
+      },
+    ])[0].repeatCell.range,
+    {
+      endColumnIndex: 4,
+      endRowIndex: 13,
+      sheetId: 12,
+      startColumnIndex: 3,
+      startRowIndex: 9,
+    },
+  );
+  assert.deepEqual(
+    buildFormulaCellFormatRequests(12, [
+      ["'=A1", ""],
+      ["x", '\'HOODLEFINANCE(B2,"name")'],
+    ]).map(function (request) {
+      return request.repeatCell.range;
+    }),
+    [
+      {
+        endColumnIndex: 1,
+        endRowIndex: 1,
+        sheetId: 12,
+        startColumnIndex: 0,
+        startRowIndex: 0,
+      },
+      {
+        endColumnIndex: 2,
+        endRowIndex: 2,
+        sheetId: 12,
+        startColumnIndex: 1,
+        startRowIndex: 1,
+      },
+    ],
+  );
+  assert.equal(
+    buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.cell
+      .userEnteredFormat.wrapStrategy,
+    "CLIP",
+  );
+  assert.equal(
+    Object.hasOwn(
+      buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.cell
+        .userEnteredFormat,
+      "backgroundColor",
+    ),
+    false,
   );
   assert.equal(
     buildFormulaCellFormatRequests(12, [["'=A1"]])[0].repeatCell.fields,
-    "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)"
+    "userEnteredFormat(horizontalAlignment,textFormat,wrapStrategy)",
   );
 });
 
 test("demo README block renders a placeholder before the public sheet exists", function () {
   assert.match(renderDemoReadmeBlock(""), /will be linked here/);
-  assert.match(renderDemoReadmeBlock("https://docs.google.com/spreadsheets/d/demo/edit"), /public demo sheet/);
+  assert.match(
+    renderDemoReadmeBlock("https://docs.google.com/spreadsheets/d/demo/edit"),
+    /public demo sheet/,
+  );
 });
 
 test("demo intro block renders a placeholder before the public sheet exists", function () {
   assert.match(renderDemoIntroBlock(""), /will be linked here/);
-  assert.match(renderDemoIntroBlock("https://docs.google.com/spreadsheets/d/demo/edit"), /public demo sheet/);
+  assert.match(
+    renderDemoIntroBlock("https://docs.google.com/spreadsheets/d/demo/edit"),
+    /public demo sheet/,
+  );
 });
 
 test("replaceDemoReadmeBlock replaces an existing marker section", function () {
@@ -738,7 +853,10 @@ test("replaceDemoReadmeBlock replaces an existing marker section", function () {
     "",
     "## Quick Start",
   ].join("\n");
-  const updated = replaceDemoReadmeBlock(original, "https://docs.google.com/spreadsheets/d/demo/edit");
+  const updated = replaceDemoReadmeBlock(
+    original,
+    "https://docs.google.com/spreadsheets/d/demo/edit",
+  );
 
   assert.doesNotMatch(updated, /old text/);
   assert.match(updated, /public demo sheet/);
@@ -754,7 +872,10 @@ test("replaceDemoIntroBlock replaces an existing marker section", function () {
     "",
     "Bare tickers such as `GOOG` are often the easiest place to start.",
   ].join("\n");
-  const updated = replaceDemoIntroBlock(original, "https://docs.google.com/spreadsheets/d/demo/edit");
+  const updated = replaceDemoIntroBlock(
+    original,
+    "https://docs.google.com/spreadsheets/d/demo/edit",
+  );
 
   assert.doesNotMatch(updated, /old text/);
   assert.match(updated, /public demo sheet/);

@@ -17,17 +17,33 @@ async function main() {
     const hasAuthFile = Boolean(slot.authPath) && fs.existsSync(slot.authPath);
 
     process.stdout.write("\n[" + slot.label + "]\n");
-    process.stdout.write(getStatusIcon(hasAuthFile ? "OK" : "ERROR") + " Auth file: " + slot.authPath + "\n");
+    process.stdout.write(
+      getStatusIcon(hasAuthFile ? "OK" : "ERROR") +
+        " Auth file: " +
+        slot.authPath +
+        "\n",
+    );
 
     if (!hasAuthFile) {
-      process.stdout.write(getStatusIcon("ERROR") + " Not logged in or auth file missing.\n");
+      process.stdout.write(
+        getStatusIcon("ERROR") + " Not logged in or auth file missing.\n",
+      );
       continue;
     }
 
     try {
-      process.stdout.write(formatClaspUserLine(await runCommand(claspCommand, claspAuth.authArgs.concat(["show-authorized-user"]))) + "\n");
+      process.stdout.write(
+        formatClaspUserLine(
+          await runCommand(
+            claspCommand,
+            claspAuth.authArgs.concat(["show-authorized-user"]),
+          ),
+        ) + "\n",
+      );
     } catch (error) {
-      process.stdout.write(getStatusIcon("ERROR") + " Not logged in or auth file missing.\n");
+      process.stdout.write(
+        getStatusIcon("ERROR") + " Not logged in or auth file missing.\n",
+      );
     }
   }
 }
@@ -59,7 +75,10 @@ function formatClaspUserLine(output) {
   const normalizedOutput = String(output || "").trim();
 
   if (!normalizedOutput) {
-    return getStatusIcon("UNKNOWN") + " Logged in, but clasp returned no user details.";
+    return (
+      getStatusIcon("UNKNOWN") +
+      " Logged in, but clasp returned no user details."
+    );
   }
 
   if (/^not logged in/i.test(normalizedOutput)) {
@@ -74,6 +93,8 @@ function formatClaspUserLine(output) {
 }
 
 main().catch(function (error) {
-  process.stderr.write(String(error && error.stack ? error.stack : error) + "\n");
+  process.stderr.write(
+    String(error && error.stack ? error.stack : error) + "\n",
+  );
   process.exitCode = 1;
 });

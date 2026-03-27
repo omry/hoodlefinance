@@ -123,7 +123,9 @@ function buildStyleRepeatCellRequest(sheetId, styleDefinition, range) {
 
 function buildFormulaCellFormatRequests(sheetId, values, styleDefinition) {
   const requests = [];
-  const style = normalizeStyleDefinition_(styleDefinition || DEFAULT_STYLES.formulaCell);
+  const style = normalizeStyleDefinition_(
+    styleDefinition || DEFAULT_STYLES.formulaCell,
+  );
   let rowIndex;
   let columnIndex;
   let row;
@@ -136,7 +138,14 @@ function buildFormulaCellFormatRequests(sheetId, values, styleDefinition) {
       value = String(row[columnIndex] == null ? "" : row[columnIndex]);
 
       if (value.indexOf("'") === 0) {
-        requests.push(buildFormulaCellFormatRequest(sheetId, rowIndex + 1, columnIndex + 1, style));
+        requests.push(
+          buildFormulaCellFormatRequest(
+            sheetId,
+            rowIndex + 1,
+            columnIndex + 1,
+            style,
+          ),
+        );
       }
     }
   }
@@ -144,8 +153,15 @@ function buildFormulaCellFormatRequests(sheetId, values, styleDefinition) {
   return requests;
 }
 
-function buildFormulaCellFormatRequest(sheetId, rowNumber, columnNumber, styleDefinition) {
-  const style = normalizeStyleDefinition_(styleDefinition || DEFAULT_STYLES.formulaCell);
+function buildFormulaCellFormatRequest(
+  sheetId,
+  rowNumber,
+  columnNumber,
+  styleDefinition,
+) {
+  const style = normalizeStyleDefinition_(
+    styleDefinition || DEFAULT_STYLES.formulaCell,
+  );
 
   return buildStyleRepeatCellRequest(sheetId, style, {
     startRowIndex: rowNumber - 1,
@@ -177,23 +193,30 @@ function buildResolvedStyleApplications(formatting) {
 
 function hasStyleApplicationTarget_(applications, targetName) {
   return applications.some(function (application) {
-    return Boolean(application && application.target && application.target[targetName]);
+    return Boolean(
+      application && application.target && application.target[targetName],
+    );
   });
 }
 
-function buildStyleApplicationRequests(sheetId, styleRegistry, applications, context) {
+function buildStyleApplicationRequests(
+  sheetId,
+  styleRegistry,
+  applications,
+  context,
+) {
   const requests = [];
 
   applications.forEach(function (application) {
     const style = styleRegistry[application.style];
 
     if (!style) {
-      throw new Error("Unknown style \"" + application.style + "\".");
+      throw new Error('Unknown style "' + application.style + '".');
     }
 
     requests.push.apply(
       requests,
-      buildStyleTargetRequests_(sheetId, style, application.target, context)
+      buildStyleTargetRequests_(sheetId, style, application.target, context),
     );
   });
 
@@ -206,12 +229,14 @@ function buildStyleTargetRequests_(sheetId, style, target, context) {
 
   if (target.sheet) {
     if (context.sheetRowCount > 0 && context.sheetColumnCount > 0) {
-      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
-        startRowIndex: 0,
-        endRowIndex: context.sheetRowCount,
-        startColumnIndex: 0,
-        endColumnIndex: context.sheetColumnCount,
-      }));
+      requests.push(
+        buildStyleRepeatCellRequest(sheetId, style, {
+          startRowIndex: 0,
+          endRowIndex: context.sheetRowCount,
+          startColumnIndex: 0,
+          endColumnIndex: context.sheetColumnCount,
+        }),
+      );
     }
     return requests;
   }
@@ -222,12 +247,14 @@ function buildStyleTargetRequests_(sheetId, style, target, context) {
         break;
       }
 
-      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
-        startRowIndex: target.rows[i] - 1,
-        endRowIndex: target.rows[i],
-        startColumnIndex: 0,
-        endColumnIndex: context.maxColumns,
-      }));
+      requests.push(
+        buildStyleRepeatCellRequest(sheetId, style, {
+          startRowIndex: target.rows[i] - 1,
+          endRowIndex: target.rows[i],
+          startColumnIndex: 0,
+          endColumnIndex: context.maxColumns,
+        }),
+      );
     }
     return requests;
   }
@@ -238,36 +265,42 @@ function buildStyleTargetRequests_(sheetId, style, target, context) {
         break;
       }
 
-      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
-        startRowIndex: 0,
-        endRowIndex: context.values.length,
-        startColumnIndex: target.columns[i] - 1,
-        endColumnIndex: target.columns[i],
-      }));
+      requests.push(
+        buildStyleRepeatCellRequest(sheetId, style, {
+          startRowIndex: 0,
+          endRowIndex: context.values.length,
+          startColumnIndex: target.columns[i] - 1,
+          endColumnIndex: target.columns[i],
+        }),
+      );
     }
     return requests;
   }
 
   if (target.ranges) {
     for (i = 0; i < target.ranges.length; i += 1) {
-      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
-        startRowIndex: target.ranges[i].startRow - 1,
-        endRowIndex: target.ranges[i].endRow,
-        startColumnIndex: target.ranges[i].startColumn - 1,
-        endColumnIndex: target.ranges[i].endColumn,
-      }));
+      requests.push(
+        buildStyleRepeatCellRequest(sheetId, style, {
+          startRowIndex: target.ranges[i].startRow - 1,
+          endRowIndex: target.ranges[i].endRow,
+          startColumnIndex: target.ranges[i].startColumn - 1,
+          endColumnIndex: target.ranges[i].endColumn,
+        }),
+      );
     }
     return requests;
   }
 
   if (target.sections) {
     for (i = 0; i < target.sections.length; i += 1) {
-      requests.push(buildStyleRepeatCellRequest(sheetId, style, {
-        startRowIndex: target.sections[i].row - 1,
-        endRowIndex: target.sections[i].row,
-        startColumnIndex: 0,
-        endColumnIndex: target.sections[i].columns,
-      }));
+      requests.push(
+        buildStyleRepeatCellRequest(sheetId, style, {
+          startRowIndex: target.sections[i].row - 1,
+          endRowIndex: target.sections[i].row,
+          startColumnIndex: 0,
+          endColumnIndex: target.sections[i].columns,
+        }),
+      );
     }
     return requests;
   }

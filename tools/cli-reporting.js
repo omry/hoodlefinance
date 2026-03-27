@@ -3,7 +3,9 @@
 const fs = require("node:fs");
 
 function normalizeLevel(level) {
-  const normalizedLevel = String(level || "UNKNOWN").trim().toUpperCase();
+  const normalizedLevel = String(level || "UNKNOWN")
+    .trim()
+    .toUpperCase();
 
   if (
     normalizedLevel === "OK" ||
@@ -102,7 +104,8 @@ function buildPathRows(entries, options) {
   const normalizedOptions = options || {};
   const pathFallback = normalizedOptions.pathFallback || "<unknown>";
   const prefixStatusIcon = normalizedOptions.prefixStatusIcon === true;
-  const prefixStatusIconOnLabel = normalizedOptions.prefixStatusIconOnLabel === true;
+  const prefixStatusIconOnLabel =
+    normalizedOptions.prefixStatusIconOnLabel === true;
   const rows = [];
   let i;
   let entry;

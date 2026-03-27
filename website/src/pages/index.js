@@ -1,14 +1,14 @@
-import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import Layout from '@theme/Layout';
-import Heading from '@theme/Heading';
-import ThemedImage from '@theme/ThemedImage';
-import styles from './index.module.css';
+import clsx from "clsx";
+import Link from "@docusaurus/Link";
+import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
+import Layout from "@theme/Layout";
+import Heading from "@theme/Heading";
+import ThemedImage from "@theme/ThemedImage";
+import styles from "./index.module.css";
 
 function HomepageHeader() {
   return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
+    <header className={clsx("hero hero--primary", styles.heroBanner)}>
       <div className="container">
         <div className={clsx(styles.sectionContent, styles.heroContent)}>
           <Heading as="h1" className={styles.heroLogoHeading}>
@@ -16,24 +16,23 @@ function HomepageHeader() {
               alt="HoodleFinance"
               className={styles.heroLogo}
               sources={{
-                light: '/img/hoodlefinance/banner-day.svg',
-                dark: '/img/hoodlefinance/banner-night.svg',
+                light: "/img/hoodlefinance/banner-day.svg",
+                dark: "/img/hoodlefinance/banner-night.svg",
               }}
             />
           </Heading>
           <p className={styles.heroText}>
-            Market data for U.S. and international listings, identifier
-            lookups, and built-in currency conversion for Google Sheets.
+            Market data for U.S. and international listings, identifier lookups,
+            and built-in currency conversion for Google Sheets.
           </p>
           <div className={styles.buttons}>
-            <Link
-              className="button button--primary button--lg"
-              to="/docs/">
+            <Link className="button button--primary button--lg" to="/docs/">
               Read the docs
             </Link>
             <Link
               className="button button--secondary button--lg"
-              href="https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing">
+              href="https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing"
+            >
               View demo sheet
             </Link>
           </div>
@@ -48,7 +47,8 @@ export default function Home() {
   return (
     <Layout
       title={siteConfig.title}
-      description="HoodleFinance brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets.">
+      description="HoodleFinance brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets."
+    >
       <HomepageHeader />
       <main>
         <section className={styles.section}>

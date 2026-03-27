@@ -20,15 +20,16 @@ The add-on may be modified, suspended, or discontinued at any time. It may also 
 
 ## No Financial Advice
 
-HoodleFinance is strictly a technical data-retrieval tool. It does not provide financial, investment, tax, or legal advice. 
+HoodleFinance is strictly a technical data-retrieval tool. It does not provide financial, investment, tax, or legal advice.
 
-You are solely responsible for verifying the accuracy of any returned data before relying on it for trading, portfolio management, tax reporting, compliance, or any other critical decisions. 
+You are solely responsible for verifying the accuracy of any returned data before relying on it for trading, portfolio management, tax reporting, compliance, or any other critical decisions.
 
 ## Disclaimer of Warranties
 
 **The add-on and all resulting data are provided on an "as is" and "as available" basis, without warranties of any kind, whether express or implied.**
 
 The project maintainers make no warranty that:
+
 - Every exchange, instrument, or identifier is supported.
 - Every returned value is complete, current, or accurate.
 - The service will be uninterrupted, timely, or error-free.
@@ -52,5 +53,5 @@ These terms may be updated from time to time.
 
 For support, questions, or to report issues, please use the project repository or contact the developer directly:
 
-* **Email:** `support@hoodlefinance.com`
-* **Project Repository:** https://github.com/omry/hoodlefinance
+- **Email:** `support@hoodlefinance.com`
+- **Project Repository:** https://github.com/omry/hoodlefinance

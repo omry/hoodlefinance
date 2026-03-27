@@ -88,7 +88,6 @@ This is useful when:
 
 Note: For money-valued attributes, fractional units such as `GBp` and `ILA` are normalized automatically to their primary currency. For example, `=HOODLEFINANCE("TASE:ESLT", "price")` returns a value in `ILS`, not `ILA`, so you do not need to divide by `100` yourself.
 
-
 ## Conversion And Pair Rules
 
 Some practical rules are worth keeping in mind:

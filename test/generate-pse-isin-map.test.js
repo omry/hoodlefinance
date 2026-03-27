@@ -39,7 +39,9 @@ function createFixtureState() {
 }
 
 test("writeOutputs preserves the existing updated_at when the generated map is unchanged", function () {
-  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "hoodlefinance-pse-map-"));
+  const rootDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "hoodlefinance-pse-map-"),
+  );
   const dataPath = path.join(rootDir, "pse-isin-map.properties");
   const fixture = createFixtureState();
   const firstUpdatedAt = "2026-03-13T18:34:56.295Z";
@@ -50,7 +52,7 @@ test("writeOutputs preserves the existing updated_at when the generated map is u
       dataPath,
       updatedAt: firstUpdatedAt,
     }).changed,
-    true
+    true,
   );
 
   const firstText = fs.readFileSync(dataPath, "utf8");
@@ -60,14 +62,19 @@ test("writeOutputs preserves the existing updated_at when the generated map is u
       dataPath,
       updatedAt: secondUpdatedAt,
     }).changed,
-    false
+    false,
   );
   assert.equal(fs.readFileSync(dataPath, "utf8"), firstText);
-  assert.match(firstText, new RegExp("# updated_at=" + escapeRegex(firstUpdatedAt)));
+  assert.match(
+    firstText,
+    new RegExp("# updated_at=" + escapeRegex(firstUpdatedAt)),
+  );
 });
 
 test("writeOutputs refreshes updated_at when the generated map changes", function () {
-  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "hoodlefinance-pse-map-"));
+  const rootDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "hoodlefinance-pse-map-"),
+  );
   const dataPath = path.join(rootDir, "pse-isin-map.properties");
   const fixture = createFixtureState();
   const firstUpdatedAt = "2026-03-13T18:34:56.295Z";
@@ -100,12 +107,15 @@ test("writeOutputs refreshes updated_at when the generated map changes", functio
       {
         dataPath,
         updatedAt: secondUpdatedAt,
-      }
+      },
     ).changed,
-    true
+    true,
   );
 
   const nextText = fs.readFileSync(dataPath, "utf8");
-  assert.match(nextText, new RegExp("# updated_at=" + escapeRegex(secondUpdatedAt)));
+  assert.match(
+    nextText,
+    new RegExp("# updated_at=" + escapeRegex(secondUpdatedAt)),
+  );
   assert.match(nextText, /PHY000000002=PSE:BBB/);
 });

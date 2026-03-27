@@ -9,11 +9,21 @@ const { spawn } = require("node:child_process");
 const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const CHANGES_DIR = path.join(ROOT_DIR, "changes.d");
 const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
-const RELEASE_NOTES_PATH = path.join(ROOT_DIR, "docs", "release-notes", "RELEASE_NOTES.md");
+const RELEASE_NOTES_PATH = path.join(
+  ROOT_DIR,
+  "docs",
+  "release-notes",
+  "RELEASE_NOTES.md",
+);
 const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
-const FRAGMENT_CHECKER_PATH = path.join(ROOT_DIR, "tools", "release", "check-release-fragments.sh");
+const FRAGMENT_CHECKER_PATH = path.join(
+  ROOT_DIR,
+  "tools",
+  "release",
+  "check-release-fragments.sh",
+);
 const FRAGMENT_CATEGORIES = ["upgrade", "added", "changed", "fixed", "docs"];
 const FRAGMENT_HEADING_BY_CATEGORY = {
   upgrade: "Upgrade Notes",
@@ -22,7 +32,8 @@ const FRAGMENT_HEADING_BY_CATEGORY = {
   docs: "Documentation",
   fixed: "Fixed",
 };
-const FRAGMENT_FILENAME_PATTERN = /^(\d{8})-([a-z0-9][a-z0-9-]*)\.(upgrade|added|changed|docs|fixed)\.md$/;
+const FRAGMENT_FILENAME_PATTERN =
+  /^(\d{8})-([a-z0-9][a-z0-9-]*)\.(upgrade|added|changed|docs|fixed)\.md$/;
 const RELEASE_FILE_PATTERN = /^v(\d+\.\d+\.\d+)\.md$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 const IGNORED_CHANGE_FILES = {
@@ -30,9 +41,7 @@ const IGNORED_CHANGE_FILES = {
   "README.md": true,
   "TEMPLATE.md": true,
 };
-const RELEASE_NOTES_INTRO = [
-  "# Release Notes",
-].join("\n");
+const RELEASE_NOTES_INTRO = ["# Release Notes"].join("\n");
 const DEFAULT_RELEASE_TEMPLATE = [
   "# v{{version}} - {{release_date}}",
   "",
@@ -94,7 +103,7 @@ async function main() {
         result.fragmentCount +
         " fragment" +
         (result.fragmentCount === 1 ? "" : "s") +
-        ".\n"
+        ".\n",
     );
     return;
   }
@@ -110,10 +119,16 @@ async function main() {
 
 function parseArgs(argv) {
   if (!Array.isArray(argv) || !argv.length) {
-    throw new Error("Usage: node tools/release/release.js <check-fragments|prepare|publish> [x.y.z] [--dry-run]");
+    throw new Error(
+      "Usage: node tools/release/release.js <check-fragments|prepare|publish> [x.y.z] [--dry-run]",
+    );
   }
 
-  if (argv[0] !== "check-fragments" && argv[0] !== "prepare" && argv[0] !== "publish") {
+  if (
+    argv[0] !== "check-fragments" &&
+    argv[0] !== "prepare" &&
+    argv[0] !== "publish"
+  ) {
     throw new Error("Unknown release command: " + argv[0]);
   }
 
@@ -141,13 +156,17 @@ function parseArgs(argv) {
   }
 
   if (argv.length !== 2 && argv.length !== 3) {
-    throw new Error("Usage: node tools/release/release.js prepare <x.y.z> [--dry-run]");
+    throw new Error(
+      "Usage: node tools/release/release.js prepare <x.y.z> [--dry-run]",
+    );
   }
 
   validateVersion(argv[1]);
 
   if (argv.length === 3 && argv[2] !== "--dry-run") {
-    throw new Error("Usage: node tools/release/release.js prepare <x.y.z> [--dry-run]");
+    throw new Error(
+      "Usage: node tools/release/release.js prepare <x.y.z> [--dry-run]",
+    );
   }
 
   return {
@@ -191,7 +210,14 @@ function readTextSync(filePath, label) {
   try {
     return fs.readFileSync(filePath, "utf8");
   } catch (error) {
-    throw new Error("Failed to read " + label + " at " + filePath + ".\n" + String(error && error.message ? error.message : error));
+    throw new Error(
+      "Failed to read " +
+        label +
+        " at " +
+        filePath +
+        ".\n" +
+        String(error && error.message ? error.message : error),
+    );
   }
 }
 
@@ -227,12 +253,14 @@ async function ensureCleanGitWorktree(options) {
   } catch (error) {
     throw new Error(
       "Failed to inspect git status before preparing a release.\n" +
-        String(error && error.message ? error.message : error)
+        String(error && error.message ? error.message : error),
     );
   }
 
   if (String(gitStatus.stdout || "").trim()) {
-    throw new Error("Git working tree must be clean before preparing a release.");
+    throw new Error(
+      "Git working tree must be clean before preparing a release.",
+    );
   }
 }
 
@@ -243,9 +271,11 @@ async function restorePreparedReleaseStateWithGit(state) {
     state.releaseNotesPath,
     state.scriptSourcePath,
     state.versionMetadataPath,
-  ].filter(Boolean).map(function (filePath) {
-    return toGitRelativePath(cwd, filePath);
-  });
+  ]
+    .filter(Boolean)
+    .map(function (filePath) {
+      return toGitRelativePath(cwd, filePath);
+    });
   const releaseFilePath = toGitRelativePath(cwd, state.releaseFilePath);
 
   await runner("git", ["restore", "--worktree", "--"].concat(trackedPaths), {
@@ -267,24 +297,26 @@ function buildReleaseFilePath(releasesDir, version) {
 function parseVersionMetadataText(text) {
   const metadata = {};
 
-  String(text || "").split(/\r?\n/).forEach(function (line) {
-    const trimmed = line.trim();
-    const separatorIndex = line.indexOf("=");
-    let key;
-    let value;
+  String(text || "")
+    .split(/\r?\n/)
+    .forEach(function (line) {
+      const trimmed = line.trim();
+      const separatorIndex = line.indexOf("=");
+      let key;
+      let value;
 
-    if (!trimmed || trimmed.charAt(0) === "#") {
-      return;
-    }
+      if (!trimmed || trimmed.charAt(0) === "#") {
+        return;
+      }
 
-    if (separatorIndex <= 0) {
-      throw new Error("Invalid version metadata line: " + line);
-    }
+      if (separatorIndex <= 0) {
+        throw new Error("Invalid version metadata line: " + line);
+      }
 
-    key = line.slice(0, separatorIndex).trim();
-    value = line.slice(separatorIndex + 1).trim();
-    metadata[key] = value;
-  });
+      key = line.slice(0, separatorIndex).trim();
+      value = line.slice(separatorIndex + 1).trim();
+      metadata[key] = value;
+    });
 
   if (!metadata.version) {
     throw new Error("version.properties is missing a version entry.");
@@ -296,7 +328,9 @@ function parseVersionMetadataText(text) {
 }
 
 function readVersionMetadata(versionMetadataPath) {
-  return parseVersionMetadataText(readTextSync(versionMetadataPath, "version metadata"));
+  return parseVersionMetadataText(
+    readTextSync(versionMetadataPath, "version metadata"),
+  );
 }
 
 function renderVersionMetadata(metadata) {
@@ -315,18 +349,22 @@ function renderVersionMetadata(metadata) {
 }
 
 function extractVersionFromSource(sourceText) {
-  const match = String(sourceText || "").match(/const HOODLEFINANCE_VERSION_ = "([^"]+)"/);
+  const match = String(sourceText || "").match(
+    /const HOODLEFINANCE_VERSION_ = "([^"]+)"/,
+  );
   return match ? match[1] : "";
 }
 
 function replaceVersionInSource(sourceText, version) {
   if (!/const HOODLEFINANCE_VERSION_ = "[^"]+"/.test(sourceText)) {
-    throw new Error("Could not find HOODLEFINANCE_VERSION_ in hoodlefinance.js.");
+    throw new Error(
+      "Could not find HOODLEFINANCE_VERSION_ in hoodlefinance.js.",
+    );
   }
 
   return sourceText.replace(
     /const HOODLEFINANCE_VERSION_ = "[^"]+"/,
-    'const HOODLEFINANCE_VERSION_ = "' + version + '"'
+    'const HOODLEFINANCE_VERSION_ = "' + version + '"',
   );
 }
 
@@ -351,7 +389,12 @@ function loadReleaseFragments(changesDir) {
   try {
     entries = fs.readdirSync(changesDir, { withFileTypes: true });
   } catch (error) {
-    throw new Error("Failed to read release fragments from " + changesDir + ".\n" + String(error && error.message ? error.message : error));
+    throw new Error(
+      "Failed to read release fragments from " +
+        changesDir +
+        ".\n" +
+        String(error && error.message ? error.message : error),
+    );
   }
 
   entries.forEach(function (entry) {
@@ -371,7 +414,7 @@ function loadReleaseFragments(changesDir) {
       throw new Error(
         "Invalid release fragment filename: " +
           entry.name +
-          ". Expected YYYYMMDD-slug.<upgrade|added|changed|docs|fixed>.md."
+          ". Expected YYYYMMDD-slug.<upgrade|added|changed|docs|fixed>.md.",
       );
     }
 
@@ -440,7 +483,7 @@ async function verifyReleasePreparation(options) {
         "Release verification failed during " +
           step.label +
           ".\n" +
-          String(error && error.message ? error.message : error)
+          String(error && error.message ? error.message : error),
       );
     }
   }
@@ -465,11 +508,13 @@ function renderReleaseFile(version, releaseDate, grouped, templateText) {
   const template = String(templateText || DEFAULT_RELEASE_TEMPLATE);
   const releaseBody = renderReleaseBody(grouped);
 
-  return template
-    .replace(/\{\{version\}\}/g, version)
-    .replace(/\{\{release_date\}\}/g, releaseDate)
-    .replace(/\{\{release_body\}\}/g, releaseBody)
-    .replace(/\s+$/, "") + "\n";
+  return (
+    template
+      .replace(/\{\{version\}\}/g, version)
+      .replace(/\{\{release_date\}\}/g, releaseDate)
+      .replace(/\{\{release_body\}\}/g, releaseBody)
+      .replace(/\s+$/, "") + "\n"
+  );
 }
 
 function parseReleaseFile(text, expectedVersion) {
@@ -478,13 +523,21 @@ function parseReleaseFile(text, expectedVersion) {
   let version;
 
   if (!match) {
-    throw new Error("Release file is missing a '# vX.Y.Z - YYYY-MM-DD' heading.");
+    throw new Error(
+      "Release file is missing a '# vX.Y.Z - YYYY-MM-DD' heading.",
+    );
   }
 
   version = match[1];
 
   if (expectedVersion && version !== expectedVersion) {
-    throw new Error("Release file version mismatch: expected v" + expectedVersion + " but found v" + version + ".");
+    throw new Error(
+      "Release file version mismatch: expected v" +
+        expectedVersion +
+        " but found v" +
+        version +
+        ".",
+    );
   }
 
   return {
@@ -502,7 +555,12 @@ function loadReleaseEntries(releasesDir) {
   try {
     entries = fs.readdirSync(releasesDir, { withFileTypes: true });
   } catch (error) {
-    throw new Error("Failed to read release files from " + releasesDir + ".\n" + String(error && error.message ? error.message : error));
+    throw new Error(
+      "Failed to read release files from " +
+        releasesDir +
+        ".\n" +
+        String(error && error.message ? error.message : error),
+    );
   }
 
   entries.forEach(function (entry) {
@@ -513,7 +571,10 @@ function loadReleaseEntries(releasesDir) {
       return;
     }
 
-    parsed = parseReleaseFile(readTextSync(path.join(releasesDir, entry.name), "release file"), match[1]);
+    parsed = parseReleaseFile(
+      readTextSync(path.join(releasesDir, entry.name), "release file"),
+      match[1],
+    );
     releases.push({
       body: parsed.body,
       date: parsed.date,
@@ -545,7 +606,8 @@ function buildReleaseNotesPage(releases) {
 async function prepareRelease(version, options) {
   const normalizedOptions = options || {};
   const cwd = normalizedOptions.cwd || ROOT_DIR;
-  const verifyRelease = normalizedOptions.verifyRelease || verifyReleasePreparation;
+  const verifyRelease =
+    normalizedOptions.verifyRelease || verifyReleasePreparation;
   const runner = normalizedOptions.runCommand || runCommand;
   const draft = await previewRelease(version, normalizedOptions);
   const releaseNotesPath = draft.releaseNotesPath;
@@ -573,9 +635,12 @@ async function prepareRelease(version, options) {
         release_date: releaseDate,
         release_notes_path: releaseNotesRelativePath,
         version: version,
-      })
+      }),
     );
-    await writeText(scriptSourcePath, replaceVersionInSource(scriptSourceText, version));
+    await writeText(
+      scriptSourcePath,
+      replaceVersionInSource(scriptSourceText, version),
+    );
 
     releaseEntries = loadReleaseEntries(releasesDir);
     await writeText(releaseNotesPath, buildReleaseNotesPage(releaseEntries));
@@ -599,7 +664,11 @@ async function prepareRelease(version, options) {
           "Original error: " +
           String(error && error.message ? error.message : error) +
           "\nCleanup error: " +
-          String(cleanupError && cleanupError.message ? cleanupError.message : cleanupError)
+          String(
+            cleanupError && cleanupError.message
+              ? cleanupError.message
+              : cleanupError,
+          ),
       );
     }
 
@@ -609,7 +678,7 @@ async function prepareRelease(version, options) {
   await Promise.all(
     fragments.map(function (fragment) {
       return fsp.unlink(fragment.path);
-    })
+    }),
   );
 
   return {
@@ -627,16 +696,27 @@ async function previewRelease(version, options) {
   const normalizedOptions = options || {};
   const cwd = normalizedOptions.cwd || ROOT_DIR;
   const changesDir = normalizedOptions.changesDir || CHANGES_DIR;
-  const releaseDate = normalizedOptions.releaseDate || new Date().toISOString().slice(0, 10);
-  const releaseNotesPath = normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
+  const releaseDate =
+    normalizedOptions.releaseDate || new Date().toISOString().slice(0, 10);
+  const releaseNotesPath =
+    normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
   const releasesDir = normalizedOptions.releasesDir || RELEASES_DIR;
-  const releaseTemplatePath = normalizedOptions.releaseTemplatePath || RELEASE_TEMPLATE_PATH;
-  const scriptSourcePath = normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
-  const versionMetadataPath = normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
+  const releaseTemplatePath =
+    normalizedOptions.releaseTemplatePath || RELEASE_TEMPLATE_PATH;
+  const scriptSourcePath =
+    normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
+  const versionMetadataPath =
+    normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
   const runner = normalizedOptions.runCommand || runCommand;
   const versionMetadata = readVersionMetadata(versionMetadataPath);
-  const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
-  const releaseTemplateText = readTextSync(releaseTemplatePath, "release template");
+  const scriptSourceText = readTextSync(
+    scriptSourcePath,
+    "hoodlefinance source",
+  );
+  const releaseTemplateText = readTextSync(
+    releaseTemplatePath,
+    "release template",
+  );
   const currentScriptVersion = extractVersionFromSource(scriptSourceText);
   const releaseNotesRelativePath = buildReleaseNotesRelativePath(version);
   const releaseFilePath = buildReleaseFilePath(releasesDir, version);
@@ -659,7 +739,11 @@ async function previewRelease(version, options) {
   }
 
   if (compareVersions(version, versionMetadata.version) <= 0) {
-    throw new Error("Target release version must be greater than the current version " + versionMetadata.version + ".");
+    throw new Error(
+      "Target release version must be greater than the current version " +
+        versionMetadata.version +
+        ".",
+    );
   }
 
   if (currentScriptVersion !== versionMetadata.version) {
@@ -668,7 +752,7 @@ async function previewRelease(version, options) {
         versionMetadata.version +
         " but found " +
         (currentScriptVersion || "(missing)") +
-        "."
+        ".",
     );
   }
 
@@ -682,7 +766,12 @@ async function previewRelease(version, options) {
     groupedFragments: grouped,
     releaseDate: releaseDate,
     releaseFilePath: releaseFilePath,
-    releaseFileText: renderReleaseFile(version, releaseDate, grouped, releaseTemplateText),
+    releaseFileText: renderReleaseFile(
+      version,
+      releaseDate,
+      grouped,
+      releaseTemplateText,
+    ),
     releaseNotesPath: releaseNotesPath,
     releaseNotesRelativePath: releaseNotesRelativePath,
     releasesDir: releasesDir,
@@ -719,11 +808,16 @@ async function runCommand(command, args, options) {
     child.on("error", reject);
     child.on("close", function (code) {
       if (code !== 0) {
-        reject(Object.assign(new Error((stderr || stdout || "").trim() || (command + " failed")), {
-          code: code,
-          stderr: stderr,
-          stdout: stdout,
-        }));
+        reject(
+          Object.assign(
+            new Error((stderr || stdout || "").trim() || command + " failed"),
+            {
+              code: code,
+              stderr: stderr,
+              stdout: stdout,
+            },
+          ),
+        );
         return;
       }
 
@@ -737,15 +831,23 @@ async function runCommand(command, args, options) {
 
 async function publishRelease(version, options) {
   const normalizedOptions = options || {};
-  const releaseNotesPath = normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
+  const releaseNotesPath =
+    normalizedOptions.releaseNotesPath || RELEASE_NOTES_PATH;
   const releasesDir = normalizedOptions.releasesDir || RELEASES_DIR;
-  const scriptSourcePath = normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
-  const versionMetadataPath = normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
+  const scriptSourcePath =
+    normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
+  const versionMetadataPath =
+    normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
   const runner = normalizedOptions.runCommand || runCommand;
-  const releaseFilePath = normalizedOptions.releaseFilePath || buildReleaseFilePath(releasesDir, version);
+  const releaseFilePath =
+    normalizedOptions.releaseFilePath ||
+    buildReleaseFilePath(releasesDir, version);
   const tagName = "v" + version;
   const versionMetadata = readVersionMetadata(versionMetadataPath);
-  const scriptSourceText = readTextSync(scriptSourcePath, "hoodlefinance source");
+  const scriptSourceText = readTextSync(
+    scriptSourcePath,
+    "hoodlefinance source",
+  );
   const releaseNotesText = readTextSync(releaseNotesPath, "release notes");
   let gitStatus;
   let existingTag;
@@ -753,18 +855,28 @@ async function publishRelease(version, options) {
   validateVersion(version);
 
   if (versionMetadata.version !== version) {
-    throw new Error("version.properties must point to " + version + " before publishing.");
+    throw new Error(
+      "version.properties must point to " + version + " before publishing.",
+    );
   }
 
   if (extractVersionFromSource(scriptSourceText) !== version) {
-    throw new Error("hoodlefinance.js must already be stamped to " + version + " before publishing.");
+    throw new Error(
+      "hoodlefinance.js must already be stamped to " +
+        version +
+        " before publishing.",
+    );
   }
 
   if (!fs.existsSync(releaseFilePath)) {
     throw new Error("Per-release notes do not exist for v" + version + ".");
   }
 
-  if (!new RegExp("^## v" + version.replace(/\./g, "\\.") + " - ", "m").test(releaseNotesText)) {
+  if (
+    !new RegExp("^## v" + version.replace(/\./g, "\\.") + " - ", "m").test(
+      releaseNotesText,
+    )
+  ) {
     throw new Error("RELEASE_NOTES.md does not contain v" + version + ".");
   }
 
@@ -777,7 +889,7 @@ async function publishRelease(version, options) {
       "Failed to inspect git status before publishing v" +
         version +
         ".\n" +
-        String(error && error.message ? error.message : error)
+        String(error && error.message ? error.message : error),
     );
   }
 
@@ -794,7 +906,7 @@ async function publishRelease(version, options) {
       "Failed to inspect existing git tags before publishing v" +
         version +
         ".\n" +
-        String(error && error.message ? error.message : error)
+        String(error && error.message ? error.message : error),
     );
   }
 
@@ -814,25 +926,39 @@ async function publishRelease(version, options) {
     });
     await runner(
       "gh",
-      ["release", "create", tagName, "--title", tagName, "--notes-file", releaseFilePath],
+      [
+        "release",
+        "create",
+        tagName,
+        "--title",
+        tagName,
+        "--notes-file",
+        releaseFilePath,
+      ],
       {
         cwd: normalizedOptions.cwd || ROOT_DIR,
-      }
+      },
     );
   } catch (error) {
     if (error && error.code === "ENOENT") {
       throw new Error("GitHub CLI (gh) is required to publish a release.");
     }
 
-    if (/not logged in|authentication/i.test(String(error && error.stderr ? error.stderr : error))) {
-      throw new Error("GitHub CLI must be authenticated before publishing a release.");
+    if (
+      /not logged in|authentication/i.test(
+        String(error && error.stderr ? error.stderr : error),
+      )
+    ) {
+      throw new Error(
+        "GitHub CLI must be authenticated before publishing a release.",
+      );
     }
 
     throw new Error(
       "Failed to publish release v" +
         version +
         ".\n" +
-        String(error && error.message ? error.message : error)
+        String(error && error.message ? error.message : error),
     );
   }
 
@@ -884,7 +1010,9 @@ module.exports = {
 
 if (require.main === module) {
   main().catch(function (error) {
-    process.stderr.write(String(error && error.stack ? error.stack : error) + "\n");
+    process.stderr.write(
+      String(error && error.stack ? error.stack : error) + "\n",
+    );
     process.exitCode = 1;
   });
 }

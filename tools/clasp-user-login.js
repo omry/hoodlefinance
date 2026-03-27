@@ -5,7 +5,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { getClaspAuth, getClaspCommand } = require("./clasp-auth.js");
-const { ROOT_DIR, getClaspUserSlotByKey, getClaspUserSlots } = require("./clasp-user-slots.js");
+const {
+  ROOT_DIR,
+  getClaspUserSlotByKey,
+  getClaspUserSlots,
+} = require("./clasp-user-slots.js");
 
 function parseArgs(argv) {
   const options = {
@@ -35,7 +39,9 @@ function parseArgs(argv) {
     if (current === "--creds") {
       i += 1;
       if (i >= argv.length) {
-        throw new Error("Usage: node tools/clasp-user-login.js [--demo-staging|--demo-production|--addon-staging|--addon-production] [--creds <path>] [--no-localhost]");
+        throw new Error(
+          "Usage: node tools/clasp-user-login.js [--demo-staging|--demo-production|--addon-staging|--addon-production] [--creds <path>] [--no-localhost]",
+        );
       }
       options.credsPath = path.resolve(ROOT_DIR, argv[i]);
       continue;
@@ -50,7 +56,9 @@ function parseArgs(argv) {
   }
 
   if (!options.slotKey) {
-    throw new Error("Choose a clasp auth slot to log into: --demo-staging, --demo-production, --addon-staging, or --addon-production.");
+    throw new Error(
+      "Choose a clasp auth slot to log into: --demo-staging, --demo-production, --addon-staging, or --addon-production.",
+    );
   }
 
   return options;
@@ -61,7 +69,8 @@ function getClaspLoginContext(options, overrides) {
   const normalizedOverrides = overrides || {};
   const rootDir = normalizedOverrides.rootDir || ROOT_DIR;
   const slot = getClaspUserSlotByKey(normalizedOptions.slotKey, rootDir);
-  const credsPath = normalizedOptions.credsPath || (slot && slot.oauthClientPath) || "";
+  const credsPath =
+    normalizedOptions.credsPath || (slot && slot.oauthClientPath) || "";
 
   if (!slot) {
     throw new Error("Unknown clasp auth slot: " + normalizedOptions.slotKey);
@@ -117,7 +126,7 @@ async function main() {
         ".\n" +
         "Expected creds for " +
         context.label +
-        "."
+        ".",
     );
   }
 

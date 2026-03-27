@@ -6,13 +6,28 @@ const vm = require("vm");
 const { createUrlFetchApp } = require("./urlfetch-sync.js");
 
 function loadHoodlefinance() {
-  const source = fs.readFileSync(path.join(__dirname, "..", "..", "hoodlefinance.js"), "utf8");
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "..", "hoodlefinance.js"),
+    "utf8",
+  );
   const cacheStore = new Map();
   const scriptPropertiesStore = new Map();
-  const localCurrencyCodesPath = path.join(__dirname, "..", "..", "data", "currency-codes.json");
+  const localCurrencyCodesPath = path.join(
+    __dirname,
+    "..",
+    "..",
+    "data",
+    "currency-codes.json",
+  );
 
-  scriptPropertiesStore.set("hoodlefinance.currencyCodes", fs.readFileSync(localCurrencyCodesPath, "utf8"));
-  scriptPropertiesStore.set("hoodlefinance.currencyCodesFetchedAtMs", String(Date.now()));
+  scriptPropertiesStore.set(
+    "hoodlefinance.currencyCodes",
+    fs.readFileSync(localCurrencyCodesPath, "utf8"),
+  );
+  scriptPropertiesStore.set(
+    "hoodlefinance.currencyCodesFetchedAtMs",
+    String(Date.now()),
+  );
 
   const sandbox = {
     console,
@@ -44,7 +59,9 @@ function loadHoodlefinance() {
             scriptPropertiesStore.delete(key);
           },
           getProperty(key) {
-            return scriptPropertiesStore.has(key) ? scriptPropertiesStore.get(key) : null;
+            return scriptPropertiesStore.has(key)
+              ? scriptPropertiesStore.get(key)
+              : null;
           },
           setProperty(key, value) {
             scriptPropertiesStore.set(key, String(value));
@@ -87,9 +104,11 @@ function getRoutingTableRows(ctx) {
 
 function formatRoutingTable(rows) {
   return [["classification", "example", "planned route"]]
-    .concat(rows.map(function (row) {
-      return [row.classification, row.example, row.route];
-    }))
+    .concat(
+      rows.map(function (row) {
+        return [row.classification, row.example, row.route];
+      }),
+    )
     .map(function (columns) {
       return columns.join("\t");
     })
@@ -139,8 +158,8 @@ function traceRoutingForSymbol(symbol, ctx) {
     plannedRoute: runtime.hf_describePlanSource_(job.plan),
     runtimeTrace: (job.routeRuntimeTrace || []).map(function (entry) {
       return {
-        label: String(entry && entry.label || ""),
-        status: String(entry && entry.status || ""),
+        label: String((entry && entry.label) || ""),
+        status: String((entry && entry.status) || ""),
       };
     }),
     value: job.quote || null,
@@ -152,9 +171,11 @@ function formatRoutingTrace(trace) {
     return "(no runtime trace)";
   }
 
-  return trace.runtimeTrace.map(function (entry) {
-    return entry.label + " [" + entry.status + "]";
-  }).join(" -> ");
+  return trace.runtimeTrace
+    .map(function (entry) {
+      return entry.label + " [" + entry.status + "]";
+    })
+    .join(" -> ");
 }
 
 function formatTraceOutput(symbol, ctx) {

@@ -59,16 +59,16 @@ Current next step:
 
 Checklist:
 
-- [X] Cloud project created
-- [X] Separate public-review Cloud project created
-- [X] Apps Script project linked to the dedicated standard Cloud project
-- [X] Script ID recorded
-- [X] Public-review add-on script target chosen
-- [X] Code push to the public-review add-on script project verified:
+- [x] Cloud project created
+- [x] Separate public-review Cloud project created
+- [x] Apps Script project linked to the dedicated standard Cloud project
+- [x] Script ID recorded
+- [x] Public-review add-on script target chosen
+- [x] Code push to the public-review add-on script project verified:
   - `npm run addon:deploy -- --production --push-only`
   - pull-back verification confirmed the remote manifest and source files
-- [X] Public-review Marketplace listing points at the intended script project and version
-- [X] Active Sheets add-on deployment created for the public-review Apps Script project
+- [x] Public-review Marketplace listing points at the intended script project and version
+- [x] Active Sheets add-on deployment created for the public-review Apps Script project
 
 ## 2. Manifest And Runtime Surface
 
@@ -84,10 +84,10 @@ Manifest notes:
 
 Checklist:
 
-- [X] Manifest reset to the clean baseline
-- [X] Required fetch and open-link allowlists are present
-- [X] Runtime behavior validated through Marketplace install
-- [X] Low-auth Marketplace `onOpen()` behavior handled safely for add-on installs:
+- [x] Manifest reset to the clean baseline
+- [x] Required fetch and open-link allowlists are present
+- [x] Runtime behavior validated through Marketplace install
+- [x] Low-auth Marketplace `onOpen()` behavior handled safely for add-on installs:
   - early Marketplace-installed opens can run without permission to call `getInstallationSource()` or `getUserProperties()`
   - add-on detection now falls back to the add-on menu capability in that low-auth case so menu setup still succeeds
 
@@ -101,21 +101,21 @@ Checklist:
 
 Checklist:
 
-- [X] OAuth consent configured
-- [X] Marketplace SDK enabled
-- [X] Listing configuration works for private install
-- [X] Marketplace listing reviewed end to end
-- [X] Public-review Cloud project created
-- [X] Public-review OAuth branding configured
-- [X] Public-review OAuth audience set to `External` with a test user
-- [X] Public-review Marketplace installation mode chosen:
+- [x] OAuth consent configured
+- [x] Marketplace SDK enabled
+- [x] Listing configuration works for private install
+- [x] Marketplace listing reviewed end to end
+- [x] Public-review Cloud project created
+- [x] Public-review OAuth branding configured
+- [x] Public-review OAuth audience set to `External` with a test user
+- [x] Public-review Marketplace installation mode chosen:
   - `Individual + Admin Install`
-- [X] Repo-local manifest scope set remains:
+- [x] Repo-local manifest scope set remains:
   - `script.external_request`
   - `spreadsheets.currentonly`
-- [X] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
-- [X] Public-review Apps Script version created and chosen for Marketplace use
-- [X] Public-review Marketplace configuration completed
+- [x] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
+- [x] Public-review Apps Script version created and chosen for Marketplace use
+- [x] Public-review Marketplace configuration completed
 - [ ] Public-review OAuth requirements fully prepared
 
 ## 4. Listing Material
@@ -140,11 +140,11 @@ Canonical policy/support pages are now hosted on the project website:
 
 Checklist:
 
-- [X] Listing text prepared
-- [X] Support/privacy/terms links prepared
-- [X] Public support email updated to `support@hoodlefinance.com`
-- [X] Required visual assets prepared
-- [X] Final public-facing wording reviewed
+- [x] Listing text prepared
+- [x] Support/privacy/terms links prepared
+- [x] Public support email updated to `support@hoodlefinance.com`
+- [x] Required visual assets prepared
+- [x] Final public-facing wording reviewed
 
 ## 5. Private Validation Result
 
@@ -160,9 +160,9 @@ Observed result on March 21, 2026:
 
 Checklist:
 
-- [X] Private Marketplace install succeeded
-- [X] Custom functions are recognized by Sheets
-- [X] Add-on UI entry points work
+- [x] Private Marketplace install succeeded
+- [x] Custom functions are recognized by Sheets
+- [x] Add-on UI entry points work
 
 ## 6. Public Review Readiness
 
@@ -178,9 +178,9 @@ Focus areas:
 
 Checklist:
 
-- [X] Decide to proceed toward public Marketplace review
-- [X] Finish the new public-review Marketplace app configuration
-- [X] Re-run install validation through the new public-review app path
+- [x] Decide to proceed toward public Marketplace review
+- [x] Finish the new public-review Marketplace app configuration
+- [x] Re-run install validation through the new public-review app path
 - [ ] Prepare any required OAuth verification material
 - [ ] Submit for public review when ready
 

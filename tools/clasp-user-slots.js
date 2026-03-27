@@ -31,8 +31,18 @@ function getClaspUserSlots(rootDir) {
       flag: "--demo-staging",
       key: "demo-staging",
       label: "staging demo",
-      authPath: path.join(baseDir, ".demo-sheet.local", "staging", ".clasprc.json"),
-      oauthClientPath: path.join(baseDir, ".demo-sheet.local", "staging", "oauth-client.json"),
+      authPath: path.join(
+        baseDir,
+        ".demo-sheet.local",
+        "staging",
+        ".clasprc.json",
+      ),
+      oauthClientPath: path.join(
+        baseDir,
+        ".demo-sheet.local",
+        "staging",
+        "oauth-client.json",
+      ),
     },
     {
       flag: "--demo-production",
@@ -40,11 +50,21 @@ function getClaspUserSlots(rootDir) {
       label: "production demo",
       authPath: resolvePreferredLocalPath(
         path.join(baseDir, ".demo-sheet.local", "production", ".clasprc.json"),
-        path.join(baseDir, ".demo-sheet.local", "live-demo", ".clasprc.json")
+        path.join(baseDir, ".demo-sheet.local", "live-demo", ".clasprc.json"),
       ),
       oauthClientPath: resolvePreferredLocalPath(
-        path.join(baseDir, ".demo-sheet.local", "production", "oauth-client.json"),
-        path.join(baseDir, ".demo-sheet.local", "live-demo", "oauth-client.json")
+        path.join(
+          baseDir,
+          ".demo-sheet.local",
+          "production",
+          "oauth-client.json",
+        ),
+        path.join(
+          baseDir,
+          ".demo-sheet.local",
+          "live-demo",
+          "oauth-client.json",
+        ),
       ),
     },
     {
@@ -52,30 +72,54 @@ function getClaspUserSlots(rootDir) {
       key: "addon-production",
       label: "add-on production",
       authPath: resolvePreferredLocalPath(
-        path.join(baseDir, ".addon-deploy.local", "production", ".clasprc.json"),
-        path.join(baseDir, ".addon-deploy.local", ".clasprc.json")
+        path.join(
+          baseDir,
+          ".addon-deploy.local",
+          "production",
+          ".clasprc.json",
+        ),
+        path.join(baseDir, ".addon-deploy.local", ".clasprc.json"),
       ),
       oauthClientPath: resolvePreferredLocalPath(
-        path.join(baseDir, ".addon-deploy.local", "production", "oauth-client.json"),
-        path.join(baseDir, ".addon-deploy.local", "oauth-client.json")
+        path.join(
+          baseDir,
+          ".addon-deploy.local",
+          "production",
+          "oauth-client.json",
+        ),
+        path.join(baseDir, ".addon-deploy.local", "oauth-client.json"),
       ),
     },
     {
       flag: "--addon-staging",
       key: "addon-staging",
       label: "add-on staging",
-      authPath: path.join(baseDir, ".addon-deploy.local", "staging", ".clasprc.json"),
-      oauthClientPath: path.join(baseDir, ".addon-deploy.local", "staging", "oauth-client.json"),
+      authPath: path.join(
+        baseDir,
+        ".addon-deploy.local",
+        "staging",
+        ".clasprc.json",
+      ),
+      oauthClientPath: path.join(
+        baseDir,
+        ".addon-deploy.local",
+        "staging",
+        "oauth-client.json",
+      ),
     },
   ];
 }
 
 function getClaspUserSlotByKey(slotKey, rootDir) {
-  const normalizedSlotKey = String(slotKey || "").trim().toLowerCase();
+  const normalizedSlotKey = String(slotKey || "")
+    .trim()
+    .toLowerCase();
 
-  return getClaspUserSlots(rootDir).find(function (slot) {
-    return slot.key === normalizedSlotKey;
-  }) || null;
+  return (
+    getClaspUserSlots(rootDir).find(function (slot) {
+      return slot.key === normalizedSlotKey;
+    }) || null
+  );
 }
 
 module.exports = {

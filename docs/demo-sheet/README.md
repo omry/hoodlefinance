@@ -31,6 +31,7 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 npm install
 npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo-sheet.local/staging/oauth-client.json
 ```
+
 4. Run the staging sync to confirm your credentials and access without touching the public demo:
 
 ```sh
@@ -156,6 +157,7 @@ https://script.google.com/home/usersettings
 npm install
 npm exec -- clasp -A .demo-sheet.local/staging/.clasprc.json login --creds .demo-sheet.local/staging/oauth-client.json
 ```
+
 6. Have the maintainer save a valid OAuth desktop-client JSON at:
 
 ```text

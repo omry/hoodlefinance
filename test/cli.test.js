@@ -13,24 +13,49 @@ test("routing table rows cover the current quote classifications", function () {
     JSON.stringify(getRoutingTableRows()),
     JSON.stringify([
       { classification: "TICKER", example: "GOOG", route: "TICKER -> YAHOO" },
-      { classification: "TICKER-IL-FUND", example: "TLV:KSMF59", route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW" },
+      {
+        classification: "TICKER-IL-FUND",
+        example: "TLV:KSMF59",
+        route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW",
+      },
       { classification: "FX", example: "EURUSD", route: "FX -> GOOGLE" },
-      { classification: "FX-SAME", example: "USDUSD", route: "FX-SAME -> LOCAL" },
-      { classification: "PSE-TICKER", example: "PSE:BDO", route: "PSE-TICKER -> PSE" },
+      {
+        classification: "FX-SAME",
+        example: "USDUSD",
+        route: "FX-SAME -> LOCAL",
+      },
+      {
+        classification: "PSE-TICKER",
+        example: "PSE:BDO",
+        route: "PSE-TICKER -> PSE",
+      },
       {
         classification: "ISIN",
         example: "US02079K1079",
-        route: "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+        route:
+          "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
       },
-      { classification: "FORCED:YAHOO", example: "GOOG@YAHOO", route: "FORCED:YAHOO -> YAHOO" },
+      {
+        classification: "FORCED:YAHOO",
+        example: "GOOG@YAHOO",
+        route: "FORCED:YAHOO -> YAHOO",
+      },
       {
         classification: "FORCED:YAHOO-ISIN",
         example: "US02079K1079@YAHOO",
         route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
       },
-      { classification: "FORCED:GOOGLE", example: "EURUSD@GOOGLE", route: "FORCED:GOOGLE -> GOOGLE" },
-      { classification: "FORCED:PSE", example: "PSE:BDO@PSE", route: "FORCED:PSE -> PSE" },
-    ])
+      {
+        classification: "FORCED:GOOGLE",
+        example: "EURUSD@GOOGLE",
+        route: "FORCED:GOOGLE -> GOOGLE",
+      },
+      {
+        classification: "FORCED:PSE",
+        example: "PSE:BDO@PSE",
+        route: "FORCED:PSE -> PSE",
+      },
+    ]),
   );
 });
 
@@ -39,7 +64,10 @@ test("routing table formatter emits a readable header and rows", function () {
 
   assert.match(output, /^classification\texample\tplanned route/m);
   assert.match(output, /TICKER\tGOOG\tTICKER -> YAHOO/);
-  assert.match(output, /TICKER-IL-FUND\tTLV:KSMF59\tTICKER-IL-FUND -> YAHOO -> TRADINGVIEW/);
+  assert.match(
+    output,
+    /TICKER-IL-FUND\tTLV:KSMF59\tTICKER-IL-FUND -> YAHOO -> TRADINGVIEW/,
+  );
   assert.match(output, /FORCED:PSE\tPSE:BDO@PSE\tFORCED:PSE -> PSE/);
 });
 
@@ -51,7 +79,7 @@ test("routing trace formatter emits a readable attempted-source chain", function
         { label: "TRADINGVIEW", status: "success" },
       ],
     }),
-    "YAHOO [lookup_failure] -> TRADINGVIEW [success]"
+    "YAHOO [lookup_failure] -> TRADINGVIEW [success]",
   );
   assert.equal(formatRoutingTrace({ runtimeTrace: [] }), "(no runtime trace)");
 });

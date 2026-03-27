@@ -37,7 +37,11 @@ function fetchText(url) {
             response.headers &&
             response.headers.location
           ) {
-            resolve(fetchText(new URL(response.headers.location, parsedUrl).toString()));
+            resolve(
+              fetchText(
+                new URL(response.headers.location, parsedUrl).toString(),
+              ),
+            );
             return;
           }
 
@@ -46,7 +50,7 @@ function fetchText(url) {
             statusCode: response.statusCode || 0,
           });
         });
-      }
+      },
     );
 
     request.on("error", reject);
@@ -59,12 +63,19 @@ function fetchText(url) {
 
   try {
     const result = await fetchText(workerData.url);
-    fs.writeFileSync(workerData.outputPath, JSON.stringify({ ok: true, result: result }), "utf8");
+    fs.writeFileSync(
+      workerData.outputPath,
+      JSON.stringify({ ok: true, result: result }),
+      "utf8",
+    );
   } catch (error) {
     fs.writeFileSync(
       workerData.outputPath,
-      JSON.stringify({ error: error && error.message ? error.message : String(error), ok: false }),
-      "utf8"
+      JSON.stringify({
+        error: error && error.message ? error.message : String(error),
+        ok: false,
+      }),
+      "utf8",
     );
   } finally {
     Atomics.store(state, 0, 1);

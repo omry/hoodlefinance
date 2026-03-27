@@ -9,12 +9,16 @@
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at top center, rgba(123, 212, 228, 0.22), transparent 34%),
+    radial-gradient(
+      circle at top center,
+      rgba(123, 212, 228, 0.22),
+      transparent 34%
+    ),
     linear-gradient(180deg, #f4f8fc 0%, #eaf1f7 100%);
 }
 
 .heroBanner::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image:
@@ -25,13 +29,17 @@
   pointer-events: none;
 }
 
-:global([data-theme='dark']) .heroBanner {
+:global([data-theme="dark"]) .heroBanner {
   background:
-    radial-gradient(circle at top center, rgba(123, 212, 228, 0.2), transparent 34%),
+    radial-gradient(
+      circle at top center,
+      rgba(123, 212, 228, 0.2),
+      transparent 34%
+    ),
     linear-gradient(180deg, #16202b 0%, #0d141d 100%);
 }
 
-:global([data-theme='dark']) .heroBanner::before {
+:global([data-theme="dark"]) .heroBanner::before {
   background-image:
     linear-gradient(rgba(123, 212, 228, 0.08) 1px, transparent 1px),
     linear-gradient(90deg, rgba(123, 212, 228, 0.08) 1px, transparent 1px);
@@ -68,7 +76,7 @@
   box-shadow: 0 20px 50px rgba(19, 43, 29, 0.12);
 }
 
-:global([data-theme='dark']) .previewImage {
+:global([data-theme="dark"]) .previewImage {
   border-color: #355343;
   background: #15231b;
   box-shadow: 0 24px 56px rgba(0, 0, 0, 0.35);
@@ -114,7 +122,7 @@
   color: #203247;
 }
 
-:global([data-theme='dark']) .heroText {
+:global([data-theme="dark"]) .heroText {
   color: #d6e3ef;
 }
 
@@ -150,13 +158,13 @@
   color: #13253a;
 }
 
-:global([data-theme='dark']) .heroContent :global(.button--secondary) {
+:global([data-theme="dark"]) .heroContent :global(.button--secondary) {
   background: rgba(220, 227, 240, 0.1);
   border-color: rgba(123, 212, 228, 0.24);
   color: #dce3f0;
 }
 
-:global([data-theme='dark']) .heroContent :global(.button--secondary:hover) {
+:global([data-theme="dark"]) .heroContent :global(.button--secondary:hover) {
   background: rgba(220, 227, 240, 0.16);
   border-color: rgba(123, 212, 228, 0.34);
   color: #f4f8fc;
@@ -179,7 +187,7 @@
   box-shadow: 0 16px 40px rgba(18, 37, 58, 0.08);
 }
 
-:global([data-theme='dark']) .card {
+:global([data-theme="dark"]) .card {
   border-color: #2b3a4a;
   background: linear-gradient(180deg, #16202b 0%, #111a24 100%);
   color: #dce3f0;
@@ -196,7 +204,7 @@
   background: #eaf2f8;
 }
 
-:global([data-theme='dark']) .card code {
+:global([data-theme="dark"]) .card code {
   background: #223244;
 }
 

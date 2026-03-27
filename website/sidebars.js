@@ -16,20 +16,20 @@
  */
 const sidebars = {
   tutorialSidebar: [
-    'intro',
+    "intro",
     {
-      type: 'category',
-      label: 'API',
+      type: "category",
+      label: "API",
       collapsed: false,
       items: [
-        'api/overview',
-        'api/identifiers',
-        'api/attributes',
-        'api/currency-fx',
-        'api/debugging',
+        "api/overview",
+        "api/identifiers",
+        "api/attributes",
+        "api/currency-fx",
+        "api/debugging",
       ],
     },
-    'support-matrix',
+    "support-matrix",
   ],
 };
 

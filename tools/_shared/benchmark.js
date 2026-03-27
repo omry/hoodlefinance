@@ -7,11 +7,56 @@ const path = require("path");
 const vm = require("vm");
 
 const DEFAULT_TICKERS = [
-  "GOOG", "AAPL", "MSFT", "AMZN", "META", "NVDA", "TSLA", "BRK-B", "LLY", "JPM",
-  "V", "MA", "UNH", "XOM", "HD", "COST", "PG", "JNJ", "ABBV", "BAC",
-  "CVX", "MRK", "KO", "AVGO", "PEP", "ADBE", "CSCO", "WMT", "CRM", "NFLX",
-  "AMD", "ACN", "TMO", "ORCL", "QCOM", "MCD", "DIS", "ABT", "GE", "INTU",
-  "CAT", "IBM", "LIN", "NOW", "AMGN", "TXN", "GS", "MS", "SPGI", "BLK",
+  "GOOG",
+  "AAPL",
+  "MSFT",
+  "AMZN",
+  "META",
+  "NVDA",
+  "TSLA",
+  "BRK-B",
+  "LLY",
+  "JPM",
+  "V",
+  "MA",
+  "UNH",
+  "XOM",
+  "HD",
+  "COST",
+  "PG",
+  "JNJ",
+  "ABBV",
+  "BAC",
+  "CVX",
+  "MRK",
+  "KO",
+  "AVGO",
+  "PEP",
+  "ADBE",
+  "CSCO",
+  "WMT",
+  "CRM",
+  "NFLX",
+  "AMD",
+  "ACN",
+  "TMO",
+  "ORCL",
+  "QCOM",
+  "MCD",
+  "DIS",
+  "ABT",
+  "GE",
+  "INTU",
+  "CAT",
+  "IBM",
+  "LIN",
+  "NOW",
+  "AMGN",
+  "TXN",
+  "GS",
+  "MS",
+  "SPGI",
+  "BLK",
 ];
 
 const SUPPORTED_ATTRIBUTES = {
@@ -74,14 +119,24 @@ function parseArgs(argv) {
     printUsage(1, "Unknown argument: " + argv[i]);
   }
 
-  options.attribute = String(options.attribute || "price").trim().toLowerCase();
+  options.attribute = String(options.attribute || "price")
+    .trim()
+    .toLowerCase();
 
   if (!SUPPORTED_ATTRIBUTES[options.attribute]) {
-    printUsage(1, "Only quote-backed attributes are supported by the benchmark: " + Object.keys(SUPPORTED_ATTRIBUTES).join(", "));
+    printUsage(
+      1,
+      "Only quote-backed attributes are supported by the benchmark: " +
+        Object.keys(SUPPORTED_ATTRIBUTES).join(", "),
+    );
   }
 
   if (!options.tickers.length) {
-    if (!options.count || options.count < 1 || options.count > DEFAULT_TICKERS.length) {
+    if (
+      !options.count ||
+      options.count < 1 ||
+      options.count > DEFAULT_TICKERS.length
+    ) {
       printUsage(1, "--count must be between 1 and " + DEFAULT_TICKERS.length);
     }
     options.tickers = DEFAULT_TICKERS.slice(0, options.count);
@@ -95,13 +150,20 @@ function printUsage(exitCode, error) {
     console.error(error);
   }
 
-  console.error("Usage: node tools/_shared/benchmark.js [--attribute <attribute>] [--count <n>] [--tickers <csv>]");
-  console.error("Example: node tools/_shared/benchmark.js --attribute price --count 20");
+  console.error(
+    "Usage: node tools/_shared/benchmark.js [--attribute <attribute>] [--count <n>] [--tickers <csv>]",
+  );
+  console.error(
+    "Example: node tools/_shared/benchmark.js --attribute price --count 20",
+  );
   process.exit(exitCode);
 }
 
 function loadHelpers() {
-  const source = fs.readFileSync(path.join(__dirname, "..", "..", "hoodlefinance.js"), "utf8");
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "..", "hoodlefinance.js"),
+    "utf8",
+  );
   const sandbox = {
     console,
     Date,
@@ -126,10 +188,14 @@ function loadHelpers() {
     },
     UrlFetchApp: {
       fetch() {
-        throw new Error("Benchmark helper should not call UrlFetchApp.fetch directly.");
+        throw new Error(
+          "Benchmark helper should not call UrlFetchApp.fetch directly.",
+        );
       },
       fetchAll() {
-        throw new Error("Benchmark helper should not call UrlFetchApp.fetchAll directly.");
+        throw new Error(
+          "Benchmark helper should not call UrlFetchApp.fetchAll directly.",
+        );
       },
     },
   };
@@ -195,7 +261,11 @@ function fetchText(url) {
             response.headers &&
             response.headers.location
           ) {
-            resolve(fetchText(new URL(response.headers.location, parsedUrl).toString()));
+            resolve(
+              fetchText(
+                new URL(response.headers.location, parsedUrl).toString(),
+              ),
+            );
             return;
           }
 
@@ -204,7 +274,7 @@ function fetchText(url) {
             statusCode: response.statusCode || 0,
           });
         });
-      }
+      },
     );
 
     request.on("error", reject);
@@ -245,7 +315,12 @@ async function resolveScalarJobs(helpers, tickers, attribute, concurrency) {
 
   for (i = 0; i < tickers.length; i += 1) {
     jobs.push(classifyJob(helpers, tickers[i], attribute));
-    await resolveJobsWithSourcePipeline(helpers, [jobs[jobs.length - 1]], stats, concurrency);
+    await resolveJobsWithSourcePipeline(
+      helpers,
+      [jobs[jobs.length - 1]],
+      stats,
+      concurrency,
+    );
   }
 
   return {
@@ -277,13 +352,20 @@ async function resolveRangeJobs(helpers, tickers, attribute, concurrency) {
   };
 }
 
-async function resolveJobsWithSourcePipeline(helpers, jobs, stats, concurrency) {
+async function resolveJobsWithSourcePipeline(
+  helpers,
+  jobs,
+  stats,
+  concurrency,
+) {
   let i;
   let source;
 
   for (i = 0; i < jobs.length; i += 1) {
     if (jobs[i].plan.source === "local-fx") {
-      jobs[i].quote = helpers.hoodlefinanceBuildSameCurrencyQuote_(jobs[i].plan.sameCurrencyPair);
+      jobs[i].quote = helpers.hoodlefinanceBuildSameCurrencyQuote_(
+        jobs[i].plan.sameCurrencyPair,
+      );
     }
   }
 
@@ -318,14 +400,18 @@ async function resolveJobsWithSourcePipeline(helpers, jobs, stats, concurrency) 
     jobs[i].value = helpers.hoodlefinanceExtractAttribute_(
       jobs[i].quote,
       jobs[i].attribute,
-      { tickerInput: jobs[i].tickerInput }
+      { tickerInput: jobs[i].tickerInput },
     );
   }
 }
 
 async function resolveYahooIsinJobs(helpers, jobs, stats, concurrency) {
   const targets = jobs.filter(function (job) {
-    return !job.error && job.plan.source === "yahoo-isin-search" && !job.plan.yahooSymbol;
+    return (
+      !job.error &&
+      job.plan.source === "yahoo-isin-search" &&
+      !job.plan.yahooSymbol
+    );
   });
   let responses;
   let i;
@@ -340,19 +426,26 @@ async function resolveYahooIsinJobs(helpers, jobs, stats, concurrency) {
       return helpers.hoodlefinanceBuildYahooIsinSearchUrl_(job.plan.isin);
     }),
     stats,
-    concurrency
+    concurrency,
   );
 
   for (i = 0; i < targets.length; i += 1) {
     try {
       if (responses[i].statusCode !== 200) {
-        throw new Error('ISIN lookup failed for "' + targets[i].plan.isin + '" (' + responses[i].statusCode + ").");
+        throw new Error(
+          'ISIN lookup failed for "' +
+            targets[i].plan.isin +
+            '" (' +
+            responses[i].statusCode +
+            ").",
+        );
       }
 
-      targets[i].plan.yahooSymbol = helpers.hoodlefinanceExtractYahooSymbolFromSearchPayload_(
-        JSON.parse(responses[i].body),
-        targets[i].plan.isin
-      );
+      targets[i].plan.yahooSymbol =
+        helpers.hoodlefinanceExtractYahooSymbolFromSearchPayload_(
+          JSON.parse(responses[i].body),
+          targets[i].plan.isin,
+        );
     } catch (error) {
       targets[i].error = error && error.message ? error.message : String(error);
     }
@@ -361,7 +454,11 @@ async function resolveYahooIsinJobs(helpers, jobs, stats, concurrency) {
 
 async function resolveYahooChartJobs(helpers, jobs, stats, concurrency) {
   const targets = jobs.filter(function (job) {
-    return !job.error && !job.quote && (job.plan.source === "yahoo-chart" || job.plan.yahooSymbol);
+    return (
+      !job.error &&
+      !job.quote &&
+      (job.plan.source === "yahoo-chart" || job.plan.yahooSymbol)
+    );
   });
   let responses;
   let i;
@@ -376,18 +473,24 @@ async function resolveYahooChartJobs(helpers, jobs, stats, concurrency) {
       return helpers.hoodlefinanceBuildYahooChartUrl_(job.plan.yahooSymbol);
     }),
     stats,
-    concurrency
+    concurrency,
   );
 
   for (i = 0; i < targets.length; i += 1) {
     try {
       if (responses[i].statusCode !== 200) {
-        throw new Error("Quote lookup failed for " + targets[i].tickerInput + " (" + responses[i].statusCode + ").");
+        throw new Error(
+          "Quote lookup failed for " +
+            targets[i].tickerInput +
+            " (" +
+            responses[i].statusCode +
+            ").",
+        );
       }
 
       targets[i].quote = helpers.hoodlefinanceExtractYahooQuoteMetaFromPayload_(
         JSON.parse(responses[i].body),
-        targets[i].tickerInput
+        targets[i].tickerInput,
       );
     } catch (error) {
       targets[i].error = error && error.message ? error.message : String(error);
@@ -409,17 +512,20 @@ async function resolvePseSearchJobs(helpers, jobs, stats, concurrency) {
   responses = await fetchBatches(
     "pse-search",
     targets.map(function (job) {
-      return "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=" + encodeURIComponent(job.plan.symbol);
+      return (
+        "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=" +
+        encodeURIComponent(job.plan.symbol)
+      );
     }),
     stats,
-    concurrency
+    concurrency,
   );
 
   for (i = 0; i < targets.length; i += 1) {
     try {
       targets[i].plan.listing = helpers.hoodlefinanceResolvePseListingFromHtml_(
         responses[i].statusCode === 200 ? responses[i].body : "",
-        targets[i].plan.symbol
+        targets[i].plan.symbol,
       );
     } catch (error) {
       targets[i].error = error && error.message ? error.message : String(error);
@@ -429,7 +535,9 @@ async function resolvePseSearchJobs(helpers, jobs, stats, concurrency) {
 
 async function resolvePseStockJobs(helpers, jobs, stats, concurrency) {
   const targets = jobs.filter(function (job) {
-    return !job.error && job.plan.source === "pse" && job.plan.listing && !job.quote;
+    return (
+      !job.error && job.plan.source === "pse" && job.plan.listing && !job.quote
+    );
   });
   let responses;
   let i;
@@ -442,24 +550,28 @@ async function resolvePseStockJobs(helpers, jobs, stats, concurrency) {
   responses = await fetchBatches(
     "pse-stock",
     targets.map(function (job) {
-      return "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=" +
+      return (
+        "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=" +
         encodeURIComponent(job.plan.listing.companyId) +
         "&security_id=" +
-        encodeURIComponent(job.plan.listing.securityId);
+        encodeURIComponent(job.plan.listing.securityId)
+      );
     }),
     stats,
-    concurrency
+    concurrency,
   );
 
   for (i = 0; i < targets.length; i += 1) {
     try {
       quote = helpers.hoodlefinanceExtractPseQuote_(
         responses[i].statusCode === 200 ? responses[i].body : "",
-        targets[i].plan.listing
+        targets[i].plan.listing,
       );
 
       if (!quote || !quote.symbol) {
-        throw new Error("No PSE quote data was found for " + targets[i].tickerInput + ".");
+        throw new Error(
+          "No PSE quote data was found for " + targets[i].tickerInput + ".",
+        );
       }
 
       targets[i].quote = quote;
@@ -486,20 +598,36 @@ async function main() {
   const helpers = loadHelpers();
   const concurrency = 50;
   const scalar = await benchmark("scalar", function () {
-    return resolveScalarJobs(helpers, options.tickers, options.attribute, concurrency);
+    return resolveScalarJobs(
+      helpers,
+      options.tickers,
+      options.attribute,
+      concurrency,
+    );
   });
   const range = await benchmark("range", function () {
-    return resolveRangeJobs(helpers, options.tickers, options.attribute, concurrency);
+    return resolveRangeJobs(
+      helpers,
+      options.tickers,
+      options.attribute,
+      concurrency,
+    );
   });
 
-  console.log(JSON.stringify({
-    attribute: options.attribute,
-    concurrency: concurrency,
-    range: range,
-    scalar: scalar,
-    speedup: Number((scalar.ms / Math.max(range.ms, 1)).toFixed(2)),
-    tickerCount: options.tickers.length,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        attribute: options.attribute,
+        concurrency: concurrency,
+        range: range,
+        scalar: scalar,
+        speedup: Number((scalar.ms / Math.max(range.ms, 1)).toFixed(2)),
+        tickerCount: options.tickers.length,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 main().catch(function (error) {

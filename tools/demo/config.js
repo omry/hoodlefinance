@@ -11,19 +11,19 @@ function validateConfig(config) {
   }
 
   if (!String(config.title || "").trim()) {
-    issues.push("Missing top-level \"title\".");
+    issues.push('Missing top-level "title".');
   }
 
   if (!config.script || typeof config.script !== "object") {
-    issues.push("Missing \"script\" object.");
+    issues.push('Missing "script" object.');
   } else if (!String(config.script.title || "").trim()) {
-    issues.push("Missing \"script.title\".");
+    issues.push('Missing "script.title".');
   }
 
   validateStyles_(config.styles, issues);
 
   if (!Array.isArray(config.tabs) || !config.tabs.length) {
-    issues.push("Expected a non-empty \"tabs\" array.");
+    issues.push('Expected a non-empty "tabs" array.');
   } else {
     for (i = 0; i < config.tabs.length; i += 1) {
       tab = config.tabs[i];
@@ -34,7 +34,7 @@ function validateConfig(config) {
       }
 
       if (!String(tab.title || "").trim()) {
-        issues.push("Tab entry #" + (i + 1) + " is missing \"title\".");
+        issues.push("Tab entry #" + (i + 1) + ' is missing "title".');
       } else if (seenTitles[tab.title]) {
         issues.push("Duplicate tab title: " + tab.title);
       } else {
@@ -42,11 +42,15 @@ function validateConfig(config) {
       }
 
       if (!String(tab.path || "").trim()) {
-        issues.push("Tab \"" + (tab.title || "#" + (i + 1)) + "\" is missing \"path\".");
+        issues.push(
+          'Tab "' + (tab.title || "#" + (i + 1)) + '" is missing "path".',
+        );
       }
 
       if (!String(tab.startCell || "").trim()) {
-        issues.push("Tab \"" + (tab.title || "#" + (i + 1)) + "\" is missing \"startCell\".");
+        issues.push(
+          'Tab "' + (tab.title || "#" + (i + 1)) + '" is missing "startCell".',
+        );
       }
 
       validateTabFormatting(tab, issues, i + 1);
@@ -68,30 +72,49 @@ function validateTabFormatting(tab, issues, index) {
     return;
   }
 
-  if (formatting.freezeRows != null && (!Number.isInteger(formatting.freezeRows) || formatting.freezeRows < 0)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.freezeRows\".");
+  if (
+    formatting.freezeRows != null &&
+    (!Number.isInteger(formatting.freezeRows) || formatting.freezeRows < 0)
+  ) {
+    issues.push('Tab "' + tabLabel + '" has invalid "formatting.freezeRows".');
   }
 
-  if (formatting.autoResizeColumns != null && typeof formatting.autoResizeColumns !== "boolean") {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.autoResizeColumns\".");
+  if (
+    formatting.autoResizeColumns != null &&
+    typeof formatting.autoResizeColumns !== "boolean"
+  ) {
+    issues.push(
+      'Tab "' + tabLabel + '" has invalid "formatting.autoResizeColumns".',
+    );
   }
 
   if (formatting.columnPixelSizes != null) {
-    if (!Array.isArray(formatting.columnPixelSizes) || !formatting.columnPixelSizes.length) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.columnPixelSizes\".");
+    if (
+      !Array.isArray(formatting.columnPixelSizes) ||
+      !formatting.columnPixelSizes.length
+    ) {
+      issues.push(
+        'Tab "' + tabLabel + '" has invalid "formatting.columnPixelSizes".',
+      );
       return;
     }
 
     formatting.columnPixelSizes.forEach(function (size) {
       if (!Number.isInteger(size) || size <= 0) {
-        issues.push("Tab \"" + tabLabel + "\" has invalid column pixel size: " + size);
+        issues.push(
+          'Tab "' + tabLabel + '" has invalid column pixel size: ' + size,
+        );
       }
     });
   }
 
   validateStyleApplications_(formatting.styleApplications, tabLabel, issues);
   validateColumnBackgrounds_(formatting.columnBackgrounds, tabLabel, issues);
-  validateErrorConditionalFormats_(formatting.errorConditionalFormats, tabLabel, issues);
+  validateErrorConditionalFormats_(
+    formatting.errorConditionalFormats,
+    tabLabel,
+    issues,
+  );
   validateNumberFormats_(formatting.numberFormats, tabLabel, issues);
   validateMergedRanges_(formatting.mergedRanges, tabLabel, issues);
 }
@@ -105,7 +128,7 @@ function validateStyles_(styles, issues) {
   }
 
   if (!styles || typeof styles !== "object" || Array.isArray(styles)) {
-    issues.push("Top-level \"styles\" must be an object.");
+    issues.push('Top-level "styles" must be an object.');
     return;
   }
 
@@ -113,17 +136,27 @@ function validateStyles_(styles, issues) {
     styleName = name;
     styleDefinition = styles[name];
 
-    if (!styleDefinition || typeof styleDefinition !== "object" || Array.isArray(styleDefinition)) {
-      issues.push("Style \"" + styleName + "\" must be an object.");
+    if (
+      !styleDefinition ||
+      typeof styleDefinition !== "object" ||
+      Array.isArray(styleDefinition)
+    ) {
+      issues.push('Style "' + styleName + '" must be an object.');
       return;
     }
 
-    if (!styleDefinition.cell || typeof styleDefinition.cell !== "object" || Array.isArray(styleDefinition.cell)) {
-      issues.push("Style \"" + styleName + "\" must contain a \"cell\" object.");
+    if (
+      !styleDefinition.cell ||
+      typeof styleDefinition.cell !== "object" ||
+      Array.isArray(styleDefinition.cell)
+    ) {
+      issues.push('Style "' + styleName + '" must contain a "cell" object.');
     }
 
     if (!String(styleDefinition.fields || "").trim()) {
-      issues.push("Style \"" + styleName + "\" must contain a non-empty \"fields\" string.");
+      issues.push(
+        'Style "' + styleName + '" must contain a non-empty "fields" string.',
+      );
     }
   });
 }
@@ -134,25 +167,36 @@ function validateStyleApplications_(styleApplications, tabLabel, issues) {
   }
 
   if (!Array.isArray(styleApplications)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.styleApplications\".");
+    issues.push(
+      'Tab "' + tabLabel + '" has invalid "formatting.styleApplications".',
+    );
     return;
   }
 
   styleApplications.forEach(function (application) {
-    const target = application && application.target ? application.target : null;
+    const target =
+      application && application.target ? application.target : null;
     let selectorCount = 0;
 
     if (!application || typeof application !== "object") {
-      issues.push("Tab \"" + tabLabel + "\" has invalid style application entry.");
+      issues.push(
+        'Tab "' + tabLabel + '" has invalid style application entry.',
+      );
       return;
     }
 
     if (!String(application.style || "").trim()) {
-      issues.push("Tab \"" + tabLabel + "\" has a style application without a style name.");
+      issues.push(
+        'Tab "' + tabLabel + '" has a style application without a style name.',
+      );
     }
 
     if (!target || typeof target !== "object" || Array.isArray(target)) {
-      issues.push("Tab \"" + tabLabel + "\" has a style application without a valid target.");
+      issues.push(
+        'Tab "' +
+          tabLabel +
+          '" has a style application without a valid target.',
+      );
       return;
     }
 
@@ -171,21 +215,40 @@ function validateStyleApplications_(styleApplications, tabLabel, issues) {
 
     if (target.columns != null) {
       selectorCount += 1;
-      validateRowNumbers_(target.columns, "style target columns", tabLabel, issues);
+      validateRowNumbers_(
+        target.columns,
+        "style target columns",
+        tabLabel,
+        issues,
+      );
     }
 
     if (target.ranges != null) {
       selectorCount += 1;
-      validateCellRanges_(target.ranges, "style target ranges", tabLabel, issues);
+      validateCellRanges_(
+        target.ranges,
+        "style target ranges",
+        tabLabel,
+        issues,
+      );
     }
 
     if (target.sections != null) {
       selectorCount += 1;
-      validateFormattingSections_(target.sections, "style target sections", tabLabel, issues);
+      validateFormattingSections_(
+        target.sections,
+        "style target sections",
+        tabLabel,
+        issues,
+      );
     }
 
     if (selectorCount !== 1) {
-      issues.push("Tab \"" + tabLabel + "\" style applications must define exactly one target selector.");
+      issues.push(
+        'Tab "' +
+          tabLabel +
+          '" style applications must define exactly one target selector.',
+      );
     }
   });
 }
@@ -196,7 +259,7 @@ function validateCellRanges_(ranges, label, tabLabel, issues) {
   }
 
   if (!Array.isArray(ranges)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"" + label + "\".");
+    issues.push('Tab "' + tabLabel + '" has invalid "' + label + '".');
     return;
   }
 
@@ -213,7 +276,7 @@ function validateCellRanges_(ranges, label, tabLabel, issues) {
       !Number.isInteger(range.endColumn) ||
       range.endColumn < range.startColumn
     ) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " entry.");
+      issues.push('Tab "' + tabLabel + '" has invalid ' + label + " entry.");
     }
   });
 }
@@ -224,7 +287,7 @@ function validateFormattingSections_(sections, label, tabLabel, issues) {
   }
 
   if (!Array.isArray(sections)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"" + label + "\".");
+    issues.push('Tab "' + tabLabel + '" has invalid "' + label + '".');
     return;
   }
 
@@ -237,7 +300,7 @@ function validateFormattingSections_(sections, label, tabLabel, issues) {
       !Number.isInteger(section.columns) ||
       section.columns < 1
     ) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " entry.");
+      issues.push('Tab "' + tabLabel + '" has invalid ' + label + " entry.");
     }
   });
 }
@@ -248,13 +311,15 @@ function validateRowNumbers_(rows, label, tabLabel, issues) {
   }
 
   if (!Array.isArray(rows)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"" + label + "\".");
+    issues.push('Tab "' + tabLabel + '" has invalid "' + label + '".');
     return;
   }
 
   rows.forEach(function (rowNumber) {
     if (!Number.isInteger(rowNumber) || rowNumber < 1) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " entry: " + rowNumber);
+      issues.push(
+        'Tab "' + tabLabel + '" has invalid ' + label + " entry: " + rowNumber,
+      );
     }
   });
 }
@@ -265,7 +330,9 @@ function validateNumberFormats_(numberFormats, tabLabel, issues) {
   }
 
   if (!Array.isArray(numberFormats)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.numberFormats\".");
+    issues.push(
+      'Tab "' + tabLabel + '" has invalid "formatting.numberFormats".',
+    );
     return;
   }
 
@@ -282,7 +349,7 @@ function validateNumberFormats_(numberFormats, tabLabel, issues) {
       !String(entry.type || "").trim() ||
       !String(entry.pattern || "").trim()
     ) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid number format entry.");
+      issues.push('Tab "' + tabLabel + '" has invalid number format entry.');
     }
   });
 }
@@ -293,7 +360,9 @@ function validateColumnBackgrounds_(columnBackgrounds, tabLabel, issues) {
   }
 
   if (!Array.isArray(columnBackgrounds)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.columnBackgrounds\".");
+    issues.push(
+      'Tab "' + tabLabel + '" has invalid "formatting.columnBackgrounds".',
+    );
     return;
   }
 
@@ -303,17 +372,25 @@ function validateColumnBackgrounds_(columnBackgrounds, tabLabel, issues) {
       typeof entry !== "object" ||
       !Number.isInteger(entry.column) ||
       entry.column < 1 ||
-      (entry.startRow != null && (!Number.isInteger(entry.startRow) || entry.startRow < 1)) ||
+      (entry.startRow != null &&
+        (!Number.isInteger(entry.startRow) || entry.startRow < 1)) ||
       (entry.endRow != null &&
         (!Number.isInteger(entry.endRow) ||
           (entry.startRow != null && entry.endRow < entry.startRow) ||
           entry.endRow < 1))
     ) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid column background entry.");
+      issues.push(
+        'Tab "' + tabLabel + '" has invalid column background entry.',
+      );
       return;
     }
 
-    validateRgbColor_(entry.backgroundColor, "column background", tabLabel, issues);
+    validateRgbColor_(
+      entry.backgroundColor,
+      "column background",
+      tabLabel,
+      issues,
+    );
   });
 }
 
@@ -323,7 +400,11 @@ function validateErrorConditionalFormats_(entries, tabLabel, issues) {
   }
 
   if (!Array.isArray(entries)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.errorConditionalFormats\".");
+    issues.push(
+      'Tab "' +
+        tabLabel +
+        '" has invalid "formatting.errorConditionalFormats".',
+    );
     return;
   }
 
@@ -340,23 +421,37 @@ function validateErrorConditionalFormats_(entries, tabLabel, issues) {
       !Number.isInteger(entry.endColumn) ||
       entry.endColumn < entry.startColumn
     ) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid error conditional format entry.");
+      issues.push(
+        'Tab "' + tabLabel + '" has invalid error conditional format entry.',
+      );
       return;
     }
-
   });
 }
 
 function validateRgbColor_(color, label, tabLabel, issues) {
   if (!color || typeof color !== "object") {
-    issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " color.");
+    issues.push('Tab "' + tabLabel + '" has invalid ' + label + " color.");
     return;
   }
 
   ["red", "green", "blue"].forEach(function (channel) {
     const value = color[channel];
-    if (typeof value !== "number" || Number.isNaN(value) || value < 0 || value > 1) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid " + label + " color channel \"" + channel + "\".");
+    if (
+      typeof value !== "number" ||
+      Number.isNaN(value) ||
+      value < 0 ||
+      value > 1
+    ) {
+      issues.push(
+        'Tab "' +
+          tabLabel +
+          '" has invalid ' +
+          label +
+          ' color channel "' +
+          channel +
+          '".',
+      );
     }
   });
 }
@@ -367,7 +462,9 @@ function validateMergedRanges_(mergedRanges, tabLabel, issues) {
   }
 
   if (!Array.isArray(mergedRanges)) {
-    issues.push("Tab \"" + tabLabel + "\" has invalid \"formatting.mergedRanges\".");
+    issues.push(
+      'Tab "' + tabLabel + '" has invalid "formatting.mergedRanges".',
+    );
     return;
   }
 
@@ -384,7 +481,7 @@ function validateMergedRanges_(mergedRanges, tabLabel, issues) {
       !Number.isInteger(range.endColumn) ||
       range.endColumn < range.startColumn
     ) {
-      issues.push("Tab \"" + tabLabel + "\" has invalid merged range entry.");
+      issues.push('Tab "' + tabLabel + '" has invalid merged range entry.');
     }
   });
 }
@@ -397,7 +494,9 @@ function normalizeTabFormatting(formatting) {
     columnBackgrounds: Array.isArray(normalized.columnBackgrounds)
       ? normalized.columnBackgrounds.map(copyColumnBackground_)
       : [],
-    columnPixelSizes: Array.isArray(normalized.columnPixelSizes) ? normalized.columnPixelSizes.slice() : [],
+    columnPixelSizes: Array.isArray(normalized.columnPixelSizes)
+      ? normalized.columnPixelSizes.slice()
+      : [],
     errorConditionalFormats: Array.isArray(normalized.errorConditionalFormats)
       ? normalized.errorConditionalFormats.map(copyErrorConditionalFormat_)
       : [],
@@ -405,8 +504,12 @@ function normalizeTabFormatting(formatting) {
     styleApplications: Array.isArray(normalized.styleApplications)
       ? normalized.styleApplications.map(copyStyleApplication_)
       : [],
-    mergedRanges: Array.isArray(normalized.mergedRanges) ? normalized.mergedRanges.map(copyMergedRange_) : [],
-    numberFormats: Array.isArray(normalized.numberFormats) ? normalized.numberFormats.map(copyNumberFormat_) : [],
+    mergedRanges: Array.isArray(normalized.mergedRanges)
+      ? normalized.mergedRanges.map(copyMergedRange_)
+      : [],
+    numberFormats: Array.isArray(normalized.numberFormats)
+      ? normalized.numberFormats.map(copyNumberFormat_)
+      : [],
   };
 }
 
@@ -428,9 +531,13 @@ function copyStyleTarget_(target) {
   return {
     columns: Array.isArray(target.columns) ? target.columns.slice() : null,
     formulaCells: target.formulaCells === true,
-    ranges: Array.isArray(target.ranges) ? target.ranges.map(copyMergedRange_) : null,
+    ranges: Array.isArray(target.ranges)
+      ? target.ranges.map(copyMergedRange_)
+      : null,
     rows: Array.isArray(target.rows) ? target.rows.slice() : null,
-    sections: Array.isArray(target.sections) ? target.sections.map(copyFormattingSection_) : null,
+    sections: Array.isArray(target.sections)
+      ? target.sections.map(copyFormattingSection_)
+      : null,
     sheet: target.sheet === true,
   };
 }

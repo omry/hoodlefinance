@@ -10,7 +10,8 @@ const ROOT_DIR = path.resolve(__dirname, "..");
 const SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const DATA_DIR = path.join(ROOT_DIR, "data");
 const DATA_PATH = path.join(DATA_DIR, "pse-isin-map.properties");
-const PSE_SEARCH_URL = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
+const PSE_SEARCH_URL =
+  "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const PSE_STOCK_DATA_URL = "https://edge.pse.com.ph/companyPage/stockData.do";
 
 function loadHoodlefinance() {
@@ -45,7 +46,9 @@ function loadHoodlefinance() {
 }
 
 function extractPageStats(html) {
-  const match = String(html || "").match(/\[(\d+)\s*\/\s*(\d+)\]\s*\[Total\s+(\d+)\]/s);
+  const match = String(html || "").match(
+    /\[(\d+)\s*\/\s*(\d+)\]\s*\[Total\s+(\d+)\]/s,
+  );
 
   if (!match) {
     throw new Error("Could not determine PSE directory page count.");
@@ -62,7 +65,9 @@ function fetchTextOrThrow(ctx, url) {
   const response = ctx.UrlFetchApp.fetch(url);
 
   if (response.getResponseCode() !== 200) {
-    throw new Error("Fetch failed for " + url + " (" + response.getResponseCode() + ").");
+    throw new Error(
+      "Fetch failed for " + url + " (" + response.getResponseCode() + ").",
+    );
   }
 
   return response.getContentText();
@@ -102,14 +107,16 @@ function fetchPseQuotes(ctx, listings) {
         "?cmpy_id=" +
         encodeURIComponent(listing.companyId) +
         "&security_id=" +
-        encodeURIComponent(listing.securityId)
+        encodeURIComponent(listing.securityId),
     );
     quote = ctx.hoodlefinanceExtractPseQuote_(html, listing);
 
     if (!quote || !quote.symbol || /Stock symbol not found\./i.test(html)) {
       html = fetchTextOrThrow(
         ctx,
-        PSE_STOCK_DATA_URL + "?cmpy_id=" + encodeURIComponent(listing.companyId)
+        PSE_STOCK_DATA_URL +
+          "?cmpy_id=" +
+          encodeURIComponent(listing.companyId),
       );
       quote = ctx.hoodlefinanceExtractPseQuote_(html, listing);
     }
@@ -154,7 +161,10 @@ function buildIsinMap(quoteRecords) {
   });
 
   if (conflicts.length) {
-    throw new Error("Found conflicting PSE ISIN mappings: " + JSON.stringify(conflicts.slice(0, 5)));
+    throw new Error(
+      "Found conflicting PSE ISIN mappings: " +
+        JSON.stringify(conflicts.slice(0, 5)),
+    );
   }
 
   return map;
@@ -163,9 +173,11 @@ function buildIsinMap(quoteRecords) {
 function sortObjectByKey(value) {
   const sorted = {};
 
-  Object.keys(value).sort().forEach(function (key) {
-    sorted[key] = value[key];
-  });
+  Object.keys(value)
+    .sort()
+    .forEach(function (key) {
+      sorted[key] = value[key];
+    });
 
   return sorted;
 }
@@ -190,9 +202,13 @@ function buildOutputText(isinMap, quoteRecords, stats, updatedAt) {
     "# missing_isin_symbols=" + missingIsinSymbols.join(","),
     "# source_listing_search_url=" + PSE_SEARCH_URL,
     "# source_stock_data_url=" + PSE_STOCK_DATA_URL,
-  ].concat(Object.keys(isinMap).sort().map(function (isin) {
-    return isin + "=" + isinMap[isin];
-  }));
+  ].concat(
+    Object.keys(isinMap)
+      .sort()
+      .map(function (isin) {
+        return isin + "=" + isinMap[isin];
+      }),
+  );
 
   return dataLines.join("\n") + "\n";
 }
@@ -203,17 +219,28 @@ function extractUpdatedAt(text) {
 }
 
 function stripUpdatedAtLine(text) {
-  return String(text || "").replace(/^# updated_at=.*(?:\r?\n)?/m, "").trimEnd();
+  return String(text || "")
+    .replace(/^# updated_at=.*(?:\r?\n)?/m, "")
+    .trimEnd();
 }
 
-function preserveExistingUpdatedAtIfOnlyTimestampChanged(existingText, nextText) {
+function preserveExistingUpdatedAtIfOnlyTimestampChanged(
+  existingText,
+  nextText,
+) {
   const existingUpdatedAt = extractUpdatedAt(existingText);
 
-  if (!existingUpdatedAt || stripUpdatedAtLine(existingText) !== stripUpdatedAtLine(nextText)) {
+  if (
+    !existingUpdatedAt ||
+    stripUpdatedAtLine(existingText) !== stripUpdatedAtLine(nextText)
+  ) {
     return nextText;
   }
 
-  return nextText.replace(/^# updated_at=.*$/m, "# updated_at=" + existingUpdatedAt);
+  return nextText.replace(
+    /^# updated_at=.*$/m,
+    "# updated_at=" + existingUpdatedAt,
+  );
 }
 
 function writeOutputs(isinMap, quoteRecords, stats, options) {
@@ -222,10 +249,17 @@ function writeOutputs(isinMap, quoteRecords, stats, options) {
     isinMap,
     quoteRecords,
     stats,
-    options && options.updatedAt ? String(options.updatedAt) : new Date().toISOString()
+    options && options.updatedAt
+      ? String(options.updatedAt)
+      : new Date().toISOString(),
   );
-  const existingText = fs.existsSync(dataPath) ? fs.readFileSync(dataPath, "utf8") : "";
-  const finalText = preserveExistingUpdatedAtIfOnlyTimestampChanged(existingText, nextText);
+  const existingText = fs.existsSync(dataPath)
+    ? fs.readFileSync(dataPath, "utf8")
+    : "";
+  const finalText = preserveExistingUpdatedAtIfOnlyTimestampChanged(
+    existingText,
+    nextText,
+  );
 
   if (existingText === finalText) {
     return {
@@ -250,7 +284,11 @@ function main() {
 
   if (listingInfo.totalItems !== quoteRecords.length) {
     throw new Error(
-      "Expected " + listingInfo.totalItems + " PSE listings but scraped " + quoteRecords.length + "."
+      "Expected " +
+        listingInfo.totalItems +
+        " PSE listings but scraped " +
+        quoteRecords.length +
+        ".",
     );
   }
 
@@ -266,7 +304,7 @@ function main() {
   console.log(
     writeResult.changed
       ? "Generated " + summary + " into " + writeResult.path
-      : "Verified " + summary + "; no map changes for " + writeResult.path
+      : "Verified " + summary + "; no map changes for " + writeResult.path,
   );
 }
 

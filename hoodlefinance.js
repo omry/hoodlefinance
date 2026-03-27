@@ -14,7 +14,9 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
     return hf_extractCurrencyValue_(quote);
   },
   datadelay: function (quote) {
-    return quote.exchangeDataDelayedBy != null ? quote.exchangeDataDelayedBy : 0;
+    return quote.exchangeDataDelayedBy != null
+      ? quote.exchangeDataDelayedBy
+      : 0;
   },
   close: function (quote) {
     return hf_normalizeMoney_(quote, hf_previousClose_(quote));
@@ -29,7 +31,13 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
     return hf_resolveDefaultIsin_(quote, context);
   },
   name: function (quote) {
-    return quote.longName || quote.shortName || quote.displayName || quote.symbol || "";
+    return (
+      quote.longName ||
+      quote.shortName ||
+      quote.displayName ||
+      quote.symbol ||
+      ""
+    );
   },
   price: function (quote) {
     return hf_normalizeMoney_(quote, hf_pickPrice_(quote));
@@ -44,7 +52,8 @@ const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
     return hf_resolveSymbolAttribute_(quote, context, "yahoo");
   },
   tradetime: function (quote) {
-    const timestamp = quote.regularMarketTime || quote.postMarketTime || quote.preMarketTime;
+    const timestamp =
+      quote.regularMarketTime || quote.postMarketTime || quote.preMarketTime;
     if (timestamp == null) {
       throw new Error("No trade time is available for this ticker.");
     }
@@ -83,17 +92,11 @@ const HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_ = [
   },
   {
     label: "identifier fields",
-    attributes: [
-      "symbol[:google|yahoo]",
-      "exchange[:google|yahoo]",
-      "isin",
-    ],
+    attributes: ["symbol[:google|yahoo]", "exchange[:google|yahoo]", "isin"],
   },
 ];
 
-const HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_ = hf_buildSet_([
-  "price",
-]);
+const HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_ = hf_buildSet_(["price"]);
 
 const HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_ = hf_buildSet_([
   "high",
@@ -112,27 +115,34 @@ const HOODLEFINANCE_SOURCE_OVERRIDES_ = hf_buildSet_([
 ]);
 
 function hf_formatPublicAttributes_() {
-  return HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_
-    .map(function (group) {
-      return group.label + ": " + group.attributes.join(", ");
-    })
-    .join("; ");
+  return HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_.map(function (group) {
+    return group.label + ": " + group.attributes.join(", ");
+  }).join("; ");
 }
 
 const HOODLEFINANCE_GITHUB_REPO_URL_ = "https://github.com/omry/hoodlefinance";
-const HOODLEFINANCE_GITHUB_RAW_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
-const HOODLEFINANCE_GITHUB_README_URL_ = "https://github.com/omry/hoodlefinance/blob/main/README.md";
-const HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/RELEASE_NOTES.md";
-const HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ = "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/";
-const HOODLEFINANCE_GITHUB_CURRENCY_CODES_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
-const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_ = "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
+const HOODLEFINANCE_GITHUB_RAW_URL_ =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js";
+const HOODLEFINANCE_GITHUB_README_URL_ =
+  "https://github.com/omry/hoodlefinance/blob/main/README.md";
+const HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ =
+  "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/RELEASE_NOTES.md";
+const HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ =
+  "https://github.com/omry/hoodlefinance/blob/main/docs/release-notes/";
+const HOODLEFINANCE_GITHUB_CURRENCY_CODES_URL_ =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
+const HOODLEFINANCE_GITHUB_PSE_ISIN_MAP_URL_ =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
 const HOODLEFINANCE_WEBSITE_URL_ = "https://hoodlefinance.com";
 const HOODLEFINANCE_SUPPORT_URL_ = "https://hoodlefinance.com/support";
 const HOODLEFINANCE_CURRENCY_CODES_PROPERTY_ = "hoodlefinance.currencyCodes";
-const HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_ = "hoodlefinance.currencyCodesFetchedAtMs";
-const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ = "hoodlefinance.lastUpdateCheckMs";
+const HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_ =
+  "hoodlefinance.currencyCodesFetchedAtMs";
+const HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_ =
+  "hoodlefinance.lastUpdateCheckMs";
 const HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_ = "hoodlefinance.pseIsinMap";
-const HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_ = "hoodlefinance.suppressUpdateChecks";
+const HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_ =
+  "hoodlefinance.suppressUpdateChecks";
 const HOODLEFINANCE_CURRENCY_CODES_REFRESH_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_ = "hoodlefinance:currencyCodes";
 const HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
@@ -140,7 +150,8 @@ const HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_ = 24 * 60 * 60 * 1000;
 const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_ = "hoodlefinance:pseIsinMap";
 const HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
-const HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ = "hoodlefinance:pse:listing:";
+const HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ =
+  "hoodlefinance:pse:listing:";
 const HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_UPDATE_CACHE_KEY_ = "hoodlefinance:update:latestVersion";
 const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
@@ -148,12 +159,16 @@ const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
 const HOODLEFINANCE_FETCHALL_BATCH_SIZE_ = 50;
 
 function hf_getDeploymentUiConfig_() {
-  const staging = typeof HF_IS_ADDON_STAGING === "boolean" && HF_IS_ADDON_STAGING;
+  const staging =
+    typeof HF_IS_ADDON_STAGING === "boolean" && HF_IS_ADDON_STAGING;
   const menuName = HOODLEFINANCE_MENU_TITLE_ + (staging ? " [Staging]" : "");
 
   return {
     enable: staging ? "Enable " + menuName : "Enable",
-    version: "Installed version: " + HOODLEFINANCE_VERSION_ + (staging ? " (staging)" : ""),
+    version:
+      "Installed version: " +
+      HOODLEFINANCE_VERSION_ +
+      (staging ? " (staging)" : ""),
     menuName: menuName,
     versionTitle: "HOODLEFINANCE version" + (staging ? " [Staging]" : ""),
   };
@@ -243,15 +258,22 @@ const HOODLEFINANCE_PREFIXLESS_EXCHANGES_ = hf_buildSet_([
   "OTCMKTS",
 ]);
 
-const HOODLEFINANCE_IBKR_SEARCH_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=";
-const HOODLEFINANCE_IBKR_DETAIL_URL_ = "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=";
+const HOODLEFINANCE_IBKR_SEARCH_URL_ =
+  "https://contract.ibkr.info/v3.10/index.php?action=Stock%20Search&lang=en&wlId=IB&showEntities=Y&symbol=";
+const HOODLEFINANCE_IBKR_DETAIL_URL_ =
+  "https://contract.ibkr.info/v3.10/index.php?action=Conid%20Info&wlId=IB&lang=en&conid=";
 const HOODLEFINANCE_ARIVA_BASE_URL_ = "https://www.ariva.de";
-const HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ = "https://www.ariva.de/search/livesearch.m?searchname=";
-const HOODLEFINANCE_LSE_SEARCH_URL_ = "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=";
-const HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ = "https://www.tradingview.com/symbols/";
+const HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ =
+  "https://www.ariva.de/search/livesearch.m?searchname=";
+const HOODLEFINANCE_LSE_SEARCH_URL_ =
+  "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=";
+const HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ =
+  "https://www.tradingview.com/symbols/";
 
-const HOODLEFINANCE_PSE_SEARCH_URL_ = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
-const HOODLEFINANCE_PSE_STOCK_DATA_URL_ = "https://edge.pse.com.ph/companyPage/stockData.do";
+const HOODLEFINANCE_PSE_SEARCH_URL_ =
+  "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
+const HOODLEFINANCE_PSE_STOCK_DATA_URL_ =
+  "https://edge.pse.com.ph/companyPage/stockData.do";
 
 let HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = null;
 let HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = null;
@@ -392,56 +414,96 @@ const HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_ = hf_buildGroupedMap_({
   PSE: ["PSE"],
 });
 
-const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ = hf_buildGroupedMap_({
-  AMEX: ["AMEX", "NYSEAMERICAN", "NYSEARCA"],
-  ASX: ["ASX"],
-  BIST: ["IST"],
-  BME: ["MAD"],
-  BMV: ["BMV"],
-  BMFBOVESPA: ["BVMF"],
-  BSE: ["BOM", "BSE"],
-  EURONEXT: ["AMS", "BRU", "EPA", "PAR"],
-  FWB: ["FRA"],
-  GPW: ["WSE"],
-  HKEX: ["HKG"],
-  JSE: ["JSE"],
-  KRX: ["KRX"],
-  LSE: ["LON"],
-  MIL: ["BIT"],
-  NASDAQ: ["NASDAQ"],
-  NYSE: ["NYSE"],
-  NEO: ["NEO"],
-  NSE: ["NSE"],
-  NZX: ["NZE"],
-  OMXCOP: ["CPH"],
-  OMXHEX: ["HEL"],
-  OMXSTO: ["STO"],
-  OSL: ["OSL"],
-  OTC: ["OTCMKTS"],
-  SGX: ["SGX"],
-  SIX: ["SIX", "SWX"],
-  SSE: ["SHA"],
-  SZSE: ["SHE"],
-  TASE: ["TASE", "TLV"],
-  TSE: ["TYO"],
-  TSX: ["TSE", "TSX"],
-  TWSE: ["TPE"],
-  XETR: ["ETR"],
-});
+const HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_ =
+  hf_buildGroupedMap_({
+    AMEX: ["AMEX", "NYSEAMERICAN", "NYSEARCA"],
+    ASX: ["ASX"],
+    BIST: ["IST"],
+    BME: ["MAD"],
+    BMV: ["BMV"],
+    BMFBOVESPA: ["BVMF"],
+    BSE: ["BOM", "BSE"],
+    EURONEXT: ["AMS", "BRU", "EPA", "PAR"],
+    FWB: ["FRA"],
+    GPW: ["WSE"],
+    HKEX: ["HKG"],
+    JSE: ["JSE"],
+    KRX: ["KRX"],
+    LSE: ["LON"],
+    MIL: ["BIT"],
+    NASDAQ: ["NASDAQ"],
+    NYSE: ["NYSE"],
+    NEO: ["NEO"],
+    NSE: ["NSE"],
+    NZX: ["NZE"],
+    OMXCOP: ["CPH"],
+    OMXHEX: ["HEL"],
+    OMXSTO: ["STO"],
+    OSL: ["OSL"],
+    OTC: ["OTCMKTS"],
+    SGX: ["SGX"],
+    SIX: ["SIX", "SWX"],
+    SSE: ["SHA"],
+    SZSE: ["SHE"],
+    TASE: ["TASE", "TLV"],
+    TSE: ["TYO"],
+    TSX: ["TSE", "TSX"],
+    TWSE: ["TPE"],
+    XETR: ["ETR"],
+  });
 
-const HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_ = hf_buildGroupedMap_({
-  TRADINGVIEW: [
-    "AMEX", "AMS", "ASX", "BIT", "BMV", "BOM", "BSE", "BVMF",
-    "BRU", "CPH", "EPA", "ETR", "FRA", "HEL", "HKG", "IST",
-    "JSE", "KRX", "MAD", "NASDAQ", "NEO", "NSE", "NZE", "NYSE",
-    "NYSEAMERICAN", "NYSEARCA", "OSL", "OTCMKTS", "PAR", "SGX",
-    "SHA", "SHE", "SIX", "STO", "SWX", "TASE", "TPE", "TSE",
-    "TSX", "TLV", "TYO", "WSE",
-  ],
-}, {
-  LON: "LON",
-  PSE: "PSE",
-});
+const HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_ = hf_buildGroupedMap_(
+  {
+    TRADINGVIEW: [
+      "AMEX",
+      "AMS",
+      "ASX",
+      "BIT",
+      "BMV",
+      "BOM",
+      "BSE",
+      "BVMF",
+      "BRU",
+      "CPH",
+      "EPA",
+      "ETR",
+      "FRA",
+      "HEL",
+      "HKG",
+      "IST",
+      "JSE",
+      "KRX",
+      "MAD",
+      "NASDAQ",
+      "NEO",
+      "NSE",
+      "NZE",
+      "NYSE",
+      "NYSEAMERICAN",
+      "NYSEARCA",
+      "OSL",
+      "OTCMKTS",
+      "PAR",
+      "SGX",
+      "SHA",
+      "SHE",
+      "SIX",
+      "STO",
+      "SWX",
+      "TASE",
+      "TPE",
+      "TSE",
+      "TSX",
+      "TLV",
+      "TYO",
+      "WSE",
+    ],
+  },
+  {
+    LON: "LON",
+    PSE: "PSE",
+  },
+);
 
 /**
  * Partial GOOGLEFINANCE-compatible quote function for supported current quote
@@ -484,7 +546,8 @@ const HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_ = hf_buildGroupedMap_({
  * @customfunction
  */
 function HOODLEFINANCE(ticker, attribute) {
-  const rawAttribute = attribute == null ? "price" : hf_coerceScalar_(attribute, "attribute");
+  const rawAttribute =
+    attribute == null ? "price" : hf_coerceScalar_(attribute, "attribute");
   const normalizedAttribute = hf_normalizeAttribute_(rawAttribute);
 
   const tickerGrid = hf_normalizeTickerGrid_(ticker);
@@ -580,7 +643,12 @@ function hf_onScriptActivation_(e) {
 function enable_() {
   const deploymentUi = hf_getDeploymentUiConfig_();
 
-  SpreadsheetApp.getActive().toast(deploymentUi.menuName + " " + deploymentUi.version.replace(/^Installed version: /, "") + " enabled for this spreadsheet");
+  SpreadsheetApp.getActive().toast(
+    deploymentUi.menuName +
+      " " +
+      deploymentUi.version.replace(/^Installed version: /, "") +
+      " enabled for this spreadsheet",
+  );
 }
 
 function hoodlefinanceBuildSheetsAddOnHomepage() {
@@ -597,7 +665,9 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
       cardService
         .newCardHeader()
         .setTitle(deploymentUi.menuName)
-        .setSubtitle("International quote and identifier functions for Google Sheets")
+        .setSubtitle(
+          "International quote and identifier functions for Google Sheets",
+        ),
     )
     .addSection(
       cardService
@@ -605,28 +675,44 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
         .addWidget(
           cardService
             .newTextParagraph()
-            .setText("Installed version: <b>" + deploymentUi.version.replace(/^Installed version: /, "") + "</b>")
+            .setText(
+              "Installed version: <b>" +
+                deploymentUi.version.replace(/^Installed version: /, "") +
+                "</b>",
+            ),
         )
         .addWidget(
           cardService
             .newTextParagraph()
-            .setText("Try formulas such as <b>=HOODLEFINANCE(\"NASDAQ:GOOG\")</b>, <b>=HOODLEFINANCE(\"SJPA.L\",\"price@USD\")</b>, and <b>=HOODLEFINANCE(\"IE000I8KRLL9\",\"symbol\")</b>.")
+            .setText(
+              'Try formulas such as <b>=HOODLEFINANCE("NASDAQ:GOOG")</b>, <b>=HOODLEFINANCE("SJPA.L","price@USD")</b>, and <b>=HOODLEFINANCE("IE000I8KRLL9","symbol")</b>.',
+            ),
         )
         .addWidget(
           cardService
             .newTextParagraph()
-            .setText("The add-on homepage is a lightweight guide. The custom functions and the " + deploymentUi.menuName + " menu remain the main entry points inside Sheets.")
-        )
+            .setText(
+              "The add-on homepage is a lightweight guide. The custom functions and the " +
+                deploymentUi.menuName +
+                " menu remain the main entry points inside Sheets.",
+            ),
+        ),
     )
     .addSection(
       cardService
         .newCardSection()
         .addWidget(
           hf_buildAddOnButtonSet_([
-            hf_createAddOnLinkButtonSpec_("Website", HOODLEFINANCE_WEBSITE_URL_),
-            hf_createAddOnLinkButtonSpec_("Support", HOODLEFINANCE_SUPPORT_URL_),
-          ])
-        )
+            hf_createAddOnLinkButtonSpec_(
+              "Website",
+              HOODLEFINANCE_WEBSITE_URL_,
+            ),
+            hf_createAddOnLinkButtonSpec_(
+              "Support",
+              HOODLEFINANCE_SUPPORT_URL_,
+            ),
+          ]),
+        ),
     )
     .build();
 }
@@ -655,14 +741,17 @@ function hoodlefinanceSuppressUpdateChecks() {
   const ui = hf_getUi_();
 
   if (userProperties) {
-    userProperties.setProperty(HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_, "true");
+    userProperties.setProperty(
+      HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_,
+      "true",
+    );
   }
 
   if (ui) {
     ui.alert(
       "HOODLEFINANCE updates",
       "Automatic update checks are now suppressed for this user. You can re-enable them from the Hoodlefinance menu.",
-      ui.ButtonSet.OK
+      ui.ButtonSet.OK,
     );
   }
 
@@ -674,14 +763,16 @@ function hoodlefinanceEnableUpdateChecks() {
   const ui = hf_getUi_();
 
   if (userProperties) {
-    userProperties.deleteProperty(HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_);
+    userProperties.deleteProperty(
+      HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_,
+    );
   }
 
   if (ui) {
     ui.alert(
       "HOODLEFINANCE updates",
       "Automatic update checks are enabled again.",
-      ui.ButtonSet.OK
+      ui.ButtonSet.OK,
     );
   }
 
@@ -691,7 +782,6 @@ function hoodlefinanceEnableUpdateChecks() {
 function hoodlefinanceDismissUpdateNotice() {
   return true;
 }
-
 
 function hf_runVersionCheck_(options) {
   const normalizedOptions = options || {};
@@ -711,7 +801,12 @@ function hf_runVersionCheck_(options) {
       return { status: "suppressed" };
     }
 
-    if (!hf_shouldRunVersionCheckNow_(hf_getLastUpdateCheckMs_(userProperties), now.getTime())) {
+    if (
+      !hf_shouldRunVersionCheckNow_(
+        hf_getLastUpdateCheckMs_(userProperties),
+        now.getTime(),
+      )
+    ) {
       return { status: "skipped" };
     }
   }
@@ -726,8 +821,8 @@ function hf_runVersionCheck_(options) {
       hf_getUi_().alert(
         "HOODLEFINANCE updates",
         "Unable to determine the latest published version right now." +
-        (latestInfo.error ? "\n\nDetails:\n" + latestInfo.error : ""),
-        hf_getUi_().ButtonSet.OK
+          (latestInfo.error ? "\n\nDetails:\n" + latestInfo.error : ""),
+        hf_getUi_().ButtonSet.OK,
       );
     }
 
@@ -748,7 +843,7 @@ function hf_runVersionCheck_(options) {
     hf_getUi_().alert(
       "HOODLEFINANCE updates",
       "You are up to date. Installed version: " + HOODLEFINANCE_VERSION_,
-      hf_getUi_().ButtonSet.OK
+      hf_getUi_().ButtonSet.OK,
     );
   }
 
@@ -773,23 +868,32 @@ function hf_buildScriptMenu_() {
   menu.addItem("Show installed version", "hoodlefinanceShowInstalledVersion");
   menu.addSeparator();
   menu.addItem(
-    isSuppressed ? "Enable automatic update checks" : "Suppress automatic update checks",
-    isSuppressed ? "hoodlefinanceEnableUpdateChecks" : "hoodlefinanceSuppressUpdateChecks"
+    isSuppressed
+      ? "Enable automatic update checks"
+      : "Suppress automatic update checks",
+    isSuppressed
+      ? "hoodlefinanceEnableUpdateChecks"
+      : "hoodlefinanceSuppressUpdateChecks",
   );
   menu.addToUi();
 }
 
 function hf_getUi_() {
-  if (typeof SpreadsheetApp === "undefined" || !SpreadsheetApp || !SpreadsheetApp.getUi) {
+  if (
+    typeof SpreadsheetApp === "undefined" ||
+    !SpreadsheetApp ||
+    !SpreadsheetApp.getUi
+  ) {
     return null;
   }
 
   return SpreadsheetApp.getUi();
 }
 
-
 function hf_getCardService_() {
-  return typeof CardService === "undefined" || !CardService ? null : CardService;
+  return typeof CardService === "undefined" || !CardService
+    ? null
+    : CardService;
 }
 
 function hf_getScriptEnumValue_(groupName, valueName) {
@@ -805,11 +909,19 @@ function hf_matchesScriptEnum_(value, groupName, valueName) {
   const normalizedValue = value == null ? "" : String(value);
   const normalizedExpected = expected == null ? "" : String(expected);
 
-  return value === expected || normalizedValue === normalizedExpected || normalizedValue === valueName;
+  return (
+    value === expected ||
+    normalizedValue === normalizedExpected ||
+    normalizedValue === valueName
+  );
 }
 
 function hf_getInstallationSource_() {
-  if (typeof ScriptApp === "undefined" || !ScriptApp || !ScriptApp.getInstallationSource) {
+  if (
+    typeof ScriptApp === "undefined" ||
+    !ScriptApp ||
+    !ScriptApp.getInstallationSource
+  ) {
     return hf_getScriptEnumValue_("InstallationSource", "NONE");
   }
 
@@ -824,7 +936,7 @@ function hf_isInstalledAsAddOn_() {
   return !hf_matchesScriptEnum_(
     hf_getInstallationSource_(),
     "InstallationSource",
-    "NONE"
+    "NONE",
   );
 }
 
@@ -864,7 +976,7 @@ function hf_buildAddOnButtonSet_(buttonSpecs) {
       cardService
         .newTextButton()
         .setText(specs[i].text)
-        .setOpenLink(cardService.newOpenLink().setUrl(specs[i].url))
+        .setOpenLink(cardService.newOpenLink().setUrl(specs[i].url)),
     );
   }
 
@@ -872,7 +984,11 @@ function hf_buildAddOnButtonSet_(buttonSpecs) {
 }
 
 function hf_getUserProperties_() {
-  if (typeof PropertiesService === "undefined" || !PropertiesService || !PropertiesService.getUserProperties) {
+  if (
+    typeof PropertiesService === "undefined" ||
+    !PropertiesService ||
+    !PropertiesService.getUserProperties
+  ) {
     return null;
   }
 
@@ -886,12 +1002,18 @@ function hf_getUserProperties_() {
 function hf_isUpdateCheckSuppressed_(userProperties) {
   return !!(
     userProperties &&
-    String(userProperties.getProperty(HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_) || "").toLowerCase() === "true"
+    String(
+      userProperties.getProperty(
+        HOODLEFINANCE_SUPPRESS_UPDATE_CHECKS_PROPERTY_,
+      ) || "",
+    ).toLowerCase() === "true"
   );
 }
 
 function hf_getLastUpdateCheckMs_(userProperties) {
-  const rawValue = userProperties ? userProperties.getProperty(HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_) : "";
+  const rawValue = userProperties
+    ? userProperties.getProperty(HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_)
+    : "";
   const parsedValue = rawValue ? Number(rawValue) : NaN;
 
   return isNaN(parsedValue) ? 0 : parsedValue;
@@ -899,7 +1021,10 @@ function hf_getLastUpdateCheckMs_(userProperties) {
 
 function hf_markUpdateCheckRun_(userProperties, nowMs) {
   if (userProperties) {
-    userProperties.setProperty(HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_, String(nowMs));
+    userProperties.setProperty(
+      HOODLEFINANCE_LAST_UPDATE_CHECK_PROPERTY_,
+      String(nowMs),
+    );
   }
 }
 
@@ -907,7 +1032,10 @@ function hf_shouldRunVersionCheckNow_(lastCheckMs, nowMs) {
   const previousCheck = Number(lastCheckMs) || 0;
   const currentTime = Number(nowMs) || 0;
 
-  return !previousCheck || currentTime - previousCheck >= HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_;
+  return (
+    !previousCheck ||
+    currentTime - previousCheck >= HOODLEFINANCE_UPDATE_CHECK_INTERVAL_MS_
+  );
 }
 
 function hf_compareVersions_(left, right) {
@@ -937,9 +1065,10 @@ function hf_compareVersions_(left, right) {
 function hf_fetchLatestVersionInfo_(options) {
   const cache = CacheService.getScriptCache();
   const normalizedOptions = options || {};
-  const cached = normalizedOptions.useCache === false
-    ? null
-    : cache.get(hf_versionCacheKey_(HOODLEFINANCE_UPDATE_CACHE_KEY_));
+  const cached =
+    normalizedOptions.useCache === false
+      ? null
+      : cache.get(hf_versionCacheKey_(HOODLEFINANCE_UPDATE_CACHE_KEY_));
   let response;
   let version;
 
@@ -951,20 +1080,26 @@ function hf_fetchLatestVersionInfo_(options) {
     response = UrlFetchApp.fetch(HOODLEFINANCE_GITHUB_RAW_URL_, {
       headers: {
         "User-Agent": "Mozilla/5.0",
-        "Accept-Language": "en-US,en;q=0.9"
+        "Accept-Language": "en-US,en;q=0.9",
       },
       muteHttpExceptions: true,
     });
   } catch (error) {
     return {
-      error: HOODLEFINANCE_GITHUB_RAW_URL_ + " -> " + String(error && error.message ? error.message : error),
+      error:
+        HOODLEFINANCE_GITHUB_RAW_URL_ +
+        " -> " +
+        String(error && error.message ? error.message : error),
       version: "",
     };
   }
 
   if (response.getResponseCode() !== 200) {
     return {
-      error: HOODLEFINANCE_GITHUB_RAW_URL_ + " -> HTTP " + response.getResponseCode(),
+      error:
+        HOODLEFINANCE_GITHUB_RAW_URL_ +
+        " -> HTTP " +
+        response.getResponseCode(),
       version: "",
     };
   }
@@ -981,14 +1116,16 @@ function hf_fetchLatestVersionInfo_(options) {
   cache.put(
     hf_versionCacheKey_(HOODLEFINANCE_UPDATE_CACHE_KEY_),
     JSON.stringify({ version: version }),
-    HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_
+    HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_,
   );
 
   return { version: version };
 }
 
 function hf_extractVersionFromSource_(sourceText) {
-  const match = String(sourceText || "").match(/const HOODLEFINANCE_VERSION_ = "([^"]+)"/);
+  const match = String(sourceText || "").match(
+    /const HOODLEFINANCE_VERSION_ = "([^"]+)"/,
+  );
   return match ? match[1] : "";
 }
 
@@ -1074,7 +1211,10 @@ function hf_parsePseIsinMapProperties_(sourceText) {
     }
 
     isin = line.slice(0, separatorIndex).trim().toUpperCase();
-    ticker = line.slice(separatorIndex + 1).trim().toUpperCase();
+    ticker = line
+      .slice(separatorIndex + 1)
+      .trim()
+      .toUpperCase();
 
     if (!isin || !ticker) {
       continue;
@@ -1093,7 +1233,11 @@ function hf_parsePseIsinMapProperties_(sourceText) {
 function hf_parsePseIsinMapPayload_(payloadText) {
   const payload = JSON.parse(payloadText);
 
-  if (!payload || typeof payload !== "object" || typeof payload.text !== "string") {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    typeof payload.text !== "string"
+  ) {
     throw new Error("Cached PSE ISIN map payload is invalid.");
   }
 
@@ -1107,16 +1251,28 @@ function hf_versionCacheKey_(cacheKey) {
     return "";
   }
 
-  if (key !== key.trim() || key.indexOf("hoodlefinance:") !== 0 || key.indexOf("hoodlefinance:v") === 0) {
-    throw new Error('Cache key must be a normalized unversioned "hoodlefinance:" key.');
+  if (
+    key !== key.trim() ||
+    key.indexOf("hoodlefinance:") !== 0 ||
+    key.indexOf("hoodlefinance:v") === 0
+  ) {
+    throw new Error(
+      'Cache key must be a normalized unversioned "hoodlefinance:" key.',
+    );
   }
 
-  return "hoodlefinance:v" + HOODLEFINANCE_VERSION_ + key.slice("hoodlefinance".length);
+  return (
+    "hoodlefinance:v" +
+    HOODLEFINANCE_VERSION_ +
+    key.slice("hoodlefinance".length)
+  );
 }
 
 function hf_getCachedString_(cacheKey) {
   const versionedCacheKey = hf_versionCacheKey_(cacheKey);
-  return versionedCacheKey ? (CacheService.getScriptCache().get(versionedCacheKey) || "") : "";
+  return versionedCacheKey
+    ? CacheService.getScriptCache().get(versionedCacheKey) || ""
+    : "";
 }
 
 function hf_putCachedString_(cacheKey, value, ttlSeconds) {
@@ -1157,25 +1313,43 @@ function hf_putCachedJson_(cacheKey, value, ttlSeconds, serializeValue) {
 
   hf_putCachedString_(
     cacheKey,
-    typeof serializeValue === "function" ? serializeValue(value) : JSON.stringify(value),
-    ttlSeconds
+    typeof serializeValue === "function"
+      ? serializeValue(value)
+      : JSON.stringify(value),
+    ttlSeconds,
   );
 
   return value;
 }
 
-function hf_resolveCachedJson_(cacheKey, ttlSeconds, resolveValue, parseValue, serializeValue) {
+function hf_resolveCachedJson_(
+  cacheKey,
+  ttlSeconds,
+  resolveValue,
+  parseValue,
+  serializeValue,
+) {
   const cached = hf_getCachedJson_(cacheKey, parseValue);
 
   if (cached != null) {
     return cached;
   }
 
-  return hf_putCachedJson_(cacheKey, resolveValue(), ttlSeconds, serializeValue);
+  return hf_putCachedJson_(
+    cacheKey,
+    resolveValue(),
+    ttlSeconds,
+    serializeValue,
+  );
 }
 
 function hf_buildPseListingCacheKey_(symbol) {
-  return HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ + String(symbol || "").trim().toUpperCase();
+  return (
+    HOODLEFINANCE_PSE_LISTING_CACHE_KEY_PREFIX_ +
+    String(symbol || "")
+      .trim()
+      .toUpperCase()
+  );
 }
 
 function hf_parsePseListingPayload_(payloadText) {
@@ -1209,11 +1383,19 @@ function hf_serializePseListingPayload_(listing) {
 }
 
 function hf_getCachedPseListing_(symbol) {
-  return hf_getCachedJson_(hf_buildPseListingCacheKey_(symbol), hf_parsePseListingPayload_);
+  return hf_getCachedJson_(
+    hf_buildPseListingCacheKey_(symbol),
+    hf_parsePseListingPayload_,
+  );
 }
 
 function hf_cachePseListing_(listing) {
-  if (!listing || !listing.companyId || !listing.securityId || !listing.symbol) {
+  if (
+    !listing ||
+    !listing.companyId ||
+    !listing.securityId ||
+    !listing.symbol
+  ) {
     return listing;
   }
 
@@ -1221,15 +1403,19 @@ function hf_cachePseListing_(listing) {
     hf_buildPseListingCacheKey_(listing.symbol),
     listing,
     HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_,
-    hf_serializePseListingPayload_
+    hf_serializePseListingPayload_,
   );
 }
 
 function hf_parseCurrencyCodeDataResource_(sourceText) {
   const payload = JSON.parse(sourceText);
   const unitsByCode = {};
-  const aliasPayload = payload && payload.aliases && typeof payload.aliases === "object" ? payload.aliases : {};
-  const cryptoCodeList = payload && Array.isArray(payload.cryptoCodes) ? payload.cryptoCodes : [];
+  const aliasPayload =
+    payload && payload.aliases && typeof payload.aliases === "object"
+      ? payload.aliases
+      : {};
+  const cryptoCodeList =
+    payload && Array.isArray(payload.cryptoCodes) ? payload.cryptoCodes : [];
   let canonicalCodeList;
   let i;
   let canonicalCode;
@@ -1240,14 +1426,20 @@ function hf_parseCurrencyCodeDataResource_(sourceText) {
   let upperAliasCode;
   let factor;
 
-  if (!payload || typeof payload !== "object" || !Array.isArray(payload.canonicalCodes)) {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !Array.isArray(payload.canonicalCodes)
+  ) {
     throw new Error("Currency code data is invalid.");
   }
 
   canonicalCodeList = payload.canonicalCodes;
 
   for (i = 0; i < canonicalCodeList.length; i += 1) {
-    canonicalCode = String(canonicalCodeList[i] || "").trim().toUpperCase();
+    canonicalCode = String(canonicalCodeList[i] || "")
+      .trim()
+      .toUpperCase();
 
     if (!/^[A-Z]{3}$/.test(canonicalCode)) {
       continue;
@@ -1262,7 +1454,9 @@ function hf_parseCurrencyCodeDataResource_(sourceText) {
   }
 
   for (i = 0; i < cryptoCodeList.length; i += 1) {
-    canonicalCode = String(cryptoCodeList[i] || "").trim().toUpperCase();
+    canonicalCode = String(cryptoCodeList[i] || "")
+      .trim()
+      .toUpperCase();
 
     if (!/^[A-Z]{3,4}$/.test(canonicalCode) || unitsByCode[canonicalCode]) {
       continue;
@@ -1277,7 +1471,9 @@ function hf_parseCurrencyCodeDataResource_(sourceText) {
   }
 
   if (!Object.keys(unitsByCode).length) {
-    throw new Error("No canonical currency codes were found in the downloaded data.");
+    throw new Error(
+      "No canonical currency codes were found in the downloaded data.",
+    );
   }
 
   for (aliasCode in aliasPayload) {
@@ -1287,10 +1483,17 @@ function hf_parseCurrencyCodeDataResource_(sourceText) {
 
     normalizedAliasCode = String(aliasCode || "").trim();
     aliasEntry = aliasPayload[aliasCode];
-    aliasCanonicalCode = String(aliasEntry && aliasEntry.canonicalCode || "").trim().toUpperCase();
+    aliasCanonicalCode = String((aliasEntry && aliasEntry.canonicalCode) || "")
+      .trim()
+      .toUpperCase();
     factor = Number(aliasEntry && aliasEntry.factor);
 
-    if (!/^[A-Za-z]{3,4}$/.test(normalizedAliasCode) || !unitsByCode[aliasCanonicalCode] || !isFinite(factor) || factor <= 0) {
+    if (
+      !/^[A-Za-z]{3,4}$/.test(normalizedAliasCode) ||
+      !unitsByCode[aliasCanonicalCode] ||
+      !isFinite(factor) ||
+      factor <= 0
+    ) {
       throw new Error('Currency alias "' + aliasCode + '" is invalid.');
     }
 
@@ -1314,7 +1517,9 @@ function hf_parseCurrencyCodeDataResource_(sourceText) {
 function hf_getPseIsinMap_() {
   const cache = CacheService.getScriptCache();
   const properties = hf_getPersistentProperties_();
-  const cached = cache.get(hf_versionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_));
+  const cached = cache.get(
+    hf_versionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
+  );
   const nowMs = new Date().getTime();
   let storedPayloadText;
   let storedPayload;
@@ -1326,11 +1531,14 @@ function hf_getPseIsinMap_() {
   }
 
   if (cached) {
-    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hf_parsePseIsinMapProperties_(cached);
+    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ =
+      hf_parsePseIsinMapProperties_(cached);
     return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
   }
 
-  storedPayloadText = properties ? properties.getProperty(HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_) : null;
+  storedPayloadText = properties
+    ? properties.getProperty(HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_)
+    : null;
 
   if (storedPayloadText) {
     try {
@@ -1338,14 +1546,16 @@ function hf_getPseIsinMap_() {
 
       if (
         storedPayload.fetchedAtMs != null &&
-        nowMs - Number(storedPayload.fetchedAtMs) <= HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_
+        nowMs - Number(storedPayload.fetchedAtMs) <=
+          HOODLEFINANCE_PSE_ISIN_MAP_REFRESH_INTERVAL_MS_
       ) {
         cache.put(
           hf_versionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
           storedPayload.text,
-          HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
+          HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_,
         );
-        HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hf_parsePseIsinMapProperties_(storedPayload.text);
+        HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ =
+          hf_parsePseIsinMapProperties_(storedPayload.text);
         return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
       }
     } catch (error) {
@@ -1364,14 +1574,19 @@ function hf_getPseIsinMap_() {
     cache.put(
       hf_versionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
       downloadResult.text,
-      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
+      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_,
     );
 
     if (properties) {
-      properties.setProperty(HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_, nextPayloadText);
+      properties.setProperty(
+        HOODLEFINANCE_PSE_ISIN_MAP_PROPERTY_,
+        nextPayloadText,
+      );
     }
 
-    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hf_parsePseIsinMapProperties_(downloadResult.text);
+    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hf_parsePseIsinMapProperties_(
+      downloadResult.text,
+    );
     return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
   }
 
@@ -1379,19 +1594,25 @@ function hf_getPseIsinMap_() {
     cache.put(
       hf_versionCacheKey_(HOODLEFINANCE_PSE_ISIN_MAP_CACHE_KEY_),
       storedPayload.text,
-      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_
+      HOODLEFINANCE_PSE_ISIN_MAP_CACHE_TTL_SECONDS_,
     );
-    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hf_parsePseIsinMapProperties_(storedPayload.text);
+    HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = hf_parsePseIsinMapProperties_(
+      storedPayload.text,
+    );
     return HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_;
   }
 
-  throw new Error("Failed to download the PSE ISIN map from GitHub.\n" + downloadResult.error);
+  throw new Error(
+    "Failed to download the PSE ISIN map from GitHub.\n" + downloadResult.error,
+  );
 }
 
 function hf_getCurrencyCodeData_() {
   const cache = CacheService.getScriptCache();
   const properties = hf_getPersistentProperties_();
-  const cached = cache.get(hf_versionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_));
+  const cached = cache.get(
+    hf_versionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
+  );
   const nowMs = new Date().getTime();
   let storedPayloadText;
   let storedFetchedAtMs;
@@ -1402,22 +1623,36 @@ function hf_getCurrencyCodeData_() {
   }
 
   if (cached) {
-    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hf_parseCurrencyCodeDataResource_(cached);
+    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ =
+      hf_parseCurrencyCodeDataResource_(cached);
     return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
   }
 
-  storedPayloadText = properties ? properties.getProperty(HOODLEFINANCE_CURRENCY_CODES_PROPERTY_) : null;
-  storedFetchedAtMs = properties ? Number(properties.getProperty(HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_)) : NaN;
+  storedPayloadText = properties
+    ? properties.getProperty(HOODLEFINANCE_CURRENCY_CODES_PROPERTY_)
+    : null;
+  storedFetchedAtMs = properties
+    ? Number(
+        properties.getProperty(
+          HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_,
+        ),
+      )
+    : NaN;
 
   if (storedPayloadText) {
     try {
-      if (isFinite(storedFetchedAtMs) && nowMs - storedFetchedAtMs <= HOODLEFINANCE_CURRENCY_CODES_REFRESH_INTERVAL_MS_) {
+      if (
+        isFinite(storedFetchedAtMs) &&
+        nowMs - storedFetchedAtMs <=
+          HOODLEFINANCE_CURRENCY_CODES_REFRESH_INTERVAL_MS_
+      ) {
         cache.put(
           hf_versionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
           storedPayloadText,
-          HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
+          HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_,
         );
-        HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hf_parseCurrencyCodeDataResource_(storedPayloadText);
+        HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ =
+          hf_parseCurrencyCodeDataResource_(storedPayloadText);
         return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
       }
     } catch (error) {
@@ -1431,15 +1666,23 @@ function hf_getCurrencyCodeData_() {
     cache.put(
       hf_versionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
       downloadResult.text,
-      HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
+      HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_,
     );
 
     if (properties) {
-      properties.setProperty(HOODLEFINANCE_CURRENCY_CODES_PROPERTY_, downloadResult.text);
-      properties.setProperty(HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_, String(nowMs));
+      properties.setProperty(
+        HOODLEFINANCE_CURRENCY_CODES_PROPERTY_,
+        downloadResult.text,
+      );
+      properties.setProperty(
+        HOODLEFINANCE_CURRENCY_CODES_FETCHED_AT_PROPERTY_,
+        String(nowMs),
+      );
     }
 
-    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hf_parseCurrencyCodeDataResource_(downloadResult.text);
+    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hf_parseCurrencyCodeDataResource_(
+      downloadResult.text,
+    );
     return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
   }
 
@@ -1447,13 +1690,17 @@ function hf_getCurrencyCodeData_() {
     cache.put(
       hf_versionCacheKey_(HOODLEFINANCE_CURRENCY_CODES_CACHE_KEY_),
       storedPayloadText,
-      HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_
+      HOODLEFINANCE_CURRENCY_CODES_CACHE_TTL_SECONDS_,
     );
-    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = hf_parseCurrencyCodeDataResource_(storedPayloadText);
+    HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ =
+      hf_parseCurrencyCodeDataResource_(storedPayloadText);
     return HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_;
   }
 
-  throw new Error("Failed to download the currency code data from GitHub.\n" + downloadResult.error);
+  throw new Error(
+    "Failed to download the currency code data from GitHub.\n" +
+      downloadResult.error,
+  );
 }
 
 function hf_showUpdateDialog_(latestVersion) {
@@ -1465,23 +1712,29 @@ function hf_showUpdateDialog_(latestVersion) {
     return;
   }
 
-  if (typeof HtmlService === "undefined" || !HtmlService || !HtmlService.createHtmlOutput) {
+  if (
+    typeof HtmlService === "undefined" ||
+    !HtmlService ||
+    !HtmlService.createHtmlOutput
+  ) {
     ui.alert(
       "HOODLEFINANCE updates",
       "A newer version is available (" +
-      latestVersion +
-      ").\n\nRelease notes: " +
-      releaseNotesUrl +
-      "\nFull history: " +
-      HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ +
-      "\nUpdate link: " +
-      HOODLEFINANCE_GITHUB_RAW_URL_,
-      ui.ButtonSet.OK
+        latestVersion +
+        ").\n\nRelease notes: " +
+        releaseNotesUrl +
+        "\nFull history: " +
+        HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_ +
+        "\nUpdate link: " +
+        HOODLEFINANCE_GITHUB_RAW_URL_,
+      ui.ButtonSet.OK,
     );
     return;
   }
 
-  output = HtmlService.createHtmlOutput(hf_buildUpdateDialogHtml_(latestVersion, releaseNotesUrl))
+  output = HtmlService.createHtmlOutput(
+    hf_buildUpdateDialogHtml_(latestVersion, releaseNotesUrl),
+  )
     .setWidth(520)
     .setHeight(280);
 
@@ -1490,7 +1743,12 @@ function hf_showUpdateDialog_(latestVersion) {
 
 function hf_buildGitHubReleaseNotesUrl_(version) {
   if (/^\d+\.\d+\.\d+$/.test(String(version || ""))) {
-    return HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ + "v" + String(version) + ".md";
+    return (
+      HOODLEFINANCE_GITHUB_RELEASE_NOTES_BASE_URL_ +
+      "v" +
+      String(version) +
+      ".md"
+    );
   }
 
   return HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_;
@@ -1499,20 +1757,36 @@ function hf_buildGitHubReleaseNotesUrl_(version) {
 function hf_buildUpdateDialogHtml_(latestVersion, releaseNotesUrl) {
   return (
     '<div style="font-family:Arial,sans-serif;padding:16px;line-height:1.5;">' +
-    "<h2 style=\"margin:0 0 12px 0;font-size:18px;\">HOODLEFINANCE update available</h2>" +
-    "<p style=\"margin:0 0 12px 0;\">Installed version: <code>" + hf_escapeHtml_(HOODLEFINANCE_VERSION_) + "</code><br>" +
-    "Latest version: <code>" + hf_escapeHtml_(latestVersion) + "</code></p>" +
-    "<p style=\"margin:0 0 16px 0;\">Read the release notes first, then open the latest script and paste it into <code>Code.gs</code> to update.</p>" +
-    "<p style=\"margin:0 0 16px 0;\">" +
-    '<a href="' + hf_escapeHtml_(releaseNotesUrl) + '" target="_blank">What\'s new in ' + hf_escapeHtml_(latestVersion) + "</a>" +
+    '<h2 style="margin:0 0 12px 0;font-size:18px;">HOODLEFINANCE update available</h2>' +
+    '<p style="margin:0 0 12px 0;">Installed version: <code>' +
+    hf_escapeHtml_(HOODLEFINANCE_VERSION_) +
+    "</code><br>" +
+    "Latest version: <code>" +
+    hf_escapeHtml_(latestVersion) +
+    "</code></p>" +
+    '<p style="margin:0 0 16px 0;">Read the release notes first, then open the latest script and paste it into <code>Code.gs</code> to update.</p>' +
+    '<p style="margin:0 0 16px 0;">' +
+    '<a href="' +
+    hf_escapeHtml_(releaseNotesUrl) +
+    '" target="_blank">What\'s new in ' +
+    hf_escapeHtml_(latestVersion) +
+    "</a>" +
     " | " +
-    '<a href="' + hf_escapeHtml_(HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_) + '" target="_blank">Release history</a>' +
+    '<a href="' +
+    hf_escapeHtml_(HOODLEFINANCE_GITHUB_RELEASE_NOTES_HISTORY_URL_) +
+    '" target="_blank">Release history</a>' +
     " | " +
-    '<a href="' + hf_escapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) + '" target="_blank">Open raw source</a>' +
+    '<a href="' +
+    hf_escapeHtml_(HOODLEFINANCE_GITHUB_RAW_URL_) +
+    '" target="_blank">Open raw source</a>' +
     " | " +
-    '<a href="' + hf_escapeHtml_(HOODLEFINANCE_GITHUB_README_URL_) + '" target="_blank">Open README</a>' +
+    '<a href="' +
+    hf_escapeHtml_(HOODLEFINANCE_GITHUB_README_URL_) +
+    '" target="_blank">Open README</a>' +
     " | " +
-    '<a href="' + hf_escapeHtml_(HOODLEFINANCE_GITHUB_REPO_URL_) + '" target="_blank">Open repository</a>' +
+    '<a href="' +
+    hf_escapeHtml_(HOODLEFINANCE_GITHUB_REPO_URL_) +
+    '" target="_blank">Open repository</a>' +
     "</p>" +
     "<div>" +
     '<button onclick="google.script.run.withSuccessHandler(closeDialog).hoodlefinanceSuppressUpdateChecks()" style="margin-right:8px;">Suppress automatic checks</button>' +
@@ -1563,14 +1837,14 @@ function hf_fetchPseQuote_(ticker) {
       listing = hf_resolvePseListing_(symbol);
       html = hf_fetchPseText_(
         HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-        "?cmpy_id=" +
-        encodeURIComponent(listing.companyId) +
-        "&security_id=" +
-        encodeURIComponent(listing.securityId)
+          "?cmpy_id=" +
+          encodeURIComponent(listing.companyId) +
+          "&security_id=" +
+          encodeURIComponent(listing.securityId),
       );
 
       return hf_extractPseQuote_(html, listing);
-    }());
+    })();
 
     if (!quote || !quote.symbol) {
       throw new Error("No PSE quote data was found for " + ticker + ".");
@@ -1603,7 +1877,8 @@ function hf_resolveCurrencyUnit_(code) {
 }
 
 function hf_buildFxPair_(baseUnit, quoteUnit) {
-  const hasCrypto = (baseUnit.assetClass === "crypto") || (quoteUnit.assetClass === "crypto");
+  const hasCrypto =
+    baseUnit.assetClass === "crypto" || quoteUnit.assetClass === "crypto";
   const canonicalPair = baseUnit.canonicalCode + quoteUnit.canonicalCode;
 
   return {
@@ -1613,9 +1888,10 @@ function hf_buildFxPair_(baseUnit, quoteUnit) {
     canonicalPair: canonicalPair,
     displayQuoteCode: quoteUnit.displayCode,
     googlePairSlug: baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode,
-    googleSymbol: baseUnit.displayCode.length === 3 && quoteUnit.displayCode.length === 3
-      ? "CURRENCY:" + baseUnit.displayCode + quoteUnit.displayCode
-      : "CURRENCY:" + baseUnit.displayCode + "." + quoteUnit.displayCode,
+    googleSymbol:
+      baseUnit.displayCode.length === 3 && quoteUnit.displayCode.length === 3
+        ? "CURRENCY:" + baseUnit.displayCode + quoteUnit.displayCode
+        : "CURRENCY:" + baseUnit.displayCode + "." + quoteUnit.displayCode,
     hasCrypto: hasCrypto,
     isSameCurrency: baseUnit.canonicalCode === quoteUnit.canonicalCode,
     pairDisplay: baseUnit.displayCode + quoteUnit.displayCode,
@@ -1623,7 +1899,9 @@ function hf_buildFxPair_(baseUnit, quoteUnit) {
     quoteCanonicalCode: quoteUnit.canonicalCode,
     quoteDisplayCode: quoteUnit.displayCode,
     scale: baseUnit.factor / quoteUnit.factor,
-    yahooChartSymbol: hasCrypto ? baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode : canonicalPair + "=X",
+    yahooChartSymbol: hasCrypto
+      ? baseUnit.canonicalCode + "-" + quoteUnit.canonicalCode
+      : canonicalPair + "=X",
     yahooSymbol: canonicalPair + "=X",
   };
 }
@@ -1659,11 +1937,18 @@ function hf_buildAmbiguousFxTickerError_(ticker, candidates) {
   const suggestions = candidates
     .slice(0, 2)
     .map(function (candidate) {
-      return "CURRENCY:" + candidate.baseDisplayCode + "." + candidate.quoteDisplayCode;
+      return (
+        "CURRENCY:" +
+        candidate.baseDisplayCode +
+        "." +
+        candidate.quoteDisplayCode
+      );
     })
     .join(" or ");
 
-  return new Error('Currency ticker "' + ticker + '" is ambiguous. Use ' + suggestions + ".");
+  return new Error(
+    'Currency ticker "' + ticker + '" is ambiguous. Use ' + suggestions + ".",
+  );
 }
 
 function hf_looksLikeIncompleteExplicitFxPair_(pairText) {
@@ -1697,7 +1982,7 @@ function hf_fetchGoogleFinanceFxPairQuote_(fxPair) {
 
   quote = hf_extractGoogleFinanceFxPairQuote_(
     hf_fetchText_(hf_buildGoogleFinanceQuoteUrl_(fxPair.googlePairSlug)),
-    fxPair
+    fxPair,
   );
 
   hf_putCachedJson_(cacheKey, quote, 60);
@@ -1709,9 +1994,13 @@ function hf_parseFxTicker_(ticker) {
   const explicitMatch = value.match(/^([^:]+):(.*)$/);
   const exchange = explicitMatch ? explicitMatch[1].trim().toUpperCase() : "";
   const pairText = explicitMatch ? explicitMatch[2].trim() : value;
-  const dottedMatch = explicitMatch ? pairText.match(/^([A-Za-z]{3,4})\.([A-Za-z]{3,4})$/) : null;
+  const dottedMatch = explicitMatch
+    ? pairText.match(/^([A-Za-z]{3,4})\.([A-Za-z]{3,4})$/)
+    : null;
   const looksLikeCompactPair = /^[A-Za-z]{6,8}$/.test(pairText);
-  const compactCandidates = looksLikeCompactPair ? hf_findCompactFxPairCandidates_(pairText) : [];
+  const compactCandidates = looksLikeCompactPair
+    ? hf_findCompactFxPairCandidates_(pairText)
+    : [];
   let baseUnit;
   let quoteUnit;
 
@@ -1724,14 +2013,22 @@ function hf_parseFxTicker_(ticker) {
     quoteUnit = hf_resolveCurrencyUnit_(dottedMatch[2]);
 
     if (!baseUnit || !quoteUnit) {
-      throw new Error('Currency ticker "' + ticker + '" must use supported 3- or 4-character currency codes.');
+      throw new Error(
+        'Currency ticker "' +
+          ticker +
+          '" must use supported 3- or 4-character currency codes.',
+      );
     }
 
     return hf_buildFxPair_(baseUnit, quoteUnit);
   }
 
   if (explicitMatch && !looksLikeCompactPair) {
-    throw new Error('Currency ticker "' + ticker + '" must look like CURRENCY:USDEUR or CURRENCY:USDT.USD.');
+    throw new Error(
+      'Currency ticker "' +
+        ticker +
+        '" must look like CURRENCY:USDEUR or CURRENCY:USDT.USD.',
+    );
   }
 
   if (!looksLikeCompactPair) {
@@ -1740,7 +2037,11 @@ function hf_parseFxTicker_(ticker) {
 
   if (!compactCandidates.length) {
     if (explicitMatch) {
-      throw new Error('Currency ticker "' + ticker + '" must use supported 3- or 4-character currency codes.');
+      throw new Error(
+        'Currency ticker "' +
+          ticker +
+          '" must use supported 3- or 4-character currency codes.',
+      );
     }
 
     return null;
@@ -1791,7 +2092,13 @@ function hf_normalizeTickerWithoutIsin_(ticker) {
     return symbol;
   }
 
-  throw new Error('Unsupported exchange prefix "' + exchange + '" in ticker "' + ticker + '".');
+  throw new Error(
+    'Unsupported exchange prefix "' +
+      exchange +
+      '" in ticker "' +
+      ticker +
+      '".',
+  );
 }
 
 function hf_normalizeExchangeSymbol_(exchange, symbol) {
@@ -1803,7 +2110,9 @@ function hf_normalizeExchangeSymbol_(exchange, symbol) {
 }
 
 function hf_normalizeYahooStyleIsraeliFundTicker_(ticker) {
-  const match = String(ticker || "").trim().match(/^(.+)\.TA$/i);
+  const match = String(ticker || "")
+    .trim()
+    .match(/^(.+)\.TA$/i);
 
   if (!match) {
     return ticker;
@@ -1817,8 +2126,14 @@ function hf_isPseYahooSymbol_(ticker) {
 }
 
 function hf_parsePseYahooSymbol_(ticker) {
-  const match = String(hf_stripTickerSourceOverride_(ticker) || "").trim().match(/^(.+)\.PS$/i);
-  const symbol = match ? String(match[1] || "").trim().toUpperCase() : "";
+  const match = String(hf_stripTickerSourceOverride_(ticker) || "")
+    .trim()
+    .match(/^(.+)\.PS$/i);
+  const symbol = match
+    ? String(match[1] || "")
+        .trim()
+        .toUpperCase()
+    : "";
 
   if (!symbol) {
     throw new Error('PSE ticker "' + ticker + '" is invalid.');
@@ -1828,7 +2143,9 @@ function hf_parsePseYahooSymbol_(ticker) {
 }
 
 function hf_normalizeIsraeliFundCode_(code) {
-  const value = String(code || "").trim().toUpperCase();
+  const value = String(code || "")
+    .trim()
+    .toUpperCase();
   const undottedMatch = value.match(/^([A-Z]+)F([0-9]+)$/);
   const dottedMatch = value.match(/^([A-Z]+)\.F([0-9]+)$/);
 
@@ -1853,7 +2170,11 @@ function hf_looksLikeIsraeliFundYahooSymbol_(symbol) {
 
 function hf_coerceScalar_(value, label) {
   if (Array.isArray(value)) {
-    if (value.length !== 1 || !Array.isArray(value[0]) || value[0].length !== 1) {
+    if (
+      value.length !== 1 ||
+      !Array.isArray(value[0]) ||
+      value[0].length !== 1
+    ) {
       throw new Error("Only a single-cell " + label + " is supported.");
     }
     return value[0][0];
@@ -1863,7 +2184,9 @@ function hf_coerceScalar_(value, label) {
 }
 
 function hf_normalizeAttribute_(attribute) {
-  const normalizedAttribute = String(attribute == null ? "price" : attribute).trim();
+  const normalizedAttribute = String(
+    attribute == null ? "price" : attribute,
+  ).trim();
   return normalizedAttribute ? normalizedAttribute : "price";
 }
 
@@ -1875,15 +2198,19 @@ function hf_parseAttributeRequest_(attribute) {
   let outputCode = "";
 
   if (firstAtIndex >= 0) {
-    if (firstAtIndex !== lastAtIndex || firstAtIndex === 0 || firstAtIndex === rawAttribute.length - 1) {
-      throw new Error('Converted attributes must look like price@USD.');
+    if (
+      firstAtIndex !== lastAtIndex ||
+      firstAtIndex === 0 ||
+      firstAtIndex === rawAttribute.length - 1
+    ) {
+      throw new Error("Converted attributes must look like price@USD.");
     }
 
     baseAttribute = rawAttribute.slice(0, firstAtIndex).trim();
     outputCode = rawAttribute.slice(firstAtIndex + 1).trim();
 
     if (!baseAttribute || !outputCode) {
-      throw new Error('Converted attributes must look like price@USD.');
+      throw new Error("Converted attributes must look like price@USD.");
     }
   }
 
@@ -1899,7 +2226,13 @@ function hf_parseTickerRequest_(ticker) {
   const value = String(ticker == null ? "" : ticker).trim();
   const atIndex = value.lastIndexOf("@");
   const candidateTicker = atIndex > 0 ? value.slice(0, atIndex).trim() : "";
-  const candidateSource = atIndex > 0 ? value.slice(atIndex + 1).trim().toUpperCase() : "";
+  const candidateSource =
+    atIndex > 0
+      ? value
+          .slice(atIndex + 1)
+          .trim()
+          .toUpperCase()
+      : "";
 
   if (candidateTicker && candidateSource === "?") {
     return {
@@ -1982,15 +2315,28 @@ function hf_unwrapTickerGridResult_(grid) {
 
 function hf_resolveTickerGrid_(tickerGrid, attribute) {
   const allowImplicitBlankTickers = hf_isMultiCellTickerGrid_(tickerGrid);
-  const jobs = hf_collectTickerJobs_(tickerGrid, attribute, allowImplicitBlankTickers);
+  const jobs = hf_collectTickerJobs_(
+    tickerGrid,
+    attribute,
+    allowImplicitBlankTickers,
+  );
 
   hf_prefetchTickerJobs_(jobs);
   hf_resolvePrefetchedTickerJobs_(jobs);
 
-  return hf_buildTickerResultGrid_(tickerGrid, jobs.jobByKey, attribute, allowImplicitBlankTickers);
+  return hf_buildTickerResultGrid_(
+    tickerGrid,
+    jobs.jobByKey,
+    attribute,
+    allowImplicitBlankTickers,
+  );
 }
 
-function hf_collectTickerJobs_(tickerGrid, attribute, allowImplicitBlankTickers) {
+function hf_collectTickerJobs_(
+  tickerGrid,
+  attribute,
+  allowImplicitBlankTickers,
+) {
   const orderedJobs = [];
   const jobByKey = {};
   let rowIndex;
@@ -2000,9 +2346,16 @@ function hf_collectTickerJobs_(tickerGrid, attribute, allowImplicitBlankTickers)
   let key;
 
   for (rowIndex = 0; rowIndex < tickerGrid.length; rowIndex += 1) {
-    for (columnIndex = 0; columnIndex < tickerGrid[rowIndex].length; columnIndex += 1) {
+    for (
+      columnIndex = 0;
+      columnIndex < tickerGrid[rowIndex].length;
+      columnIndex += 1
+    ) {
       value = tickerGrid[rowIndex][columnIndex];
-      normalizedTicker = hf_normalizeTickerGridCellValue_(value, allowImplicitBlankTickers);
+      normalizedTicker = hf_normalizeTickerGridCellValue_(
+        value,
+        allowImplicitBlankTickers,
+      );
 
       if (!normalizedTicker) {
         continue;
@@ -2051,7 +2404,9 @@ function hf_createRouteJob_(options) {
 
 function hf_createQuoteRouteJob_(ticker, attribute) {
   const normalizedTicker = String(ticker).trim();
-  const normalizedAttribute = String(attribute == null ? "price" : attribute).trim();
+  const normalizedAttribute = String(
+    attribute == null ? "price" : attribute,
+  ).trim();
 
   return hf_createRouteJob_({
     attribute: normalizedAttribute,
@@ -2068,7 +2423,9 @@ function hf_createAttributeRouteJob_(attribute, quote, context, routeKind) {
     routeContext: routeContext,
     routeKind: routeKind || "attribute",
     sourceQuote: quote,
-    tickerInput: routeContext.tickerInput ? String(routeContext.tickerInput).trim() : "",
+    tickerInput: routeContext.tickerInput
+      ? String(routeContext.tickerInput).trim()
+      : "",
   });
 }
 
@@ -2077,7 +2434,9 @@ function hf_prepareRouteJob_(job, plan) {
   const routePlan = plan || targetJob.plan || {};
 
   targetJob.plan = routePlan;
-  targetJob.routeAttempts = hf_cloneRouteAttempts_(routePlan.routeAttempts || []);
+  targetJob.routeAttempts = hf_cloneRouteAttempts_(
+    routePlan.routeAttempts || [],
+  );
   targetJob.routeIndex = 0;
   targetJob.routeState = hf_cloneRouteState_(routePlan.routeState || {});
   targetJob.routeRuntimeTrace = [];
@@ -2085,7 +2444,9 @@ function hf_prepareRouteJob_(job, plan) {
 }
 
 function hf_isMultiCellTickerGrid_(tickerGrid) {
-  return tickerGrid.length !== 1 || !tickerGrid[0] || tickerGrid[0].length !== 1;
+  return (
+    tickerGrid.length !== 1 || !tickerGrid[0] || tickerGrid[0].length !== 1
+  );
 }
 
 function hf_normalizeTickerGridCellValue_(value, allowImplicitBlankTickers) {
@@ -2095,7 +2456,9 @@ function hf_normalizeTickerGridCellValue_(value, allowImplicitBlankTickers) {
     return normalizedTicker;
   }
 
-  return hf_shouldTreatRangeTickerAsBlank_(normalizedTicker) ? "" : normalizedTicker;
+  return hf_shouldTreatRangeTickerAsBlank_(normalizedTicker)
+    ? ""
+    : normalizedTicker;
 }
 
 function hf_shouldTreatRangeTickerAsBlank_(ticker) {
@@ -2112,7 +2475,9 @@ function hf_shouldTreatRangeTickerAsBlank_(ticker) {
     return true;
   }
 
-  return exchange === "CURRENCY" && hf_looksLikeIncompleteExplicitFxPair_(symbol);
+  return (
+    exchange === "CURRENCY" && hf_looksLikeIncompleteExplicitFxPair_(symbol)
+  );
 }
 
 function hf_prefetchTickerJobs_(jobs) {
@@ -2122,7 +2487,10 @@ function hf_prefetchTickerJobs_(jobs) {
 
   for (i = 0; i < orderedJobs.length; i += 1) {
     try {
-      plan = hf_classifyTickerJob_(orderedJobs[i].tickerInput, orderedJobs[i].attribute);
+      plan = hf_classifyTickerJob_(
+        orderedJobs[i].tickerInput,
+        orderedJobs[i].attribute,
+      );
       orderedJobs[i].plan = plan;
 
       if (hf_isDebugRoutePlan_(plan)) {
@@ -2139,7 +2507,13 @@ function hf_prefetchTickerJobs_(jobs) {
   hf_executeRouteJobs_(orderedJobs);
 }
 
-function hf_buildForcedSourcePlan_(normalizedTicker, normalizedAttribute, upperTicker, fxPair, sourceOverride) {
+function hf_buildForcedSourcePlan_(
+  normalizedTicker,
+  normalizedAttribute,
+  upperTicker,
+  fxPair,
+  sourceOverride,
+) {
   let pseTicker;
   let isinValue;
   let symbol;
@@ -2147,7 +2521,9 @@ function hf_buildForcedSourcePlan_(normalizedTicker, normalizedAttribute, upperT
   if (sourceOverride === "YAHOO") {
     isinValue = hf_looksLikeIsin_(normalizedTicker)
       ? upperTicker
-      : (upperTicker.indexOf("ISIN:") === 0 ? upperTicker.slice(5).trim() : "");
+      : upperTicker.indexOf("ISIN:") === 0
+        ? upperTicker.slice(5).trim()
+        : "";
 
     if (isinValue) {
       return hf_createRoutePlan_({
@@ -2158,13 +2534,18 @@ function hf_buildForcedSourcePlan_(normalizedTicker, normalizedAttribute, upperT
       });
     }
 
-    return hf_createSingleAttemptRoutePlan_("FORCED:YAHOO", "yahoo-chart", "YAHOO", {
-      attemptOptions: { allowTradingviewFallback: false },
-      routeState: {
-        fxPair: fxPair,
-        yahooSymbol: hf_buildForcedYahooSymbol_(normalizedTicker, fxPair),
+    return hf_createSingleAttemptRoutePlan_(
+      "FORCED:YAHOO",
+      "yahoo-chart",
+      "YAHOO",
+      {
+        attemptOptions: { allowTradingviewFallback: false },
+        routeState: {
+          fxPair: fxPair,
+          yahooSymbol: hf_buildForcedYahooSymbol_(normalizedTicker, fxPair),
+        },
       },
-    });
+    );
   }
 
   if (sourceOverride === "GOOGLE") {
@@ -2172,42 +2553,67 @@ function hf_buildForcedSourcePlan_(normalizedTicker, normalizedAttribute, upperT
       throw new Error('"@GOOGLE" can only be used with currency pairs.');
     }
 
-    return hf_createSingleAttemptRoutePlan_("FORCED:GOOGLE", "google-finance-fx", "GOOGLE", {
-      routeState: { fxPair: fxPair },
-    });
+    return hf_createSingleAttemptRoutePlan_(
+      "FORCED:GOOGLE",
+      "google-finance-fx",
+      "GOOGLE",
+      {
+        routeState: { fxPair: fxPair },
+      },
+    );
   }
 
   if (sourceOverride === "PSE") {
     if (hf_isPseTicker_(normalizedTicker)) {
       symbol = hf_parsePseSymbol_(normalizedTicker);
-      return hf_createSingleAttemptRoutePlan_("FORCED:PSE", "pse-quote", "PSE", {
-        routeState: { symbol: symbol },
-      });
+      return hf_createSingleAttemptRoutePlan_(
+        "FORCED:PSE",
+        "pse-quote",
+        "PSE",
+        {
+          routeState: { symbol: symbol },
+        },
+      );
     }
 
     isinValue = hf_looksLikeIsin_(normalizedTicker)
       ? upperTicker
-      : (upperTicker.indexOf("ISIN:") === 0 ? upperTicker.slice(5).trim() : "");
+      : upperTicker.indexOf("ISIN:") === 0
+        ? upperTicker.slice(5).trim()
+        : "";
     if (isinValue) {
       pseTicker = hf_resolvePseTickerFromIsinMap_(isinValue);
       if (!pseTicker) {
-        throw new Error('No PSE ticker was found for ISIN "' + isinValue + '" when using "@PSE".');
+        throw new Error(
+          'No PSE ticker was found for ISIN "' +
+            isinValue +
+            '" when using "@PSE".',
+        );
       }
 
       symbol = hf_parsePseSymbol_(pseTicker);
-      return hf_createSingleAttemptRoutePlan_("FORCED:PSE", "pse-quote", "PSE", {
-        routeState: { symbol: symbol },
-      });
+      return hf_createSingleAttemptRoutePlan_(
+        "FORCED:PSE",
+        "pse-quote",
+        "PSE",
+        {
+          routeState: { symbol: symbol },
+        },
+      );
     }
 
-    throw new Error('"@PSE" can only be used with PSE tickers and PSE-mapped ISINs.');
+    throw new Error(
+      '"@PSE" can only be used with PSE tickers and PSE-mapped ISINs.',
+    );
   }
 
   if (normalizedAttribute === "isin") {
     return null;
   }
 
-  throw new Error('"@' + sourceOverride + '" can only be used with the "isin" attribute.');
+  throw new Error(
+    '"@' + sourceOverride + '" can only be used with the "isin" attribute.',
+  );
 }
 
 function hf_describePlanSource_(plan) {
@@ -2220,15 +2626,44 @@ function hf_describePlanSource_(plan) {
 
 const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
   { classification: "TICKER", example: "GOOG", route: "TICKER -> YAHOO" },
-  { classification: "TICKER-IL-FUND", example: "TLV:KSMF59", route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW" },
+  {
+    classification: "TICKER-IL-FUND",
+    example: "TLV:KSMF59",
+    route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW",
+  },
   { classification: "FX", example: "EURUSD", route: "FX -> GOOGLE" },
   { classification: "FX-SAME", example: "USDUSD", route: "FX-SAME -> LOCAL" },
-  { classification: "PSE-TICKER", example: "PSE:BDO", route: "PSE-TICKER -> PSE" },
-  { classification: "ISIN", example: "US02079K1079", route: "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))" },
-  { classification: "FORCED:YAHOO", example: "GOOG@YAHOO", route: "FORCED:YAHOO -> YAHOO" },
-  { classification: "FORCED:YAHOO-ISIN", example: "US02079K1079@YAHOO", route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO" },
-  { classification: "FORCED:GOOGLE", example: "EURUSD@GOOGLE", route: "FORCED:GOOGLE -> GOOGLE" },
-  { classification: "FORCED:PSE", example: "PSE:BDO@PSE", route: "FORCED:PSE -> PSE" },
+  {
+    classification: "PSE-TICKER",
+    example: "PSE:BDO",
+    route: "PSE-TICKER -> PSE",
+  },
+  {
+    classification: "ISIN",
+    example: "US02079K1079",
+    route:
+      "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+  },
+  {
+    classification: "FORCED:YAHOO",
+    example: "GOOG@YAHOO",
+    route: "FORCED:YAHOO -> YAHOO",
+  },
+  {
+    classification: "FORCED:YAHOO-ISIN",
+    example: "US02079K1079@YAHOO",
+    route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
+  },
+  {
+    classification: "FORCED:GOOGLE",
+    example: "EURUSD@GOOGLE",
+    route: "FORCED:GOOGLE -> GOOGLE",
+  },
+  {
+    classification: "FORCED:PSE",
+    example: "PSE:BDO@PSE",
+    route: "FORCED:PSE -> PSE",
+  },
 ];
 
 function hf_getRoutingTableRows_() {
@@ -2267,9 +2702,10 @@ function hf_createRoutePlan_(options) {
     routeClass: options.routeClass || "",
     routeAttempts: options.routeAttempts || [],
     routeState: options.routeState || {},
-    routeTrace: options.routeTrace != null
-      ? String(options.routeTrace)
-      : hf_buildRouteTrace_(options.routeClass, options.routePath || ""),
+    routeTrace:
+      options.routeTrace != null
+        ? String(options.routeTrace)
+        : hf_buildRouteTrace_(options.routeClass, options.routePath || ""),
   };
 }
 
@@ -2283,7 +2719,9 @@ function hf_isDebugRoutePlan_(plan) {
 
 function hf_classifyTickerJob_(ticker, attribute) {
   const normalizedTicker = String(ticker).trim();
-  const normalizedAttribute = String(attribute == null ? "price" : attribute).trim().toLowerCase();
+  const normalizedAttribute = String(attribute == null ? "price" : attribute)
+    .trim()
+    .toLowerCase();
   const request = hf_parseTickerRequest_(normalizedTicker);
   const infoMode = request.infoMode;
   const requestTicker = request.ticker;
@@ -2304,7 +2742,13 @@ function hf_classifyTickerJob_(ticker, attribute) {
   }
 
   if (sourceOverride) {
-    plan = hf_buildForcedSourcePlan_(requestTicker, normalizedAttribute, requestUpperTicker, fxPair, sourceOverride);
+    plan = hf_buildForcedSourcePlan_(
+      requestTicker,
+      normalizedAttribute,
+      requestUpperTicker,
+      fxPair,
+      sourceOverride,
+    );
 
     if (plan) {
       return plan;
@@ -2371,8 +2815,12 @@ function hf_classifyTickerJob_(ticker, attribute) {
     });
   }
 
-  normalizedYahooTicker = fxPair ? fxPair.yahooSymbol : hf_normalizeTickerWithoutIsin_(requestTicker);
-  isIsraeliFundTicker = hf_looksLikeIsraeliFundYahooSymbol_(normalizedYahooTicker);
+  normalizedYahooTicker = fxPair
+    ? fxPair.yahooSymbol
+    : hf_normalizeTickerWithoutIsin_(requestTicker);
+  isIsraeliFundTicker = hf_looksLikeIsraeliFundYahooSymbol_(
+    normalizedYahooTicker,
+  );
 
   return hf_createRoutePlan_({
     routeClass: isIsraeliFundTicker ? "TICKER-IL-FUND" : "TICKER",
@@ -2419,7 +2867,13 @@ function hf_cloneRouteAttempts_(attempts) {
   const cloned = [];
 
   for (i = 0; i < attempts.length; i += 1) {
-    cloned.push(hf_createRouteAttempt_(attempts[i].adapterId, attempts[i].traceLabel, attempts[i]));
+    cloned.push(
+      hf_createRouteAttempt_(
+        attempts[i].adapterId,
+        attempts[i].traceLabel,
+        attempts[i],
+      ),
+    );
   }
 
   return cloned;
@@ -2453,12 +2907,19 @@ function hf_createRouteResult_(status, options) {
   return result;
 }
 
-function hf_createSingleAttemptRoutePlan_(routeClass, adapterId, traceLabel, options) {
+function hf_createSingleAttemptRoutePlan_(
+  routeClass,
+  adapterId,
+  traceLabel,
+  options,
+) {
   const config = options || {};
 
   return hf_createRoutePlan_({
     routeClass: routeClass,
-    routeAttempts: [hf_createRouteAttempt_(adapterId, traceLabel, config.attemptOptions)],
+    routeAttempts: [
+      hf_createRouteAttempt_(adapterId, traceLabel, config.attemptOptions),
+    ],
     routeState: config.routeState || {},
     routePath: config.routePath != null ? config.routePath : traceLabel,
   });
@@ -2469,17 +2930,20 @@ function hf_buildForcedYahooSymbol_(normalizedTicker, fxPair) {
     return hf_parsePseSymbol_(normalizedTicker) + ".PS";
   }
 
-  return fxPair ? fxPair.yahooChartSymbol : hf_normalizeTickerWithoutIsin_(normalizedTicker);
+  return fxPair
+    ? fxPair.yahooChartSymbol
+    : hf_normalizeTickerWithoutIsin_(normalizedTicker);
 }
 
 function hf_buildQuoteAttemptsForResolvedIdentifier_(resolvedIdentifier, mode) {
   const normalizedMode = mode || "default";
   const normalizedIdentifier = hf_buildForcedYahooSymbol_(
     resolvedIdentifier,
-    hf_parseFxTicker_(resolvedIdentifier)
+    hf_parseFxTicker_(resolvedIdentifier),
   );
   const allowTradingviewFallback =
-    normalizedMode !== "yahoo-only" && hf_looksLikeIsraeliFundYahooSymbol_(normalizedIdentifier);
+    normalizedMode !== "yahoo-only" &&
+    hf_looksLikeIsraeliFundYahooSymbol_(normalizedIdentifier);
 
   if (hf_isPseTicker_(resolvedIdentifier) && normalizedMode !== "yahoo-only") {
     return {
@@ -2503,7 +2967,9 @@ function hf_buildQuoteAttemptsForResolvedIdentifier_(resolvedIdentifier, mode) {
 function hf_createRouteAdapter_(adapterId, executeBatch) {
   return {
     adapterId: adapterId,
-    batchKey: function () { return ""; },
+    batchKey: function () {
+      return "";
+    },
     executeBatch: executeBatch,
   };
 }
@@ -2515,33 +2981,75 @@ function hf_createIsinResolverRouteAdapter_(adapterId, resolveIsin) {
 }
 
 const HOODLEFINANCE_ROUTE_ADAPTERS_ = {
-  "google-finance-fx": hf_createRouteAdapter_("google-finance-fx", hf_executeGoogleFinanceFxRouteBatch_),
-  "isin-ariva": hf_createIsinResolverRouteAdapter_("isin-ariva", function (quote, context) {
-    return hf_resolveArivaIsin_(quote, context);
-  }),
-  "isin-direct": hf_createRouteAdapter_("isin-direct", hf_executeDirectIsinRouteBatch_),
-  "isin-ibkr": hf_createIsinResolverRouteAdapter_("isin-ibkr", function (quote, context) {
-    return hf_resolveIbkrIsin_(quote, context);
-  }),
-  "isin-lon": hf_createIsinResolverRouteAdapter_("isin-lon", function (quote, context) {
-    return hf_resolveLonIsin_(quote, context);
-  }),
-  "isin-pse": hf_createIsinResolverRouteAdapter_("isin-pse", function (quote, context) {
-    return hf_resolvePseIsin_(quote, context);
-  }),
-  "isin-tradingview": hf_createIsinResolverRouteAdapter_("isin-tradingview", function (quote, context) {
-    return hf_resolveTradingviewIsin_(quote, context);
-  }),
+  "google-finance-fx": hf_createRouteAdapter_(
+    "google-finance-fx",
+    hf_executeGoogleFinanceFxRouteBatch_,
+  ),
+  "isin-ariva": hf_createIsinResolverRouteAdapter_(
+    "isin-ariva",
+    function (quote, context) {
+      return hf_resolveArivaIsin_(quote, context);
+    },
+  ),
+  "isin-direct": hf_createRouteAdapter_(
+    "isin-direct",
+    hf_executeDirectIsinRouteBatch_,
+  ),
+  "isin-ibkr": hf_createIsinResolverRouteAdapter_(
+    "isin-ibkr",
+    function (quote, context) {
+      return hf_resolveIbkrIsin_(quote, context);
+    },
+  ),
+  "isin-lon": hf_createIsinResolverRouteAdapter_(
+    "isin-lon",
+    function (quote, context) {
+      return hf_resolveLonIsin_(quote, context);
+    },
+  ),
+  "isin-pse": hf_createIsinResolverRouteAdapter_(
+    "isin-pse",
+    function (quote, context) {
+      return hf_resolvePseIsin_(quote, context);
+    },
+  ),
+  "isin-tradingview": hf_createIsinResolverRouteAdapter_(
+    "isin-tradingview",
+    function (quote, context) {
+      return hf_resolveTradingviewIsin_(quote, context);
+    },
+  ),
   "local-fx": hf_createRouteAdapter_("local-fx", hf_executeLocalFxRouteBatch_),
-  "pse-isin-map": hf_createRouteAdapter_("pse-isin-map", hf_executePseIsinMapRouteBatch_),
-  "pse-quote": hf_createRouteAdapter_("pse-quote", hf_executePseQuoteRouteBatch_),
-  "tradingview-fund": hf_createRouteAdapter_("tradingview-fund", hf_executeTradingviewFundRouteBatch_),
-  "yahoo-chart": hf_createRouteAdapter_("yahoo-chart", hf_executeYahooChartRouteBatch_),
-  "yahoo-isin-search": hf_createRouteAdapter_("yahoo-isin-search", hf_executeYahooIsinRouteBatch_),
+  "pse-isin-map": hf_createRouteAdapter_(
+    "pse-isin-map",
+    hf_executePseIsinMapRouteBatch_,
+  ),
+  "pse-quote": hf_createRouteAdapter_(
+    "pse-quote",
+    hf_executePseQuoteRouteBatch_,
+  ),
+  "tradingview-fund": hf_createRouteAdapter_(
+    "tradingview-fund",
+    hf_executeTradingviewFundRouteBatch_,
+  ),
+  "yahoo-chart": hf_createRouteAdapter_(
+    "yahoo-chart",
+    hf_executeYahooChartRouteBatch_,
+  ),
+  "yahoo-isin-search": hf_createRouteAdapter_(
+    "yahoo-isin-search",
+    hf_executeYahooIsinRouteBatch_,
+  ),
 };
 
 function hf_getCurrentRouteAttempt_(job) {
-  if (!job || !job.routeAttempts || job.routeIndex == null || job.routeIndex < 0 || job.routeIndex >= job.routeAttempts.length) {
+  if (
+    !job ||
+    !job.routeAttempts ||
+    job.routeIndex == null ||
+    job.routeIndex < 0 ||
+    job.routeIndex >= job.routeAttempts.length
+  ) {
     return null;
   }
 
@@ -2568,12 +3076,20 @@ function hf_mergeRouteState_(job, stateChanges) {
 }
 
 function hf_defaultRouteFailureMessage_(job) {
-  return job && job.routeKind === "isin" ? "ISIN lookup failed." : "Quote lookup failed.";
+  return job && job.routeKind === "isin"
+    ? "ISIN lookup failed."
+    : "Quote lookup failed.";
 }
 
 function hf_applyRouteResult_(job, attempt, result) {
-  const normalizedResult = result || hf_createRouteResult_("terminal_error", { error: "Route adapter returned no result." });
-  const errorMessage = normalizedResult.error ? hf_errorMessage_(normalizedResult.error) : "";
+  const normalizedResult =
+    result ||
+    hf_createRouteResult_("terminal_error", {
+      error: "Route adapter returned no result.",
+    });
+  const errorMessage = normalizedResult.error
+    ? hf_errorMessage_(normalizedResult.error)
+    : "";
 
   if (!job.routeRuntimeTrace) {
     job.routeRuntimeTrace = [];
@@ -2602,7 +3118,9 @@ function hf_applyRouteResult_(job, attempt, result) {
   }
 
   if (normalizedResult.status === "pivot") {
-    job.routeAttempts = hf_cloneRouteAttempts_(normalizedResult.nextAttempts || []);
+    job.routeAttempts = hf_cloneRouteAttempts_(
+      normalizedResult.nextAttempts || [],
+    );
     job.routeIndex = 0;
     return;
   }
@@ -2621,7 +3139,10 @@ function hf_applyRouteResult_(job, attempt, result) {
     job.routeIndex += 1;
 
     if (job.routeIndex >= job.routeAttempts.length) {
-      job.error = job.routeLastLookupFailure || errorMessage || hf_defaultRouteFailureMessage_(job);
+      job.error =
+        job.routeLastLookupFailure ||
+        errorMessage ||
+        hf_defaultRouteFailureMessage_(job);
     }
 
     return;
@@ -2668,7 +3189,8 @@ function hf_executeRouteJobs_(orderedJobs) {
 
       if (!attempt) {
         if (!job.error) {
-          job.error = job.routeLastLookupFailure || hf_defaultRouteFailureMessage_(job);
+          job.error =
+            job.routeLastLookupFailure || hf_defaultRouteFailureMessage_(job);
         }
         continue;
       }
@@ -2693,13 +3215,21 @@ function hf_executeRouteJobs_(orderedJobs) {
     }
 
     for (i = 0; i < groupOrder.length; i += 1) {
-      results = groupsByKey[groupOrder[i]].adapter.executeBatch(groupsByKey[groupOrder[i]].jobs);
+      results = groupsByKey[groupOrder[i]].adapter.executeBatch(
+        groupsByKey[groupOrder[i]].jobs,
+      );
 
-      for (resultIndex = 0; resultIndex < groupsByKey[groupOrder[i]].jobs.length; resultIndex += 1) {
+      for (
+        resultIndex = 0;
+        resultIndex < groupsByKey[groupOrder[i]].jobs.length;
+        resultIndex += 1
+      ) {
         hf_applyRouteResult_(
           groupsByKey[groupOrder[i]].jobs[resultIndex],
-          hf_getCurrentRouteAttempt_(groupsByKey[groupOrder[i]].jobs[resultIndex]),
-          results[resultIndex]
+          hf_getCurrentRouteAttempt_(
+            groupsByKey[groupOrder[i]].jobs[resultIndex],
+          ),
+          results[resultIndex],
         );
       }
     }
@@ -2712,9 +3242,11 @@ function hf_executeLocalFxRouteBatch_(jobs) {
 
   for (i = 0; i < jobs.length; i += 1) {
     try {
-      results.push(hf_createRouteResult_("success", {
-        quote: hf_buildSameCurrencyQuote_(jobs[i].routeState.fxPair),
-      }));
+      results.push(
+        hf_createRouteResult_("success", {
+          quote: hf_buildSameCurrencyQuote_(jobs[i].routeState.fxPair),
+        }),
+      );
     } catch (error) {
       results.push(hf_createRouteResult_("terminal_error", { error: error }));
     }
@@ -2729,9 +3261,11 @@ function hf_executeGoogleFinanceFxRouteBatch_(jobs) {
 
   for (i = 0; i < jobs.length; i += 1) {
     try {
-      results.push(hf_createRouteResult_("success", {
-        quote: hf_fetchGoogleFinanceFxPairQuote_(jobs[i].routeState.fxPair),
-      }));
+      results.push(
+        hf_createRouteResult_("success", {
+          quote: hf_fetchGoogleFinanceFxPairQuote_(jobs[i].routeState.fxPair),
+        }),
+      );
     } catch (error) {
       results.push(hf_createRouteResult_("terminal_error", { error: error }));
     }
@@ -2755,11 +3289,16 @@ function hf_executePseIsinMapRouteBatch_(jobs) {
         continue;
       }
 
-      nextRoute = hf_buildQuoteAttemptsForResolvedIdentifier_(pseTicker, "default");
-      results.push(hf_createRouteResult_("pivot", {
-        nextAttempts: nextRoute.nextAttempts,
-        stateChanges: nextRoute.stateChanges,
-      }));
+      nextRoute = hf_buildQuoteAttemptsForResolvedIdentifier_(
+        pseTicker,
+        "default",
+      );
+      results.push(
+        hf_createRouteResult_("pivot", {
+          nextAttempts: nextRoute.nextAttempts,
+          stateChanges: nextRoute.stateChanges,
+        }),
+      );
     } catch (error) {
       results.push(hf_createRouteResult_("terminal_error", { error: error }));
     }
@@ -2769,7 +3308,9 @@ function hf_executePseIsinMapRouteBatch_(jobs) {
 }
 
 function hf_executeYahooIsinRouteBatch_(jobs) {
-  const results = jobs.map(function () { return null; });
+  const results = jobs.map(function () {
+    return null;
+  });
   const requests = [];
   let i;
   let cacheKey;
@@ -2784,7 +3325,7 @@ function hf_executeYahooIsinRouteBatch_(jobs) {
     if (cached) {
       routeInfo = hf_buildQuoteAttemptsForResolvedIdentifier_(
         cached,
-        hf_getCurrentRouteAttempt_(jobs[i]).resolvedSymbolMode
+        hf_getCurrentRouteAttempt_(jobs[i]).resolvedSymbolMode,
       );
       results[i] = hf_createRouteResult_("pivot", {
         nextAttempts: routeInfo.nextAttempts,
@@ -2805,30 +3346,37 @@ function hf_executeYahooIsinRouteBatch_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_("lookup_failure", {
-        error: responses[i].error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "lookup_failure",
+        {
+          error: responses[i].error,
+        },
+      );
       continue;
     }
 
     try {
       cached = hf_extractYahooSymbolFromSearchResponse_(
         responses[i].response,
-        responses[i].request.isin
+        responses[i].request.isin,
       );
       hf_putCachedString_(responses[i].request.cacheKey, cached, 21600);
       routeInfo = hf_buildQuoteAttemptsForResolvedIdentifier_(
         cached,
-        hf_getCurrentRouteAttempt_(jobs[responses[i].request.index]).resolvedSymbolMode
+        hf_getCurrentRouteAttempt_(jobs[responses[i].request.index])
+          .resolvedSymbolMode,
       );
       results[responses[i].request.index] = hf_createRouteResult_("pivot", {
         nextAttempts: routeInfo.nextAttempts,
         stateChanges: routeInfo.stateChanges,
       });
     } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_("lookup_failure", {
-        error: error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "lookup_failure",
+        {
+          error: error,
+        },
+      );
     }
   }
 
@@ -2836,7 +3384,9 @@ function hf_executeYahooIsinRouteBatch_(jobs) {
 }
 
 function hf_executeYahooChartRouteBatch_(jobs) {
-  const results = jobs.map(function () { return null; });
+  const results = jobs.map(function () {
+    return null;
+  });
   const requests = [];
   let i;
   let cacheKey;
@@ -2875,14 +3425,14 @@ function hf_executeYahooChartRouteBatch_(jobs) {
         quote = hf_decorateFxQuote_(
           hf_extractYahooQuoteMetaFromResponse_(
             responses[i].response,
-            jobs[responses[i].request.index].tickerInput
+            jobs[responses[i].request.index].tickerInput,
           ),
-          jobs[responses[i].request.index].routeState.fxPair
+          jobs[responses[i].request.index].routeState.fxPair,
         );
         hf_putCachedJson_(
           responses[i].request.cacheKey,
           hf_extractRawQuote_(quote),
-          60
+          60,
         );
         results[responses[i].request.index] = hf_createRouteResult_("success", {
           quote: quote,
@@ -2893,20 +3443,42 @@ function hf_executeYahooChartRouteBatch_(jobs) {
       }
     }
 
-    if (attempt && attempt.allowTradingviewFallback &&
-      hf_shouldUseIsraeliFundTradingviewFallback_(jobs[responses[i].request.index], error)) {
-      results[responses[i].request.index] = hf_createRouteResult_("lookup_failure", {
-        error: error,
-        nextAttempts: [hf_createRouteAttempt_("tradingview-fund", "TRADINGVIEW")],
-      });
-    } else if (error && /No quote data was found|Quote lookup failed/i.test(hf_errorMessage_(error))) {
-      results[responses[i].request.index] = hf_createRouteResult_("lookup_failure", {
-        error: error,
-      });
+    if (
+      attempt &&
+      attempt.allowTradingviewFallback &&
+      hf_shouldUseIsraeliFundTradingviewFallback_(
+        jobs[responses[i].request.index],
+        error,
+      )
+    ) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "lookup_failure",
+        {
+          error: error,
+          nextAttempts: [
+            hf_createRouteAttempt_("tradingview-fund", "TRADINGVIEW"),
+          ],
+        },
+      );
+    } else if (
+      error &&
+      /No quote data was found|Quote lookup failed/i.test(
+        hf_errorMessage_(error),
+      )
+    ) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "lookup_failure",
+        {
+          error: error,
+        },
+      );
     } else {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: error,
+        },
+      );
     }
   }
 
@@ -2914,7 +3486,9 @@ function hf_executeYahooChartRouteBatch_(jobs) {
 }
 
 function hf_executeTradingviewFundRouteBatch_(jobs) {
-  const results = jobs.map(function () { return null; });
+  const results = jobs.map(function () {
+    return null;
+  });
   const requests = [];
   let i;
   let fallbackInfo;
@@ -2925,7 +3499,10 @@ function hf_executeTradingviewFundRouteBatch_(jobs) {
   let quote;
 
   for (i = 0; i < jobs.length; i += 1) {
-    fallbackInfo = hf_buildIsraeliFundTradingviewFallbackInfo_(jobs[i].tickerInput, jobs[i].routeState.yahooSymbol);
+    fallbackInfo = hf_buildIsraeliFundTradingviewFallbackInfo_(
+      jobs[i].tickerInput,
+      jobs[i].routeState.yahooSymbol,
+    );
     cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
     primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
     cached = hf_getCachedJson_(cacheKey);
@@ -2952,9 +3529,12 @@ function hf_executeTradingviewFundRouteBatch_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: responses[i].error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: responses[i].error,
+        },
+      );
       continue;
     }
 
@@ -2962,7 +3542,7 @@ function hf_executeTradingviewFundRouteBatch_(jobs) {
       quote = hf_extractTradingviewFundQuoteFromResponse_(
         responses[i].response,
         responses[i].request.yahooSymbol,
-        responses[i].request.expectedSymbol
+        responses[i].request.expectedSymbol,
       );
       hf_putCachedJson_(responses[i].request.cacheKey, quote, 60);
       hf_putCachedJson_(responses[i].request.primaryCacheKey, quote, 60);
@@ -2970,9 +3550,12 @@ function hf_executeTradingviewFundRouteBatch_(jobs) {
         quote: quote,
       });
     } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: error,
+        },
+      );
     }
   }
 
@@ -2980,7 +3563,9 @@ function hf_executeTradingviewFundRouteBatch_(jobs) {
 }
 
 function hf_executePseQuoteRouteBatch_(jobs) {
-  const results = jobs.map(function () { return null; });
+  const results = jobs.map(function () {
+    return null;
+  });
   const searchRequests = [];
   const stockRequests = [];
   let i;
@@ -3020,7 +3605,9 @@ function hf_executePseQuoteRouteBatch_(jobs) {
 
     searchRequests.push({
       index: i,
-      url: HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(jobs[i].routeState.symbol),
+      url:
+        HOODLEFINANCE_PSE_SEARCH_URL_ +
+        encodeURIComponent(jobs[i].routeState.symbol),
     });
   }
 
@@ -3028,32 +3615,44 @@ function hf_executePseQuoteRouteBatch_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: hf_buildPseUnavailableError_(
-          responses[i].error && responses[i].error.message ? responses[i].error.message : responses[i].error
-        ),
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: hf_buildPseUnavailableError_(
+            responses[i].error && responses[i].error.message
+              ? responses[i].error.message
+              : responses[i].error,
+          ),
+        },
+      );
       continue;
     }
 
     if (responses[i].response.getResponseCode() !== 200) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: hf_buildPseUnavailableError_(
-          hf_buildPseHttpErrorMessage_(responses[i].response.getResponseCode())
-        ),
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: hf_buildPseUnavailableError_(
+            hf_buildPseHttpErrorMessage_(
+              responses[i].response.getResponseCode(),
+            ),
+          ),
+        },
+      );
       continue;
     }
 
     try {
       listing = hf_resolvePseListingFromHtml_(
         responses[i].response.getContentText(),
-        jobs[responses[i].request.index].routeState.symbol
+        jobs[responses[i].request.index].routeState.symbol,
       );
       hf_cachePseListing_(listing);
       jobs[responses[i].request.index].routeState.listing = listing;
       stockRequests.push({
-        cacheKey: "hoodlefinance:pse:" + jobs[responses[i].request.index].routeState.symbol,
+        cacheKey:
+          "hoodlefinance:pse:" +
+          jobs[responses[i].request.index].routeState.symbol,
         index: responses[i].request.index,
         url:
           HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
@@ -3063,9 +3662,12 @@ function hf_executePseQuoteRouteBatch_(jobs) {
           encodeURIComponent(listing.securityId),
       });
     } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: error,
+        },
+      );
     }
   }
 
@@ -3073,31 +3675,45 @@ function hf_executePseQuoteRouteBatch_(jobs) {
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: hf_buildPseUnavailableError_(
-          responses[i].error && responses[i].error.message ? responses[i].error.message : responses[i].error
-        ),
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: hf_buildPseUnavailableError_(
+            responses[i].error && responses[i].error.message
+              ? responses[i].error.message
+              : responses[i].error,
+          ),
+        },
+      );
       continue;
     }
 
     if (responses[i].response.getResponseCode() !== 200) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: hf_buildPseUnavailableError_(
-          hf_buildPseHttpErrorMessage_(responses[i].response.getResponseCode())
-        ),
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: hf_buildPseUnavailableError_(
+            hf_buildPseHttpErrorMessage_(
+              responses[i].response.getResponseCode(),
+            ),
+          ),
+        },
+      );
       continue;
     }
 
     try {
       quote = hf_extractPseQuote_(
         responses[i].response.getContentText(),
-        jobs[responses[i].request.index].routeState.listing
+        jobs[responses[i].request.index].routeState.listing,
       );
 
       if (!quote || !quote.symbol) {
-        throw new Error("No PSE quote data was found for " + jobs[responses[i].request.index].tickerInput + ".");
+        throw new Error(
+          "No PSE quote data was found for " +
+            jobs[responses[i].request.index].tickerInput +
+            ".",
+        );
       }
 
       hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
@@ -3105,9 +3721,12 @@ function hf_executePseQuoteRouteBatch_(jobs) {
         quote: quote,
       });
     } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_("terminal_error", {
-        error: error,
-      });
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: error,
+        },
+      );
     }
   }
 
@@ -3119,9 +3738,13 @@ function hf_executeDirectIsinRouteBatch_(jobs) {
   const results = [];
 
   for (i = 0; i < jobs.length; i += 1) {
-    results.push(hf_createRouteResult_("success", {
-      value: String(jobs[i].routeState.isin || "").trim().toUpperCase(),
-    }));
+    results.push(
+      hf_createRouteResult_("success", {
+        value: String(jobs[i].routeState.isin || "")
+          .trim()
+          .toUpperCase(),
+      }),
+    );
   }
 
   return results;
@@ -3133,9 +3756,11 @@ function hf_executeIsinResolverRouteBatch_(jobs, resolver) {
 
   for (i = 0; i < jobs.length; i += 1) {
     try {
-      results.push(hf_createRouteResult_("success", {
-        value: resolver(jobs[i].sourceQuote, jobs[i].routeContext),
-      }));
+      results.push(
+        hf_createRouteResult_("success", {
+          value: resolver(jobs[i].sourceQuote, jobs[i].routeContext),
+        }),
+      );
     } catch (error) {
       results.push(hf_createRouteResult_("terminal_error", { error: error }));
     }
@@ -3167,13 +3792,18 @@ function hf_resolvePrefetchedTickerJobs_(jobs) {
         outputCurrencyCache: outputCurrencyCache,
         plan: jobs.orderedJobs[i].plan,
         tickerInput: jobs.orderedJobs[i].tickerInput,
-      }
+      },
     );
     jobs.orderedJobs[i].valueResolved = true;
   }
 }
 
-function hf_buildTickerResultGrid_(tickerGrid, jobByKey, attribute, allowImplicitBlankTickers) {
+function hf_buildTickerResultGrid_(
+  tickerGrid,
+  jobByKey,
+  attribute,
+  allowImplicitBlankTickers,
+) {
   const resultGrid = [];
   let rowIndex;
   let columnIndex;
@@ -3185,9 +3815,16 @@ function hf_buildTickerResultGrid_(tickerGrid, jobByKey, attribute, allowImplici
   for (rowIndex = 0; rowIndex < tickerGrid.length; rowIndex += 1) {
     row = [];
 
-    for (columnIndex = 0; columnIndex < tickerGrid[rowIndex].length; columnIndex += 1) {
+    for (
+      columnIndex = 0;
+      columnIndex < tickerGrid[rowIndex].length;
+      columnIndex += 1
+    ) {
       value = tickerGrid[rowIndex][columnIndex];
-      normalizedTicker = hf_normalizeTickerGridCellValue_(value, allowImplicitBlankTickers);
+      normalizedTicker = hf_normalizeTickerGridCellValue_(
+        value,
+        allowImplicitBlankTickers,
+      );
 
       if (!normalizedTicker) {
         row.push("");
@@ -3205,13 +3842,19 @@ function hf_buildTickerResultGrid_(tickerGrid, jobByKey, attribute, allowImplici
 }
 
 function hf_isPseTicker_(ticker) {
-  return String(hf_stripTickerSourceOverride_(ticker) || "").trim().toUpperCase().indexOf("PSE:") === 0;
+  return (
+    String(hf_stripTickerSourceOverride_(ticker) || "")
+      .trim()
+      .toUpperCase()
+      .indexOf("PSE:") === 0
+  );
 }
 
 function hf_parsePseSymbol_(ticker) {
   const value = String(hf_stripTickerSourceOverride_(ticker) || "").trim();
   const parts = value.split(":");
-  const symbol = parts.length > 1 ? parts.slice(1).join(":").trim().toUpperCase() : "";
+  const symbol =
+    parts.length > 1 ? parts.slice(1).join(":").trim().toUpperCase() : "";
 
   if (!symbol) {
     throw new Error('PSE ticker "' + ticker + '" is invalid.');
@@ -3259,9 +3902,12 @@ function hf_decorateFxQuote_(quote, fxPair) {
 }
 
 function hf_extractRawQuote_(quote) {
-  if (!quote || (quote.hoodlefinanceFxDisplayCurrency == null &&
-    quote.hoodlefinanceFxGoogleSymbol == null &&
-    quote.hoodlefinanceFxUnitScale == null)) {
+  if (
+    !quote ||
+    (quote.hoodlefinanceFxDisplayCurrency == null &&
+      quote.hoodlefinanceFxGoogleSymbol == null &&
+      quote.hoodlefinanceFxUnitScale == null)
+  ) {
     return quote;
   }
 
@@ -3276,37 +3922,48 @@ function hf_extractRawQuote_(quote) {
 
 function hf_extractAttribute_(quote, attribute, context) {
   const attributeRequest = hf_parseAttributeRequest_(attribute);
-  const extractor = HOODLEFINANCE_SUPPORTED_ATTRIBUTES_[attributeRequest.baseAttribute];
+  const extractor =
+    HOODLEFINANCE_SUPPORTED_ATTRIBUTES_[attributeRequest.baseAttribute];
   const normalizedContext = context || {};
   let value;
 
   if (!extractor) {
     throw new Error(
       'Unsupported attribute "' +
-      attribute +
-      '". Supported attributes: ' +
-      hf_formatPublicAttributes_()
+        attribute +
+        '". Supported attributes: ' +
+        hf_formatPublicAttributes_(),
     );
   }
 
   if (attributeRequest.wantsOutputCurrency) {
     if (attributeRequest.baseAttribute === "currency") {
-      throw new Error('Attribute "currency" does not support output-currency conversion.');
+      throw new Error(
+        'Attribute "currency" does not support output-currency conversion.',
+      );
     }
 
-    if (!HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_[attributeRequest.baseAttribute]) {
+    if (
+      !HOODLEFINANCE_OUTPUT_CONVERTIBLE_ATTRIBUTES_[
+        attributeRequest.baseAttribute
+      ]
+    ) {
       throw new Error(
         'Attribute "' +
-        attributeRequest.baseAttribute +
-        '" does not support output-currency conversion. Supported attribute is: price.'
+          attributeRequest.baseAttribute +
+          '" does not support output-currency conversion. Supported attribute is: price.',
       );
     }
   }
 
-  if (HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_[attributeRequest.baseAttribute] &&
-    hf_isFxContext_(quote, normalizedContext)) {
+  if (
+    HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_[attributeRequest.baseAttribute] &&
+    hf_isFxContext_(quote, normalizedContext)
+  ) {
     throw new Error(
-      'Attribute "' + attributeRequest.baseAttribute + '" is not available for currency-pair identifiers.'
+      'Attribute "' +
+        attributeRequest.baseAttribute +
+        '" is not available for currency-pair identifiers.',
     );
   }
 
@@ -3316,7 +3973,12 @@ function hf_extractAttribute_(quote, attribute, context) {
     return value;
   }
 
-  return hf_convertAttributeValueToOutputCurrency_(quote, value, attributeRequest, normalizedContext);
+  return hf_convertAttributeValueToOutputCurrency_(
+    quote,
+    value,
+    attributeRequest,
+    normalizedContext,
+  );
 }
 
 function hf_hasValue_(value) {
@@ -3368,7 +4030,10 @@ function hf_normalizeCurrency_(currency) {
 function hf_normalizeMoney_(quote, value) {
   const rawCurrency = quote.currency || quote.financialCurrency || "";
   const normalizedCurrency = hf_normalizeCurrency_(rawCurrency);
-  const fxScale = quote && quote.hoodlefinanceFxUnitScale != null ? Number(quote.hoodlefinanceFxUnitScale) : null;
+  const fxScale =
+    quote && quote.hoodlefinanceFxUnitScale != null
+      ? Number(quote.hoodlefinanceFxUnitScale)
+      : null;
 
   if (value == null) {
     throw new Error("No value is available for this ticker.");
@@ -3378,8 +4043,10 @@ function hf_normalizeMoney_(quote, value) {
     return value * fxScale;
   }
 
-  return (normalizedCurrency === "GBP" && (quote.currency === "GBp" || quote.financialCurrency === "GBp")) ||
-    (normalizedCurrency === "ILS" && (quote.currency === "ILA" || quote.financialCurrency === "ILA"))
+  return (normalizedCurrency === "GBP" &&
+    (quote.currency === "GBp" || quote.financialCurrency === "GBp")) ||
+    (normalizedCurrency === "ILS" &&
+      (quote.currency === "ILA" || quote.financialCurrency === "ILA"))
     ? value / 100
     : value;
 }
@@ -3392,7 +4059,12 @@ function hf_resolveOutputCurrencyUnit_(outputCurrencyCache, code) {
     return hf_resolveCurrencyUnit_(code);
   }
 
-  if (Object.prototype.hasOwnProperty.call(outputCurrencyCache.unitByCode, cacheKey)) {
+  if (
+    Object.prototype.hasOwnProperty.call(
+      outputCurrencyCache.unitByCode,
+      cacheKey,
+    )
+  ) {
     return outputCurrencyCache.unitByCode[cacheKey];
   }
 
@@ -3401,11 +4073,23 @@ function hf_resolveOutputCurrencyUnit_(outputCurrencyCache, code) {
   return unit;
 }
 
-function hf_convertAttributeValueToOutputCurrency_(quote, value, attributeRequest, context) {
-  const outputCurrencyCache = context && context.outputCurrencyCache ? context.outputCurrencyCache : null;
+function hf_convertAttributeValueToOutputCurrency_(
+  quote,
+  value,
+  attributeRequest,
+  context,
+) {
+  const outputCurrencyCache =
+    context && context.outputCurrencyCache ? context.outputCurrencyCache : null;
   const sourceCurrency = hf_extractCurrencyValue_(quote);
-  const sourceUnit = hf_resolveOutputCurrencyUnit_(outputCurrencyCache, sourceCurrency);
-  const targetUnit = hf_resolveOutputCurrencyUnit_(outputCurrencyCache, attributeRequest.outputCode);
+  const sourceUnit = hf_resolveOutputCurrencyUnit_(
+    outputCurrencyCache,
+    sourceCurrency,
+  );
+  const targetUnit = hf_resolveOutputCurrencyUnit_(
+    outputCurrencyCache,
+    attributeRequest.outputCode,
+  );
   const plan = context && context.plan ? context.plan : null;
   let cacheKey;
   let fxPair;
@@ -3413,19 +4097,31 @@ function hf_convertAttributeValueToOutputCurrency_(quote, value, attributeReques
   let conversionRate;
 
   if (plan && plan.routeState && plan.routeState.fxPair) {
-    throw new Error("Output-currency conversion is not supported for currency-pair identifiers.");
+    throw new Error(
+      "Output-currency conversion is not supported for currency-pair identifiers.",
+    );
   }
 
   if (!sourceCurrency) {
-    throw new Error('No quote currency is available for output-currency conversion on "' + attributeRequest.rawAttribute + '".');
+    throw new Error(
+      'No quote currency is available for output-currency conversion on "' +
+        attributeRequest.rawAttribute +
+        '".',
+    );
   }
 
   if (!sourceUnit) {
-    throw new Error('Quote currency "' + sourceCurrency + '" is not supported for output-currency conversion.');
+    throw new Error(
+      'Quote currency "' +
+        sourceCurrency +
+        '" is not supported for output-currency conversion.',
+    );
   }
 
   if (!targetUnit) {
-    throw new Error('Output currency "' + attributeRequest.outputCode + '" is not supported.');
+    throw new Error(
+      'Output currency "' + attributeRequest.outputCode + '" is not supported.',
+    );
   }
 
   if (sourceUnit.displayCode === targetUnit.displayCode) {
@@ -3434,7 +4130,13 @@ function hf_convertAttributeValueToOutputCurrency_(quote, value, attributeReques
 
   cacheKey = sourceUnit.displayCode + "->" + targetUnit.displayCode;
 
-  if (outputCurrencyCache && Object.prototype.hasOwnProperty.call(outputCurrencyCache.conversionRateByPair, cacheKey)) {
+  if (
+    outputCurrencyCache &&
+    Object.prototype.hasOwnProperty.call(
+      outputCurrencyCache.conversionRateByPair,
+      cacheKey,
+    )
+  ) {
     return value * outputCurrencyCache.conversionRateByPair[cacheKey];
   }
 
@@ -3445,15 +4147,18 @@ function hf_convertAttributeValueToOutputCurrency_(quote, value, attributeReques
   } else {
     try {
       conversionQuote = hf_fetchQuote_(fxPair.googleSymbol);
-      conversionRate = hf_normalizeMoney_(conversionQuote, hf_pickPrice_(conversionQuote));
+      conversionRate = hf_normalizeMoney_(
+        conversionQuote,
+        hf_pickPrice_(conversionQuote),
+      );
     } catch (error) {
       throw new Error(
         'Output-currency conversion from "' +
-        sourceUnit.displayCode +
-        '" to "' +
-        targetUnit.displayCode +
-        '" is unavailable. ' +
-        hf_errorMessage_(error)
+          sourceUnit.displayCode +
+          '" to "' +
+          targetUnit.displayCode +
+          '" is unavailable. ' +
+          hf_errorMessage_(error),
       );
     }
   }
@@ -3466,9 +4171,10 @@ function hf_convertAttributeValueToOutputCurrency_(quote, value, attributeReques
 }
 
 function hf_shouldUseIsraeliFundTradingviewFallback_(job, error) {
-  const yahooSymbol = job && job.routeState && job.routeState.yahooSymbol
-    ? String(job.routeState.yahooSymbol).trim().toUpperCase()
-    : "";
+  const yahooSymbol =
+    job && job.routeState && job.routeState.yahooSymbol
+      ? String(job.routeState.yahooSymbol).trim().toUpperCase()
+      : "";
   const message = hf_errorMessage_(error);
 
   if (!hf_looksLikeIsraeliFundYahooSymbol_(yahooSymbol)) {
@@ -3479,7 +4185,9 @@ function hf_shouldUseIsraeliFundTradingviewFallback_(job, error) {
 }
 
 function hf_buildIsraeliFundTradingviewFallbackInfo_(tickerInput, yahooSymbol) {
-  const normalizedYahooSymbol = String(yahooSymbol || "").trim().toUpperCase();
+  const normalizedYahooSymbol = String(yahooSymbol || "")
+    .trim()
+    .toUpperCase();
   const code = normalizedYahooSymbol.replace(/\.TA$/i, "");
 
   return {
@@ -3490,24 +4198,32 @@ function hf_buildIsraeliFundTradingviewFallbackInfo_(tickerInput, yahooSymbol) {
 }
 
 function hf_resolvePseListing_(symbol) {
-  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
 
   return hf_resolveCachedJson_(
     hf_buildPseListingCacheKey_(normalizedSymbol),
     HOODLEFINANCE_PSE_LISTING_CACHE_TTL_SECONDS_,
     function () {
-      const html = hf_fetchPseText_(HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol));
+      const html = hf_fetchPseText_(
+        HOODLEFINANCE_PSE_SEARCH_URL_ + encodeURIComponent(normalizedSymbol),
+      );
 
       return hf_resolvePseListingFromHtml_(html, normalizedSymbol);
     },
     hf_parsePseListingPayload_,
-    hf_serializePseListingPayload_
+    hf_serializePseListingPayload_,
   );
 }
 
 function hf_resolveLonListing_(code) {
-  const normalizedCode = String(code || "").trim().toUpperCase();
-  const html = hf_fetchText_(HOODLEFINANCE_LSE_SEARCH_URL_ + encodeURIComponent(normalizedCode));
+  const normalizedCode = String(code || "")
+    .trim()
+    .toUpperCase();
+  const html = hf_fetchText_(
+    HOODLEFINANCE_LSE_SEARCH_URL_ + encodeURIComponent(normalizedCode),
+  );
   const listings = hf_extractLonListings_(html);
   let i;
 
@@ -3522,7 +4238,8 @@ function hf_resolveLonListing_(code) {
 
 function hf_extractPseListings_(html) {
   const text = String(html || "");
-  const pattern = /<tr>[\s\S]*?cmDetail\('(\d+)','(\d+)'\);return false;">([\s\S]*?)<\/a>[\s\S]*?<td class="alignC"><a[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
+  const pattern =
+    /<tr>[\s\S]*?cmDetail\('(\d+)','(\d+)'\);return false;">([\s\S]*?)<\/a>[\s\S]*?<td class="alignC"><a[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
   const listings = [];
   let match;
 
@@ -3543,8 +4260,8 @@ function hf_buildPseUnavailableError_(detail) {
 
   return new Error(
     "The PSE data source is currently unavailable" +
-    (normalizedDetail ? " (" + normalizedDetail + ")" : "") +
-    ". Please try again later."
+      (normalizedDetail ? " (" + normalizedDetail + ")" : "") +
+      ". Please try again later.",
   );
 }
 
@@ -3564,12 +4281,14 @@ function hf_fetchPseText_(url) {
   try {
     response = UrlFetchApp.fetch(url, hf_buildFetchOptions_());
   } catch (error) {
-    throw hf_buildPseUnavailableError_(error && error.message ? error.message : error);
+    throw hf_buildPseUnavailableError_(
+      error && error.message ? error.message : error,
+    );
   }
 
   if (response.getResponseCode() !== 200) {
     throw hf_buildPseUnavailableError_(
-      hf_buildPseHttpErrorMessage_(response.getResponseCode())
+      hf_buildPseHttpErrorMessage_(response.getResponseCode()),
     );
   }
 
@@ -3578,7 +4297,8 @@ function hf_fetchPseText_(url) {
 
 function hf_extractLonListings_(html) {
   const text = String(html || "");
-  const pattern = /<tr[^>]*>[\s\S]*?<td>\s*([^<]+?)\s*<\/td>[\s\S]*?UpdateOpener\(\s*'(?:[^'\\]|\\.)*'\s*,\s*'([\s\S]*?)'\s*\)\s*;?[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
+  const pattern =
+    /<tr[^>]*>[\s\S]*?<td>\s*([^<]+?)\s*<\/td>[\s\S]*?UpdateOpener\(\s*'(?:[^'\\]|\\.)*'\s*,\s*'([\s\S]*?)'\s*\)\s*;?[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
   const listings = [];
   let match;
 
@@ -3624,20 +4344,29 @@ function hf_extractLonListingPayload_(text) {
 }
 
 function hf_extractPseQuote_(html, listing) {
-  const previousClose = hf_parseNumber_(hf_extractPseField_(html, "Previous Close and Date"));
-  const lastPrice = hf_parseNumber_(hf_extractPseField_(html, "Last Traded Price"));
+  const previousClose = hf_parseNumber_(
+    hf_extractPseField_(html, "Previous Close and Date"),
+  );
+  const lastPrice = hf_parseNumber_(
+    hf_extractPseField_(html, "Last Traded Price"),
+  );
   const changeText = hf_extractPseField_(html, "Change(% Change)");
   const price = lastPrice != null ? lastPrice : previousClose;
   const asOf = hf_extractPseAsOf_(html);
   const change = hf_extractPseChange_(changeText, price, previousClose);
-  const changePercent = hf_extractPseChangePercent_(changeText, change, previousClose);
+  const changePercent = hf_extractPseChangePercent_(
+    changeText,
+    change,
+    previousClose,
+  );
 
   return {
     currency: "PHP",
     exchangeDataDelayedBy: 0,
     financialCurrency: "PHP",
     isin: hf_extractPseField_(html, "ISIN").toUpperCase(),
-    longName: hf_extractPseCompanyName_(html) || (listing && listing.name) || "",
+    longName:
+      hf_extractPseCompanyName_(html) || (listing && listing.name) || "",
     regularMarketChange: change,
     regularMarketChangePercent: changePercent,
     regularMarketDayHigh: hf_parseNumber_(hf_extractPseField_(html, "High")),
@@ -3647,27 +4376,35 @@ function hf_extractPseQuote_(html, listing) {
     regularMarketPrice: price,
     regularMarketTime: asOf ? Math.floor(asOf.getTime() / 1000) : null,
     regularMarketVolume: hf_parseNumber_(hf_extractPseField_(html, "Volume")),
-    shortName: hf_extractPseCompanyName_(html) || (listing && listing.name) || "",
-    symbol: hf_extractPseSelectedSymbol_(html) || (listing && listing.symbol) || "",
+    shortName:
+      hf_extractPseCompanyName_(html) || (listing && listing.name) || "",
+    symbol:
+      hf_extractPseSelectedSymbol_(html) || (listing && listing.symbol) || "",
   };
 }
 
 function hf_extractPseField_(html, label) {
   const pattern = new RegExp(
-    "<th>\\s*" + hf_escapeRegex_(label) + "\\s*<\\/th>[\\s\\S]*?<td[^>]*>([\\s\\S]*?)<\\/td>",
-    "i"
+    "<th>\\s*" +
+      hf_escapeRegex_(label) +
+      "\\s*<\\/th>[\\s\\S]*?<td[^>]*>([\\s\\S]*?)<\\/td>",
+    "i",
   );
   const match = String(html || "").match(pattern);
   return match ? hf_cleanHtmlText_(match[1]) : "";
 }
 
 function hf_extractPseCompanyName_(html) {
-  const match = String(html || "").match(/<div class="compInfo">[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i);
+  const match = String(html || "").match(
+    /<div class="compInfo">[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i,
+  );
   return match ? hf_cleanHtmlText_(match[1]) : "";
 }
 
 function hf_extractPseSelectedSymbol_(html) {
-  const match = String(html || "").match(/<option value="[^"]+" selected>([\s\S]*?)<\/option>/i);
+  const match = String(html || "").match(
+    /<option value="[^"]+" selected>([\s\S]*?)<\/option>/i,
+  );
   return match ? hf_cleanHtmlText_(match[1]).toUpperCase() : "";
 }
 
@@ -3718,14 +4455,16 @@ function hf_decodeHtmlEntities_(text) {
   return String(text || "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, "\"")
+    .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">");
 }
 
 function hf_parseNumber_(text) {
-  const match = String(text || "").replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  const match = String(text || "")
+    .replace(/,/g, "")
+    .match(/-?\d+(?:\.\d+)?/);
   return match ? Number(match[0]) : null;
 }
 
@@ -3735,7 +4474,10 @@ function hf_escapeRegex_(text) {
 
 function hf_resolveIbkrIsin_(quote, context) {
   const symbol = hf_extractQuoteSymbol_(quote);
-  const preferredExchange = hf_inferIbkrExchange_(context && context.tickerInput, symbol);
+  const preferredExchange = hf_inferIbkrExchange_(
+    context && context.tickerInput,
+    symbol,
+  );
   const resolution = hf_resolveIsinFromIbkrSymbol_(symbol, preferredExchange);
   const ibkrIsin = resolution && resolution.isin ? resolution.isin : "";
 
@@ -3760,9 +4502,14 @@ const HOODLEFINANCE_ISIN_ROUTE_ADAPTER_BY_SOURCE_ = {
 
 function hf_buildIsinRoutePlan_(quote, context) {
   const directIsinInput = hf_extractDirectIsinInput_(context);
-  const sourceOverride = context && context.tickerInput ? hf_extractTickerSourceOverride_(context.tickerInput) : "";
+  const sourceOverride =
+    context && context.tickerInput
+      ? hf_extractTickerSourceOverride_(context.tickerInput)
+      : "";
   const exchange = hf_inferIsinExchange_(quote, context);
-  const source = sourceOverride || (exchange ? HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_[exchange] || "" : "");
+  const source =
+    sourceOverride ||
+    (exchange ? HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_[exchange] || "" : "");
 
   if (directIsinInput) {
     return hf_createSingleAttemptRoutePlan_("DIRECT", "isin-direct", "DIRECT", {
@@ -3780,23 +4527,39 @@ function hf_buildIsinRoutePlan_(quote, context) {
   }
 
   if (!exchange) {
-    throw new Error("Could not determine which market to use for ISIN lookup. Try an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
+    throw new Error(
+      'Could not determine which market to use for ISIN lookup. Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR".',
+    );
   }
 
-  throw new Error("ISIN lookup is not supported yet for exchange \"" + exchange + "\". Try an identifier source override such as \"@TRADINGVIEW\", \"@LON\", \"@PSE\", \"@ARIVA\", or \"@IBKR\".");
+  throw new Error(
+    'ISIN lookup is not supported yet for exchange "' +
+      exchange +
+      '". Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR".',
+  );
 }
 
 function hf_buildIsinPlanForSource_(source) {
-  const normalizedSource = String(source || "").trim().toUpperCase();
-  const adapterId = HOODLEFINANCE_ISIN_ROUTE_ADAPTER_BY_SOURCE_[normalizedSource];
+  const normalizedSource = String(source || "")
+    .trim()
+    .toUpperCase();
+  const adapterId =
+    HOODLEFINANCE_ISIN_ROUTE_ADAPTER_BY_SOURCE_[normalizedSource];
 
   if (adapterId) {
-    return hf_createSingleAttemptRoutePlan_(normalizedSource, adapterId, normalizedSource, {
-      routePath: "",
-    });
+    return hf_createSingleAttemptRoutePlan_(
+      normalizedSource,
+      adapterId,
+      normalizedSource,
+      {
+        routePath: "",
+      },
+    );
   }
 
-  throw new Error('"@' + normalizedSource + '" is not available for ISIN lookups.');
+  throw new Error(
+    '"@' + normalizedSource + '" is not available for ISIN lookups.',
+  );
 }
 
 function hf_resolveDefaultIsin_(quote, context) {
@@ -3816,10 +4579,16 @@ function hf_resolveDefaultIsin_(quote, context) {
 }
 
 function hf_extractDirectIsinInput_(context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim().toUpperCase()
-    : "";
-  const isin = tickerInput.indexOf("ISIN:") === 0 ? tickerInput.slice(5).trim() : tickerInput;
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+          .toUpperCase()
+      : "";
+  const isin =
+    tickerInput.indexOf("ISIN:") === 0
+      ? tickerInput.slice(5).trim()
+      : tickerInput;
 
   return hf_looksLikeIsin_(isin) ? isin : "";
 }
@@ -3834,7 +4603,9 @@ function hf_resolveArivaIsin_(quote, context) {
   }
 
   if (!code) {
-    throw new Error("Could not determine the ticker code needed for ARIVA ISIN lookup.");
+    throw new Error(
+      "Could not determine the ticker code needed for ARIVA ISIN lookup.",
+    );
   }
 
   return hf_resolveCachedString_(cacheKey, 21600, function () {
@@ -3845,7 +4616,9 @@ function hf_resolveArivaIsin_(quote, context) {
     }
 
     if (!listing.hasXetra) {
-      throw new Error('ARIVA did not expose a Xetra listing for "' + code + '".');
+      throw new Error(
+        'ARIVA did not expose a Xetra listing for "' + code + '".',
+      );
     }
 
     return listing.isin;
@@ -3876,7 +4649,9 @@ function hf_resolveLonIsin_(quote, context) {
   }
 
   if (!code) {
-    throw new Error("Could not determine the ticker code needed for LON ISIN lookup.");
+    throw new Error(
+      "Could not determine the ticker code needed for LON ISIN lookup.",
+    );
   }
 
   return hf_resolveCachedString_(cacheKey, 21600, function () {
@@ -3894,33 +4669,55 @@ function hf_resolveTradingviewIsin_(quote, context) {
   const yahooExchange = hf_inferIsinExchange_(quote, context);
   const tradingviewExchange = hf_inferTradingviewExchange_(quote, context);
   const code = hf_extractTradingviewCode_(quote, context);
-  const cacheKey = "hoodlefinance:tradingview:isin:" + tradingviewExchange + ":" + code;
-  const expectedSymbol = tradingviewExchange && code ? tradingviewExchange + ":" + code : "";
+  const cacheKey =
+    "hoodlefinance:tradingview:isin:" + tradingviewExchange + ":" + code;
+  const expectedSymbol =
+    tradingviewExchange && code ? tradingviewExchange + ":" + code : "";
 
   if (!tradingviewExchange) {
     if (yahooExchange) {
-      throw new Error('TradingView cannot be used for ISIN lookup on exchange "' + yahooExchange + '".');
+      throw new Error(
+        'TradingView cannot be used for ISIN lookup on exchange "' +
+          yahooExchange +
+          '".',
+      );
     }
-    throw new Error("Could not determine which market to use for TradingView ISIN lookup.");
+    throw new Error(
+      "Could not determine which market to use for TradingView ISIN lookup.",
+    );
   }
 
   if (!code) {
-    throw new Error("Could not determine the ticker code needed for TradingView ISIN lookup.");
+    throw new Error(
+      "Could not determine the ticker code needed for TradingView ISIN lookup.",
+    );
   }
 
   return hf_resolveCachedString_(cacheKey, 21600, function () {
-    const html = hf_fetchText_(HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ + tradingviewExchange + "-" + code + "/");
+    const html = hf_fetchText_(
+      HOODLEFINANCE_TRADINGVIEW_SYMBOL_URL_ +
+        tradingviewExchange +
+        "-" +
+        code +
+        "/",
+    );
     const resolvedSymbol = hf_extractTradingviewResolvedSymbol_(html);
     const isin = hf_extractTradingviewIsin_(html);
 
     if (resolvedSymbol && resolvedSymbol !== expectedSymbol) {
       throw new Error(
-        'TradingView resolved "' + expectedSymbol + '" to "' + resolvedSymbol + '" instead of an exact symbol match.'
+        'TradingView resolved "' +
+          expectedSymbol +
+          '" to "' +
+          resolvedSymbol +
+          '" instead of an exact symbol match.',
       );
     }
 
     if (!isin) {
-      throw new Error('No TradingView ISIN is available for "' + expectedSymbol + '".');
+      throw new Error(
+        'No TradingView ISIN is available for "' + expectedSymbol + '".',
+      );
     }
 
     return isin;
@@ -3933,46 +4730,67 @@ function hf_extractQuoteSymbol_(quote) {
 
 function hf_extractRawYahooExchangeFromQuote_(quote) {
   const exchangeName = String(
-    (quote && (quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName)) || ""
-  ).trim().toUpperCase();
+    (quote &&
+      (quote.exchangeName ||
+        quote.fullExchangeName ||
+        quote.quoteSourceName)) ||
+      "",
+  )
+    .trim()
+    .toUpperCase();
 
   return exchangeName || "";
 }
 
 function hf_isFxContext_(quote, context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim()
+      : "";
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
 
-  return !!(quote && (quote.hoodlefinanceFxDisplayCurrency != null || quote.hoodlefinanceFxGoogleSymbol)) ||
+  return (
+    !!(
+      quote &&
+      (quote.hoodlefinanceFxDisplayCurrency != null ||
+        quote.hoodlefinanceFxGoogleSymbol)
+    ) ||
     tickerInput.toUpperCase().indexOf("CURRENCY:") === 0 ||
-    /^[A-Z]{6}(=X)?$/.test(resolvedSymbol);
+    /^[A-Z]{6}(=X)?$/.test(resolvedSymbol)
+  );
 }
 
 function hf_isPseContext_(quote, context) {
   const plan = context && context.plan;
   const routeState = plan && plan.routeState ? plan.routeState : null;
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim()
+      : "";
 
   return (
     hf_isPseTicker_(tickerInput) ||
-    hf_isPseTicker_(routeState && routeState.yahooSymbol || "") ||
+    hf_isPseTicker_((routeState && routeState.yahooSymbol) || "") ||
     !!(routeState && routeState.symbol) ||
-    String(quote && quote.exchangeName || "").trim().toUpperCase() === "PSE"
+    String((quote && quote.exchangeName) || "")
+      .trim()
+      .toUpperCase() === "PSE"
   );
 }
 
 function hf_inferYahooExchangeIdentity_(quote, context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim().toUpperCase()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+          .toUpperCase()
+      : "";
   const explicitExchange = hf_extractTickerExchange_(tickerInput);
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
   const rawMetaExchange = hf_extractRawYahooExchangeFromQuote_(quote);
-  const suffixExchange = hf_extractYahooExchangeFromSymbol_(resolvedSymbol || tickerInput);
+  const suffixExchange = hf_extractYahooExchangeFromSymbol_(
+    resolvedSymbol || tickerInput,
+  );
   const mappedMetaExchange = hf_extractYahooExchangeFromQuote_(quote);
 
   if (hf_isFxContext_(quote, context)) {
@@ -3983,7 +4801,10 @@ function hf_inferYahooExchangeIdentity_(quote, context) {
     return "PSE";
   }
 
-  if (rawMetaExchange && HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[rawMetaExchange]) {
+  if (
+    rawMetaExchange &&
+    HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[rawMetaExchange]
+  ) {
     return rawMetaExchange;
   }
 
@@ -4015,7 +4836,8 @@ function hf_resolveGoogleExchange_(quote, context) {
 
   return yahooExchange === "TASE"
     ? "TLV"
-    : (HOODLEFINANCE_PREFIXLESS_EXCHANGES_[yahooExchange] || HOODLEFINANCE_EXCHANGE_SUFFIXES_[yahooExchange])
+    : HOODLEFINANCE_PREFIXLESS_EXCHANGES_[yahooExchange] ||
+        HOODLEFINANCE_EXCHANGE_SUFFIXES_[yahooExchange]
       ? yahooExchange
       : "";
 }
@@ -4023,7 +4845,8 @@ function hf_resolveGoogleExchange_(quote, context) {
 function hf_renderGoogleSymbol_(quote, context) {
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
   const googleExchange = hf_resolveGoogleExchange_(quote, context);
-  const suffix = googleExchange && HOODLEFINANCE_EXCHANGE_SUFFIXES_[googleExchange];
+  const suffix =
+    googleExchange && HOODLEFINANCE_EXCHANGE_SUFFIXES_[googleExchange];
 
   if (hf_isFxContext_(quote, context)) {
     if (quote && quote.hoodlefinanceFxGoogleSymbol) {
@@ -4031,7 +4854,9 @@ function hf_renderGoogleSymbol_(quote, context) {
     }
 
     if (!resolvedSymbol) {
-      throw new Error("No Google-style symbol is available for this instrument.");
+      throw new Error(
+        "No Google-style symbol is available for this instrument.",
+      );
     }
 
     return "CURRENCY:" + resolvedSymbol.replace(/=X$/i, "");
@@ -4039,7 +4864,9 @@ function hf_renderGoogleSymbol_(quote, context) {
 
   if (hf_isPseContext_(quote, context)) {
     if (!resolvedSymbol) {
-      throw new Error("No Google-style symbol is available for this instrument.");
+      throw new Error(
+        "No Google-style symbol is available for this instrument.",
+      );
     }
 
     return "PSE:" + resolvedSymbol;
@@ -4053,7 +4880,10 @@ function hf_renderGoogleSymbol_(quote, context) {
     return googleExchange + ":" + resolvedSymbol;
   }
 
-  if (!suffix || resolvedSymbol.slice(-suffix.length).toUpperCase() !== suffix.toUpperCase()) {
+  if (
+    !suffix ||
+    resolvedSymbol.slice(-suffix.length).toUpperCase() !== suffix.toUpperCase()
+  ) {
     throw new Error("No Google-style symbol is available for this instrument.");
   }
 
@@ -4072,33 +4902,40 @@ function hf_resolveSymbolAttribute_(quote, context, style) {
       return resolvedSymbol.replace(/=X$/i, "") + "=X";
     }
 
-    return hf_isPseContext_(quote, context) ? resolvedSymbol + ".PS" : resolvedSymbol;
+    return hf_isPseContext_(quote, context)
+      ? resolvedSymbol + ".PS"
+      : resolvedSymbol;
   }
 
   return hf_renderGoogleSymbol_(quote, context);
 }
 
 function hf_resolveExchangeAttribute_(quote, context, style) {
-  const exchange = style === "yahoo"
-    ? hf_inferYahooExchangeIdentity_(quote, context)
-    : hf_resolveGoogleExchange_(quote, context);
+  const exchange =
+    style === "yahoo"
+      ? hf_inferYahooExchangeIdentity_(quote, context)
+      : hf_resolveGoogleExchange_(quote, context);
 
   if (!exchange) {
-    throw new Error("No " + (style === "yahoo" ? "Yahoo-style" : "Google-style") + " exchange is available for this instrument.");
+    throw new Error(
+      "No " +
+        (style === "yahoo" ? "Yahoo-style" : "Google-style") +
+        " exchange is available for this instrument.",
+    );
   }
 
   return exchange;
 }
 
 function hf_extractTradingviewCode_(quote, context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim().toUpperCase()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+          .toUpperCase()
+      : "";
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
-  const candidates = [
-    tickerInput,
-    resolvedSymbol,
-  ];
+  const candidates = [tickerInput, resolvedSymbol];
   let i;
   let candidate;
   let parts;
@@ -4113,7 +4950,10 @@ function hf_extractTradingviewCode_(quote, context) {
     if (candidate.indexOf(":") >= 0) {
       parts = candidate.split(":");
       if (parts.length > 1) {
-        return hf_normalizeTradingviewCodeForExchange_(parts[0], parts.slice(1).join(":"));
+        return hf_normalizeTradingviewCodeForExchange_(
+          parts[0],
+          parts.slice(1).join(":"),
+        );
       }
     }
 
@@ -4129,10 +4969,18 @@ function hf_extractTradingviewCode_(quote, context) {
 }
 
 function hf_normalizeTradingviewCodeForExchange_(exchange, code) {
-  const normalizedExchange = String(exchange || "").trim().toUpperCase();
-  const normalizedCode = String(code || "").trim().toUpperCase();
+  const normalizedExchange = String(exchange || "")
+    .trim()
+    .toUpperCase();
+  const normalizedCode = String(code || "")
+    .trim()
+    .toUpperCase();
 
-  if (normalizedExchange === "TLV" || normalizedExchange === "TASE" || /\.TA$/i.test(normalizedCode)) {
+  if (
+    normalizedExchange === "TLV" ||
+    normalizedExchange === "TASE" ||
+    /\.TA$/i.test(normalizedCode)
+  ) {
     return hf_normalizeIsraeliFundCode_(normalizedCode.replace(/\.TA$/i, ""));
   }
 
@@ -4140,14 +4988,14 @@ function hf_normalizeTradingviewCodeForExchange_(exchange, code) {
 }
 
 function hf_extractLonCode_(quote, context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim().toUpperCase()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+          .toUpperCase()
+      : "";
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
-  const candidates = [
-    tickerInput,
-    resolvedSymbol,
-  ];
+  const candidates = [tickerInput, resolvedSymbol];
   let i;
   let candidate;
   let parts;
@@ -4175,18 +5023,20 @@ function hf_extractLonCode_(quote, context) {
 
 function hf_inferTradingviewExchange_(quote, context) {
   const yahooExchange = hf_inferIsinExchange_(quote, context);
-  return yahooExchange ? HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_[yahooExchange] || "" : "";
+  return yahooExchange
+    ? HOODLEFINANCE_TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE_[yahooExchange] || ""
+    : "";
 }
 
 function hf_extractArivaCode_(quote, context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim().toUpperCase()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+          .toUpperCase()
+      : "";
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
-  const candidates = [
-    tickerInput,
-    resolvedSymbol,
-  ];
+  const candidates = [tickerInput, resolvedSymbol];
   let i;
   let candidate;
   let parts;
@@ -4213,12 +5063,17 @@ function hf_extractArivaCode_(quote, context) {
 }
 
 function hf_inferIsinExchange_(quote, context) {
-  const tickerInput = context && context.tickerInput
-    ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "").trim().toUpperCase()
-    : "";
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+          .toUpperCase()
+      : "";
   const explicitExchange = hf_extractTickerExchange_(tickerInput);
   const resolvedSymbol = hf_extractQuoteSymbol_(quote);
-  const suffixExchange = hf_extractYahooExchangeFromSymbol_(resolvedSymbol || tickerInput);
+  const suffixExchange = hf_extractYahooExchangeFromSymbol_(
+    resolvedSymbol || tickerInput,
+  );
   const metaExchange = hf_extractYahooExchangeFromQuote_(quote);
 
   if (hf_isPseTicker_(tickerInput)) {
@@ -4241,7 +5096,9 @@ function hf_inferIsinExchange_(quote, context) {
 }
 
 function hf_extractTickerExchange_(ticker) {
-  const value = String(hf_stripTickerSourceOverride_(ticker) || "").trim().toUpperCase();
+  const value = String(hf_stripTickerSourceOverride_(ticker) || "")
+    .trim()
+    .toUpperCase();
   const parts = value.split(":");
   const exchange = parts.length > 1 ? parts[0] : "";
 
@@ -4253,7 +5110,11 @@ function hf_extractTickerExchange_(ticker) {
     return "PSE";
   }
 
-  if (HOODLEFINANCE_PREFIXLESS_EXCHANGES_[exchange] || HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange] || hf_normalizeExplicitIbkrExchange_(exchange)) {
+  if (
+    HOODLEFINANCE_PREFIXLESS_EXCHANGES_[exchange] ||
+    HOODLEFINANCE_EXCHANGE_SUFFIXES_[exchange] ||
+    hf_normalizeExplicitIbkrExchange_(exchange)
+  ) {
     return exchange;
   }
 
@@ -4261,7 +5122,10 @@ function hf_extractTickerExchange_(ticker) {
 }
 
 function hf_extractYahooExchangeFromSymbol_(symbol) {
-  const match = String(symbol || "").trim().toUpperCase().match(/\.([A-Z0-9]+)$/);
+  const match = String(symbol || "")
+    .trim()
+    .toUpperCase()
+    .match(/\.([A-Z0-9]+)$/);
   const suffix = match ? match[1] : "";
 
   return suffix ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_[suffix] || "" : "";
@@ -4269,15 +5133,27 @@ function hf_extractYahooExchangeFromSymbol_(symbol) {
 
 function hf_extractYahooExchangeFromQuote_(quote) {
   const exchangeName = String(
-    (quote && (quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName)) || ""
-  ).trim().toUpperCase();
+    (quote &&
+      (quote.exchangeName ||
+        quote.fullExchangeName ||
+        quote.quoteSourceName)) ||
+      "",
+  )
+    .trim()
+    .toUpperCase();
 
-  return exchangeName ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[exchangeName] || "" : "";
+  return exchangeName
+    ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[exchangeName] || ""
+    : "";
 }
 
 function hf_resolveArivaListing_(code) {
-  const normalizedCode = String(code || "").trim().toUpperCase();
-  const html = hf_fetchText_(HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ + encodeURIComponent(normalizedCode));
+  const normalizedCode = String(code || "")
+    .trim()
+    .toUpperCase();
+  const html = hf_fetchText_(
+    HOODLEFINANCE_ARIVA_LIVESEARCH_URL_ + encodeURIComponent(normalizedCode),
+  );
   const listings = hf_extractArivaListings_(html);
   let i;
   let detailHtml;
@@ -4287,7 +5163,9 @@ function hf_resolveArivaListing_(code) {
       continue;
     }
 
-    detailHtml = hf_fetchText_(HOODLEFINANCE_ARIVA_BASE_URL_ + listings[i].href);
+    detailHtml = hf_fetchText_(
+      HOODLEFINANCE_ARIVA_BASE_URL_ + listings[i].href,
+    );
     return {
       code: normalizedCode,
       hasXetra: hf_arivaHasXetra_(detailHtml),
@@ -4302,13 +5180,16 @@ function hf_resolveArivaListing_(code) {
 
 function hf_extractArivaListings_(html) {
   const text = String(html || "");
-  const pattern = /<tr\b[^>]*>[\s\S]*?<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<td>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi;
+  const pattern =
+    /<tr\b[^>]*>[\s\S]*?<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<td>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi;
   const listings = [];
   let match;
   let codeMatch;
 
   while ((match = pattern.exec(text))) {
-    codeMatch = String(match[2] || "").match(/liveSearchMark">([\s\S]*?)<\/span>/i);
+    codeMatch = String(match[2] || "").match(
+      /liveSearchMark">([\s\S]*?)<\/span>/i,
+    );
     if (!codeMatch) {
       continue;
     }
@@ -4324,8 +5205,12 @@ function hf_extractArivaListings_(html) {
 }
 
 function hf_extractArivaIsin_(html) {
-  const titleMatch = String(html || "").match(/<title>[\s\S]*?\bISIN\s+([A-Z]{2}[A-Z0-9]{9}[0-9])\b[\s\S]*?<\/title>/i);
-  const fieldMatch = String(html || "").match(/ISIN:&nbsp;<\/span>\s*<span class="value">([A-Z]{2}[A-Z0-9]{9}[0-9])<\/span>/i);
+  const titleMatch = String(html || "").match(
+    /<title>[\s\S]*?\bISIN\s+([A-Z]{2}[A-Z0-9]{9}[0-9])\b[\s\S]*?<\/title>/i,
+  );
+  const fieldMatch = String(html || "").match(
+    /ISIN:&nbsp;<\/span>\s*<span class="value">([A-Z]{2}[A-Z0-9]{9}[0-9])<\/span>/i,
+  );
   const rawIsin = fieldMatch ? fieldMatch[1] : titleMatch ? titleMatch[1] : "";
 
   return rawIsin ? rawIsin.toUpperCase() : "";
@@ -4341,12 +5226,16 @@ function hf_extractTradingviewResolvedSymbol_(html) {
 }
 
 function hf_extractTradingviewIsin_(html) {
-  const match = String(html || "").match(/"isin_displayed":"([A-Z]{2}[A-Z0-9]{9}[0-9])"/i);
+  const match = String(html || "").match(
+    /"isin_displayed":"([A-Z]{2}[A-Z0-9]{9}[0-9])"/i,
+  );
   return match ? match[1].toUpperCase() : "";
 }
 
 function hf_extractTradingviewSymbolInfo_(html) {
-  const match = String(html || "").match(/window\.initData\.symbolInfo\s*=\s*(\{[\s\S]*?\});/i);
+  const match = String(html || "").match(
+    /window\.initData\.symbolInfo\s*=\s*(\{[\s\S]*?\});/i,
+  );
 
   if (!match) {
     return null;
@@ -4360,44 +5249,77 @@ function hf_extractTradingviewSymbolInfo_(html) {
 }
 
 function hf_extractTradingviewQuotePrice_(html) {
-  const match = String(html || "").match(/\btrades at\s+([0-9.,\u00A0\u202F ]+)\s*([A-Z]{3})\s+today\b/i);
+  const match = String(html || "").match(
+    /\btrades at\s+([0-9.,\u00A0\u202F ]+)\s*([A-Z]{3})\s+today\b/i,
+  );
   return match ? hf_parseNumber_(match[1]) : null;
 }
 
-function hf_extractTradingviewFundQuoteFromResponse_(response, yahooSymbol, expectedSymbol) {
+function hf_extractTradingviewFundQuoteFromResponse_(
+  response,
+  yahooSymbol,
+  expectedSymbol,
+) {
   if (response.getResponseCode() !== 200) {
-    throw new Error('TradingView quote lookup failed for "' + expectedSymbol + '" (' + response.getResponseCode() + ").");
+    throw new Error(
+      'TradingView quote lookup failed for "' +
+        expectedSymbol +
+        '" (' +
+        response.getResponseCode() +
+        ").",
+    );
   }
 
-  return hf_extractTradingviewFundQuote_(response.getContentText(), yahooSymbol, expectedSymbol);
+  return hf_extractTradingviewFundQuote_(
+    response.getContentText(),
+    yahooSymbol,
+    expectedSymbol,
+  );
 }
 
 function hf_extractTradingviewFundQuote_(html, yahooSymbol, expectedSymbol) {
   const symbolInfo = hf_extractTradingviewSymbolInfo_(html);
-  const resolvedSymbol = symbolInfo && symbolInfo.resolved_symbol
-    ? String(symbolInfo.resolved_symbol).toUpperCase()
-    : hf_extractTradingviewResolvedSymbol_(html);
+  const resolvedSymbol =
+    symbolInfo && symbolInfo.resolved_symbol
+      ? String(symbolInfo.resolved_symbol).toUpperCase()
+      : hf_extractTradingviewResolvedSymbol_(html);
   const price = hf_extractTradingviewQuotePrice_(html);
-  const currency = symbolInfo && (symbolInfo.currency || symbolInfo.currency_code)
-    ? String(symbolInfo.currency || symbolInfo.currency_code).toUpperCase()
-    : "";
+  const currency =
+    symbolInfo && (symbolInfo.currency || symbolInfo.currency_code)
+      ? String(symbolInfo.currency || symbolInfo.currency_code).toUpperCase()
+      : "";
   const name = symbolInfo
-    ? symbolInfo.description || symbolInfo.short_description || symbolInfo.local_description || symbolInfo.short_name || ""
+    ? symbolInfo.description ||
+      symbolInfo.short_description ||
+      symbolInfo.local_description ||
+      symbolInfo.short_name ||
+      ""
     : "";
-  const isin = symbolInfo && symbolInfo.isin_displayed ? String(symbolInfo.isin_displayed).toUpperCase() : hf_extractTradingviewIsin_(html);
+  const isin =
+    symbolInfo && symbolInfo.isin_displayed
+      ? String(symbolInfo.isin_displayed).toUpperCase()
+      : hf_extractTradingviewIsin_(html);
 
   if (resolvedSymbol && expectedSymbol && resolvedSymbol !== expectedSymbol) {
     throw new Error(
-      'TradingView resolved "' + expectedSymbol + '" to "' + resolvedSymbol + '" instead of an exact symbol match.'
+      'TradingView resolved "' +
+        expectedSymbol +
+        '" to "' +
+        resolvedSymbol +
+        '" instead of an exact symbol match.',
     );
   }
 
   if (!name) {
-    throw new Error('No TradingView quote name is available for "' + expectedSymbol + '".');
+    throw new Error(
+      'No TradingView quote name is available for "' + expectedSymbol + '".',
+    );
   }
 
   if (price == null) {
-    throw new Error('No TradingView quote price is available for "' + expectedSymbol + '".');
+    throw new Error(
+      'No TradingView quote price is available for "' + expectedSymbol + '".',
+    );
   }
 
   return {
@@ -4407,16 +5329,22 @@ function hf_extractTradingviewFundQuote_(html, yahooSymbol, expectedSymbol) {
     isin: isin,
     longName: String(name),
     regularMarketPrice: price,
-    shortName: symbolInfo && symbolInfo.short_name ? String(symbolInfo.short_name) : "",
-    symbol: String(yahooSymbol || "").trim().toUpperCase(),
+    shortName:
+      symbolInfo && symbolInfo.short_name ? String(symbolInfo.short_name) : "",
+    symbol: String(yahooSymbol || "")
+      .trim()
+      .toUpperCase(),
   };
 }
 
 function hf_resolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
-  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
   const baseSymbol = normalizedSymbol.replace(/\.[A-Z0-9]+$/, "");
   const lookupSymbol = baseSymbol || normalizedSymbol;
-  const cacheKey = "hoodlefinance:ibkr:isin:" + lookupSymbol + ":" + (preferredExchange || "");
+  const cacheKey =
+    "hoodlefinance:ibkr:isin:" + lookupSymbol + ":" + (preferredExchange || "");
   let searchUrls;
   let detailEntries;
   let searchHtml;
@@ -4444,7 +5372,11 @@ function hf_resolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
 
   for (i = 0; i < searchUrls.length; i += 1) {
     searchHtml = hf_fetchText_(searchUrls[i]);
-    searchError = hf_extractIbkrSearchError_(searchHtml, lookupSymbol, searchUrls[i]);
+    searchError = hf_extractIbkrSearchError_(
+      searchHtml,
+      lookupSymbol,
+      searchUrls[i],
+    );
 
     if (searchError) {
       return {
@@ -4474,11 +5406,24 @@ function hf_resolveIsinFromIbkrSymbol_(symbol, preferredExchange) {
 
 function hf_buildIbkrSearchUrls_(symbol, preferredExchange) {
   const urls = [];
-  const encodedSymbol = encodeURIComponent(String(symbol || "").trim().toUpperCase());
-  const encodedExchange = encodeURIComponent(String(preferredExchange || "").trim().toUpperCase());
+  const encodedSymbol = encodeURIComponent(
+    String(symbol || "")
+      .trim()
+      .toUpperCase(),
+  );
+  const encodedExchange = encodeURIComponent(
+    String(preferredExchange || "")
+      .trim()
+      .toUpperCase(),
+  );
 
   if (preferredExchange) {
-    urls.push(HOODLEFINANCE_IBKR_SEARCH_URL_ + encodedSymbol + "&exchange=" + encodedExchange);
+    urls.push(
+      HOODLEFINANCE_IBKR_SEARCH_URL_ +
+        encodedSymbol +
+        "&exchange=" +
+        encodedExchange,
+    );
   }
 
   urls.push(HOODLEFINANCE_IBKR_SEARCH_URL_ + encodedSymbol);
@@ -4503,8 +5448,11 @@ function hf_resolveIbkrIsinFromDetailEntries_(detailEntries) {
 }
 
 function hf_extractIbkrDetailUrls_(text) {
-  const legacyMatches = String(text || "").match(/(?:https:\/\/misc\.interactivebrokers\.com)?\/cstools\/contract_info\/(?:v3\.10\/)?index2?\.php\?action=Details(?:&amp;|&)conid=\d+(?:&amp;|&)site=\w+/gi);
-  const modernPattern = /<tr[^>]*>[\s\S]*?<a href="javascript:showDetails\('(\d+)'\)">Details<\/a>[\s\S]*?<\/tr>/gi;
+  const legacyMatches = String(text || "").match(
+    /(?:https:\/\/misc\.interactivebrokers\.com)?\/cstools\/contract_info\/(?:v3\.10\/)?index2?\.php\?action=Details(?:&amp;|&)conid=\d+(?:&amp;|&)site=\w+/gi,
+  );
+  const modernPattern =
+    /<tr[^>]*>[\s\S]*?<a href="javascript:showDetails\('(\d+)'\)">Details<\/a>[\s\S]*?<\/tr>/gi;
   const urls = [];
   const seen = {};
   let i;
@@ -4545,7 +5493,9 @@ function hf_extractIbkrDetailUrls_(text) {
 
 function hf_extractIbkrSearchError_(text, symbol, url) {
   const html = String(text || "");
-  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
   const lookupUrl = String(url || "");
 
   if (!html) {
@@ -4570,7 +5520,7 @@ function hf_extractIbkrSearchError_(text, symbol, url) {
 
 function hf_extractIbkrModernExchangeHint_(rowHtml) {
   const match = String(rowHtml || "").match(
-    /<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?>([\s\S]*?)<\/td>/i
+    /<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?<\/td>\s*<td\b[\s\S]*?>([\s\S]*?)<\/td>/i,
   );
   const rawValue = match ? String(match[1]).replace(/^.*">/s, "") : "";
 
@@ -4583,7 +5533,9 @@ function hf_extractIbkrExchangeHint_(text) {
 }
 
 function hf_sortIbkrDetailEntries_(entries, preferredExchange) {
-  const preferred = String(preferredExchange || "").trim().toUpperCase();
+  const preferred = String(preferredExchange || "")
+    .trim()
+    .toUpperCase();
 
   if (!preferred || !entries || entries.length < 2) {
     return entries;
@@ -4599,16 +5551,30 @@ function hf_sortIbkrDetailEntries_(entries, preferredExchange) {
 }
 
 function hf_inferIbkrExchange_(tickerInput, resolvedSymbol) {
-  const rawTicker = String(hf_stripTickerSourceOverride_(tickerInput || resolvedSymbol || "") || "").trim().toUpperCase();
+  const rawTicker = String(
+    hf_stripTickerSourceOverride_(tickerInput || resolvedSymbol || "") || "",
+  )
+    .trim()
+    .toUpperCase();
   const explicitParts = rawTicker.split(":");
   const explicitExchange = explicitParts.length > 1 ? explicitParts[0] : "";
-  const yahooSymbol = String(resolvedSymbol || "").trim().toUpperCase();
-  const suffixSource = rawTicker.indexOf(":") >= 0 ? explicitParts.slice(1).join(":") : rawTicker || yahooSymbol;
-  const suffixMatch = String(suffixSource || yahooSymbol).match(/\.([A-Z0-9]+)$/);
+  const yahooSymbol = String(resolvedSymbol || "")
+    .trim()
+    .toUpperCase();
+  const suffixSource =
+    rawTicker.indexOf(":") >= 0
+      ? explicitParts.slice(1).join(":")
+      : rawTicker || yahooSymbol;
+  const suffixMatch = String(suffixSource || yahooSymbol).match(
+    /\.([A-Z0-9]+)$/,
+  );
   const suffix = suffixMatch ? suffixMatch[1] : "";
-  const explicitIbkrExchange = hf_normalizeExplicitIbkrExchange_(explicitExchange);
-  const explicitYahooExchange = HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_[explicitExchange] || "";
-  const suffixIbkrExchange = HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_[suffix] || "";
+  const explicitIbkrExchange =
+    hf_normalizeExplicitIbkrExchange_(explicitExchange);
+  const explicitYahooExchange =
+    HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_EXCHANGE_[explicitExchange] || "";
+  const suffixIbkrExchange =
+    HOODLEFINANCE_IBKR_EXCHANGE_BY_YAHOO_SUFFIX_[suffix] || "";
 
   if (explicitIbkrExchange) {
     return explicitIbkrExchange;
@@ -4626,7 +5592,9 @@ function hf_inferIbkrExchange_(tickerInput, resolvedSymbol) {
 }
 
 function hf_normalizeExplicitIbkrExchange_(exchange) {
-  const normalizedExchange = String(exchange || "").trim().toUpperCase();
+  const normalizedExchange = String(exchange || "")
+    .trim()
+    .toUpperCase();
   const knownIbkrExchanges = {
     AEB: true,
     AMEX: true,
@@ -4684,7 +5652,7 @@ function hf_buildFetchOptions_() {
   return {
     headers: {
       "User-Agent": "Mozilla/5.0",
-      "Accept-Language": "en-US,en;q=0.9"
+      "Accept-Language": "en-US,en;q=0.9",
     },
     muteHttpExceptions: true,
   };
@@ -4746,9 +5714,11 @@ function hf_fetchChunk_(requests) {
   }
 
   try {
-    responses = UrlFetchApp.fetchAll(requests.map(function (request) {
-      return hf_buildFetchRequest_(request.url);
-    }));
+    responses = UrlFetchApp.fetchAll(
+      requests.map(function (request) {
+        return hf_buildFetchRequest_(request.url);
+      }),
+    );
 
     return responses.map(function (response) {
       return {
@@ -4800,30 +5770,53 @@ function hf_extractGoogleFinanceFxPairQuote_(html, fxPair) {
   const previousClose = Number(tuple[7]);
   const timestampList = Array.isArray(tuple[11]) ? tuple[11] : [];
   const regularMarketTime = Number(timestampList[0]);
-  const baseCode = String(pairDetail[0] || fxPair.baseCanonicalCode).trim().toUpperCase();
-  const quoteCode = String(pairDetail[1] || fxPair.quoteCanonicalCode).trim().toUpperCase();
+  const baseCode = String(pairDetail[0] || fxPair.baseCanonicalCode)
+    .trim()
+    .toUpperCase();
+  const quoteCode = String(pairDetail[1] || fxPair.quoteCanonicalCode)
+    .trim()
+    .toUpperCase();
   const baseName = String(pairDetail[2] || baseCode).trim();
   const quoteName = String(pairDetail[3] || quoteCode).trim();
 
   if (!isFinite(currentPrice)) {
-    throw new Error('Google Finance did not expose a price for "' + fxPair.googlePairSlug + '".');
+    throw new Error(
+      'Google Finance did not expose a price for "' +
+        fxPair.googlePairSlug +
+        '".',
+    );
   }
 
   return {
     currency: quoteCode,
     exchangeDataDelayedBy: 0,
     financialCurrency: quoteCode,
-    previousClose: isFinite(previousClose) ? previousClose : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
-    regularMarketPreviousClose: isFinite(previousClose) ? previousClose : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
+    previousClose: isFinite(previousClose)
+      ? previousClose
+      : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
+    regularMarketPreviousClose: isFinite(previousClose)
+      ? previousClose
+      : currentPrice - (isFinite(changeAmount) ? changeAmount : 0),
     regularMarketPrice: currentPrice,
-    regularMarketTime: isFinite(regularMarketTime) ? regularMarketTime : Math.floor(new Date().getTime() / 1000),
-    shortName: baseName + " (" + fxPair.baseDisplayCode + " / " + fxPair.displayQuoteCode + ")",
+    regularMarketTime: isFinite(regularMarketTime)
+      ? regularMarketTime
+      : Math.floor(new Date().getTime() / 1000),
+    shortName:
+      baseName +
+      " (" +
+      fxPair.baseDisplayCode +
+      " / " +
+      fxPair.displayQuoteCode +
+      ")",
     symbol: baseCode + quoteCode,
   };
 }
 
 function hf_extractGoogleFinancePairTuple_(html, pairSlug) {
-  const callbacks = String(html || "").match(/AF_initDataCallback\(([\s\S]*?)\);\s*<\/script>/gi) || [];
+  const callbacks =
+    String(html || "").match(
+      /AF_initDataCallback\(([\s\S]*?)\);\s*<\/script>/gi,
+    ) || [];
   let i;
   let dataMatch;
   let data;
@@ -4843,7 +5836,9 @@ function hf_extractGoogleFinancePairTuple_(html, pairSlug) {
     }
   }
 
-  throw new Error('Google Finance did not expose a quote tuple for "' + pairSlug + '".');
+  throw new Error(
+    'Google Finance did not expose a quote tuple for "' + pairSlug + '".',
+  );
 }
 
 function hf_findGoogleFinancePairTuple_(value, pairSlug) {
@@ -4869,26 +5864,39 @@ function hf_findGoogleFinancePairTuple_(value, pairSlug) {
 }
 
 function hf_extractIsin_(text) {
-  const match = String(text || "").match(/ISIN[\s\S]{0,200}?([A-Z]{2}[A-Z0-9]{9}[0-9])/i);
+  const match = String(text || "").match(
+    /ISIN[\s\S]{0,200}?([A-Z]{2}[A-Z0-9]{9}[0-9])/i,
+  );
   return match ? match[1].toUpperCase() : "";
 }
 
 function hf_buildYahooChartUrl_(yahooSymbol) {
-  return "https://query1.finance.yahoo.com/v8/finance/chart/" +
+  return (
+    "https://query1.finance.yahoo.com/v8/finance/chart/" +
     encodeURIComponent(yahooSymbol) +
-    "?interval=1d&range=1d";
+    "?interval=1d&range=1d"
+  );
 }
 
 function hf_buildYahooIsinSearchUrl_(isin) {
-  return "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(isin) + "&quotesCount=10&newsCount=0";
+  return (
+    "https://query2.finance.yahoo.com/v1/finance/search?q=" +
+    encodeURIComponent(isin) +
+    "&quotesCount=10&newsCount=0"
+  );
 }
 
 function hf_extractYahooQuoteMetaFromResponse_(response, ticker) {
   if (response.getResponseCode() !== 200) {
-    throw new Error(hf_buildYahooQuoteLookupErrorMessage_(ticker, response.getResponseCode()));
+    throw new Error(
+      hf_buildYahooQuoteLookupErrorMessage_(ticker, response.getResponseCode()),
+    );
   }
 
-  return hf_extractYahooQuoteMetaFromPayload_(JSON.parse(response.getContentText()), ticker);
+  return hf_extractYahooQuoteMetaFromPayload_(
+    JSON.parse(response.getContentText()),
+    ticker,
+  );
 }
 
 function hf_buildYahooQuoteLookupErrorMessage_(ticker, statusCode) {
@@ -4896,10 +5904,16 @@ function hf_buildYahooQuoteLookupErrorMessage_(ticker, statusCode) {
   const upperTicker = normalizedTicker.toUpperCase();
 
   if (Number(statusCode) === 404 && upperTicker.indexOf("OTCMKTS:") === 0) {
-    return "No current quote data was found for " + normalizedTicker + ". The symbol may be delisted or cancelled.";
+    return (
+      "No current quote data was found for " +
+      normalizedTicker +
+      ". The symbol may be delisted or cancelled."
+    );
   }
 
-  return "Quote lookup failed for " + normalizedTicker + " (" + statusCode + ").";
+  return (
+    "Quote lookup failed for " + normalizedTicker + " (" + statusCode + ")."
+  );
 }
 
 function hf_extractYahooQuoteMetaFromPayload_(payload, ticker) {
@@ -4917,19 +5931,31 @@ function hf_extractYahooQuoteMetaFromPayload_(payload, ticker) {
 
 function hf_extractYahooSymbolFromSearchResponse_(response, isin) {
   if (response.getResponseCode() !== 200) {
-    throw new Error('ISIN lookup failed for "' + isin + '" (' + response.getResponseCode() + ").");
+    throw new Error(
+      'ISIN lookup failed for "' +
+        isin +
+        '" (' +
+        response.getResponseCode() +
+        ").",
+    );
   }
 
-  return hf_extractYahooSymbolFromSearchPayload_(JSON.parse(response.getContentText()), isin);
+  return hf_extractYahooSymbolFromSearchPayload_(
+    JSON.parse(response.getContentText()),
+    isin,
+  );
 }
 
 function hf_extractYahooSymbolFromSearchPayload_(payload, isin) {
   const quotes = payload && payload.quotes;
   const quote = hf_selectYahooIsinSearchQuote_(quotes);
-  const symbol = quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+  const symbol =
+    quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
 
   if (!symbol) {
-    throw new Error('No Yahoo Finance symbol was found for ISIN "' + isin + '".');
+    throw new Error(
+      'No Yahoo Finance symbol was found for ISIN "' + isin + '".',
+    );
   }
 
   return symbol;
@@ -4955,9 +5981,13 @@ function hf_selectYahooIsinSearchQuote_(quotes) {
 }
 
 function hf_scoreYahooIsinSearchQuote_(quote) {
-  const symbol = quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+  const symbol =
+    quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
   const yahooExchange = hf_inferYahooExchangeFromSearchQuote_(quote);
-  const quoteType = quote && quote.quoteType ? String(quote.quoteType).trim().toUpperCase() : "";
+  const quoteType =
+    quote && quote.quoteType
+      ? String(quote.quoteType).trim().toUpperCase()
+      : "";
   const numericScore = Number(quote && quote.score);
   let score = 0;
 
@@ -4965,7 +5995,10 @@ function hf_scoreYahooIsinSearchQuote_(quote) {
     return Number.NEGATIVE_INFINITY;
   }
 
-  if (yahooExchange && hf_canRenderGoogleExchangeFromYahooIdentity_(yahooExchange)) {
+  if (
+    yahooExchange &&
+    hf_canRenderGoogleExchangeFromYahooIdentity_(yahooExchange)
+  ) {
     score += 1000000;
   } else if (yahooExchange) {
     score += 100000;
@@ -4985,10 +6018,15 @@ function hf_scoreYahooIsinSearchQuote_(quote) {
 }
 
 function hf_inferYahooExchangeFromSearchQuote_(quote) {
-  const symbol = quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
-  const rawExchange = String((quote && quote.exchange) || "").trim().toUpperCase();
+  const symbol =
+    quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
+  const rawExchange = String((quote && quote.exchange) || "")
+    .trim()
+    .toUpperCase();
   const suffixExchange = hf_extractYahooExchangeFromSymbol_(symbol);
-  const mappedMetaExchange = rawExchange ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[rawExchange] || "" : "";
+  const mappedMetaExchange = rawExchange
+    ? HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_[rawExchange] || ""
+    : "";
 
   if (suffixExchange) {
     return suffixExchange;
@@ -4998,11 +6036,12 @@ function hf_inferYahooExchangeFromSearchQuote_(quote) {
     return mappedMetaExchange;
   }
 
-  if (rawExchange && (
-    HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[rawExchange] ||
-    HOODLEFINANCE_PREFIXLESS_EXCHANGES_[rawExchange] ||
-    HOODLEFINANCE_EXCHANGE_SUFFIXES_[rawExchange]
-  )) {
+  if (
+    rawExchange &&
+    (HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[rawExchange] ||
+      HOODLEFINANCE_PREFIXLESS_EXCHANGES_[rawExchange] ||
+      HOODLEFINANCE_EXCHANGE_SUFFIXES_[rawExchange])
+  ) {
     return rawExchange;
   }
 
@@ -5010,19 +6049,23 @@ function hf_inferYahooExchangeFromSearchQuote_(quote) {
 }
 
 function hf_canRenderGoogleExchangeFromYahooIdentity_(yahooExchange) {
-  const identity = String(yahooExchange || "").trim().toUpperCase();
+  const identity = String(yahooExchange || "")
+    .trim()
+    .toUpperCase();
 
   return Boolean(
     HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_[identity] ||
     identity === "TASE" ||
     HOODLEFINANCE_PREFIXLESS_EXCHANGES_[identity] ||
-    HOODLEFINANCE_EXCHANGE_SUFFIXES_[identity]
+    HOODLEFINANCE_EXCHANGE_SUFFIXES_[identity],
   );
 }
 
 function hf_resolvePseListingFromHtml_(html, symbol) {
   const listings = hf_extractPseListings_(html);
-  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
   let i;
 
   for (i = 0; i < listings.length; i += 1) {
@@ -5035,7 +6078,9 @@ function hf_resolvePseListingFromHtml_(html, symbol) {
 }
 
 function hf_resolvePseTickerFromIsinMap_(isin) {
-  const normalizedIsin = String(isin || "").trim().toUpperCase();
+  const normalizedIsin = String(isin || "")
+    .trim()
+    .toUpperCase();
 
   if (normalizedIsin.indexOf("PH") !== 0) {
     return "";
@@ -5072,8 +6117,11 @@ function hf_resolveIsin_(isin) {
     }
 
     return hf_resolveIsinFromSearchResponse_(
-      UrlFetchApp.fetch(hf_buildYahooIsinSearchUrl_(isin), hf_buildFetchOptions_()),
-      isin
+      UrlFetchApp.fetch(
+        hf_buildYahooIsinSearchUrl_(isin),
+        hf_buildFetchOptions_(),
+      ),
+      isin,
     );
   });
 }

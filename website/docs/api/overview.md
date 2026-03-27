@@ -44,7 +44,6 @@ Support for a specific attribute can vary by exchange and by listing. Even when 
 
 For the full attribute list and behavior notes, see [Attributes](./api/attributes).
 
-
 ## Quick Examples
 
 ```js

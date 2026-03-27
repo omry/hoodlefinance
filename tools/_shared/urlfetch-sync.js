@@ -49,7 +49,9 @@ function fetchSync(url) {
 }
 
 function fetchAllSync(requests) {
-  const tempDir = fs.mkdtempSync(path.join("/tmp", "hoodlefinance-urlfetch-batch-"));
+  const tempDir = fs.mkdtempSync(
+    path.join("/tmp", "hoodlefinance-urlfetch-batch-"),
+  );
   const workers = [];
   const results = [];
   let i;
@@ -67,7 +69,11 @@ function fetchAllSync(requests) {
         outputPath: outputPath,
         signal: signal,
         state: state,
-        worker: runWorker(typeof requests[i] === "string" ? requests[i] : requests[i].url, outputPath, signal),
+        worker: runWorker(
+          typeof requests[i] === "string" ? requests[i] : requests[i].url,
+          outputPath,
+          signal,
+        ),
       });
     }
 
