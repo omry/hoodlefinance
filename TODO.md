@@ -1,14 +1,9 @@
-- Investigate add-on custom-function cache misses where repeated identical `HOODLEFINANCE()` calls still take about 3 seconds on consecutive runs.
-- Update website and public marketing copy to stop framing HoodleFinance in terms of `GOOGLEFINANCE`.
-- Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
-- Continue Marketplace packaging work: finish listing and policy hardening, record the successful private Marketplace dry-run outcome, and decide whether public review is worth pursuing.
-- If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
-- Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
-- rewrite `CONTRIBUTING.md` from scratch so it stays focused on everyday contributor workflow, with maintainer-only Google auth and release runbooks linked out to the dedicated docs; include the website content update basics and a short install/build/local-server cheat sheet
-- tighten `AGENTS.md` with a short precedence/stop section and a stricter release-fragment rule so agents do not recreate deleted files or add user-facing fragments for internal-only changes
-- acquired hoodlefinance.com, lets use it instead of the current location
-- wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
 - organize the `tools/` directory so demo sync, add-on deploy, release, and local runtime helpers are grouped more intentionally
 - if we add per-file MPL notices, automate SPDX `MPL-2.0` header insertion instead of managing headers by hand
 - before inviting outside contributions at scale, decide whether to add a CLA and what scope of relicensing rights it should grant
 - if the project moves to a pull-request-based workflow later, add broader server-side CI checks for release and workflow preflights
+- Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
+- Investigate add-on custom-function cache misses where repeated identical `HOODLEFINANCE()` calls still take about 3 seconds on consecutive runs.
+- Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
+- If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
+- wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
