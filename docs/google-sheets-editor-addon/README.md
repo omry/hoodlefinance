@@ -107,7 +107,7 @@ npm run addon:deploy -- --production --dry-run
 npm run addon:deploy -- --staging --dry-run
 ```
 
-Keep the add-on project and demo-sync OAuth project separate. The public-review Marketplace setup belongs in `HoodleFinance Add-on Public`, while the desktop OAuth client for `tools/sync-demo-sheet.js` should live in `HoodleFinance Demo Sheets`.
+Keep the add-on project and demo-sync OAuth project separate. The public-review Marketplace setup belongs in `HoodleFinance Add-on Public`, while the desktop OAuth client for `tools/demo/sync.js` should live in `HoodleFinance Demo Sheets`.
 
 You can confirm which `clasp` account the add-on deploy flows will use, alongside the staging and production demo auth slots, with:
 

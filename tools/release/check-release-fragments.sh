@@ -3,7 +3,7 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
 CHANGES_DIR=${1:-"$ROOT_DIR/changes.d"}
 
 if [ ! -d "$CHANGES_DIR" ]; then
@@ -36,7 +36,7 @@ for fragment_path in "$CHANGES_DIR"/*; do
     [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[a-z0-9][a-z0-9-]*.fixed.md)
       ;;
     *)
-      echo "Error: Invalid release fragment filename: $file_name. Expected YYYYMMDD-slug.<upgrade|added|changed|docs|fixed>.md." >&2
+      echo "Error: Invalid release fragment filename: $file_name. Expected YYYYMMDD-short-change-name.<upgrade|added|changed|docs|fixed>.md." >&2
       exit 1
       ;;
   esac

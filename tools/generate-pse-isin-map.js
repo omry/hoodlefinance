@@ -4,7 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const { createUrlFetchApp } = require("./urlfetch-sync.js");
+const { createUrlFetchApp } = require("./_shared/urlfetch-sync.js");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 const SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");

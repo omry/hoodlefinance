@@ -23,9 +23,9 @@ const {
   runReleaseFragmentCheck,
   replaceVersionInSource,
   validateVersion,
-} = require("../tools/release.js");
+} = require("../tools/release/release.js");
 
-const FRAGMENT_CHECKER_PATH = path.join(__dirname, "..", "tools", "check-release-fragments.sh");
+const FRAGMENT_CHECKER_PATH = path.join(__dirname, "..", "tools", "release", "check-release-fragments.sh");
 
 function execFileSyncNormalized(command, args, options) {
   try {
@@ -489,7 +489,7 @@ test("publishRelease tags, pushes, and creates a GitHub release from the per-rel
 test("verifyReleasePreparation runs the expected verification steps", async function () {
   const seen = [];
 
-  await require("../tools/release.js").verifyReleasePreparation({
+  await require("../tools/release/release.js").verifyReleasePreparation({
     cwd: "/tmp/demo",
     runCommand: async function (command, args, options) {
       seen.push({ args, command, options });
@@ -517,17 +517,17 @@ test("verifyReleasePreparation runs the expected verification steps", async func
 
 test("default release verification covers both staging and production demo sync preflights", function () {
   const demoSheetSteps = DEFAULT_PREPARE_VERIFICATION_STEPS.filter(function (step) {
-    return step.command === process.execPath && Array.isArray(step.args) && step.args[0] === "tools/sync-demo-sheet.js";
+    return step.command === process.execPath && Array.isArray(step.args) && step.args[0] === "tools/demo/sync.js";
   });
 
   assert.deepEqual(demoSheetSteps, [
     {
-      args: ["tools/sync-demo-sheet.js", "--staging", "--dry-run"],
+      args: ["tools/demo/sync.js", "--staging", "--dry-run"],
       command: process.execPath,
       label: "demo-sheet staging dry run",
     },
     {
-      args: ["tools/sync-demo-sheet.js", "--production", "--dry-run"],
+      args: ["tools/demo/sync.js", "--production", "--dry-run"],
       command: process.execPath,
       label: "demo-sheet production dry run",
     },

@@ -95,13 +95,13 @@ function printUsage(exitCode, error) {
     console.error(error);
   }
 
-  console.error("Usage: node tools/benchmark.js [--attribute <attribute>] [--count <n>] [--tickers <csv>]");
-  console.error("Example: node tools/benchmark.js --attribute price --count 20");
+  console.error("Usage: node tools/_shared/benchmark.js [--attribute <attribute>] [--count <n>] [--tickers <csv>]");
+  console.error("Example: node tools/_shared/benchmark.js --attribute price --count 20");
   process.exit(exitCode);
 }
 
 function loadHelpers() {
-  const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "..", "hoodlefinance.js"), "utf8");
   const sandbox = {
     console,
     Date,

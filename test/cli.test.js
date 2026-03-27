@@ -6,7 +6,7 @@ const {
   formatTraceOutput,
   formatRoutingTrace,
   getRoutingTableRows,
-} = require("../tools/cli.js");
+} = require("../tools/_shared/cli.js");
 
 test("routing table rows cover the current quote classifications", function () {
   assert.equal(

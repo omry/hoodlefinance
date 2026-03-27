@@ -6,10 +6,10 @@ const vm = require("vm");
 const { createUrlFetchApp } = require("./urlfetch-sync.js");
 
 function loadHoodlefinance() {
-  const source = fs.readFileSync(path.join(__dirname, "..", "hoodlefinance.js"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "..", "hoodlefinance.js"), "utf8");
   const cacheStore = new Map();
   const scriptPropertiesStore = new Map();
-  const localCurrencyCodesPath = path.join(__dirname, "..", "data", "currency-codes.json");
+  const localCurrencyCodesPath = path.join(__dirname, "..", "..", "data", "currency-codes.json");
 
   scriptPropertiesStore.set("hoodlefinance.currencyCodes", fs.readFileSync(localCurrencyCodesPath, "utf8"));
   scriptPropertiesStore.set("hoodlefinance.currencyCodesFetchedAtMs", String(Date.now()));

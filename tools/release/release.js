@@ -6,14 +6,14 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-const ROOT_DIR = path.resolve(__dirname, "..");
+const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const CHANGES_DIR = path.join(ROOT_DIR, "changes.d");
 const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
 const RELEASE_NOTES_PATH = path.join(ROOT_DIR, "docs", "release-notes", "RELEASE_NOTES.md");
 const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
-const FRAGMENT_CHECKER_PATH = path.join(ROOT_DIR, "tools", "check-release-fragments.sh");
+const FRAGMENT_CHECKER_PATH = path.join(ROOT_DIR, "tools", "release", "check-release-fragments.sh");
 const FRAGMENT_CATEGORIES = ["upgrade", "added", "changed", "fixed", "docs"];
 const FRAGMENT_HEADING_BY_CATEGORY = {
   upgrade: "Upgrade Notes",
@@ -56,12 +56,12 @@ const DEFAULT_PREPARE_VERIFICATION_STEPS = [
     label: "demo-sheet test suite",
   },
   {
-    args: ["tools/sync-demo-sheet.js", "--staging", "--dry-run"],
+    args: ["tools/demo/sync.js", "--staging", "--dry-run"],
     command: process.execPath,
     label: "demo-sheet staging dry run",
   },
   {
-    args: ["tools/sync-demo-sheet.js", "--production", "--dry-run"],
+    args: ["tools/demo/sync.js", "--production", "--dry-run"],
     command: process.execPath,
     label: "demo-sheet production dry run",
   },
@@ -110,7 +110,7 @@ async function main() {
 
 function parseArgs(argv) {
   if (!Array.isArray(argv) || !argv.length) {
-    throw new Error("Usage: node tools/release.js <check-fragments|prepare|publish> [x.y.z] [--dry-run]");
+    throw new Error("Usage: node tools/release/release.js <check-fragments|prepare|publish> [x.y.z] [--dry-run]");
   }
 
   if (argv[0] !== "check-fragments" && argv[0] !== "prepare" && argv[0] !== "publish") {
@@ -119,7 +119,7 @@ function parseArgs(argv) {
 
   if (argv[0] === "check-fragments") {
     if (argv.length !== 1) {
-      throw new Error("Usage: node tools/release.js check-fragments");
+      throw new Error("Usage: node tools/release/release.js check-fragments");
     }
 
     return {
@@ -129,7 +129,7 @@ function parseArgs(argv) {
 
   if (argv[0] === "publish") {
     if (argv.length !== 2) {
-      throw new Error("Usage: node tools/release.js publish <x.y.z>");
+      throw new Error("Usage: node tools/release/release.js publish <x.y.z>");
     }
 
     validateVersion(argv[1]);
@@ -141,13 +141,13 @@ function parseArgs(argv) {
   }
 
   if (argv.length !== 2 && argv.length !== 3) {
-    throw new Error("Usage: node tools/release.js prepare <x.y.z> [--dry-run]");
+    throw new Error("Usage: node tools/release/release.js prepare <x.y.z> [--dry-run]");
   }
 
   validateVersion(argv[1]);
 
   if (argv.length === 3 && argv[2] !== "--dry-run") {
-    throw new Error("Usage: node tools/release.js prepare <x.y.z> [--dry-run]");
+    throw new Error("Usage: node tools/release/release.js prepare <x.y.z> [--dry-run]");
   }
 
   return {

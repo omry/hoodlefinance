@@ -21,7 +21,7 @@ const {
   getOauthClientLevel,
   parseArgs,
   prepareWorkspace,
-} = require("../tools/deploy-addon.js");
+} = require("../tools/addon/deploy.js");
 
 function createFixture() {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "hoodlefinance-addon-deploy-"));

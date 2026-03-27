@@ -6,11 +6,11 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { buildPathRows, buildStatusRow, printBundleFiles, printContextBlock } = require("./cli-reporting.js");
+const { buildPathRows, buildStatusRow, printBundleFiles, printContextBlock } = require("../cli-reporting.js");
 const {
   getClaspCommand,
   getClaspAuth,
-} = require("./clasp-auth.js");
+} = require("../clasp-auth.js");
 const {
   DEFAULT_STYLES,
   buildFormulaCellFormatRequests,
@@ -18,19 +18,19 @@ const {
   buildStyleApplicationRequests,
   buildStyleRepeatCellRequest,
   normalizeStyleRegistry,
-} = require("./demo-sheet-styles.js");
+} = require("./styles.js");
 const {
   copyRgbColor,
   normalizeTabFormatting,
   validateConfig,
-} = require("./demo-sheet-config.js");
+} = require("./config.js");
 const {
   ensureAccessTokenWithDeps,
   googleApiJson,
   isInvalidGrantOAuthError,
-} = require("./demo-sheet-google.js");
+} = require("./google.js");
 
-const ROOT_DIR = path.resolve(__dirname, "..");
+const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const DEMO_DIR = path.join(ROOT_DIR, "docs", "demo-sheet");
 const CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet.json");
 const STAGING_CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet-staging.json");

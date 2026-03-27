@@ -75,8 +75,8 @@ The codebase is intentionally simple:
 
 - [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script implementation
 - [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node unit tests
-- [`tools/cli.js`](./tools/cli.js): local smoke-test wrapper
-- [`tools/sync-demo-sheet.js`](./tools/sync-demo-sheet.js): public demo sheet sync tool
+- [`tools/_shared/cli.js`](./tools/_shared/cli.js): local smoke-test wrapper
+- [`tools/demo/sync.js`](./tools/demo/sync.js): public demo sheet sync tool
 - [`tools/generate-support-matrix.py`](./tools/generate-support-matrix.py): support matrix generator
 - [`tools/map-google-fx-coverage.py`](./tools/map-google-fx-coverage.py): parallel Google FX currency pairs coverage probe
 - [`website/docs/support-matrix.md`](./website/docs/support-matrix.md): generated exchange coverage matrix
@@ -309,4 +309,4 @@ Maintainer release checklist:
 7. Confirm that `Release Publish` ran for the merged release PR and completed both jobs:
    the publish job and the demo-sync job.
 
-If the change affects exchange coverage or source support, regenerate [`website/docs/support-matrix.md`](./website/docs/support-matrix.md) with `python3 tools/generate-support-matrix.py --update-page`.
+If the change affects exchange coverage or source support, regenerate [`website/docs/support-matrix.md`](./website/docs/support-matrix.md) with `npm run support-matrix -- --update-page`.

@@ -13,7 +13,7 @@ The current answer is "paste the script into a bound Apps Script project." This 
 Today the repo has two different deployment stories:
 
 - public users manually paste [`hoodlefinance.js`](../../hoodlefinance.js) into a bound Apps Script project, as documented in [`README.md`](../../README.md) and [`website/docs/api/overview.md`](../../website/docs/api/overview.md)
-- trusted maintainers use [`tools/sync-demo-sheet.js`](../../tools/sync-demo-sheet.js) plus `clasp` and OAuth credentials to update the managed public demo sheet
+- trusted maintainers use [`tools/demo/sync.js`](../../tools/demo/sync.js) plus `clasp` and OAuth credentials to update the managed public demo sheet
 
 That distinction matters:
 

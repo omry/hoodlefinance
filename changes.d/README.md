@@ -23,8 +23,8 @@ Validation:
 
 - Run `npm run release:check-fragments` to validate fragment filenames and contents before preparing a release.
 - The npm command runs the same zero-dependency shell validator as the local pre-commit hook.
-- Run `node tools/release.js prepare x.y.z --dry-run` to print the next per-release notes without writing or consuming anything.
-- `node tools/release.js prepare x.y.z` runs the same fragment validation automatically before it writes release files.
+- Run `npm run release:prepare -- x.y.z --dry-run` to print the next per-release notes without writing or consuming anything.
+- `npm run release:prepare -- x.y.z` runs the same fragment validation automatically before it writes release files.
 - `prepare` starts only from a clean git worktree and uses git-backed cleanup on verification failure, so fragments should already be committed by the time you cut a release.
 
 The release workflow consumes these fragments into a per-release file under [`docs/release-notes/`](../docs/release-notes/) using the tracked template at [`docs/release-notes/TEMPLATE.md`](../docs/release-notes/TEMPLATE.md), and regenerates the full release history file at [`docs/release-notes/RELEASE_NOTES.md`](../docs/release-notes/RELEASE_NOTES.md).

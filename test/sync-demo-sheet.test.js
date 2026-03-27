@@ -41,7 +41,7 @@ const {
   replaceDemoReadmeBlock,
   resolveRepoPath,
   validateConfig,
-} = require("../tools/sync-demo-sheet.js");
+} = require("../tools/demo/sync.js");
 
 test("parseArgs handles the supported flags", function () {
   assert.deepEqual(parseArgs(["--dry-run", "--skip-clasp", "--skip-sharing", "--production"]), {

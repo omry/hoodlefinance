@@ -4,4 +4,4 @@ set -eu
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-"$REPO_ROOT/tools/check-release-fragments.sh"
+"$REPO_ROOT/tools/release/check-release-fragments.sh"
