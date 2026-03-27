@@ -1,1 +1,0 @@
-- Clarified the local credential layout for staging, public live-demo syncs, and add-on deploys so the maintainer docs match the repo's separate auth paths.
