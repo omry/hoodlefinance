@@ -48,7 +48,7 @@ test("getClaspLoginContext resolves slot-local auth and oauth client paths", fun
     path.join(rootDir, ".addon-deploy.local", "staging", "oauth-client.json"),
   );
   assert.equal(context.flag, "--addon-staging");
-  assert.equal(context.label, "add-on staging");
+  assert.equal(context.label, "addon:staging");
 });
 
 test("isExpectedCliError recognizes user-fixable login setup errors", function () {

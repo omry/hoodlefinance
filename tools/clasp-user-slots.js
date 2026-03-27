@@ -32,7 +32,7 @@ function getClaspUserSlots(rootDir) {
     {
       flag: "--demo-staging",
       key: "demo-staging",
-      label: "staging demo",
+      label: "demo:staging",
       authPath: path.join(
         baseDir,
         ".demo-sheet.local",
@@ -49,7 +49,7 @@ function getClaspUserSlots(rootDir) {
     {
       flag: "--demo-production",
       key: "demo-production",
-      label: "production demo",
+      label: "demo:production",
       authPath: resolvePreferredLocalPath(
         path.join(baseDir, ".demo-sheet.local", "production", ".clasprc.json"),
         path.join(baseDir, ".demo-sheet.local", "live-demo", ".clasprc.json"),
@@ -72,7 +72,7 @@ function getClaspUserSlots(rootDir) {
     {
       flag: "--addon-production",
       key: "addon-production",
-      label: "add-on production",
+      label: "addon:production",
       authPath: resolvePreferredLocalPath(
         path.join(
           baseDir,
@@ -95,7 +95,7 @@ function getClaspUserSlots(rootDir) {
     {
       flag: "--addon-staging",
       key: "addon-staging",
-      label: "add-on staging",
+      label: "addon:staging",
       authPath: path.join(
         baseDir,
         ".addon-deploy.local",
