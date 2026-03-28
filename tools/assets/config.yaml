@@ -26,19 +26,11 @@ assets:
     svg:
       path: assets/svg/light/icon.svg
       copy_to: website/static/img/hoodlefinance/light/icon.svg
-      output:
-        path: website/static/img/hoodlefinance/light/icon
-        resolutions: [32, 48, 96, 128]
-        name_pattern: ${.path}-{resolution}.png
 
   website_dark_icon:
     svg:
       path: assets/svg/dark/icon.svg
       copy_to: website/static/img/hoodlefinance/dark/icon.svg
-      output:
-        path: website/static/img/hoodlefinance/dark/icon
-        resolutions: [32, 48, 96, 128]
-        name_pattern: ${.path}-{resolution}.png
 
   website_light_hero:
     svg:
@@ -55,12 +47,6 @@ assets:
     svg:
       path: assets/svg/dark/hero-art.svg
       copy_to: website/static/img/hoodlefinance/dark/hero-art.svg
-      output:
-        path: website/static/img/hoodlefinance/dark/hero-art
-        resolutions:
-          - width: 220
-            height: 140
-        name_pattern: ${.path}-{width}x{height}.png
 
   marketplace_light_icon:
     svg:

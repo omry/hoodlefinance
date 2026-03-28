@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MPL-2.0
 
-"""Generate Marketplace PNG assets from SVG source files."""
+"""Generate website and Marketplace assets from shared SVG source files."""
 
 from __future__ import annotations
 

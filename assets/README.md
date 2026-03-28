@@ -28,7 +28,7 @@ To regenerate all configured website and Marketplace assets:
 ./.venv/bin/python tools/assets/generate-marketplace-assets.py
 ```
 
-The generator configuration lives in [`../tools/assets/generate_marketplace_assets/config.yaml`](../tools/assets/generate_marketplace_assets/config.yaml).
+The generator configuration lives in [`../tools/assets/config.yaml`](../tools/assets/config.yaml).
 
 To regenerate only part of the set, override the configured targets on the command line. For example:
 
