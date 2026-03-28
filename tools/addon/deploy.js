@@ -726,6 +726,32 @@ function describeFileStatus(filePath) {
   return getPathStatus(filePath);
 }
 
+function getAddonClaspLoginCommand(targetName) {
+  return (
+    "npm run clasp:user:login -- --addon-" +
+    normalizeAddonTargetName(targetName)
+  );
+}
+
+function getCredentialErrorText(error) {
+  return [
+    error && error.message,
+    error && error.stderr,
+    error && error.stdout,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function isLikelyAddonReauthError(error) {
+  const text = getCredentialErrorText(error);
+
+  return (
+    /invalid_grant/i.test(text) &&
+    (/invalid_rapt/i.test(text) || /reauth/i.test(text))
+  );
+}
+
 function getOauthClientLevel(report) {
   if (!report || report.oauthClientStatus === "missing") {
     return "ERROR";
@@ -833,38 +859,68 @@ async function printCredentialContext(options, overrides) {
 
 function explainCredentialError(error, paths) {
   const message = String(error && error.message ? error.message : error);
+  const normalizedTarget = normalizeAddonTargetName(paths && paths.targetName);
 
-  if (!/No credentials found/i.test(message)) {
-    return error;
+  if (/No credentials found/i.test(message)) {
+    return Object.assign(
+      new Error(
+        "No clasp credentials found for add-on deployment.\n" +
+          describeCredentialFile(
+            paths && paths.claspAuthPath,
+            "Expected auth file",
+          ) +
+          "\n" +
+          describeCredentialFile(
+            paths && paths.oauthClientPath,
+            "Expected OAuth client file",
+          ) +
+          "\n" +
+          "Create the auth file with:\n" +
+          "npm exec -- clasp -A .addon-deploy.local/" +
+          normalizedTarget +
+          "/.clasprc.json login --creds .addon-deploy.local/" +
+          normalizedTarget +
+          "/oauth-client.json",
+      ),
+      {
+        cause: error,
+        code: error && error.code,
+        stderr: error && error.stderr,
+        stdout: error && error.stdout,
+      },
+    );
   }
 
-  return Object.assign(
-    new Error(
-      "No clasp credentials found for add-on deployment.\n" +
+  if (isLikelyAddonReauthError(error)) {
+    return Object.assign(
+      new Error(
+        "Saved clasp credentials for add-on deployment need reauthorization.\n" +
         describeCredentialFile(
           paths && paths.claspAuthPath,
-          "Expected auth file",
+          "Current auth file",
         ) +
         "\n" +
         describeCredentialFile(
           paths && paths.oauthClientPath,
-          "Expected OAuth client file",
+          "OAuth client file",
         ) +
         "\n" +
-        "Create the auth file with:\n" +
-        "npm exec -- clasp -A .addon-deploy.local/" +
-        normalizeAddonTargetName(paths && paths.targetName) +
-        "/.clasprc.json login --creds .addon-deploy.local/" +
-        normalizeAddonTargetName(paths && paths.targetName) +
-        "/oauth-client.json",
-    ),
-    {
-      cause: error,
-      code: error && error.code,
-      stderr: error && error.stderr,
-      stdout: error && error.stdout,
-    },
-  );
+        "Original error: " +
+        message +
+        "\n\n" +
+        "Refresh the auth file with:\n" +
+        getAddonClaspLoginCommand(normalizedTarget),
+      ),
+      {
+        cause: error,
+        code: error && error.code,
+        stderr: error && error.stderr,
+        stdout: error && error.stdout,
+      },
+    );
+  }
+
+  return error;
 }
 
 function isExpectedCliError(error) {
@@ -875,6 +931,10 @@ function isExpectedCliError(error) {
     /^Choose exactly one add-on target:/i.test(message) ||
     /^Missing add-on deployment target config at /i.test(message) ||
     /^Add-on deployment target config must include scriptId\./i.test(message) ||
+    /^No clasp credentials found for add-on deployment\./i.test(message) ||
+    /^Saved clasp credentials for add-on deployment need reauthorization\./i.test(
+      message,
+    ) ||
     /^Unknown argument:/i.test(message) ||
     /^Usage:/i.test(message) ||
     /required `--` separator/i.test(message)

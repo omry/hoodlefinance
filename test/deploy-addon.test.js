@@ -11,6 +11,7 @@ const {
   buildDefaultVersionDescription,
   deployAddon,
   assertNoLikelyMissingNpmArgSeparator,
+  explainCredentialError,
   GENERATED_DEPLOYMENT_CONFIG_FILENAME,
   getAddonClaspAuthPath,
   getAddonDeployCredentialContext,
@@ -505,6 +506,41 @@ test("deployAddon surfaces missing add-on credential paths when clasp reports no
   } finally {
     process.chdir(previousCwd);
   }
+});
+
+test("explainCredentialError suggests clasp:user:login for add-on reauth failures", function () {
+  const fixture = createFixture();
+  const error = Object.assign(
+    new Error(
+      '{"error":"invalid_grant","error_description":"reauth related error (invalid_rapt)","error_subtype":"invalid_rapt"}',
+    ),
+    {
+      code: 1,
+      stderr:
+        '{"error":"invalid_grant","error_description":"reauth related error (invalid_rapt)","error_subtype":"invalid_rapt"}',
+      stdout: "",
+    },
+  );
+  const explained = explainCredentialError(error, {
+    claspAuthPath: path.join(fixture.productionDir, ".clasprc.json"),
+    oauthClientPath: path.join(fixture.productionDir, "oauth-client.json"),
+    targetName: "production",
+  });
+
+  assert.match(
+    explained.message,
+    /Saved clasp credentials for add-on deployment need reauthorization\./,
+  );
+  assert.match(
+    explained.message,
+    /Original error: .*invalid_rapt[\s\S]*\n\nRefresh the auth file with:\n/,
+  );
+  assert.match(
+    explained.message,
+    /\n\nRefresh the auth file with:\nnpm run clasp:user:login -- --addon-production$/,
+  );
+  assert.match(explained.message, /invalid_rapt/);
+  assert.equal(explained.cause, error);
 });
 
 test("addon target helpers resolve production and staging local paths", function () {
