@@ -37,10 +37,10 @@ assets:
       path: assets/svg/light/hero-art.svg
       copy_to: website/static/img/hoodlefinance/light/hero-art.svg
       output:
-        path: website/static/img/hoodlefinance/light/hero-art
+        path: website/static/img/hoodlefinance/light/social-share
         resolutions:
-          - width: 220
-            height: 140
+          - width: 1200
+            height: 630
         name_pattern: ${.path}-{width}x{height}.png
 
   website_dark_hero:

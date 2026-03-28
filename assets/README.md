@@ -12,6 +12,8 @@ These sources drive generated outputs for:
 - the website under [`../website/static/img/hoodlefinance/`](../website/static/img/hoodlefinance/)
 - the Google Workspace Marketplace assets under [`../docs/google-sheets-editor-addon/assets/marketplace/`](../docs/google-sheets-editor-addon/assets/marketplace/)
 
+For the website, the homepage uses the generated themed SVG hero art directly, and the pipeline also renders a light-theme PNG social-share image for metadata.
+
 ## Regenerating Outputs
 
 If you have not set up the repo-local Python environment yet, create it first:

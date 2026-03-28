@@ -83,7 +83,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      image: "img/hoodlefinance/light/hero-art-220x140.png",
+      image: "img/hoodlefinance/light/social-share-1200x630.png",
       colorMode: {
         respectPrefersColorScheme: true,
       },
