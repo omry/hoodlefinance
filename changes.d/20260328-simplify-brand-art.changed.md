@@ -1,0 +1,1 @@
+- Removed the decorative bottom bar-chart accents from the shared website and Marketplace banner and hero artwork.
