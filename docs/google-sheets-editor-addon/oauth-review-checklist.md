@@ -20,7 +20,7 @@ Repo-local refresh on March 24, 2026:
 - [x] `HOODLEFINANCE()` is recognized in Sheets from the Marketplace-installed add-on
 - [x] Add-on homepage loads successfully
 - [x] Add-on menu appears under `Extensions`
-- [x] `Show installed version` works from the installed add-on
+- [x] The `Enable` menu item appears and works from the installed add-on
 - [x] Representative formulas returned data successfully in the private dry run
 - [x] Public support page exists:
       https://hoodlefinance.com/support
@@ -54,7 +54,7 @@ Repo-local refresh on March 24, 2026:
 - [x] Public-review Marketplace draft install now works end to end:
   - homepage loads
   - menu appears
-  - `Show installed version` works
+  - the `Enable` menu item appears and works
   - `HOODLEFINANCE()` is recognized
 - [x] Root cause of the earlier broken public draft install identified and fixed:
   - the first Marketplace-installed `onOpen()` ran in a low-auth mode

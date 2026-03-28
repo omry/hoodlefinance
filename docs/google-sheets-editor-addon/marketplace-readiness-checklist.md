@@ -32,7 +32,7 @@ Already done:
 - `HOODLEFINANCE()` recognized in Sheets from the Marketplace-installed add-on
 - the add-on homepage loaded successfully
 - the add-on menu appeared under `Extensions`
-- `Show installed version` worked from the add-on menu
+- the `Enable` menu item appeared and worked from the add-on menu
 - representative formulas returned data successfully
 - public support email now receives mail at `support@hoodlefinance.com`
 - decision made to proceed toward public Marketplace review
@@ -44,7 +44,7 @@ Already done:
 - `HOODLEFINANCE()` is recognized in Sheets from the public-review Marketplace-installed add-on
 - the add-on homepage loaded successfully from the public-review install
 - the add-on menu appeared under `Extensions` in the public-review install
-- `Show installed version` worked from the public-review add-on menu
+- the `Enable` menu item appeared and worked from the public-review add-on menu
 
 Current next step:
 
@@ -155,7 +155,7 @@ Observed result on March 21, 2026:
 - Marketplace packaging made `HOODLEFINANCE()` discoverable in Sheets
 - the add-on homepage loaded successfully
 - the add-on menu appeared under `Extensions`
-- `Show installed version` worked from the installed add-on
+- the `Enable` menu item appeared and worked from the installed add-on
 - representative formulas returned data successfully
 
 Checklist:

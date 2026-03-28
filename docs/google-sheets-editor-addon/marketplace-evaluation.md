@@ -153,7 +153,7 @@ The private Marketplace dry run did prove it. In a fresh spreadsheet with the Ma
 
 - `HOODLEFINANCE()` was recognized by Sheets
 - the add-on menu appeared under `Extensions`
-- `Show installed version` worked from the installed add-on
+- the `Enable` menu item appeared and worked from the installed add-on
 
 That means Marketplace packaging is now a technically viable distribution path for the product.
 

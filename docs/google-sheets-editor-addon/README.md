@@ -30,7 +30,7 @@ Later on March 21, 2026, a private internal Google Workspace Marketplace dry run
 
 - the Marketplace-installed add-on exposed `HOODLEFINANCE()` in Sheets
 - the add-on menu appeared under `Extensions`
-- `Show installed version` worked from the add-on menu
+- the `Enable` menu item appeared and worked from the add-on menu
 
 This answered the main product question that unpublished Apps Script test deployments could not answer: Marketplace packaging can make the custom functions discoverable in Sheets.
 
