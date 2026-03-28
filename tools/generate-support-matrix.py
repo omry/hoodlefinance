@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-CLI_PATH = ROOT_DIR / "tools" / "cli.js"
+CLI_PATH = ROOT_DIR / "tools" / "_shared" / "cli.js"
 SUPPORT_MATRIX_PATH = ROOT_DIR / "website" / "docs" / "support-matrix.md"
 
 EXCHANGES = [
@@ -100,11 +100,28 @@ EXCHANGES = [
     {
         "code": "PSE",
         "name": "Philippine Stock Exchange",
-        "samples": ["PSE:AP", "PSE:CNVRG", "PSE:DMC", "PSE:GTCAP"],
-        "google_query_samples": ["PSE:AP", "PSE:CNVRG", "PSE:DMC", "PSE:GTCAP"],
-        "yahoo_query_samples": ["AP.PS", "CNVRG.PS", "DMC.PS", "GTCAP.PS"],
+        "samples": [
+            "PSE:AP",
+            "PSE:CNVRG",
+            {"ticker": "PSE:DDPR", "label": "PSE:DDPR (DoubleDragon Pref)"},
+            {"ticker": "PSE:ACPAR", "label": "PSE:ACPAR (Ayala Pref A)"},
+        ],
+        "google_query_samples": [
+            "PSE:AP",
+            "PSE:CNVRG",
+            {"ticker": "PSE:DDPR", "label": "PSE:DDPR (DoubleDragon Pref)"},
+            {"ticker": "PSE:ACPAR", "label": "PSE:ACPAR (Ayala Pref A)"},
+        ],
+        "yahoo_query_samples": [
+            "AP.PS",
+            "CNVRG.PS",
+            {"ticker": "DDPR.PS", "label": "DDPR.PS (DoubleDragon Pref)"},
+            {"ticker": "ACPAR.PS", "label": "ACPAR.PS (Ayala Pref A)"},
+        ],
         "isin_lookup_samples": [
             {"ticker": "PHY0005M1090", "label": "PHY0005M1090 (AP)"},
+            {"ticker": "PHY2105Y1166", "label": "PHY2105Y1166 (DDPR)"},
+            {"ticker": "PH0000056814", "label": "PH0000056814 (ACPAR)"},
         ],
     },
     {
@@ -307,7 +324,7 @@ def summarize_failures(failures: list[dict[str, str]]) -> str:
     return "; ".join(parts)
 
 
-def run_probe(ticker: str, attribute: str) -> dict[str, str | bool]:
+def run_probe_once(ticker: str, attribute: str) -> dict[str, str | bool]:
     result = subprocess.run(
         ["node", str(CLI_PATH), ticker, attribute],
         capture_output=True,
@@ -329,6 +346,18 @@ def run_probe(ticker: str, attribute: str) -> dict[str, str | bool]:
         "output": stdout,
         "error": stderr or "failed",
     }
+
+
+def run_probe(ticker: str, attribute: str) -> dict[str, str | bool]:
+    result = run_probe_once(ticker, attribute)
+    if result["ok"]:
+        return result
+
+    retry_result = run_probe_once(ticker, attribute)
+    if retry_result["ok"]:
+        return retry_result
+
+    return retry_result
 
 
 def build_probe_plan() -> list[tuple[str, str, str, str]]:

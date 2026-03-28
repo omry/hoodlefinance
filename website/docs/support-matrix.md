@@ -90,15 +90,15 @@ Use it as a quick reference for current live probe results by exchange and featu
     </tr>
     <tr>
       <td><code>PSE</code><br /><sub>Philippine Stock Exchange</sub></td>
-      <td><span title="PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">ⓘ</span></td>
-      <td><span title="All probes passed. Attributes: name. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
-      <td><span title="All probes passed. Attributes: name. Samples: AP.PS, CNVRG.PS, DMC.PS, GTCAP.PS">✅</span></td>
-      <td><span title="All probes passed. Attributes: name. Samples: PHY0005M1090 (AP)">✅</span></td>
-      <td><span title="All probes passed. Attributes: price, name, currency. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
-      <td><span title="All probes passed. Attributes: high, low, close. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
-      <td><span title="All probes passed. Attributes: volume, tradetime, datadelay. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
-      <td><span title="All probes passed. Attributes: change, changepct. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
-      <td><span title="All probes passed. Attributes: isin. Samples: PSE:AP, PSE:CNVRG, PSE:DMC, PSE:GTCAP">✅</span></td>
+      <td><span title="PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">ⓘ</span></td>
+      <td><span title="All probes passed. Attributes: name. Samples: PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">✅</span></td>
+      <td><span title="All probes passed. Attributes: name. Samples: AP.PS, CNVRG.PS, DDPR.PS (DoubleDragon Pref), ACPAR.PS (Ayala Pref A)">✅</span></td>
+      <td><span title="All probes passed. Attributes: name. Samples: PHY0005M1090 (AP), PHY2105Y1166 (DDPR), PH0000056814 (ACPAR)">✅</span></td>
+      <td><span title="All probes passed. Attributes: price, name, currency. Samples: PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">✅</span></td>
+      <td><span title="All probes passed. Attributes: high, low, close. Samples: PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">✅</span></td>
+      <td><span title="All probes passed. Attributes: volume, tradetime, datadelay. Samples: PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">✅</span></td>
+      <td><span title="All probes passed. Attributes: change, changepct. Samples: PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">✅</span></td>
+      <td><span title="All probes passed. Attributes: isin. Samples: PSE:AP, PSE:CNVRG, PSE:DDPR (DoubleDragon Pref), PSE:ACPAR (Ayala Pref A)">✅</span></td>
     </tr>
     <tr>
       <td><code>SGX</code><br /><sub>Singapore Exchange</sub></td>

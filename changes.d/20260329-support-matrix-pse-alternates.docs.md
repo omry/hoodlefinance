@@ -1,0 +1,1 @@
+- Added alternate PSE securities such as `PSE:DDPR` and `PSE:ACPAR` to the live support-matrix samples.
