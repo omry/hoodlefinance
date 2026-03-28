@@ -5209,10 +5209,7 @@ test("fetches PSE preferred-share quotes when the directory search misses the ex
       return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
     }
 
-    if (
-      url ===
-      "https://frames.pse.com.ph/security/DDPR"
-    ) {
+    if (url === "https://frames.pse.com.ph/security/DDPR") {
       return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
     }
 
@@ -5238,15 +5235,13 @@ test("reports a not-found error when the PSE frame fallback is blank", () => {
     seenUrls.push(url);
 
     if (
-      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ"
+      url ===
+      "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ"
     ) {
       return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
     }
 
-    if (
-      url ===
-      "https://frames.pse.com.ph/security/ZZZZZZ"
-    ) {
+    if (url === "https://frames.pse.com.ph/security/ZZZZZZ") {
       return createHttpResponse(200, PSE_FRAME_INVALID_HTML);
     }
 
@@ -5408,10 +5403,7 @@ test("shared batch PSE fetches can resolve preferred-share symbols through the f
       return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
     }
 
-    if (
-      url ===
-      "https://frames.pse.com.ph/security/DDPR"
-    ) {
+    if (url === "https://frames.pse.com.ph/security/DDPR") {
       return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
     }
 

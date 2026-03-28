@@ -96,11 +96,15 @@ function parseArgs(argv) {
       options.list = true;
       continue;
     }
-    throw new Error("Usage: node tools/license/spdx-headers.js [--check|--list]");
+    throw new Error(
+      "Usage: node tools/license/spdx-headers.js [--check|--list]",
+    );
   }
 
   if (options.check && options.list) {
-    throw new Error("Usage: node tools/license/spdx-headers.js [--check|--list]");
+    throw new Error(
+      "Usage: node tools/license/spdx-headers.js [--check|--list]",
+    );
   }
 
   return options;
@@ -163,7 +167,9 @@ if (require.main === module) {
   try {
     main();
   } catch (error) {
-    process.stderr.write(String(error && error.message ? error.message : error) + "\n");
+    process.stderr.write(
+      String(error && error.message ? error.message : error) + "\n",
+    );
     process.exitCode = 1;
   }
 }

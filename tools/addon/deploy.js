@@ -734,11 +734,7 @@ function getAddonClaspLoginCommand(targetName) {
 }
 
 function getCredentialErrorText(error) {
-  return [
-    error && error.message,
-    error && error.stderr,
-    error && error.stdout,
-  ]
+  return [error && error.message, error && error.stderr, error && error.stdout]
     .filter(Boolean)
     .join("\n");
 }
@@ -895,21 +891,21 @@ function explainCredentialError(error, paths) {
     return Object.assign(
       new Error(
         "Saved clasp credentials for add-on deployment need reauthorization.\n" +
-        describeCredentialFile(
-          paths && paths.claspAuthPath,
-          "Current auth file",
-        ) +
-        "\n" +
-        describeCredentialFile(
-          paths && paths.oauthClientPath,
-          "OAuth client file",
-        ) +
-        "\n" +
-        "Original error: " +
-        message +
-        "\n\n" +
-        "Refresh the auth file with:\n" +
-        getAddonClaspLoginCommand(normalizedTarget),
+          describeCredentialFile(
+            paths && paths.claspAuthPath,
+            "Current auth file",
+          ) +
+          "\n" +
+          describeCredentialFile(
+            paths && paths.oauthClientPath,
+            "OAuth client file",
+          ) +
+          "\n" +
+          "Original error: " +
+          message +
+          "\n\n" +
+          "Refresh the auth file with:\n" +
+          getAddonClaspLoginCommand(normalizedTarget),
       ),
       {
         cause: error,

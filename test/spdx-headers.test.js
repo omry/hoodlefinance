@@ -3,7 +3,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { ensureSpdxHeader, parseArgs } = require("../tools/license/spdx-headers.js");
+const {
+  ensureSpdxHeader,
+  parseArgs,
+} = require("../tools/license/spdx-headers.js");
 
 test("ensureSpdxHeader adds a JS SPDX header", function () {
   assert.equal(
@@ -15,7 +18,10 @@ test("ensureSpdxHeader adds a JS SPDX header", function () {
 test("ensureSpdxHeader adds a shell SPDX header after the shebang", function () {
   assert.equal(
     ensureSpdxHeader("example.sh", "#!/bin/sh\n\necho hi\n"),
-    "#!/bin/sh\n# SPDX-License-Identifier: MPL-2.0 */\n\n\necho hi\n".replace("# SPDX-License-Identifier: MPL-2.0 */", "# SPDX-License-Identifier: MPL-2.0"),
+    "#!/bin/sh\n# SPDX-License-Identifier: MPL-2.0 */\n\n\necho hi\n".replace(
+      "# SPDX-License-Identifier: MPL-2.0 */",
+      "# SPDX-License-Identifier: MPL-2.0",
+    ),
   );
 });
 
@@ -26,7 +32,10 @@ test("ensureSpdxHeader leaves matching headers unchanged", function () {
 
 test("ensureSpdxHeader replaces an existing SPDX header with the expected comment style", function () {
   assert.equal(
-    ensureSpdxHeader("example.py", "/* SPDX-License-Identifier: MIT */\n\nprint('hi')\n"),
+    ensureSpdxHeader(
+      "example.py",
+      "/* SPDX-License-Identifier: MIT */\n\nprint('hi')\n",
+    ),
     "# SPDX-License-Identifier: MPL-2.0\n\nprint('hi')\n",
   );
 });

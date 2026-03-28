@@ -115,9 +115,7 @@ function buildStockDataUrl(companyId, securityId) {
     PSE_STOCK_DATA_URL +
     "?cmpy_id=" +
     encodeURIComponent(companyId) +
-    (securityId
-      ? "&security_id=" + encodeURIComponent(securityId)
-      : "")
+    (securityId ? "&security_id=" + encodeURIComponent(securityId) : "")
   );
 }
 
@@ -150,11 +148,7 @@ function extractCompanySecurityListings(ctx, html, fallbackListing) {
     });
   }
 
-  return listings.length
-    ? listings
-    : fallbackListing
-      ? [fallbackListing]
-      : [];
+  return listings.length ? listings : fallbackListing ? [fallbackListing] : [];
 }
 
 function expandListingsWithCompanySecurities(ctx, listings) {
@@ -214,7 +208,9 @@ function dedupeListings(listings) {
 }
 
 function buildPseSecurityFrameUrl(symbol) {
-  return PSE_SECURITY_FRAME_URL + encodeURIComponent(String(symbol || "").trim());
+  return (
+    PSE_SECURITY_FRAME_URL + encodeURIComponent(String(symbol || "").trim())
+  );
 }
 
 function buildQuoteRecord(listing, quote) {
@@ -228,7 +224,10 @@ function buildQuoteRecord(listing, quote) {
 }
 
 function fetchPseQuoteFromStockData(ctx, listing) {
-  let html = fetchTextOrThrow(ctx, buildStockDataUrl(listing.companyId, listing.securityId));
+  let html = fetchTextOrThrow(
+    ctx,
+    buildStockDataUrl(listing.companyId, listing.securityId),
+  );
   let quote = ctx.hf_extractPseQuote_(html, listing);
 
   if (

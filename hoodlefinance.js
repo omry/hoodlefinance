@@ -4542,7 +4542,9 @@ function hf_extractPseFrameQuote_(html, symbol) {
     regularMarketChange: change,
     regularMarketChangePercent:
       change != null && previousClose ? change / previousClose : null,
-    regularMarketDayHigh: hf_parseNumber_(hf_extractPseFrameField_(html, "High")),
+    regularMarketDayHigh: hf_parseNumber_(
+      hf_extractPseFrameField_(html, "High"),
+    ),
     regularMarketDayLow: hf_parseNumber_(hf_extractPseFrameField_(html, "Low")),
     regularMarketOpen: hf_parseNumber_(hf_extractPseFrameField_(html, "Open")),
     regularMarketPreviousClose: previousClose,
