@@ -26,7 +26,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - import-time UX
         "Error: missing Python dependency '"
         + missing_module
         + "'. Run this tool from the repo-local .venv, for example:\n"
-        + "  ./.venv/bin/python tools/generate-marketplace-assets.py",
+        + "  ./.venv/bin/python tools/assets/generate-marketplace-assets.py",
         file=sys.stderr,
     )
     raise SystemExit(1) from exc
@@ -88,6 +88,10 @@ def validate_png(path: Path, width: int, height: int) -> None:
         )
 
 
+def ensure_parent_dir(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+
 def run_backend(
     backend: str,
     svg_path: Path,
@@ -95,6 +99,8 @@ def run_backend(
     width: int,
     height: int,
 ) -> None:
+    ensure_parent_dir(png_path)
+
     if backend == "cairosvg":
         assert cairosvg is not None
         cairosvg.svg2png(
@@ -204,37 +210,50 @@ def resolution_fields(entry: Any) -> dict[str, str]:
     raise RuntimeError(f"Unsupported resolution entry: {entry!r}")
 
 
+def copy_svg(svg_path: Path, output_path: Path) -> None:
+    ensure_parent_dir(output_path)
+    shutil.copyfile(svg_path, output_path)
+
+
 def render_asset(asset_name: str, asset_cfg: DictConfig, backend: str) -> list[Path]:
     svg_path = Path(asset_cfg.svg.path)
-    output_base = str(asset_cfg.svg.output.path)
-    name_pattern = str(asset_cfg.svg.output.name_pattern)
 
     if not svg_path.exists():
         raise RuntimeError(f"{asset_name}: missing SVG source {svg_path}")
 
     generated: list[Path] = []
-    for entry in asset_cfg.svg.output.resolutions:
-        fields = resolution_fields(entry)
-        width = int(fields["width"])
-        height = int(fields["height"])
-        output_path = Path(
-            name_pattern.format(
-                width=fields["width"],
-                height=fields["height"],
-                resolution=fields["resolution"],
-                stem=svg_path.stem,
-                path=output_base,
-            )
-        )
-        render_svg(backend, svg_path, output_path, width, height)
+    copy_to = asset_cfg.svg.get("copy_to")
+    if copy_to:
+        output_path = Path(str(copy_to))
+        copy_svg(svg_path, output_path)
         generated.append(output_path)
+
+    output_cfg = asset_cfg.svg.get("output")
+    if output_cfg is not None:
+        output_base = str(output_cfg.path)
+        name_pattern = str(output_cfg.name_pattern)
+        for entry in output_cfg.resolutions:
+            fields = resolution_fields(entry)
+            width = int(fields["width"])
+            height = int(fields["height"])
+            output_path = Path(
+                name_pattern.format(
+                    width=fields["width"],
+                    height=fields["height"],
+                    resolution=fields["resolution"],
+                    stem=svg_path.stem,
+                    path=output_base,
+                )
+            )
+            render_svg(backend, svg_path, output_path, width, height)
+            generated.append(output_path)
 
     return generated
 
 
 @hydra.main(
     version_base=None,
-    config_path="generate_marketplace_assets",
+    config_path=".",
     config_name="config",
 )
 def hydra_main(cfg: DictConfig) -> None:

@@ -14,7 +14,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config = {
   title: "HoodleFinance",
   tagline: "Market data for U.S. and international listings in Google Sheets",
-  favicon: "img/hoodlefinance/icon-day-v2.svg",
+  favicon: "img/hoodlefinance/light/icon.svg",
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -27,7 +27,7 @@ const config = {
       attributes: {
         rel: "icon",
         type: "image/svg+xml",
-        href: "/img/hoodlefinance/icon-day-v2.svg",
+        href: "/img/hoodlefinance/light/icon.svg",
         media: "(prefers-color-scheme: light)",
       },
     },
@@ -36,7 +36,7 @@ const config = {
       attributes: {
         rel: "icon",
         type: "image/svg+xml",
-        href: "/img/hoodlefinance/icon-night-v2.svg",
+        href: "/img/hoodlefinance/dark/icon.svg",
         media: "(prefers-color-scheme: dark)",
       },
     },
@@ -83,7 +83,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      image: "img/hoodlefinance/hero-art-220x140.png",
+      image: "img/hoodlefinance/light/hero-art-220x140.png",
       colorMode: {
         respectPrefersColorScheme: true,
       },
@@ -91,8 +91,8 @@ const config = {
         title: "HoodleFinance",
         logo: {
           alt: "HoodleFinance logo",
-          src: "img/hoodlefinance/icon-day-v2.svg",
-          srcDark: "img/hoodlefinance/icon-night-v2.svg",
+          src: "img/hoodlefinance/light/icon.svg",
+          srcDark: "img/hoodlefinance/dark/icon.svg",
         },
         items: [
           {

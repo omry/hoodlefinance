@@ -1,0 +1,103 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
+
+backend: auto
+
+targets:
+  - website_light_icon
+  - website_dark_icon
+  - website_light_hero
+  - website_dark_hero
+  - marketplace_light_icon
+  - marketplace_dark_icon
+  - marketplace_light_banner
+  - marketplace_dark_banner
+
+assets:
+  website_light_icon:
+    svg:
+      path: assets/svg/light/icon.svg
+      copy_to: website/static/img/hoodlefinance/light/icon.svg
+      output:
+        path: website/static/img/hoodlefinance/light/icon
+        resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  website_dark_icon:
+    svg:
+      path: assets/svg/dark/icon.svg
+      copy_to: website/static/img/hoodlefinance/dark/icon.svg
+      output:
+        path: website/static/img/hoodlefinance/dark/icon
+        resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  website_light_hero:
+    svg:
+      path: assets/svg/light/hero-art.svg
+      copy_to: website/static/img/hoodlefinance/light/hero-art.svg
+      output:
+        path: website/static/img/hoodlefinance/light/hero-art
+        resolutions:
+          - width: 220
+            height: 140
+        name_pattern: ${.path}-{width}x{height}.png
+
+  website_dark_hero:
+    svg:
+      path: assets/svg/dark/hero-art.svg
+      copy_to: website/static/img/hoodlefinance/dark/hero-art.svg
+      output:
+        path: website/static/img/hoodlefinance/dark/hero-art
+        resolutions:
+          - width: 220
+            height: 140
+        name_pattern: ${.path}-{width}x{height}.png
+
+  marketplace_light_icon:
+    svg:
+      path: assets/svg/light/icon.svg
+      copy_to: docs/google-sheets-editor-addon/assets/marketplace/light/icon.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/light/icon
+        resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  marketplace_dark_icon:
+    svg:
+      path: assets/svg/dark/icon.svg
+      copy_to: docs/google-sheets-editor-addon/assets/marketplace/dark/icon.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/dark/icon
+        resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  marketplace_light_banner:
+    svg:
+      path: assets/svg/light/banner.svg
+      copy_to: docs/google-sheets-editor-addon/assets/marketplace/light/banner-220x140.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/light/banner
+        resolutions:
+          - width: 220
+            height: 140
+        name_pattern: ${.path}-{width}x{height}.png
+
+  marketplace_dark_banner:
+    svg:
+      path: assets/svg/dark/banner.svg
+      copy_to: docs/google-sheets-editor-addon/assets/marketplace/dark/banner-220x140.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/dark/banner
+        resolutions:
+          - width: 220
+            height: 140
+        name_pattern: ${.path}-{width}x{height}.png

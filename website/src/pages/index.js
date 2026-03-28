@@ -18,8 +18,8 @@ function HomepageHeader() {
               alt="HoodleFinance"
               className={styles.heroLogo}
               sources={{
-                light: "/img/hoodlefinance/hero-art-day.svg",
-                dark: "/img/hoodlefinance/hero-art-night.svg",
+                light: "/img/hoodlefinance/light/hero-art.svg",
+                dark: "/img/hoodlefinance/dark/hero-art.svg",
               }}
             />
           </Heading>
