@@ -86,17 +86,5 @@
     <rect x="66" y="58" width="70" height="3" rx="1.5" ry="1.5" class="secondary-fill"/>
   </g>
 
-  
-  <g id="formula-block">
-    <rect x="14" y="91" width="192" height="31" rx="3" ry="3" class="box-fill box-stroke"/>
-    <g font-family="DejaVu Sans Mono, monospace" font-size="8" font-weight="700" text-rendering="optimizeLegibility">
-      <text x="24" y="109" fill="#b8c0cf">=HOODLEFINANCE(</text>
-      <text x="96" y="109" fill="#7bd4e4">"BMW.DE"</text>
-      <text x="135" y="109" fill="#b8c0cf">,</text>
-      <text x="140" y="109" fill="#f1bd87">"PRICE@USD"</text>
-      <text x="193" y="109" fill="#b8c0cf">)</text>
-    </g>
-  </g>
-
   <rect width="220" height="140" fill="url(#depthFade)"/>
 </svg>
