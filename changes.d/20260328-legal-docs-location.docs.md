@@ -1,0 +1,1 @@
+- Grouped the website legal pages under a dedicated source directory while preserving the existing public URLs for the Individual CLA, Privacy Policy, and Terms of Service.

@@ -6,7 +6,7 @@ This is an Apps Script project with a Node-based local test harness, maintainer 
 
 External contributions are expected to go through a Contributor License Agreement (CLA) before merge.
 
-Use the project Individual CLA at [`docs/legal/individual-cla.md`](./docs/legal/individual-cla.md).
+Use the project Individual CLA at [https://hoodlefinance.com/individual-cla](https://hoodlefinance.com/individual-cla).
 
 The intended merge policy is:
 

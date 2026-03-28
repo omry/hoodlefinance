@@ -22,7 +22,7 @@ See the [public demo sheet](https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L
 ## Repo Guide
 
 - Local development and contribution workflow: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
-- Individual Contributor License Agreement: [`docs/legal/individual-cla.md`](./docs/legal/individual-cla.md)
+- Individual Contributor License Agreement: [hoodlefinance.com/individual-cla](https://hoodlefinance.com/individual-cla)
 - Public demo-sheet source and sync flow: [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md)
 - Website source: [`website/`](./website/)
 

@@ -1,3 +1,7 @@
+---
+slug: /terms-of-service
+---
+
 # HoodleFinance Add-on Terms of Service
 
 Last updated: March 22, 2026

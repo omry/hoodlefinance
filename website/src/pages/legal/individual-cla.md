@@ -1,3 +1,7 @@
+---
+slug: /individual-cla
+---
+
 # HoodleFinance Individual Contributor License Agreement
 
 This Individual Contributor License Agreement ("Agreement") is between the individual identified through the signing flow ("you") and Omry Yadan, together with any successors or assigns that become the owner or operator of HoodleFinance ("Maintainer").

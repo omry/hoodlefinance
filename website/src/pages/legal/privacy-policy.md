@@ -1,3 +1,7 @@
+---
+slug: /privacy-policy
+---
+
 # HoodleFinance Add-on Privacy Policy
 
 Last updated: March 22, 2026
