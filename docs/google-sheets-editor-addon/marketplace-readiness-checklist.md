@@ -48,7 +48,7 @@ Already done:
 
 Current next step:
 
-- do one final clean pre-submission verification pass and finish the OAuth review package
+- wait for Google reviewer feedback on the submitted public-review package
 
 ## 1. Cloud Project And Script Wiring
 
@@ -116,7 +116,7 @@ Checklist:
 - [x] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
 - [x] Public-review Apps Script version created and chosen for Marketplace use
 - [x] Public-review Marketplace configuration completed
-- [ ] Public-review OAuth requirements fully prepared
+- [x] Public-review OAuth requirements fully prepared
 
 ## 4. Listing Material
 
@@ -181,8 +181,10 @@ Checklist:
 - [x] Decide to proceed toward public Marketplace review
 - [x] Finish the new public-review Marketplace app configuration
 - [x] Re-run install validation through the new public-review app path
-- [ ] Prepare any required OAuth verification material
-- [ ] Submit for public review when ready
+- [x] Prepare any required OAuth verification material
+- [x] Submit for public review:
+  - submitted on March 28, 2026
+  - current state: awaiting Google feedback
 
 ## Notes For This Setup
 

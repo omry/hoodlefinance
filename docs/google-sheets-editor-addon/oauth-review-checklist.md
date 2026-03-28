@@ -1,14 +1,15 @@
 # OAuth Review Submission Checklist
 
-This checklist turns the broader notes in [`oauth-review-prep.md`](./oauth-review-prep.md) and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) into a concrete pre-submission tracker.
+This checklist turns the broader notes in [`oauth-review-prep.md`](./oauth-review-prep.md) and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) into a concrete submission and review tracker.
 
-Use it right before filing for OAuth review.
+Use it right before filing for OAuth review, and then as the tracker while the submission is under review.
 
-Repo-local refresh on March 24, 2026:
+Repo-local refresh on March 28, 2026:
 
 - the public-review Marketplace app path is in place
 - the clean public-review install path has already been revalidated
-- the remaining work is now the final Google-side scope/listing check, branding polish, and the reviewer package
+- the OAuth review package has now been submitted
+- the current state is waiting for Google reviewer feedback
 
 ## Done
 
@@ -85,19 +86,21 @@ Repo-local refresh on March 24, 2026:
 - [x] Treat `userinfo.email` and `userinfo.profile` as Google-managed default consent items rather than a repo-controlled scope decision:
   - they are not part of the repo-local manifest scope set
   - if they appear in the public-review OAuth Data Access view, explain them as default Google-managed consent-surface items rather than intentionally requested runtime scopes
-- [ ] Final-review the listing for wording consistency across:
+- [x] Final-review the listing for wording consistency across:
   - app name
   - short description
   - detailed description
   - category
   - support/privacy/terms links
   - screenshots and banner
-- [ ] Record the short demo video likely needed for OAuth verification:
+- [x] Record the short demo video likely needed for OAuth verification:
   - install flow
   - add-on homepage
   - menu entry point
   - one or two representative formulas working in Sheets
-- [ ] Submit for OAuth review once the package above is ready
+- [x] Submit for OAuth review:
+  - submitted on March 28, 2026
+  - current state: awaiting Google feedback
 
 ## Blocked Or Open Questions
 
@@ -109,7 +112,7 @@ Repo-local refresh on March 24, 2026:
 
 ## Submission Gate
 
-Do not file for OAuth review until:
+Submission was filed on March 28, 2026. While it is under review, keep these conditions as the baseline for any resubmission or reviewer follow-up:
 
 - the final scope set is stable
 - the listing and policy surface are final
