@@ -15,6 +15,20 @@ const DATA_PATH = path.join(DATA_DIR, "pse-isin-map.properties");
 const PSE_SEARCH_URL =
   "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const PSE_STOCK_DATA_URL = "https://edge.pse.com.ph/companyPage/stockData.do";
+const PSE_SECURITY_FRAME_URL = "https://frames.pse.com.ph/security/";
+
+function cleanHtmlText(text) {
+  return String(text || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function loadHoodlefinance() {
   const source = fs.readFileSync(SOURCE_PATH, "utf8");
@@ -78,62 +92,185 @@ function fetchTextOrThrow(ctx, url) {
 function fetchAllListings(ctx) {
   const firstPageHtml = fetchTextOrThrow(ctx, PSE_SEARCH_URL);
   const stats = extractPageStats(firstPageHtml);
-  const listings = ctx.hoodlefinanceExtractPseListings_(firstPageHtml);
+  const listings = ctx.hf_extractPseListings_(firstPageHtml);
   let pageNo;
   let html;
 
   for (pageNo = 2; pageNo <= stats.totalPages; pageNo += 1) {
     html = fetchTextOrThrow(ctx, PSE_SEARCH_URL + "&pageNo=" + pageNo);
-    listings.push.apply(listings, ctx.hoodlefinanceExtractPseListings_(html));
+    listings.push.apply(listings, ctx.hf_extractPseListings_(html));
   }
 
   return {
-    listings: listings,
+    listings: listings.map(function (listing) {
+      return Object.assign({ source: "directory" }, listing);
+    }),
     totalItems: stats.totalItems,
     totalPages: stats.totalPages,
   };
+}
+
+function buildStockDataUrl(companyId, securityId) {
+  return (
+    PSE_STOCK_DATA_URL +
+    "?cmpy_id=" +
+    encodeURIComponent(companyId) +
+    (securityId
+      ? "&security_id=" + encodeURIComponent(securityId)
+      : "")
+  );
+}
+
+function extractCompanySecurityListings(ctx, html, fallbackListing) {
+  const listings = [];
+  const companyId = String(
+    (fallbackListing && fallbackListing.companyId) || "",
+  ).trim();
+  const companyName =
+    (ctx.hf_extractPseCompanyName_(html) ||
+      (fallbackListing && fallbackListing.name) ||
+      "") + "";
+  const pattern = /<option value="([^"]+)"[^>]*>([\s\S]*?)<\/option>/gi;
+  let match;
+
+  while ((match = pattern.exec(String(html || "")))) {
+    const securityId = String(match[1] || "").trim();
+    const symbol = cleanHtmlText(match[2]).toUpperCase();
+
+    if (!companyId || !securityId || !symbol) {
+      continue;
+    }
+
+    listings.push({
+      companyId: companyId,
+      name: companyName,
+      securityId: securityId,
+      source: "company-security",
+      symbol: symbol,
+    });
+  }
+
+  return listings.length
+    ? listings
+    : fallbackListing
+      ? [fallbackListing]
+      : [];
+}
+
+function expandListingsWithCompanySecurities(ctx, listings) {
+  const expanded = [];
+  const seenCompanyIds = {};
+  let i;
+  let listing;
+  let html;
+
+  for (i = 0; i < listings.length; i += 1) {
+    listing = listings[i];
+
+    if (
+      !listing ||
+      !listing.companyId ||
+      seenCompanyIds[String(listing.companyId)]
+    ) {
+      continue;
+    }
+
+    seenCompanyIds[String(listing.companyId)] = true;
+    html = fetchTextOrThrow(ctx, buildStockDataUrl(listing.companyId, ""));
+    expanded.push.apply(
+      expanded,
+      extractCompanySecurityListings(ctx, html, listing),
+    );
+  }
+
+  return expanded;
+}
+
+function dedupeListings(listings) {
+  const deduped = [];
+  const seen = {};
+  let i;
+  let listing;
+  let key;
+
+  for (i = 0; i < listings.length; i += 1) {
+    listing = listings[i];
+    key =
+      String((listing && listing.companyId) || "") +
+      ":" +
+      String((listing && listing.securityId) || "") +
+      ":" +
+      String((listing && listing.symbol) || "").toUpperCase();
+
+    if (!listing || seen[key]) {
+      continue;
+    }
+
+    seen[key] = true;
+    deduped.push(listing);
+  }
+
+  return deduped;
+}
+
+function buildPseSecurityFrameUrl(symbol) {
+  return PSE_SECURITY_FRAME_URL + encodeURIComponent(String(symbol || "").trim());
+}
+
+function buildQuoteRecord(listing, quote) {
+  return {
+    companyId: listing.companyId,
+    isin: String((quote && quote.isin) || "").toUpperCase(),
+    name: (quote && quote.longName) || listing.name || "",
+    securityId: listing.securityId,
+    symbol: String((quote && quote.symbol) || "").toUpperCase(),
+  };
+}
+
+function fetchPseQuoteFromStockData(ctx, listing) {
+  let html = fetchTextOrThrow(ctx, buildStockDataUrl(listing.companyId, listing.securityId));
+  let quote = ctx.hf_extractPseQuote_(html, listing);
+
+  if (
+    (!quote || !quote.symbol || quote.symbol !== listing.symbol) &&
+    /Stock symbol not found\./i.test(html)
+  ) {
+    html = fetchTextOrThrow(ctx, buildStockDataUrl(listing.companyId, ""));
+    quote = ctx.hf_extractPseQuote_(html, listing);
+  }
+
+  if (!quote || !quote.symbol || quote.symbol !== listing.symbol) {
+    throw new Error(
+      "Missing or mismatched PSE quote data for " + listing.symbol + ".",
+    );
+  }
+
+  return quote;
 }
 
 function fetchPseQuotes(ctx, listings) {
   const quoteRecords = [];
   let listing;
   let quote;
-  let html;
   let i;
 
   for (i = 0; i < listings.length; i += 1) {
     listing = listings[i];
-    html = fetchTextOrThrow(
-      ctx,
-      PSE_STOCK_DATA_URL +
-        "?cmpy_id=" +
-        encodeURIComponent(listing.companyId) +
-        "&security_id=" +
-        encodeURIComponent(listing.securityId),
-    );
-    quote = ctx.hoodlefinanceExtractPseQuote_(html, listing);
 
-    if (!quote || !quote.symbol || /Stock symbol not found\./i.test(html)) {
-      html = fetchTextOrThrow(
-        ctx,
-        PSE_STOCK_DATA_URL +
-          "?cmpy_id=" +
-          encodeURIComponent(listing.companyId),
-      );
-      quote = ctx.hoodlefinanceExtractPseQuote_(html, listing);
+    if (listing.source === "company-security") {
+      try {
+        quote = ctx.hf_extractPseFrameQuote_(
+          fetchTextOrThrow(ctx, buildPseSecurityFrameUrl(listing.symbol)),
+          listing.symbol,
+        );
+      } catch (error) {
+        quote = fetchPseQuoteFromStockData(ctx, listing);
+      }
+    } else {
+      quote = fetchPseQuoteFromStockData(ctx, listing);
     }
 
-    if (!quote || !quote.symbol) {
-      throw new Error("Missing PSE quote data for " + listing.symbol + ".");
-    }
-
-    quoteRecords.push({
-      companyId: listing.companyId,
-      isin: String(quote.isin || "").toUpperCase(),
-      name: quote.longName || listing.name || "",
-      securityId: listing.securityId,
-      symbol: String(quote.symbol).toUpperCase(),
-    });
+    quoteRecords.push(buildQuoteRecord(listing, quote));
   }
 
   return quoteRecords;
@@ -281,12 +418,17 @@ function writeOutputs(isinMap, quoteRecords, stats, options) {
 function main() {
   const ctx = loadHoodlefinance();
   const listingInfo = fetchAllListings(ctx);
-  const quoteRecords = fetchPseQuotes(ctx, listingInfo.listings);
+  const expandedListings = dedupeListings(
+    listingInfo.listings.concat(
+      expandListingsWithCompanySecurities(ctx, listingInfo.listings),
+    ),
+  );
+  const quoteRecords = fetchPseQuotes(ctx, expandedListings);
   const isinMap = sortObjectByKey(buildIsinMap(quoteRecords));
 
-  if (listingInfo.totalItems !== quoteRecords.length) {
+  if (quoteRecords.length < listingInfo.totalItems) {
     throw new Error(
-      "Expected " +
+      "Expected at least " +
         listingInfo.totalItems +
         " PSE listings but scraped " +
         quoteRecords.length +
@@ -312,7 +454,14 @@ function main() {
 
 module.exports = {
   buildIsinMap,
+  buildPseSecurityFrameUrl,
+  buildQuoteRecord,
+  buildStockDataUrl,
   buildOutputText,
+  cleanHtmlText,
+  dedupeListings,
+  expandListingsWithCompanySecurities,
+  extractCompanySecurityListings,
   extractUpdatedAt,
   fetchAllListings,
   fetchPseQuotes,

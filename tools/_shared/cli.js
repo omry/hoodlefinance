@@ -21,6 +21,13 @@ function loadHoodlefinance() {
     "data",
     "currency-codes.json",
   );
+  const localPseIsinMapPath = path.join(
+    __dirname,
+    "..",
+    "..",
+    "data",
+    "pse-isin-map.properties",
+  );
 
   scriptPropertiesStore.set(
     "hoodlefinance.currencyCodes",
@@ -29,6 +36,13 @@ function loadHoodlefinance() {
   scriptPropertiesStore.set(
     "hoodlefinance.currencyCodesFetchedAtMs",
     String(Date.now()),
+  );
+  scriptPropertiesStore.set(
+    "hoodlefinance.pseIsinMap",
+    JSON.stringify({
+      fetchedAtMs: Date.now(),
+      text: fs.readFileSync(localPseIsinMapPath, "utf8"),
+    }),
   );
 
   const sandbox = {

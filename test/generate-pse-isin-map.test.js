@@ -6,7 +6,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { writeOutputs } = require("../tools/generate-pse-isin-map.js");
+const {
+  dedupeListings,
+  extractCompanySecurityListings,
+  writeOutputs,
+} = require("../tools/generate-pse-isin-map.js");
 
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -39,6 +43,69 @@ function createFixtureState() {
     },
   };
 }
+
+test("extractCompanySecurityListings captures alternate company securities", function () {
+  const ctx = {
+    hf_extractPseCompanyName_() {
+      return "Ayala Corporation";
+    },
+  };
+  const listings = extractCompanySecurityListings(
+    ctx,
+    `
+<div class="compInfo"><p>Ayala Corporation</p></div>
+<select name="security_id">
+  <option value="180" selected>AC</option>
+  <option value="698">ACPAR</option>
+  <option value="722">ACPB3</option>
+</select>
+`,
+    {
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "180",
+      symbol: "AC",
+    },
+  );
+
+  assert.deepEqual(listings, [
+    {
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "180",
+      source: "company-security",
+      symbol: "AC",
+    },
+    {
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "698",
+      source: "company-security",
+      symbol: "ACPAR",
+    },
+    {
+      companyId: "57",
+      name: "Ayala Corporation",
+      securityId: "722",
+      source: "company-security",
+      symbol: "ACPB3",
+    },
+  ]);
+});
+
+test("dedupeListings removes repeated company-security-symbol tuples", function () {
+  assert.deepEqual(
+    dedupeListings([
+      { companyId: "57", securityId: "180", symbol: "AC" },
+      { companyId: "57", securityId: "180", symbol: "AC" },
+      { companyId: "57", securityId: "698", symbol: "ACPAR" },
+    ]),
+    [
+      { companyId: "57", securityId: "180", symbol: "AC" },
+      { companyId: "57", securityId: "698", symbol: "ACPAR" },
+    ],
+  );
+});
 
 test("writeOutputs preserves the existing updated_at when the generated map is unchanged", function () {
   const rootDir = fs.mkdtempSync(

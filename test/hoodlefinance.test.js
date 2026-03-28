@@ -159,6 +159,27 @@ const PSE_FRAME_DDPR_HTML = `
 <a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=651"></a>
 `;
 
+const PSE_FRAME_ACPAR_HTML = `
+<div class="security-header">
+  <h3 class="last-price">2500.00</h3>
+  <span>As of March 27, 2026 03:00:00 PM</span>
+</div>
+<input
+  id="stock-json"
+  type="hidden"
+  value="{&quot;name&quot;:&quot;ACPAR&quot;,&quot;full_name&quot;:&quot;Ayala Corporation Non-Voting Perpetual Preferred A Shares&quot;}"
+/>
+<table class="table table-striped">
+  <tr><td>ISIN</td><td>PH0000056814</td></tr>
+  <tr><td>Open</td><td>2500.00</td></tr>
+  <tr><td>Prev Close</td><td>2490.00</td></tr>
+  <tr><td>High</td><td>2500.00</td></tr>
+  <tr><td>Low</td><td>2500.00</td></tr>
+  <tr><td>Volume</td><td>4075</td></tr>
+</table>
+<a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=57"></a>
+`;
+
 const PSE_FRAME_INVALID_HTML = `
 <div class="security-header">
   <h3 class="last-price">0.00</h3>
@@ -185,7 +206,10 @@ const PSE_HTTP_520_TEXT = "error code: 520";
 const PSE_ISIN_MAP_PROPERTIES = `
 # PSE ISIN to ticker map
 # updated_at=2026-03-13T18:34:56.295Z
+PH0000056814=PSE:ACPAR
 PHY077751022=PSE:BDO
+PHY1001D1010=PSE:AREIT
+PHY2105Y1166=PSE:DDPR
 `;
 
 const CURRENCY_CODES_JSON = JSON.stringify(
@@ -1854,7 +1878,7 @@ test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", ()
   assert.equal(ctx.hf_normalizeTicker_("KSM.F59.TA"), "KSM.F59.TA");
 });
 
-test("resolves Philippine ISIN input directly to a mapped PSE ticker without Yahoo search", () => {
+test("resolves Philippine ISIN input directly to mapped PSE tickers without Yahoo search", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
 
@@ -1872,6 +1896,9 @@ test("resolves Philippine ISIN input directly to a mapped PSE ticker without Yah
   };
 
   assert.equal(ctx.hf_resolveIsin_("PHY077751022"), "PSE:BDO");
+  assert.equal(ctx.hf_resolveIsin_("PHY1001D1010"), "PSE:AREIT");
+  assert.equal(ctx.hf_resolveIsin_("PH0000056814"), "PSE:ACPAR");
+  assert.equal(ctx.hf_resolveIsin_("PHY2105Y1166"), "PSE:DDPR");
   assert.deepEqual(seenUrls, [
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
   ]);
@@ -3240,6 +3267,70 @@ test("direct Philippine ISIN input uses the mapped PSE ticker directly in the sh
       ]),
     );
   }
+});
+
+test("direct Philippine preferred-share ISIN input can reach the PSE frame fallback", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (
+      url ===
+      "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
+    ) {
+      return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
+    }
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
+    }
+
+    if (url === "https://frames.pse.com.ph/security/DDPR") {
+      return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("PHY2105Y1166", "price"), 94.5);
+  assert.deepEqual(seenUrls, [
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR",
+    "https://frames.pse.com.ph/security/DDPR",
+  ]);
+});
+
+test("direct Philippine preferred-share ISIN input resolves symbol attributes through the PSE map", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (
+      url ===
+      "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
+    ) {
+      return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
+    }
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ACPAR"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
+    }
+
+    if (url === "https://frames.pse.com.ph/security/ACPAR") {
+      return createHttpResponse(200, PSE_FRAME_ACPAR_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("PH0000056814", "symbol"), "PSE:ACPAR");
+  assert.equal(ctx.HOODLEFINANCE("PH0000056814", "symbol:yahoo"), "ACPAR.PS");
+  assert.equal(ctx.HOODLEFINANCE("PH0000056814", "exchange"), "PSE");
 });
 
 test("range calls abort with the first failing job in traversal order", () => {

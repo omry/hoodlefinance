@@ -1,0 +1,1 @@
+- Fixed PSE ISIN identifier lookups for alternate securities such as `PSE:DDPR` and `PSE:ACPAR`, and updated local smoke checks to use the checked-out PSE ISIN map.
