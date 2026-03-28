@@ -84,6 +84,12 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       image: "img/hoodlefinance/light/social-share-1200x630.png",
+      metadata: [
+        {
+          property: "og:type",
+          content: "website",
+        },
+      ],
       colorMode: {
         respectPrefersColorScheme: true,
       },
