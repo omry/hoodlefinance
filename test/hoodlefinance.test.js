@@ -47,6 +47,9 @@ const PSE_SEARCH_BDO_HTML = `
   </tbody>
 `;
 
+const PSE_SEARCH_NO_DATA_HTML =
+  '<tbody><tr><td colspan="5" class="alignC">no data.</td></tr></tbody>';
+
 const PSE_STOCK_AAA_HTML = `
 <div class="compInfo">
   <p style="">Asia Amalgamated Holdings Corporation</p>
@@ -133,6 +136,48 @@ const PSE_STOCK_BDO_HTML = `
   <td style="text-align:right;padding-right:1.2em;">123.18</td>
 </tr>
 </table>
+`;
+
+const PSE_FRAME_DDPR_HTML = `
+<div class="security-header">
+  <h3 class="last-price">94.50</h3>
+  <span>As of March 27, 2026 03:00:00 PM</span>
+</div>
+<input
+  id="stock-json"
+  type="hidden"
+  value="{&quot;name&quot;:&quot;DDPR&quot;,&quot;full_name&quot;:&quot;DoubleDragon Properties Corp. Preferred Shares&quot;}"
+/>
+<table class="table table-striped">
+  <tr><td>ISIN</td><td>PHY2105Y1166</td></tr>
+  <tr><td>Open</td><td>94.50</td></tr>
+  <tr><td>Prev Close</td><td>94.40</td></tr>
+  <tr><td>High</td><td>94.50</td></tr>
+  <tr><td>Low</td><td>94.50</td></tr>
+  <tr><td>Volume</td><td>250</td></tr>
+</table>
+<a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=651"></a>
+`;
+
+const PSE_FRAME_INVALID_HTML = `
+<div class="security-header">
+  <h3 class="last-price">0.00</h3>
+  <span>As of March 27, 2026 03:00:00 PM</span>
+</div>
+<input
+  id="stock-json"
+  type="hidden"
+  value="{&quot;name&quot;:&quot;&quot;,&quot;full_name&quot;:&quot;&quot;}"
+/>
+<table class="table table-striped">
+  <tr><td>ISIN</td><td></td></tr>
+  <tr><td>Open</td><td>0.00</td></tr>
+  <tr><td>Prev Close</td><td>0.00</td></tr>
+  <tr><td>High</td><td>0.00</td></tr>
+  <tr><td>Low</td><td>0.00</td></tr>
+  <tr><td>Volume</td><td>0</td></tr>
+</table>
+<a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=0"></a>
 `;
 
 const PSE_HTTP_520_TEXT = "error code: 520";
@@ -5063,6 +5108,69 @@ test("fetches PSE quotes through the direct PSE path", () => {
   assert.equal(quote.regularMarketPrice, 1.63);
 });
 
+test("fetches PSE preferred-share quotes when the directory search misses the exact symbol", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
+    }
+
+    if (
+      url ===
+      "https://frames.pse.com.ph/security/DDPR"
+    ) {
+      return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  const quote = ctx.hf_fetchQuote_("PSE:DDPR");
+
+  assert.equal(quote.symbol, "DDPR");
+  assert.equal(
+    quote.longName,
+    "DoubleDragon Properties Corp. Preferred Shares",
+  );
+  assert.equal(quote.isin, "PHY2105Y1166");
+  assert.equal(quote.regularMarketPrice, 94.5);
+});
+
+test("reports a not-found error when the PSE frame fallback is blank", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
+    }
+
+    if (
+      url ===
+      "https://frames.pse.com.ph/security/ZZZZZZ"
+    ) {
+      return createHttpResponse(200, PSE_FRAME_INVALID_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(function () {
+    ctx.hf_fetchPseQuote_("PSE:ZZZZZZ");
+  }, /No PSE listing was found for "ZZZZZZ"\./);
+  assert.deepEqual(seenUrls, [
+    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ",
+    "https://frames.pse.com.ph/security/ZZZZZZ",
+  ]);
+});
+
 test("routes Yahoo-style .PS tickers through the dedicated PSE path", () => {
   const ctx = loadHoodlefinance();
 
@@ -5193,6 +5301,51 @@ test("shared batch PSE fetches reuse a warmed listing cache", () => {
       ],
     ]),
   );
+});
+
+test("shared batch PSE fetches can resolve preferred-share symbols through the frame fallback", () => {
+  const ctx = loadHoodlefinance();
+  const seenUrls = [];
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    seenUrls.push(url);
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
+    }
+
+    if (
+      url ===
+      "https://frames.pse.com.ph/security/DDPR"
+    ) {
+      return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => ctx.UrlFetchApp.fetch(request.url));
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["PSE:DDPR"], ["PSE:DDPR"]], "price")),
+    JSON.stringify([[94.5], [94.5]]),
+  );
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([
+      ["https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"],
+      ["https://frames.pse.com.ph/security/DDPR"],
+    ]),
+  );
+  assert.deepEqual(seenUrls, [
+    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR",
+    "https://frames.pse.com.ph/security/DDPR",
+  ]);
 });
 
 test("shared batch PSE fetches surface a clearer outage error", () => {

@@ -1,0 +1,1 @@
+- Fixed PSE lookups for symbols such as `PSE:DDPR` by falling back to the PSE security page when the main directory search misses the exact ticker.

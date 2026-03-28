@@ -276,6 +276,8 @@ const HOODLEFINANCE_PSE_SEARCH_URL_ =
   "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const HOODLEFINANCE_PSE_STOCK_DATA_URL_ =
   "https://edge.pse.com.ph/companyPage/stockData.do";
+const HOODLEFINANCE_PSE_SECURITY_FRAME_URL_ =
+  "https://frames.pse.com.ph/security/";
 
 let HOODLEFINANCE_PSE_ISIN_TICKER_MAP_CACHE_ = null;
 let HOODLEFINANCE_CURRENCY_CODE_DATA_CACHE_ = null;
@@ -1836,16 +1838,24 @@ function hf_fetchPseQuote_(ticker) {
 
   return hf_resolveCachedJson_(cacheKey, 300, function () {
     const quote = (function () {
-      listing = hf_resolvePseListing_(symbol);
-      html = hf_fetchPseText_(
-        HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-          "?cmpy_id=" +
-          encodeURIComponent(listing.companyId) +
-          "&security_id=" +
-          encodeURIComponent(listing.securityId),
-      );
+      try {
+        listing = hf_resolvePseListing_(symbol);
+        html = hf_fetchPseText_(
+          HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+            "?cmpy_id=" +
+            encodeURIComponent(listing.companyId) +
+            "&security_id=" +
+            encodeURIComponent(listing.securityId),
+        );
 
-      return hf_extractPseQuote_(html, listing);
+        return hf_extractPseQuote_(html, listing);
+      } catch (error) {
+        if (!hf_isPseListingNotFoundError_(error)) {
+          throw error;
+        }
+
+        return hf_fetchPseFrameQuote_(symbol);
+      }
     })();
 
     if (!quote || !quote.symbol) {
@@ -3569,6 +3579,7 @@ function hf_executePseQuoteRouteBatch_(jobs) {
     return null;
   });
   const searchRequests = [];
+  const frameRequests = [];
   const stockRequests = [];
   let i;
   let cacheKey;
@@ -3645,10 +3656,24 @@ function hf_executePseQuoteRouteBatch_(jobs) {
     }
 
     try {
-      listing = hf_resolvePseListingFromHtml_(
+      listing = hf_tryResolvePseListingFromHtml_(
         responses[i].response.getContentText(),
         jobs[responses[i].request.index].routeState.symbol,
       );
+
+      if (!listing) {
+        frameRequests.push({
+          cacheKey:
+            "hoodlefinance:pse:" +
+            jobs[responses[i].request.index].routeState.symbol,
+          index: responses[i].request.index,
+          url: hf_buildPseSecurityFrameUrl_(
+            jobs[responses[i].request.index].routeState.symbol,
+          ),
+        });
+        continue;
+      }
+
       hf_cachePseListing_(listing);
       jobs[responses[i].request.index].routeState.listing = listing;
       stockRequests.push({
@@ -3662,6 +3687,56 @@ function hf_executePseQuoteRouteBatch_(jobs) {
           encodeURIComponent(listing.companyId) +
           "&security_id=" +
           encodeURIComponent(listing.securityId),
+      });
+    } catch (error) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: error,
+        },
+      );
+    }
+  }
+
+  responses = hf_fetchAllInChunks_("pse", frameRequests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: hf_buildPseUnavailableError_(
+            responses[i].error && responses[i].error.message
+              ? responses[i].error.message
+              : responses[i].error,
+          ),
+        },
+      );
+      continue;
+    }
+
+    if (responses[i].response.getResponseCode() !== 200) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: hf_buildPseUnavailableError_(
+            hf_buildPseHttpErrorMessage_(
+              responses[i].response.getResponseCode(),
+            ),
+          ),
+        },
+      );
+      continue;
+    }
+
+    try {
+      quote = hf_extractPseFrameQuote_(
+        responses[i].response.getContentText(),
+        jobs[responses[i].request.index].routeState.symbol,
+      );
+      hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
+      results[responses[i].request.index] = hf_createRouteResult_("success", {
+        quote: quote,
       });
     } catch (error) {
       results[responses[i].request.index] = hf_createRouteResult_(
@@ -4257,6 +4332,48 @@ function hf_extractPseListings_(html) {
   return listings;
 }
 
+function hf_findPseListingBySymbol_(listings, symbol) {
+  const candidates = Array.isArray(listings) ? listings : [];
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
+  let i;
+
+  for (i = 0; i < candidates.length; i += 1) {
+    if (candidates[i].symbol === normalizedSymbol) {
+      return candidates[i];
+    }
+  }
+
+  return null;
+}
+
+function hf_tryResolvePseListingFromHtml_(html, symbol) {
+  return hf_findPseListingBySymbol_(hf_extractPseListings_(html), symbol);
+}
+
+function hf_buildPseSecurityFrameUrl_(symbol) {
+  return (
+    HOODLEFINANCE_PSE_SECURITY_FRAME_URL_ +
+    encodeURIComponent(
+      String(symbol || "")
+        .trim()
+        .toUpperCase(),
+    )
+  );
+}
+
+function hf_isPseListingNotFoundError_(error) {
+  return /No PSE listing was found for "/i.test(hf_errorMessage_(error));
+}
+
+function hf_fetchPseFrameQuote_(symbol) {
+  return hf_extractPseFrameQuote_(
+    hf_fetchPseText_(hf_buildPseSecurityFrameUrl_(symbol)),
+    symbol,
+  );
+}
+
 function hf_buildPseUnavailableError_(detail) {
   const normalizedDetail = detail == null ? "" : String(detail).trim();
 
@@ -4385,6 +4502,60 @@ function hf_extractPseQuote_(html, listing) {
   };
 }
 
+function hf_extractPseFrameQuote_(html, symbol) {
+  const expectedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
+  const metadata = hf_extractPseFrameStockMetadata_(html);
+  const extractedSymbol =
+    metadata && metadata.name ? String(metadata.name).trim().toUpperCase() : "";
+  const fullName =
+    metadata && metadata.full_name ? String(metadata.full_name).trim() : "";
+  const isin = hf_extractPseFrameField_(html, "ISIN").toUpperCase();
+  const companyId = hf_extractPseFrameCompanyId_(html);
+  const previousClose = hf_parseNumber_(
+    hf_extractPseFrameField_(html, "Prev Close"),
+  );
+  const lastPrice = hf_extractPseFrameLastPrice_(html);
+  const price = lastPrice != null ? lastPrice : previousClose;
+  const change =
+    price != null && previousClose != null ? price - previousClose : null;
+  const asOf = hf_extractPseAsOf_(html);
+
+  if (
+    !expectedSymbol ||
+    extractedSymbol !== expectedSymbol ||
+    !fullName ||
+    !isin ||
+    !companyId ||
+    companyId === "0"
+  ) {
+    throw new Error('No PSE listing was found for "' + expectedSymbol + '".');
+  }
+
+  return {
+    currency: "PHP",
+    exchangeDataDelayedBy: 0,
+    financialCurrency: "PHP",
+    isin: isin,
+    longName: fullName,
+    regularMarketChange: change,
+    regularMarketChangePercent:
+      change != null && previousClose ? change / previousClose : null,
+    regularMarketDayHigh: hf_parseNumber_(hf_extractPseFrameField_(html, "High")),
+    regularMarketDayLow: hf_parseNumber_(hf_extractPseFrameField_(html, "Low")),
+    regularMarketOpen: hf_parseNumber_(hf_extractPseFrameField_(html, "Open")),
+    regularMarketPreviousClose: previousClose,
+    regularMarketPrice: price,
+    regularMarketTime: asOf ? Math.floor(asOf.getTime() / 1000) : null,
+    regularMarketVolume: hf_parseNumber_(
+      hf_extractPseFrameField_(html, "Volume"),
+    ),
+    shortName: fullName,
+    symbol: extractedSymbol,
+  };
+}
+
 function hf_extractPseField_(html, label) {
   const pattern = new RegExp(
     "<th>\\s*" +
@@ -4394,6 +4565,49 @@ function hf_extractPseField_(html, label) {
   );
   const match = String(html || "").match(pattern);
   return match ? hf_cleanHtmlText_(match[1]) : "";
+}
+
+function hf_extractPseFrameField_(html, label) {
+  const pattern = new RegExp(
+    "<td[^>]*>\\s*" +
+      hf_escapeRegex_(label) +
+      "\\s*:?\\s*(?:<span[^>]*>[\\s\\S]*?<\\/span>)?\\s*<\\/td>\\s*" +
+      "<td[^>]*>([\\s\\S]*?)<\\/td>",
+    "i",
+  );
+  const match = String(html || "").match(pattern);
+  return match ? hf_cleanHtmlText_(match[1]) : "";
+}
+
+function hf_extractPseFrameLastPrice_(html) {
+  const match = String(html || "").match(
+    /<h3[^>]*class="last-price"[^>]*>([\s\S]*?)<\/h3>/i,
+  );
+  return match ? hf_parseNumber_(match[1]) : null;
+}
+
+function hf_extractPseFrameCompanyId_(html) {
+  const match = String(html || "").match(
+    /companyDisclosures\/form\.do\?cmpy_id=(\d+)/i,
+  );
+  return match ? String(match[1]) : "";
+}
+
+function hf_extractPseFrameStockMetadata_(html) {
+  const match = String(html || "").match(
+    /<input[^>]+id="stock-json"[^>]+value="([^"]+)"/i,
+  );
+  const payloadText = match ? hf_cleanHtmlText_(match[1]) : "";
+
+  if (!payloadText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(payloadText);
+  } catch (error) {
+    return null;
+  }
 }
 
 function hf_extractPseCompanyName_(html) {
@@ -6064,16 +6278,13 @@ function hf_canRenderGoogleExchangeFromYahooIdentity_(yahooExchange) {
 }
 
 function hf_resolvePseListingFromHtml_(html, symbol) {
-  const listings = hf_extractPseListings_(html);
+  const listing = hf_tryResolvePseListingFromHtml_(html, symbol);
   const normalizedSymbol = String(symbol || "")
     .trim()
     .toUpperCase();
-  let i;
 
-  for (i = 0; i < listings.length; i += 1) {
-    if (listings[i].symbol === normalizedSymbol) {
-      return listings[i];
-    }
+  if (listing) {
+    return listing;
   }
 
   throw new Error('No PSE listing was found for "' + normalizedSymbol + '".');
