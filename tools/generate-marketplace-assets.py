@@ -1,231 +1,259 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MPL-2.0
 
-"""Generate simple Marketplace PNG assets for the Sheets add-on prototype."""
+"""Generate Marketplace PNG assets from SVG source files."""
 
 from __future__ import annotations
 
-import math
+import shutil
 import struct
-import zlib
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any
+
+try:
+    import cairosvg
+except ModuleNotFoundError:
+    cairosvg = None
+
+try:
+    import hydra
+    from omegaconf import DictConfig
+except ModuleNotFoundError as exc:  # pragma: no cover - import-time UX
+    missing_module = exc.name or "hydra-core"
+    print(
+        "Error: missing Python dependency '"
+        + missing_module
+        + "'. Run this tool from the repo-local .venv, for example:\n"
+        + "  ./.venv/bin/python tools/generate-marketplace-assets.py",
+        file=sys.stderr,
+    )
+    raise SystemExit(1) from exc
 
 
-OUT_DIR = Path("docs/google-sheets-editor-addon/assets/marketplace")
-
-BG = (16, 73, 54, 255)
-BG_DARK = (10, 50, 37, 255)
-MINT = (166, 222, 193, 255)
-CREAM = (245, 243, 236, 255)
-GOLD = (227, 190, 94, 255)
-GRID = (43, 104, 82, 255)
+SUPPORTED_BACKENDS = ("cairosvg", "rsvg-convert", "inkscape", "magick", "convert")
 
 
-FONT_5X7 = {
-    "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-    "C": ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
-    "D": ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
-    "E": ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-    "F": ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-    "H": ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-    "I": ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
-    "L": ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-    "M": ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
-    "N": ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-    "O": ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-    "R": ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-    "S": ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-    "T": ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-    "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-    "Y": ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
-    " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
-}
+def resolve_backend(requested: str) -> str:
+    if requested != "auto":
+        if requested == "cairosvg":
+            if cairosvg is None:
+                raise RuntimeError("Requested backend 'cairosvg' is not installed.")
+            return requested
+        if shutil.which(requested) is None:
+            raise RuntimeError(f"Requested backend '{requested}' is not installed.")
+        return requested
 
+    for backend in SUPPORTED_BACKENDS:
+        if backend == "cairosvg":
+            if cairosvg is not None:
+                return backend
+            continue
+        if shutil.which(backend):
+            return backend
 
-def chunk(tag: bytes, data: bytes) -> bytes:
-    return (
-        struct.pack(">I", len(data))
-        + tag
-        + data
-        + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    raise RuntimeError(
+        "No supported SVG renderer found. Install one of: "
+        + ", ".join(SUPPORTED_BACKENDS)
     )
 
 
-class Canvas:
-    def __init__(self, width: int, height: int, color=(255, 255, 255, 0)) -> None:
-        self.width = width
-        self.height = height
-        self.pixels = [[color for _ in range(width)] for _ in range(height)]
-
-    def set_pixel(self, x: int, y: int, color) -> None:
-        if 0 <= x < self.width and 0 <= y < self.height:
-            self.pixels[y][x] = color
-
-    def fill(self, color) -> None:
-        for y in range(self.height):
-            row = self.pixels[y]
-            for x in range(self.width):
-                row[x] = color
-
-    def rect(self, x: int, y: int, w: int, h: int, color) -> None:
-        for yy in range(max(0, y), min(self.height, y + h)):
-            row = self.pixels[yy]
-            for xx in range(max(0, x), min(self.width, x + w)):
-                row[xx] = color
-
-    def line(self, x1: int, y1: int, x2: int, y2: int, color, thickness: int = 1) -> None:
-        dx = abs(x2 - x1)
-        sx = 1 if x1 < x2 else -1
-        dy = -abs(y2 - y1)
-        sy = 1 if y1 < y2 else -1
-        err = dx + dy
-        while True:
-            half = thickness // 2
-            for yy in range(y1 - half, y1 - half + thickness):
-                for xx in range(x1 - half, x1 - half + thickness):
-                    self.set_pixel(xx, yy, color)
-            if x1 == x2 and y1 == y2:
-                break
-            e2 = 2 * err
-            if e2 >= dy:
-                err += dy
-                x1 += sx
-            if e2 <= dx:
-                err += dx
-                y1 += sy
-
-    def circle(self, cx: int, cy: int, radius: int, color) -> None:
-        r2 = radius * radius
-        for y in range(cy - radius, cy + radius + 1):
-            for x in range(cx - radius, cx + radius + 1):
-                if (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r2:
-                    self.set_pixel(x, y, color)
-
-    def draw_char(self, x: int, y: int, ch: str, scale: int, color) -> int:
-        pattern = FONT_5X7.get(ch.upper(), FONT_5X7[" "])
-        for row_i, row in enumerate(pattern):
-            for col_i, cell in enumerate(row):
-                if cell == "1":
-                    self.rect(x + col_i * scale, y + row_i * scale, scale, scale, color)
-        return 6 * scale
-
-    def draw_text(self, x: int, y: int, text: str, scale: int, color) -> None:
-        cursor = x
-        for ch in text:
-            cursor += self.draw_char(cursor, y, ch, scale, color)
-
-    def save_png(self, path: Path) -> None:
-        raw = bytearray()
-        for row in self.pixels:
-            raw.append(0)
-            for r, g, b, a in row:
-                raw.extend((r, g, b, a))
-        png = b"\x89PNG\r\n\x1a\n"
-        png += chunk(b"IHDR", struct.pack(">IIBBBBB", self.width, self.height, 8, 6, 0, 0, 0))
-        png += chunk(b"IDAT", zlib.compress(bytes(raw), 9))
-        png += chunk(b"IEND", b"")
-        path.write_bytes(png)
-
-    def downsample(self, factor: int) -> "Canvas":
-        if factor <= 1:
-            return self
-
-        width = self.width // factor
-        height = self.height // factor
-        output = Canvas(width, height)
-
-        for y in range(height):
-            for x in range(width):
-                r = g = b = a = 0
-                for yy in range(y * factor, (y + 1) * factor):
-                    for xx in range(x * factor, (x + 1) * factor):
-                        pr, pg, pb, pa = self.pixels[yy][xx]
-                        r += pr
-                        g += pg
-                        b += pb
-                        a += pa
-                samples = factor * factor
-                output.pixels[y][x] = (
-                    r // samples,
-                    g // samples,
-                    b // samples,
-                    a // samples,
-                )
-
-        return output
+def png_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as fh:
+        header = fh.read(24)
+    if header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+        raise RuntimeError(f"{path} is not a valid PNG.")
+    width, height = struct.unpack(">II", header[16:24])
+    return width, height
 
 
-def draw_background(c: Canvas) -> None:
-    c.fill(BG)
-    step = max(8, min(c.width, c.height) // 6)
-    for x in range(0, c.width, step):
-        c.rect(x, 0, 1, c.height, GRID)
-    for y in range(0, c.height, step):
-        c.rect(0, y, c.width, 1, GRID)
-    c.line(0, c.height - 1, c.width - 1, 0, BG_DARK, thickness=max(2, min(c.width, c.height) // 18))
+def validate_png(path: Path, width: int, height: int) -> None:
+    if not path.exists():
+        raise RuntimeError(f"Renderer did not create {path}.")
+
+    actual_width, actual_height = png_dimensions(path)
+    if (actual_width, actual_height) != (width, height):
+        raise RuntimeError(
+            f"{path} has unexpected size {actual_width}x{actual_height}; "
+            f"expected {width}x{height}."
+        )
+
+    minimum_bytes = 200 if max(width, height) <= 128 else 1000
+    size = path.stat().st_size
+    if size < minimum_bytes:
+        raise RuntimeError(
+            f"{path} looks suspiciously small ({size} bytes). "
+            "Use rsvg-convert or Inkscape for reliable SVG rendering."
+        )
 
 
-def draw_chart(c: Canvas) -> None:
-    points = [
-        (int(c.width * 0.15), int(c.height * 0.70)),
-        (int(c.width * 0.35), int(c.height * 0.52)),
-        (int(c.width * 0.52), int(c.height * 0.58)),
-        (int(c.width * 0.70), int(c.height * 0.35)),
-        (int(c.width * 0.85), int(c.height * 0.24)),
-    ]
-    thickness = max(2, min(c.width, c.height) // 18)
-    for i in range(len(points) - 1):
-        c.line(*points[i], *points[i + 1], MINT, thickness=thickness)
-    for x, y in points:
-        c.circle(x, y, max(2, thickness), CREAM)
+def run_backend(
+    backend: str,
+    svg_path: Path,
+    png_path: Path,
+    width: int,
+    height: int,
+) -> None:
+    if backend == "cairosvg":
+        assert cairosvg is not None
+        cairosvg.svg2png(
+            url=str(svg_path),
+            write_to=str(png_path),
+            output_width=width,
+            output_height=height,
+        )
+    elif backend == "rsvg-convert":
+        cmd = [
+            "rsvg-convert",
+            "--keep-aspect-ratio",
+            "--background-color=transparent",
+            "--width",
+            str(width),
+            "--height",
+            str(height),
+            "--output",
+            str(png_path),
+            str(svg_path),
+        ]
+    elif backend == "inkscape":
+        cmd = [
+            "inkscape",
+            str(svg_path),
+            "--export-type=png",
+            f"--export-filename={png_path}",
+            f"--export-width={width}",
+            f"--export-height={height}",
+        ]
+    elif backend == "magick":
+        cmd = [
+            "magick",
+            str(svg_path),
+            "-resize",
+            f"{width}x{height}",
+            str(png_path),
+        ]
+    elif backend == "convert":
+        cmd = [
+            "convert",
+            str(svg_path),
+            "-resize",
+            f"{width}x{height}",
+            str(png_path),
+        ]
+    else:
+        raise RuntimeError(f"Unsupported backend: {backend}")
+
+    if backend != "cairosvg":
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    validate_png(png_path, width, height)
 
 
-def draw_hf_monogram(c: Canvas) -> None:
-    scale = max(2, min(c.width, c.height) // 20)
-    text = "HF"
-    total_w = len(text) * 6 * scale - scale
-    x = (c.width - total_w) // 2
-    y = int(c.height * 0.14)
-    c.draw_text(x, y, text, scale, GOLD)
+def render_svg(
+    backend: str,
+    svg_path: Path,
+    png_path: Path,
+    width: int,
+    height: int,
+) -> None:
+    try:
+        run_backend(backend, svg_path, png_path, width, height)
+    except subprocess.CalledProcessError as exc:
+        if png_path.exists():
+            png_path.unlink()
+        stderr = exc.stderr.decode("utf-8", errors="replace").strip()
+        stdout = exc.stdout.decode("utf-8", errors="replace").strip()
+        details = stderr or stdout or str(exc)
+        raise RuntimeError(
+            f"{backend} failed while rendering {svg_path} -> {png_path}: {details}"
+        ) from exc
+    except Exception as exc:
+        if png_path.exists():
+            png_path.unlink()
+        if isinstance(exc, RuntimeError):
+            raise
+        raise RuntimeError(
+            f"{backend} failed while rendering {svg_path} -> {png_path}: {exc}"
+        ) from exc
+    except RuntimeError:
+        if png_path.exists():
+            png_path.unlink()
+        raise
 
 
-def build_icon(size: int, filename: str) -> None:
-    scale = 4
-    c = Canvas(size * scale, size * scale)
-    draw_background(c)
-    draw_hf_monogram(c)
-    draw_chart(c)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    c.downsample(scale).save_png(OUT_DIR / filename)
+def resolution_fields(entry: Any) -> dict[str, str]:
+    if isinstance(entry, int):
+        return {
+            "width": str(entry),
+            "height": str(entry),
+            "resolution": str(entry),
+        }
+
+    if isinstance(entry, DictConfig):
+        entry = dict(entry.items())
+
+    if isinstance(entry, dict):
+        width = int(entry["width"])
+        height = int(entry.get("height", width))
+        return {
+            "width": str(width),
+            "height": str(height),
+            "resolution": f"{width}x{height}",
+        }
+
+    raise RuntimeError(f"Unsupported resolution entry: {entry!r}")
 
 
-def build_banner() -> None:
-    scale = 4
-    c = Canvas(220 * scale, 140 * scale)
-    draw_background(c)
-    c.rect(12 * scale, 18 * scale, 88 * scale, 88 * scale, BG_DARK)
-    inner = Canvas(88 * scale, 88 * scale)
-    draw_background(inner)
-    draw_hf_monogram(inner)
-    draw_chart(inner)
-    for y in range(88 * scale):
-        for x in range(88 * scale):
-            c.set_pixel(12 * scale + x, 18 * scale + y, inner.pixels[y][x])
-    c.draw_text(104 * scale, 28 * scale, "HOODLE", 2 * scale, CREAM)
-    c.draw_text(104 * scale, 50 * scale, "FINANCE", 2 * scale, GOLD)
-    c.draw_text(104 * scale, 78 * scale, "SHEETS", 2 * scale, MINT)
-    c.draw_text(104 * scale, 98 * scale, "ADD ON", 2 * scale, MINT)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    c.downsample(scale).save_png(OUT_DIR / "banner-220x140.png")
+def render_asset(asset_name: str, asset_cfg: DictConfig, backend: str) -> list[Path]:
+    svg_path = Path(asset_cfg.svg.path)
+    output_base = str(asset_cfg.svg.output.path)
+    name_pattern = str(asset_cfg.svg.output.name_pattern)
+
+    if not svg_path.exists():
+        raise RuntimeError(f"{asset_name}: missing SVG source {svg_path}")
+
+    generated: list[Path] = []
+    for entry in asset_cfg.svg.output.resolutions:
+        fields = resolution_fields(entry)
+        width = int(fields["width"])
+        height = int(fields["height"])
+        output_path = Path(
+            name_pattern.format(
+                width=fields["width"],
+                height=fields["height"],
+                resolution=fields["resolution"],
+                stem=svg_path.stem,
+                path=output_base,
+            )
+        )
+        render_svg(backend, svg_path, output_path, width, height)
+        generated.append(output_path)
+
+    return generated
 
 
-def main() -> None:
-    build_icon(32, "icon-32.png")
-    build_icon(48, "icon-48.png")
-    build_icon(96, "icon-96.png")
-    build_icon(128, "icon-128.png")
-    build_banner()
+@hydra.main(
+    version_base=None,
+    config_path="generate_marketplace_assets",
+    config_name="config",
+)
+def hydra_main(cfg: DictConfig) -> None:
+    try:
+        backend = resolve_backend(str(cfg.backend))
+
+        generated: list[Path] = []
+        for target in cfg.targets:
+            asset_cfg = cfg.assets.get(target)
+            if asset_cfg is None:
+                raise RuntimeError(f"Unknown target '{target}'.")
+            generated.extend(render_asset(str(target), asset_cfg, backend))
+
+        for path in generated:
+            print(path)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":
-    main()
+    hydra_main()

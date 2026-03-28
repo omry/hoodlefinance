@@ -52,6 +52,38 @@ This answered the main product question that unpublished Apps Script test deploy
 
 For the step-by-step execution path, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md). For the final pre-submission gate, use [`oauth-review-checklist.md`](./oauth-review-checklist.md).
 
+## Marketplace Listing Assets
+
+The Marketplace icon and banner SVG sources live under:
+
+- [`assets/marketplace/dark/`](./assets/marketplace/dark/)
+- [`assets/marketplace/light/`](./assets/marketplace/light/)
+
+If you have not set up the repo-local Python environment yet, create it first:
+
+```sh
+python3 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/python -m pip install hydra-core cairosvg
+```
+
+This generator expects a Python installation with `venv` support.
+
+To regenerate all Marketplace PNG assets from those SVGs, run the generator from the repo-local Python environment:
+
+```sh
+./.venv/bin/python tools/generate-marketplace-assets.py
+```
+
+That default run uses the Hydra config in [`tools/generate_marketplace_assets/config.yaml`](../../tools/generate_marketplace_assets/config.yaml) and regenerates all configured dark and light assets.
+
+To regenerate only part of the set, override the configured targets on the command line. For example:
+
+```sh
+./.venv/bin/python tools/generate-marketplace-assets.py targets=[light_icon]
+./.venv/bin/python tools/generate-marketplace-assets.py targets=[light_banner]
+```
+
 ## Maintainer Deployment Automation
 
 The repo now includes a maintainer-only `clasp` deployment helper for the add-on script project, with separate staging and production targets.

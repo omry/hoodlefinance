@@ -1,0 +1,55 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
+
+backend: auto
+
+targets:
+  - dark_icon
+  - dark_banner
+  - light_icon
+  - light_banner
+
+assets:
+  dark_icon:
+    svg:
+      path: docs/google-sheets-editor-addon/assets/marketplace/dark/icon.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/dark/icon
+        resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  dark_banner:
+    svg:
+      path: docs/google-sheets-editor-addon/assets/marketplace/dark/banner-220x140.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/dark/banner
+        resolutions:
+          - width: 220
+            height: 140
+        name_pattern: ${.path}-{width}x{height}.png
+
+  light_icon:
+    svg:
+      path: docs/google-sheets-editor-addon/assets/marketplace/light/icon.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/light/icon
+        resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  light_banner:
+    svg:
+      path: docs/google-sheets-editor-addon/assets/marketplace/light/banner-220x140.svg
+      output:
+        path: docs/google-sheets-editor-addon/assets/marketplace/light/banner
+        resolutions:
+          - width: 220
+            height: 140
+        name_pattern: ${.path}-{width}x{height}.png
