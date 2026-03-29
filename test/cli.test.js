@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 
 const {
   formatRoutingTable,
+  formatTraceResultSummary,
   formatTraceOutput,
   formatRoutingTrace,
   getRoutingTableRows,
@@ -30,13 +31,13 @@ test("routing table rows cover the current quote classifications", function () {
       {
         classification: "PSE-TICKER",
         example: "PSE:BDO",
-        route: "PSE-TICKER -> PSE",
+        route: "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
       },
       {
         classification: "ISIN",
         example: "US02079K1079",
         route:
-          "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+          "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
       },
       {
         classification: "FORCED:YAHOO",
@@ -56,7 +57,17 @@ test("routing table rows cover the current quote classifications", function () {
       {
         classification: "FORCED:PSE",
         example: "PSE:BDO@PSE",
-        route: "FORCED:PSE -> PSE",
+        route: "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE",
+      },
+      {
+        classification: "FORCED:PSE-FRAMES",
+        example: "PSE:BDO@PSE-FRAMES",
+        route: "FORCED:PSE-FRAMES -> PSE-FRAMES",
+      },
+      {
+        classification: "FORCED:PSE-EDGE",
+        example: "PSE:BDO@PSE-EDGE",
+        route: "FORCED:PSE-EDGE -> PSE-EDGE",
       },
     ]),
   );
@@ -71,20 +82,40 @@ test("routing table formatter emits a readable header and rows", function () {
     output,
     /TICKER-IL-FUND\tTLV:KSMF59\tTICKER-IL-FUND -> YAHOO -> TRADINGVIEW/,
   );
-  assert.match(output, /FORCED:PSE\tPSE:BDO@PSE\tFORCED:PSE -> PSE/);
+  assert.match(
+    output,
+    /FORCED:PSE\tPSE:BDO@PSE\tFORCED:PSE -> PSE-FRAMES -> PSE-EDGE/,
+  );
 });
 
 test("routing trace formatter emits a readable attempted-source chain", function () {
   assert.equal(
     formatRoutingTrace({
       runtimeTrace: [
-        { label: "YAHOO", status: "lookup_failure" },
-        { label: "TRADINGVIEW", status: "success" },
+        { elapsedMs: 12, label: "YAHOO", status: "lookup_failure" },
+        { elapsedMs: 34, label: "TRADINGVIEW", status: "success" },
       ],
     }),
-    "YAHOO [lookup_failure] -> TRADINGVIEW [success]",
+    "YAHOO [lookup_failure, 12ms] -> TRADINGVIEW [success, 34ms]",
   );
   assert.equal(formatRoutingTrace({ runtimeTrace: [] }), "(no runtime trace)");
+});
+
+test("trace result summary reports total time and conditional slack", function () {
+  assert.equal(
+    formatTraceResultSummary({
+      totalElapsedMs: 100,
+      runtimeTrace: [{ elapsedMs: 99, label: "YAHOO", status: "success" }],
+    }),
+    "100ms total",
+  );
+  assert.equal(
+    formatTraceResultSummary({
+      totalElapsedMs: 100,
+      runtimeTrace: [{ elapsedMs: 80, label: "YAHOO", status: "success" }],
+    }),
+    "100ms total, 20ms slack",
+  );
 });
 
 test("trace output includes the planned route and runtime trace summary", function () {
@@ -126,7 +157,11 @@ test("trace output includes the planned route and runtime trace summary", functi
       return plan.routeTrace;
     },
     hf_executeRouteJobs_(jobs) {
-      jobs[0].routeRuntimeTrace.push({ label: "YAHOO", status: "success" });
+      jobs[0].routeRuntimeTrace.push({
+        elapsedMs: 17,
+        label: "YAHOO",
+        status: "success",
+      });
       jobs[0].quote = { regularMarketPrice: 1 };
     },
   };
@@ -134,8 +169,8 @@ test("trace output includes the planned route and runtime trace summary", functi
 
   assert.match(output, /^symbol: GOOG/m);
   assert.match(output, /planned route: TICKER -> YAHOO/);
-  assert.match(output, /runtime trace: YAHOO \[success\]/);
-  assert.match(output, /result: success/);
+  assert.match(output, /runtime trace: YAHOO \[success, 17ms\]/);
+  assert.match(output, /result: success \(\d+ms total(?:, \d+ms slack)?\)/);
 });
 
 test("CLI seeds the local PSE ISIN map for direct PSE ISIN resolution", function () {

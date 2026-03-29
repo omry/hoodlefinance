@@ -15,7 +15,7 @@ Identifiers support a few debugging suffixes:
 
 - `IDENTIFIER@SOURCE`: force a specific source and disable fallback.
 - `IDENTIFIER@?`: return the planned route for that identifier.
-- `IDENTIFIER@` or `IDENTIFIER@anything-unknown`: return the supported source list.
+- `IDENTIFIER@` or `IDENTIFIER@anything-unknown`: return the supported source list, including grouped sub-sources when a family exposes individual forceable providers.
 
 Examples:
 
@@ -23,7 +23,22 @@ Examples:
 =HOODLEFINANCE("EURUSD@GOOGLE", "price") // force GOOGLE for the quote
 =HOODLEFINANCE("BTCUSD@?")               // show the planned route
 =HOODLEFINANCE("BTCUSD@")                // list supported sources
+=HOODLEFINANCE("PSE:BDO@PSE-FRAMES")     // force the PSE frames provider
 ```
+
+Grouped source list example:
+
+```js
+=HOODLEFINANCE("PSE:BDO@")
+```
+
+This now returns a grouped list such as:
+
+```text
+ARIVA, GOOGLE, IBKR, LON, PSE (PSE-FRAMES, PSE-EDGE), TRADINGVIEW, YAHOO
+```
+
+Any listed item can be used as an `@SOURCE` override when that route supports the identifier.
 
 ## ISIN Source Overrides
 

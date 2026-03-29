@@ -136,6 +136,7 @@ function printRoutingTable() {
 
 function traceRoutingForSymbol(symbol, ctx) {
   const runtime = ctx || loadHoodlefinance();
+  const startedAtMs = Date.now();
   const job = runtime.hf_createQuoteRouteJob_(String(symbol).trim(), "price");
 
   try {
@@ -145,6 +146,7 @@ function traceRoutingForSymbol(symbol, ctx) {
       error: error && error.message ? error.message : String(error),
       ok: false,
       plannedRoute: "",
+      totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
       runtimeTrace: [],
       value: null,
     };
@@ -154,6 +156,7 @@ function traceRoutingForSymbol(symbol, ctx) {
     return {
       ok: true,
       plannedRoute: String(job.plan.debugValue || ""),
+      totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
       runtimeTrace: [],
       value: null,
     };
@@ -171,14 +174,50 @@ function traceRoutingForSymbol(symbol, ctx) {
     error: job.error || "",
     ok: !job.error,
     plannedRoute: runtime.hf_describePlanSource_(job.plan),
+    totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
     runtimeTrace: (job.routeRuntimeTrace || []).map(function (entry) {
       return {
+        elapsedMs:
+          entry && entry.elapsedMs != null && isFinite(entry.elapsedMs)
+            ? Number(entry.elapsedMs)
+            : null,
         label: String((entry && entry.label) || ""),
         status: String((entry && entry.status) || ""),
       };
     }),
     value: job.quote || null,
   };
+}
+
+function formatTraceResultSummary(trace) {
+  const totalElapsedMs =
+    trace && trace.totalElapsedMs != null && isFinite(trace.totalElapsedMs)
+      ? Math.max(0, Number(trace.totalElapsedMs))
+      : 0;
+  const runtimeTrace = trace && Array.isArray(trace.runtimeTrace)
+    ? trace.runtimeTrace
+    : [];
+  let accountedMs = 0;
+  let slackMs;
+  let slackRatio;
+  let summary;
+  let i;
+
+  for (i = 0; i < runtimeTrace.length; i += 1) {
+    if (runtimeTrace[i] && runtimeTrace[i].elapsedMs != null && isFinite(runtimeTrace[i].elapsedMs)) {
+      accountedMs += Math.max(0, Number(runtimeTrace[i].elapsedMs));
+    }
+  }
+
+  slackMs = Math.max(0, totalElapsedMs - accountedMs);
+  slackRatio = totalElapsedMs > 0 ? slackMs / totalElapsedMs : 0;
+  summary = totalElapsedMs + "ms total";
+
+  if (slackMs > 0 && slackRatio > 0.01) {
+    summary += ", " + slackMs + "ms slack";
+  }
+
+  return summary;
 }
 
 function formatRoutingTrace(trace) {
@@ -188,7 +227,13 @@ function formatRoutingTrace(trace) {
 
   return trace.runtimeTrace
     .map(function (entry) {
-      return entry.label + " [" + entry.status + "]";
+      const parts = [entry.status];
+
+      if (entry.elapsedMs != null && isFinite(entry.elapsedMs)) {
+        parts.push(String(entry.elapsedMs) + "ms");
+      }
+
+      return entry.label + " [" + parts.join(", ") + "]";
     })
     .join(" -> ");
 }
@@ -202,9 +247,9 @@ function formatTraceOutput(symbol, ctx) {
   ];
 
   if (trace.ok) {
-    lines.push("result: success");
+    lines.push("result: success (" + formatTraceResultSummary(trace) + ")");
   } else {
-    lines.push("result: error");
+    lines.push("result: error (" + formatTraceResultSummary(trace) + ")");
     lines.push("error: " + trace.error);
   }
 
@@ -259,6 +304,7 @@ function main() {
 
 module.exports = {
   formatRoutingTable,
+  formatTraceResultSummary,
   formatTraceOutput,
   formatRoutingTrace,
   getRoutingTableRows,

@@ -79,8 +79,8 @@ Current public/debug forms:
 Current behavior:
 
 - `@SOURCE` forces a supported source for that request and disables fallback from that forced path
-- `@?` returns the currently deduced primary source name
-- `@` and unknown `@...` suffixes return the supported source list
+- `@?` returns the planned route for that request
+- `@` and unknown `@...` suffixes return the supported source list, which may group individual forceable providers under a higher-level family such as `PSE (PSE-FRAMES, PSE-EDGE)`
 
 Examples:
 
@@ -200,7 +200,7 @@ Inside identifiers, trailing `@...` is reserved for source and debug control.
 Current meanings:
 
 - `@SOURCE` = force source
-- `@?` = show deduced primary source
+- `@?` = show planned route
 - `@` = show supported sources
 
 That keeps provider-routing hints out of the attribute namespace.
@@ -245,9 +245,9 @@ The important design point is not to force artificial uniformity. A shared sourc
 
 ### `@?` Reports The Deduced Primary Route
 
-`@?` currently reports the deduced primary source choice for the request.
+`@?` currently reports the planned route for the request.
 
-It should be understood as routing introspection, not as a perfect explanation of every fallback branch that might run later. A fuller fallback-graph explanation would require a more explicit runtime routing model.
+It should be understood as route introspection, not as a perfect explanation of every runtime branch that might run later. A fuller fallback-graph explanation would require a more explicit runtime routing model.
 
 ## Forward Design
 

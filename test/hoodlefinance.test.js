@@ -1896,6 +1896,14 @@ test("source overrides are parsed separately from ticker normalization", () => {
 
   assert.equal(ctx.hf_extractTickerSourceOverride_("BTCUSD@YAHOO"), "YAHOO");
   assert.equal(ctx.hf_extractTickerSourceOverride_("GOOG@IBKR"), "IBKR");
+  assert.equal(
+    ctx.hf_extractTickerSourceOverride_("PSE:BDO@PSE-FRAMES"),
+    "PSE-FRAMES",
+  );
+  assert.equal(
+    ctx.hf_extractTickerSourceOverride_("PSE:BDO@PSE-EDGE"),
+    "PSE-EDGE",
+  );
   assert.equal(ctx.hf_extractTickerSourceOverride_("BTCUSD@MYSTERY"), "");
   assert.equal(ctx.hf_extractTickerInfoMode_("BTCUSD@?"), "source-name");
   assert.equal(ctx.hf_extractTickerInfoMode_("BTCUSD@"), "source-list");
@@ -1933,11 +1941,11 @@ test("source introspection suffixes return the planned route or the supported so
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@"),
-    "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO",
+    "ARIVA, GOOGLE, IBKR, LON, PSE (PSE-FRAMES, PSE-EDGE), TRADINGVIEW, YAHOO",
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@MYSTERY"),
-    "ARIVA, GOOGLE, IBKR, LON, PSE, TRADINGVIEW, YAHOO",
+    "ARIVA, GOOGLE, IBKR, LON, PSE (PSE-FRAMES, PSE-EDGE), TRADINGVIEW, YAHOO",
   );
 });
 
@@ -1971,6 +1979,16 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
       ],
       ["FORCED:GOOGLE", "EURUSD@GOOGLE", "FORCED:GOOGLE -> GOOGLE"],
       ["FORCED:PSE", "PSE:BDO@PSE", "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE"],
+      [
+        "FORCED:PSE-FRAMES",
+        "PSE:BDO@PSE-FRAMES",
+        "FORCED:PSE-FRAMES -> PSE-FRAMES",
+      ],
+      [
+        "FORCED:PSE-EDGE",
+        "PSE:BDO@PSE-EDGE",
+        "FORCED:PSE-EDGE -> PSE-EDGE",
+      ],
     ]),
   );
   assert.equal(ctx.HOODLEFINANCE_ROUTES("GOOG"), "TICKER -> YAHOO");
@@ -1982,6 +2000,58 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
   assert.equal(
     JSON.stringify(ctx.HOODLEFINANCE_ROUTES("")),
     JSON.stringify(ctx.HOODLEFINANCE_ROUTES()),
+  );
+});
+
+test("forced PSE sub-sources use the requested individual provider", () => {
+  const framesCtx = loadHoodlefinance();
+  const edgeCtx = loadHoodlefinance();
+  const framesFetchLog = [];
+  const edgeFetchLog = [];
+
+  framesCtx.UrlFetchApp.fetch = (url) => {
+    framesFetchLog.push(url);
+    if (url.indexOf("frames.pse.com.ph/security/BDO") >= 0) {
+      return createHttpResponse(200, PSE_FRAME_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  edgeCtx.UrlFetchApp.fetch = (url) => {
+    edgeFetchLog.push(url);
+    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+    if (url.indexOf("edge.pse.com.ph/companyPage/stockData.do") >= 0) {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(framesCtx.HOODLEFINANCE("PSE:BDO@PSE-FRAMES"), 123.8);
+  assert.deepEqual(framesFetchLog, ["https://frames.pse.com.ph/security/BDO"]);
+
+  assert.equal(edgeCtx.HOODLEFINANCE("PSE:BDO@PSE-EDGE"), 123.8);
+  assert.equal(edgeFetchLog.length, 2);
+  assert.equal(
+    edgeFetchLog[0],
+    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
+  );
+  assert.match(edgeFetchLog[1], /edge\.pse\.com\.ph\/companyPage\/stockData\.do/);
+});
+
+test("forced PSE sub-sources are quote-only overrides", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.throws(
+    () => ctx.HOODLEFINANCE("PSE:BDO@PSE-FRAMES", "isin"),
+    /"@PSE-FRAMES" can only be used with quote attributes\./,
+  );
+  assert.throws(
+    () => ctx.HOODLEFINANCE("PSE:BDO@PSE-EDGE", "isin"),
+    /"@PSE-EDGE" can only be used with quote attributes\./,
   );
 });
 

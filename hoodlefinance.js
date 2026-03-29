@@ -112,6 +112,8 @@ const HOODLEFINANCE_SOURCE_OVERRIDES_ = hf_buildSet_([
   "IBKR",
   "LON",
   "PSE",
+  "PSE-EDGE",
+  "PSE-FRAMES",
   "TRADINGVIEW",
   "YAHOO",
 ]);
@@ -2260,7 +2262,62 @@ function hf_extractTickerInfoMode_(ticker) {
 }
 
 function hf_listSupportedSources_() {
-  return Object.keys(HOODLEFINANCE_SOURCE_OVERRIDES_).sort().join(", ");
+  return [
+    "ARIVA",
+    "GOOGLE",
+    "IBKR",
+    "LON",
+    "PSE (PSE-FRAMES, PSE-EDGE)",
+    "TRADINGVIEW",
+    "YAHOO",
+  ].join(", ");
+}
+
+function hf_resolveForcedPseSymbol_(normalizedTicker, upperTicker, sourceLabel) {
+  let isinValue;
+  let pseTicker;
+
+  if (hf_isPseTicker_(normalizedTicker)) {
+    return hf_parsePseSymbol_(normalizedTicker);
+  }
+
+  isinValue = hf_looksLikeIsin_(normalizedTicker)
+    ? upperTicker
+    : upperTicker.indexOf("ISIN:") === 0
+      ? upperTicker.slice(5).trim()
+      : "";
+
+  if (isinValue) {
+    pseTicker = hf_resolvePseTickerFromIsinMap_(isinValue);
+    if (!pseTicker) {
+      throw new Error(
+        'No PSE ticker was found for ISIN "' +
+          isinValue +
+          '" when using "@' +
+          sourceLabel +
+          '".',
+      );
+    }
+
+    return hf_parsePseSymbol_(pseTicker);
+  }
+
+  throw new Error(
+    '"@' +
+      sourceLabel +
+      '" can only be used with PSE tickers and PSE-mapped ISINs.',
+  );
+}
+
+function hf_createForcedPseRoutePlan_(routeClass, traceLabel, symbol) {
+  return hf_createSingleAttemptRoutePlan_(
+    routeClass,
+    traceLabel === "PSE-FRAMES" ? "pse-frames-quote" : "pse-edge-quote",
+    traceLabel,
+    {
+      routeState: { symbol: symbol },
+    },
+  );
 }
 
 function hf_normalizeTickerGrid_(ticker) {
@@ -2498,8 +2555,6 @@ function hf_buildForcedSourcePlan_(
   fxPair,
   sourceOverride,
 ) {
-  let pseTicker;
-  let isinValue;
   let symbol;
 
   if (sourceOverride === "YAHOO") {
@@ -2548,33 +2603,38 @@ function hf_buildForcedSourcePlan_(
   }
 
   if (sourceOverride === "PSE") {
-    if (hf_isPseTicker_(normalizedTicker)) {
-      symbol = hf_parsePseSymbol_(normalizedTicker);
-      return hf_createPseQuoteRoutePlan_("FORCED:PSE", symbol);
+    symbol = hf_resolveForcedPseSymbol_(normalizedTicker, upperTicker, "PSE");
+    return hf_createPseQuoteRoutePlan_("FORCED:PSE", symbol);
+  }
+
+  if (sourceOverride === "PSE-FRAMES") {
+    if (normalizedAttribute === "isin") {
+      throw new Error('"@PSE-FRAMES" can only be used with quote attributes.');
     }
 
-    isinValue = hf_looksLikeIsin_(normalizedTicker)
-      ? upperTicker
-      : upperTicker.indexOf("ISIN:") === 0
-        ? upperTicker.slice(5).trim()
-        : "";
-    if (isinValue) {
-      pseTicker = hf_resolvePseTickerFromIsinMap_(isinValue);
-      if (!pseTicker) {
-        throw new Error(
-          'No PSE ticker was found for ISIN "' +
-            isinValue +
-            '" when using "@PSE".',
-        );
-      }
-
-      symbol = hf_parsePseSymbol_(pseTicker);
-      return hf_createPseQuoteRoutePlan_("FORCED:PSE", symbol);
-    }
-
-    throw new Error(
-      '"@PSE" can only be used with PSE tickers and PSE-mapped ISINs.',
+    symbol = hf_resolveForcedPseSymbol_(
+      normalizedTicker,
+      upperTicker,
+      "PSE-FRAMES",
     );
+    return hf_createForcedPseRoutePlan_(
+      "FORCED:PSE-FRAMES",
+      "PSE-FRAMES",
+      symbol,
+    );
+  }
+
+  if (sourceOverride === "PSE-EDGE") {
+    if (normalizedAttribute === "isin") {
+      throw new Error('"@PSE-EDGE" can only be used with quote attributes.');
+    }
+
+    symbol = hf_resolveForcedPseSymbol_(
+      normalizedTicker,
+      upperTicker,
+      "PSE-EDGE",
+    );
+    return hf_createForcedPseRoutePlan_("FORCED:PSE-EDGE", "PSE-EDGE", symbol);
   }
 
   if (normalizedAttribute === "isin") {
@@ -2633,6 +2693,16 @@ const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
     classification: "FORCED:PSE",
     example: "PSE:BDO@PSE",
     route: "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE",
+  },
+  {
+    classification: "FORCED:PSE-FRAMES",
+    example: "PSE:BDO@PSE-FRAMES",
+    route: "FORCED:PSE-FRAMES -> PSE-FRAMES",
+  },
+  {
+    classification: "FORCED:PSE-EDGE",
+    example: "PSE:BDO@PSE-EDGE",
+    route: "FORCED:PSE-EDGE -> PSE-EDGE",
   },
 ];
 
@@ -3103,7 +3173,7 @@ function hf_shouldPreferLookupFailureMessage_(message) {
   return /currently unavailable/i.test(String(message || ""));
 }
 
-function hf_applyRouteResult_(job, attempt, result) {
+function hf_applyRouteResult_(job, attempt, result, elapsedMs) {
   const normalizedResult =
     result ||
     hf_createRouteResult_("terminal_error", {
@@ -3118,6 +3188,8 @@ function hf_applyRouteResult_(job, attempt, result) {
   }
 
   job.routeRuntimeTrace.push({
+    elapsedMs:
+      elapsedMs != null && isFinite(elapsedMs) ? Math.max(0, elapsedMs) : null,
     label: attempt && attempt.traceLabel ? attempt.traceLabel : "",
     status: normalizedResult.status,
   });
@@ -3207,6 +3279,9 @@ function hf_executeRouteJobs_(orderedJobs) {
   let groupKey;
   let results;
   let resultIndex;
+  let startedAtMs;
+  let finishedAtMs;
+  let elapsedMs;
 
   while (true) {
     pendingJobs = [];
@@ -3254,9 +3329,12 @@ function hf_executeRouteJobs_(orderedJobs) {
     }
 
     for (i = 0; i < groupOrder.length; i += 1) {
+      startedAtMs = Date.now();
       results = groupsByKey[groupOrder[i]].adapter.executeBatch(
         groupsByKey[groupOrder[i]].jobs,
       );
+      finishedAtMs = Date.now();
+      elapsedMs = finishedAtMs - startedAtMs;
 
       for (
         resultIndex = 0;
@@ -3269,6 +3347,7 @@ function hf_executeRouteJobs_(orderedJobs) {
             groupsByKey[groupOrder[i]].jobs[resultIndex],
           ),
           results[resultIndex],
+          elapsedMs,
         );
       }
     }

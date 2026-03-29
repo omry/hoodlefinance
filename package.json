@@ -3,6 +3,9 @@
   "private": true,
   "license": "MPL-2.0",
   "description": "Local development tooling for the HOODLEFINANCE Apps Script project.",
+  "bin": {
+    "hoodlefinance": "./tools/_shared/cli.js"
+  },
   "engines": {
     "node": "24.x"
   },
@@ -23,6 +26,7 @@
     "license:headers": "node tools/license/spdx-headers.js",
     "license:headers:check": "node tools/license/spdx-headers.js --check",
     "license:headers:list": "node tools/license/spdx-headers.js --list",
+    "hoodlefinance": "node tools/_shared/cli.js",
     "smoke": "node tools/_shared/cli.js",
     "pse:refresh": "node tools/generate-pse-isin-map.js",
     "release:check-fragments": "sh tools/release/check-release-fragments.sh",
