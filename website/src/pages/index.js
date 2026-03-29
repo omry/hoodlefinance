@@ -33,7 +33,7 @@ function HomepageHeader() {
             </Link>
             <Link
               className="button button--secondary button--lg"
-              href="https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing"
+              to="/demo"
             >
               View demo sheet
             </Link>

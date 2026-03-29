@@ -39,23 +39,12 @@ const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const DEMO_DIR = path.join(ROOT_DIR, "docs", "demo-sheet");
 const CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet.json");
 const STAGING_CONFIG_PATH = path.join(DEMO_DIR, "demo-sheet-staging.json");
-const README_PATH = path.join(ROOT_DIR, "README.md");
-const WEBSITE_INTRO_PATH = path.join(ROOT_DIR, "website", "docs", "intro.md");
-const WEBSITE_INDEX_PATH = path.join(
-  ROOT_DIR,
-  "website",
-  "src",
-  "pages",
-  "index.js",
-);
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
 const LOCAL_DIR = path.join(ROOT_DIR, ".demo-sheet.local");
 const OAUTH_CLIENT_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_CLIENT_PATH";
 const OAUTH_TOKEN_PATH_ENV_VAR = "DEMO_SHEET_OAUTH_TOKEN_PATH";
 const OAUTH_TOKEN_READ_ONLY_ENV_VAR =
   "HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY";
-const DEMO_MARKER_START = "<!-- DEMO_SHEET_LINK:START -->";
-const DEMO_MARKER_END = "<!-- DEMO_SHEET_LINK:END -->";
 const DEFAULT_MANIFEST = {
   exceptionLogging: "STACKDRIVER",
   runtimeVersion: "V8",
@@ -132,10 +121,6 @@ async function main() {
   );
 
   await persistRuntimeDemoConfig(syncedConfig, options.production);
-
-  if (options.production) {
-    await updateDemoLinks(syncedConfig.publicUrl || "");
-  }
 
   printSummary(
     syncedConfig,
@@ -1360,103 +1345,6 @@ function parseTsv(text) {
   return rows.length ? rows : [[""]];
 }
 
-function renderDemoReadmeBlock(publicUrl) {
-  if (publicUrl) {
-    return (
-      DEMO_MARKER_START +
-      "\nSee the [public demo sheet](" +
-      publicUrl +
-      ") for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
-      DEMO_MARKER_END
-    );
-  }
-
-  return (
-    DEMO_MARKER_START +
-    "\nThe public demo sheet will be linked here after it is created with `npm run demo:sync:production`. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).\n" +
-    DEMO_MARKER_END
-  );
-}
-
-function renderDemoIntroBlock(publicUrl) {
-  if (publicUrl) {
-    return (
-      DEMO_MARKER_START +
-      "\nSee the [public demo sheet](" +
-      publicUrl +
-      ") for more live examples.\n" +
-      DEMO_MARKER_END
-    );
-  }
-
-  return (
-    DEMO_MARKER_START +
-    "\nThe public demo sheet will be linked here after it is created.\n" +
-    DEMO_MARKER_END
-  );
-}
-
-function replaceDemoReadmeBlock(readmeText, publicUrl) {
-  const replacement = renderDemoReadmeBlock(publicUrl);
-  const pattern = new RegExp(
-    escapeRegex(DEMO_MARKER_START) +
-      "[\\s\\S]*?" +
-      escapeRegex(DEMO_MARKER_END),
-  );
-
-  if (pattern.test(readmeText)) {
-    return readmeText.replace(pattern, replacement);
-  }
-
-  return readmeText.replace(
-    "## Quick Start",
-    "## Live Demo\n\n" + replacement + "\n\n## Quick Start",
-  );
-}
-
-function replaceDemoIntroBlock(introText, publicUrl) {
-  const replacement = renderDemoIntroBlock(publicUrl);
-  const pattern = new RegExp(
-    escapeRegex(DEMO_MARKER_START) +
-      "[\\s\\S]*?" +
-      escapeRegex(DEMO_MARKER_END),
-  );
-
-  if (pattern.test(introText)) {
-    return introText.replace(pattern, replacement);
-  }
-
-  return introText.replace(
-    "Bare tickers such as `GOOG` are often the easiest place to start.",
-    replacement +
-      "\n\nBare tickers such as `GOOG` are often the easiest place to start.",
-  );
-}
-
-async function updateDemoLinks(publicUrl) {
-  const existing = await fsp.readFile(README_PATH, "utf8");
-  const updated = replaceDemoReadmeBlock(existing, publicUrl);
-  const existingIntro = await fsp.readFile(WEBSITE_INTRO_PATH, "utf8");
-  const updatedIntro = replaceDemoIntroBlock(existingIntro, publicUrl);
-  const existingIndex = await fsp.readFile(WEBSITE_INDEX_PATH, "utf8");
-  const updatedIndex = existingIndex.replace(
-    /href="https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/edit\?usp=sharing"/g,
-    'href="' + publicUrl + '"',
-  );
-
-  if (updated !== existing) {
-    await fsp.writeFile(README_PATH, updated, "utf8");
-  }
-
-  if (updatedIntro !== existingIntro) {
-    await fsp.writeFile(WEBSITE_INTRO_PATH, updatedIntro, "utf8");
-  }
-
-  if (updatedIndex !== existingIndex) {
-    await fsp.writeFile(WEBSITE_INDEX_PATH, updatedIndex, "utf8");
-  }
-}
-
 function buildSheetRange(sheetTitle, a1Range) {
   return "'" + String(sheetTitle).replace(/'/g, "''") + "'!" + a1Range;
 }
@@ -1736,10 +1624,6 @@ module.exports = {
   parseTsv,
   ensureAccessTokenWithDeps,
   isInvalidGrantOAuthError,
-  renderDemoIntroBlock,
-  renderDemoReadmeBlock,
-  replaceDemoIntroBlock,
-  replaceDemoReadmeBlock,
   resolveRepoPath,
   validateConfig,
 };

@@ -41,11 +41,7 @@ HoodleFinance is especially useful when you want spreadsheet formulas that map m
 =HOODLEFINANCE("IE00B4L5YX21", "symbol") // symbol resolved from a direct ISIN
 ```
 
-<!-- DEMO_SHEET_LINK:START -->
-
-See the [public demo sheet](https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing) for more live examples.
-
-<!-- DEMO_SHEET_LINK:END -->
+See the [public demo sheet](/demo) for more live examples.
 
 Bare tickers such as `GOOG` are often the easiest place to start. If a bare ticker does not resolve the way you want, especially for international or ambiguous symbols, switch to an explicit identifier such as `NASDAQ:GOOG` or `SJPA.L`.
 
@@ -53,12 +49,12 @@ For mixed-currency portfolios, `price@USD`-style formulas are often one of the b
 
 ## Installation
 
-HoodleFinance currently has two installation modes:
+HoodleFinance currently has one practical installation path for general use, plus a future Marketplace path:
 
 - **Manual Apps Script install:** the current install path for general use.
 - **Google Workspace Marketplace add-on:** a future lower-friction install path.
 
-For full step-by-step setup, update, add-on, and troubleshooting guidance, see the [Installation](Installation) guide.
+For full step-by-step setup, update, add-on, and troubleshooting guidance, see the [Installation](installation) guide.
 
 Today, the practical path is the manual Apps Script install. The Marketplace add-on is intended to become the lower-friction path later, but it is not publicly available yet.
 

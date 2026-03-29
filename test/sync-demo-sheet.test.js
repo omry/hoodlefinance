@@ -42,10 +42,6 @@ const {
   parseClaspUserIdentity,
   parseArgs,
   parseTsv,
-  renderDemoIntroBlock,
-  renderDemoReadmeBlock,
-  replaceDemoIntroBlock,
-  replaceDemoReadmeBlock,
   resolveRepoPath,
   validateConfig,
 } = require("../tools/demo/sync.js");
@@ -862,59 +858,6 @@ test("formatting helpers build the expected Sheets API requests", function () {
   );
 });
 
-test("demo README block renders a placeholder before the public sheet exists", function () {
-  assert.match(renderDemoReadmeBlock(""), /will be linked here/);
-  assert.match(
-    renderDemoReadmeBlock("https://docs.google.com/spreadsheets/d/demo/edit"),
-    /public demo sheet/,
-  );
-});
-
-test("demo intro block renders a placeholder before the public sheet exists", function () {
-  assert.match(renderDemoIntroBlock(""), /will be linked here/);
-  assert.match(
-    renderDemoIntroBlock("https://docs.google.com/spreadsheets/d/demo/edit"),
-    /public demo sheet/,
-  );
-});
-
-test("replaceDemoReadmeBlock replaces an existing marker section", function () {
-  const original = [
-    "# Example",
-    "",
-    "<!-- DEMO_SHEET_LINK:START -->",
-    "old text",
-    "<!-- DEMO_SHEET_LINK:END -->",
-    "",
-    "## Quick Start",
-  ].join("\n");
-  const updated = replaceDemoReadmeBlock(
-    original,
-    "https://docs.google.com/spreadsheets/d/demo/edit",
-  );
-
-  assert.doesNotMatch(updated, /old text/);
-  assert.match(updated, /public demo sheet/);
-});
-
-test("replaceDemoIntroBlock replaces an existing marker section", function () {
-  const original = [
-    "# Example",
-    "",
-    "<!-- DEMO_SHEET_LINK:START -->",
-    "old text",
-    "<!-- DEMO_SHEET_LINK:END -->",
-    "",
-    "Bare tickers such as `GOOG` are often the easiest place to start.",
-  ].join("\n");
-  const updated = replaceDemoIntroBlock(
-    original,
-    "https://docs.google.com/spreadsheets/d/demo/edit",
-  );
-
-  assert.doesNotMatch(updated, /old text/);
-  assert.match(updated, /public demo sheet/);
-});
 test("the tracked demo-sheet config validates and its TSV paths exist", function () {
   const config = loadDemoSheetConfig(false);
   const liveConfig = loadDemoSheetConfig(true);

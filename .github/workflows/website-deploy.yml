@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "website/**"
+      - "docs/demo-sheet/public-demo-link.json"
       - ".github/workflows/website-test-deploy.yml"
       - ".github/workflows/website-deploy.yml"
   workflow_dispatch:

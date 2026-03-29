@@ -6,11 +6,7 @@ For installation, product overview, API docs, and user-facing guidance, start wi
 
 ## Live Demo
 
-<!-- DEMO_SHEET_LINK:START -->
-
-See the [public demo sheet](https://docs.google.com/spreadsheets/d/1zgvCtSYwcq5L5BL6t2vFJkjkrx0su0Ui_4ivaSL7Maw/edit?usp=sharing) for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).
-
-<!-- DEMO_SHEET_LINK:END -->
+See the [public demo sheet](https://hoodlefinance.com/demo) for live examples. The managed tab data lives in [`docs/demo-sheet/`](./docs/demo-sheet/).
 
 ## Docs
 

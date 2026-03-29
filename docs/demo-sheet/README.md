@@ -2,7 +2,8 @@
 
 The files in this directory are the source of truth for the public `HOODLEFINANCE` demo sheet.
 
-- [`demo-sheet.json`](./demo-sheet.json): tracked metadata for the demo sheet and its bound Apps Script project
+- [`demo-sheet.json`](./demo-sheet.json): tracked metadata for the demo sheet and its bound Apps Script project. The production `spreadsheetId` here is the canonical demo-sheet identifier. The `publicUrl` field is runtime sync metadata.
+- [`public-demo-link.json`](./public-demo-link.json): tracked website redirect target for `/demo`, refreshed by `Release Prepare` from the production `spreadsheetId`
 - `*.tsv`: one tab per file, written into Google Sheets with `USER_ENTERED` values
 
 ## Managed Tabs
@@ -90,6 +91,8 @@ The normal release path is:
 2. A maintainer reviews and merges that PR.
 3. The merged PR automatically triggers `Release Publish`.
 4. `Release Publish` tags the merge commit, creates the GitHub Release, and then runs the production demo-sync job.
+
+During `Release Prepare`, the workflow also refreshes [`public-demo-link.json`](./public-demo-link.json) from the production `spreadsheetId` in [`demo-sheet.json`](./demo-sheet.json), so the release PR shows the exact website demo target that will ship after merge.
 
 That demo-sync job uses the same credential shapes as the local flow, but keeps them out of the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step:
 

@@ -55,6 +55,7 @@ jobs:
 
             Review these artifacts before merging:
             - `version.properties`
+            - `docs/demo-sheet/public-demo-link.json`
             - `docs/release-notes/v${{ inputs.version }}.md`
             - `docs/release-notes/RELEASE_NOTES.md`
           delete-branch: true

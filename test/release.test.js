@@ -8,6 +8,7 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const {
+  buildSpreadsheetUrl,
   DEFAULT_PREPARE_VERIFICATION_STEPS,
   buildReleaseNotesPage,
   buildReleaseNotesRelativePath,
@@ -19,9 +20,11 @@ const {
   prepareRelease,
   previewRelease,
   publishRelease,
+  renderPublicDemoLink,
   renderReleaseBody,
   renderReleaseFile,
   renderVersionMetadata,
+  resolvePublicDemoUrl,
   runReleaseFragmentCheck,
   replaceVersionInSource,
   validateVersion,
@@ -64,6 +67,9 @@ function createFixtureRepo() {
   );
   const changesDir = path.join(rootDir, "changes.d");
   const docsDir = path.join(rootDir, "docs");
+  const demoSheetDir = path.join(docsDir, "demo-sheet");
+  const demoSheetConfigPath = path.join(demoSheetDir, "demo-sheet.json");
+  const publicDemoLinkPath = path.join(demoSheetDir, "public-demo-link.json");
   const releasesDir = path.join(docsDir, "release-notes");
   const scriptSourcePath = path.join(rootDir, "hoodlefinance.js");
   const releaseNotesPath = path.join(releasesDir, "RELEASE_NOTES.md");
@@ -71,10 +77,30 @@ function createFixtureRepo() {
   const versionMetadataPath = path.join(rootDir, "version.properties");
 
   fs.mkdirSync(changesDir, { recursive: true });
+  fs.mkdirSync(demoSheetDir, { recursive: true });
   fs.mkdirSync(releasesDir, { recursive: true });
   fs.writeFileSync(
     path.join(changesDir, "README.md"),
     "# Release fragments\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    demoSheetConfigPath,
+    JSON.stringify(
+      {
+        publicUrl: "https://docs.google.com/spreadsheets/d/demo-prod/edit?usp=sharing",
+        spreadsheetId: "demo-prod",
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    publicDemoLinkPath,
+    renderPublicDemoLink(
+      "https://docs.google.com/spreadsheets/d/stale/edit?usp=sharing",
+    ),
     "utf8",
   );
   fs.writeFileSync(
@@ -105,6 +131,8 @@ function createFixtureRepo() {
   return {
     changesDir,
     cwd: rootDir,
+    demoSheetConfigPath,
+    publicDemoLinkPath,
     releaseNotesPath,
     releaseTemplatePath,
     releasesDir,
@@ -161,6 +189,31 @@ test("parseVersionMetadataText reads the version source-of-truth file", function
   );
 
   assert.deepEqual(metadata, { version: "0.2.5" });
+});
+
+test("public demo link helpers require spreadsheetId and derive the share URL from it", function () {
+  const fixture = createFixtureRepo();
+
+  assert.equal(
+    resolvePublicDemoUrl(fixture.demoSheetConfigPath),
+    buildSpreadsheetUrl("demo-prod"),
+  );
+
+  fs.writeFileSync(
+    fixture.demoSheetConfigPath,
+    JSON.stringify(
+      {
+        publicUrl: "https://docs.google.com/spreadsheets/d/stale/edit?usp=sharing",
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  );
+
+  assert.throws(function () {
+    resolvePublicDemoUrl(fixture.demoSheetConfigPath);
+  }, /must contain spreadsheetId/);
 });
 
 test("renderReleaseBody keeps the configured section order", function () {
@@ -462,6 +515,12 @@ test("prepareRelease updates metadata, creates a per-release file, rebuilds the 
     /## v0\.2\.6 - 2026-03-16[\s\S]*### Upgrade Notes/,
   );
   assert.equal(
+    fs.readFileSync(fixture.publicDemoLinkPath, "utf8"),
+    renderPublicDemoLink(
+      "https://docs.google.com/spreadsheets/d/demo-prod/edit?usp=sharing",
+    ),
+  );
+  assert.equal(
     fs.existsSync(path.join(fixture.changesDir, "20260316-upgrade.upgrade.md")),
     false,
   );
@@ -517,6 +576,12 @@ test("prepareRelease rolls back generated files and preserves fragments when ver
   assert.equal(
     fs.readFileSync(fixture.releaseNotesPath, "utf8"),
     buildReleaseNotesPage(loadReleaseEntries(fixture.releasesDir)),
+  );
+  assert.equal(
+    fs.readFileSync(fixture.publicDemoLinkPath, "utf8"),
+    renderPublicDemoLink(
+      "https://docs.google.com/spreadsheets/d/stale/edit?usp=sharing",
+    ),
   );
   assert.equal(
     fs.existsSync(path.join(fixture.releasesDir, "v0.2.6.md")),

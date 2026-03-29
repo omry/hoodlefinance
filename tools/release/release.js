@@ -17,6 +17,18 @@ const RELEASE_NOTES_PATH = path.join(
   "release-notes",
   "RELEASE_NOTES.md",
 );
+const DEMO_SHEET_CONFIG_PATH = path.join(
+  ROOT_DIR,
+  "docs",
+  "demo-sheet",
+  "demo-sheet.json",
+);
+const PUBLIC_DEMO_LINK_PATH = path.join(
+  ROOT_DIR,
+  "docs",
+  "demo-sheet",
+  "public-demo-link.json",
+);
 const RELEASES_DIR = path.join(ROOT_DIR, "docs", "release-notes");
 const RELEASE_TEMPLATE_PATH = path.join(RELEASES_DIR, "TEMPLATE.md");
 const SCRIPT_SOURCE_PATH = path.join(ROOT_DIR, "hoodlefinance.js");
@@ -270,6 +282,7 @@ async function restorePreparedReleaseStateWithGit(state) {
   const cwd = state.cwd || ROOT_DIR;
   const runner = state.runCommand || runCommand;
   const trackedPaths = [
+    state.publicDemoLinkPath,
     state.releaseNotesPath,
     state.scriptSourcePath,
     state.versionMetadataPath,
@@ -333,6 +346,52 @@ function readVersionMetadata(versionMetadataPath) {
   return parseVersionMetadataText(
     readTextSync(versionMetadataPath, "version metadata"),
   );
+}
+
+function readJsonSync(filePath, label) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      "Failed to read " +
+        label +
+        " at " +
+        filePath +
+        ".\n" +
+        String(error && error.message ? error.message : error),
+    );
+  }
+}
+
+function buildSpreadsheetUrl(spreadsheetId) {
+  return (
+    "https://docs.google.com/spreadsheets/d/" +
+    encodeURIComponent(String(spreadsheetId || "").trim()) +
+    "/edit?usp=sharing"
+  );
+}
+
+function resolvePublicDemoUrl(demoSheetConfigPath) {
+  const config = readJsonSync(demoSheetConfigPath, "demo-sheet config");
+  const spreadsheetId = String(config.spreadsheetId || "").trim();
+
+  if (spreadsheetId) {
+    return buildSpreadsheetUrl(spreadsheetId);
+  }
+
+  throw new Error(
+    "docs/demo-sheet/demo-sheet.json must contain spreadsheetId before preparing a release.",
+  );
+}
+
+function renderPublicDemoLink(publicUrl) {
+  return JSON.stringify(
+    {
+      publicUrl: String(publicUrl || "").trim(),
+    },
+    null,
+    2,
+  ).concat("\n");
 }
 
 function renderVersionMetadata(metadata) {
@@ -619,6 +678,8 @@ async function prepareRelease(version, options) {
   const scriptSourceText = draft.scriptSourceText;
   const releaseNotesRelativePath = draft.releaseNotesRelativePath;
   const releaseDate = draft.releaseDate;
+  const publicDemoLinkPath = draft.publicDemoLinkPath;
+  const publicDemoLinkText = draft.publicDemoLinkText;
   const grouped = draft.groupedFragments;
   const fragments = draft.fragments;
   const releasesDir = draft.releasesDir;
@@ -643,6 +704,7 @@ async function prepareRelease(version, options) {
       scriptSourcePath,
       replaceVersionInSource(scriptSourceText, version),
     );
+    await writeText(publicDemoLinkPath, publicDemoLinkText);
 
     releaseEntries = loadReleaseEntries(releasesDir);
     await writeText(releaseNotesPath, buildReleaseNotesPage(releaseEntries));
@@ -654,6 +716,7 @@ async function prepareRelease(version, options) {
     try {
       await restorePreparedReleaseStateWithGit({
         cwd: cwd,
+        publicDemoLinkPath: publicDemoLinkPath,
         releaseFilePath: releaseFilePath,
         releaseNotesPath: releaseNotesPath,
         runCommand: runner,
@@ -709,6 +772,10 @@ async function previewRelease(version, options) {
     normalizedOptions.scriptSourcePath || SCRIPT_SOURCE_PATH;
   const versionMetadataPath =
     normalizedOptions.versionMetadataPath || VERSION_METADATA_PATH;
+  const demoSheetConfigPath =
+    normalizedOptions.demoSheetConfigPath || DEMO_SHEET_CONFIG_PATH;
+  const publicDemoLinkPath =
+    normalizedOptions.publicDemoLinkPath || PUBLIC_DEMO_LINK_PATH;
   const runner = normalizedOptions.runCommand || runCommand;
   const versionMetadata = readVersionMetadata(versionMetadataPath);
   const scriptSourceText = readTextSync(
@@ -722,6 +789,9 @@ async function previewRelease(version, options) {
   const currentScriptVersion = extractVersionFromSource(scriptSourceText);
   const releaseNotesRelativePath = buildReleaseNotesRelativePath(version);
   const releaseFilePath = buildReleaseFilePath(releasesDir, version);
+  const publicDemoLinkText = renderPublicDemoLink(
+    resolvePublicDemoUrl(demoSheetConfigPath),
+  );
   let fragments;
   let grouped;
 
@@ -777,6 +847,8 @@ async function previewRelease(version, options) {
     releaseNotesPath: releaseNotesPath,
     releaseNotesRelativePath: releaseNotesRelativePath,
     releasesDir: releasesDir,
+    publicDemoLinkPath: publicDemoLinkPath,
+    publicDemoLinkText: publicDemoLinkText,
     scriptSourcePath: scriptSourcePath,
     scriptSourceText: scriptSourceText,
     version: version,
@@ -973,15 +1045,18 @@ async function publishRelease(version, options) {
 
 module.exports = {
   CHANGES_DIR,
+  DEMO_SHEET_CONFIG_PATH,
   DEFAULT_PREPARE_VERIFICATION_STEPS,
   FRAGMENT_CATEGORIES,
   FRAGMENT_HEADING_BY_CATEGORY,
+  PUBLIC_DEMO_LINK_PATH,
   RELEASE_NOTES_INTRO,
   RELEASE_NOTES_PATH,
   RELEASES_DIR,
   RELEASE_TEMPLATE_PATH,
   SCRIPT_SOURCE_PATH,
   VERSION_METADATA_PATH,
+  buildSpreadsheetUrl,
   buildReleaseFilePath,
   buildReleaseNotesPage,
   buildReleaseNotesRelativePath,
@@ -998,6 +1073,8 @@ module.exports = {
   previewRelease,
   publishRelease,
   readVersionMetadata,
+  renderPublicDemoLink,
+  resolvePublicDemoUrl,
   restorePreparedReleaseStateWithGit,
   renderReleaseBody,
   renderReleaseFile,
