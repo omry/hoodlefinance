@@ -38,9 +38,13 @@ async function main() {
   });
   const claspIdentity = await getClaspIdentity();
   const tokenIdentity = await getTokenIdentity(accessToken);
+  const identities = assertMatchingCredentialIdentities(
+    tokenIdentity,
+    claspIdentity,
+  );
 
-  process.stdout.write("OAuth token identity: " + tokenIdentity + "\n");
-  process.stdout.write("clasp identity: " + claspIdentity + "\n");
+  process.stdout.write("OAuth token identity: " + identities.tokenEmail + "\n");
+  process.stdout.write("clasp identity: " + identities.claspEmail + "\n");
 }
 
 function requireEnvPath(name) {
@@ -121,6 +125,45 @@ async function getClaspIdentity() {
   return normalizedOutput.split(/\r?\n/)[0];
 }
 
+function extractIdentityEmail(identity, label) {
+  const normalizedIdentity = String(identity || "").trim();
+  const emailMatch = normalizedIdentity.match(
+    /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i,
+  );
+
+  if (!emailMatch) {
+    throw new Error(
+      "Unable to determine " +
+        label +
+        " email identity from " +
+        JSON.stringify(normalizedIdentity || "(empty)") +
+        ".",
+    );
+  }
+
+  return emailMatch[1].toLowerCase();
+}
+
+function assertMatchingCredentialIdentities(tokenIdentity, claspIdentity) {
+  const tokenEmail = extractIdentityEmail(tokenIdentity, "OAuth token");
+  const claspEmail = extractIdentityEmail(claspIdentity, "clasp");
+
+  if (tokenEmail !== claspEmail) {
+    throw new Error(
+      "OAuth token identity (" +
+        tokenEmail +
+        ") does not match clasp identity (" +
+        claspEmail +
+        "). Update the stored demo-sheet secrets and retry.",
+    );
+  }
+
+  return {
+    claspEmail: claspEmail,
+    tokenEmail: tokenEmail,
+  };
+}
+
 function runCommand(command, args) {
   return new Promise(function (resolve, reject) {
     let stdout = "";
@@ -152,6 +195,13 @@ function runCommand(command, args) {
     });
   });
 }
+
+module.exports = {
+  assertMatchingCredentialIdentities,
+  extractIdentityEmail,
+  getClaspIdentity,
+  getTokenIdentity,
+};
 
 if (require.main === module) {
   main().catch(function (error) {
