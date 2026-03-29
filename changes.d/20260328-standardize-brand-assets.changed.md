@@ -1,1 +1,0 @@
-- Standardized the website and Marketplace branding assets around shared light and dark SVG sources, and refreshed the website to use the chart-based icon set.
