@@ -1832,38 +1832,8 @@ function hf_fetchQuote_(ticker) {
 
 function hf_fetchPseQuote_(ticker) {
   const symbol = hf_parsePseSymbol_(ticker);
-  const cacheKey = "hoodlefinance:pse:" + symbol;
-  let listing;
-  let html;
 
-  return hf_resolveCachedJson_(cacheKey, 300, function () {
-    const quote = (function () {
-      try {
-        listing = hf_resolvePseListing_(symbol);
-        html = hf_fetchPseText_(
-          HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-            "?cmpy_id=" +
-            encodeURIComponent(listing.companyId) +
-            "&security_id=" +
-            encodeURIComponent(listing.securityId),
-        );
-
-        return hf_extractPseQuote_(html, listing);
-      } catch (error) {
-        if (!hf_isPseListingNotFoundError_(error)) {
-          throw error;
-        }
-
-        return hf_fetchPseFrameQuote_(symbol);
-      }
-    })();
-
-    if (!quote || !quote.symbol) {
-      throw new Error("No PSE quote data was found for " + ticker + ".");
-    }
-
-    return quote;
-  });
+  return hf_fetchQuote_("PSE:" + symbol);
 }
 
 function hf_normalizeTicker_(ticker) {
@@ -2578,14 +2548,7 @@ function hf_buildForcedSourcePlan_(
   if (sourceOverride === "PSE") {
     if (hf_isPseTicker_(normalizedTicker)) {
       symbol = hf_parsePseSymbol_(normalizedTicker);
-      return hf_createSingleAttemptRoutePlan_(
-        "FORCED:PSE",
-        "pse-quote",
-        "PSE",
-        {
-          routeState: { symbol: symbol },
-        },
-      );
+      return hf_createPseQuoteRoutePlan_("FORCED:PSE", symbol);
     }
 
     isinValue = hf_looksLikeIsin_(normalizedTicker)
@@ -2604,14 +2567,7 @@ function hf_buildForcedSourcePlan_(
       }
 
       symbol = hf_parsePseSymbol_(pseTicker);
-      return hf_createSingleAttemptRoutePlan_(
-        "FORCED:PSE",
-        "pse-quote",
-        "PSE",
-        {
-          routeState: { symbol: symbol },
-        },
-      );
+      return hf_createPseQuoteRoutePlan_("FORCED:PSE", symbol);
     }
 
     throw new Error(
@@ -2648,13 +2604,13 @@ const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
   {
     classification: "PSE-TICKER",
     example: "PSE:BDO",
-    route: "PSE-TICKER -> PSE",
+    route: "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
   },
   {
     classification: "ISIN",
     example: "US02079K1079",
     route:
-      "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+      "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
   },
   {
     classification: "FORCED:YAHOO",
@@ -2674,7 +2630,7 @@ const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
   {
     classification: "FORCED:PSE",
     example: "PSE:BDO@PSE",
-    route: "FORCED:PSE -> PSE",
+    route: "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE",
   },
 ];
 
@@ -2768,21 +2724,17 @@ function hf_classifyTickerJob_(ticker, attribute) {
   }
 
   if (hf_isPseTicker_(requestTicker)) {
-    return hf_createRoutePlan_({
-      routeClass: "PSE-TICKER",
-      routeAttempts: [hf_createRouteAttempt_("pse-quote", "PSE")],
-      routeState: { symbol: hf_parsePseSymbol_(requestTicker) },
-      routePath: "PSE",
-    });
+    return hf_createPseQuoteRoutePlan_(
+      "PSE-TICKER",
+      hf_parsePseSymbol_(requestTicker),
+    );
   }
 
   if (hf_isPseYahooSymbol_(requestTicker)) {
-    return hf_createRoutePlan_({
-      routeClass: "PSE-TICKER",
-      routeAttempts: [hf_createRouteAttempt_("pse-quote", "PSE")],
-      routeState: { symbol: hf_parsePseYahooSymbol_(requestTicker) },
-      routePath: "PSE",
-    });
+    return hf_createPseQuoteRoutePlan_(
+      "PSE-TICKER",
+      hf_parsePseYahooSymbol_(requestTicker),
+    );
   }
 
   if (fxPair && fxPair.isSameCurrency) {
@@ -2811,7 +2763,8 @@ function hf_classifyTickerJob_(ticker, attribute) {
         hf_createYahooIsinAttempt_("default"),
       ],
       routeState: { isin: requestUpperTicker },
-      routePath: "PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+      routePath:
+        "PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
     });
   }
 
@@ -2823,7 +2776,8 @@ function hf_classifyTickerJob_(ticker, attribute) {
         hf_createYahooIsinAttempt_("default"),
       ],
       routeState: { isin: requestUpperTicker.slice(5).trim() },
-      routePath: "PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+      routePath:
+        "PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
     });
   }
 
@@ -2871,6 +2825,22 @@ function hf_createYahooChartAttempt_(allowTradingviewFallback) {
 function hf_createYahooIsinAttempt_(resolvedSymbolMode) {
   return hf_createRouteAttempt_("yahoo-isin-search", "YAHOO-ISIN", {
     resolvedSymbolMode: resolvedSymbolMode || "default",
+  });
+}
+
+function hf_createPseQuoteAttempts_() {
+  return [
+    hf_createRouteAttempt_("pse-frames-quote", "PSE-FRAMES"),
+    hf_createRouteAttempt_("pse-edge-quote", "PSE-EDGE"),
+  ];
+}
+
+function hf_createPseQuoteRoutePlan_(routeClass, symbol) {
+  return hf_createRoutePlan_({
+    routeClass: routeClass,
+    routeAttempts: hf_createPseQuoteAttempts_(),
+    routeState: { symbol: symbol },
+    routePath: "PSE-FRAMES -> PSE-EDGE",
   });
 }
 
@@ -2959,7 +2929,7 @@ function hf_buildQuoteAttemptsForResolvedIdentifier_(resolvedIdentifier, mode) {
 
   if (hf_isPseTicker_(resolvedIdentifier) && normalizedMode !== "yahoo-only") {
     return {
-      nextAttempts: [hf_createRouteAttempt_("pse-quote", "PSE")],
+      nextAttempts: hf_createPseQuoteAttempts_(),
       stateChanges: {
         resolvedIdentifier: resolvedIdentifier,
         symbol: hf_parsePseSymbol_(resolvedIdentifier),
@@ -3036,9 +3006,13 @@ const HOODLEFINANCE_ROUTE_ADAPTERS_ = {
     "pse-isin-map",
     hf_executePseIsinMapRouteBatch_,
   ),
-  "pse-quote": hf_createRouteAdapter_(
-    "pse-quote",
-    hf_executePseQuoteRouteBatch_,
+  "pse-edge-quote": hf_createRouteAdapter_(
+    "pse-edge-quote",
+    hf_executePseEdgeQuoteRouteBatch_,
+  ),
+  "pse-frames-quote": hf_createRouteAdapter_(
+    "pse-frames-quote",
+    hf_executePseFramesQuoteRouteBatch_,
   ),
   "tradingview-fund": hf_createRouteAdapter_(
     "tradingview-fund",
@@ -3091,6 +3065,36 @@ function hf_defaultRouteFailureMessage_(job) {
   return job && job.routeKind === "isin"
     ? "ISIN lookup failed."
     : "Quote lookup failed.";
+}
+
+function hf_collectFailedRouteLabels_(job) {
+  const trace =
+    job && Array.isArray(job.routeRuntimeTrace) ? job.routeRuntimeTrace : [];
+  const labels = [];
+  let i;
+
+  for (i = 0; i < trace.length; i += 1) {
+    if (!trace[i] || !trace[i].label || trace[i].status === "success") {
+      continue;
+    }
+
+    if (labels.indexOf(trace[i].label) === -1) {
+      labels.push(trace[i].label);
+    }
+  }
+
+  return labels;
+}
+
+function hf_formatRouteFailureMessage_(job, message) {
+  const normalizedMessage = String(message || "").trim();
+  const failedLabels = hf_collectFailedRouteLabels_(job);
+
+  if (!failedLabels.length) {
+    return normalizedMessage;
+  }
+
+  return normalizedMessage + " Failed nodes: " + failedLabels.join(", ") + ".";
 }
 
 function hf_applyRouteResult_(job, attempt, result) {
@@ -3151,16 +3155,21 @@ function hf_applyRouteResult_(job, attempt, result) {
     job.routeIndex += 1;
 
     if (job.routeIndex >= job.routeAttempts.length) {
-      job.error =
+      job.error = hf_formatRouteFailureMessage_(
+        job,
         job.routeLastLookupFailure ||
-        errorMessage ||
-        hf_defaultRouteFailureMessage_(job);
+          errorMessage ||
+          hf_defaultRouteFailureMessage_(job),
+      );
     }
 
     return;
   }
 
-  job.error = errorMessage || hf_defaultRouteFailureMessage_(job);
+  job.error = hf_formatRouteFailureMessage_(
+    job,
+    errorMessage || hf_defaultRouteFailureMessage_(job),
+  );
 }
 
 function hf_getRouteAdapter_(adapterId) {
@@ -3574,12 +3583,107 @@ function hf_executeTradingviewFundRouteBatch_(jobs) {
   return results;
 }
 
-function hf_executePseQuoteRouteBatch_(jobs) {
+function hf_executePseFramesQuoteRouteBatch_(jobs) {
+  const results = jobs.map(function () {
+    return null;
+  });
+  const requests = [];
+  let i;
+  let cacheKey;
+  let cached;
+  let responses;
+  let quote;
+
+  for (i = 0; i < jobs.length; i += 1) {
+    cacheKey = "hoodlefinance:pse:" + jobs[i].routeState.symbol;
+    cached = hf_getCachedJson_(cacheKey);
+
+    if (cached) {
+      results[i] = hf_createRouteResult_("success", {
+        quote: cached,
+      });
+      continue;
+    }
+
+    requests.push({
+      cacheKey: cacheKey,
+      index: i,
+      symbol: jobs[i].routeState.symbol,
+      url: hf_buildPseSecurityFrameUrl_(jobs[i].routeState.symbol),
+    });
+  }
+
+  responses = hf_fetchAllInChunks_("pse", requests);
+
+  for (i = 0; i < responses.length; i += 1) {
+    if (responses[i].error) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "lookup_failure",
+        {
+          error: hf_buildPseUnavailableError_(
+            responses[i].error && responses[i].error.message
+              ? responses[i].error.message
+              : responses[i].error,
+          ),
+        },
+      );
+      continue;
+    }
+
+    if (responses[i].response.getResponseCode() !== 200) {
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "lookup_failure",
+        {
+          error: hf_buildPseUnavailableError_(
+            hf_buildPseHttpErrorMessage_(
+              responses[i].response.getResponseCode(),
+            ),
+          ),
+        },
+      );
+      continue;
+    }
+
+    try {
+      quote = hf_extractPseFrameQuote_(
+        responses[i].response.getContentText(),
+        responses[i].request.symbol,
+      );
+      hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
+      results[responses[i].request.index] = hf_createRouteResult_("success", {
+        quote: quote,
+      });
+    } catch (error) {
+      if (
+        hf_isPseListingNotFoundError_(error) ||
+        hf_isPseUnavailableError_(error)
+      ) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: error,
+          },
+        );
+        continue;
+      }
+
+      results[responses[i].request.index] = hf_createRouteResult_(
+        "terminal_error",
+        {
+          error: error,
+        },
+      );
+    }
+  }
+
+  return results;
+}
+
+function hf_executePseEdgeQuoteRouteBatch_(jobs) {
   const results = jobs.map(function () {
     return null;
   });
   const searchRequests = [];
-  const frameRequests = [];
   const stockRequests = [];
   let i;
   let cacheKey;
@@ -3618,6 +3722,7 @@ function hf_executePseQuoteRouteBatch_(jobs) {
 
     searchRequests.push({
       index: i,
+      symbol: jobs[i].routeState.symbol,
       url:
         HOODLEFINANCE_PSE_SEARCH_URL_ +
         encodeURIComponent(jobs[i].routeState.symbol),
@@ -3629,7 +3734,7 @@ function hf_executePseQuoteRouteBatch_(jobs) {
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
       results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
+        "lookup_failure",
         {
           error: hf_buildPseUnavailableError_(
             responses[i].error && responses[i].error.message
@@ -3643,7 +3748,7 @@ function hf_executePseQuoteRouteBatch_(jobs) {
 
     if (responses[i].response.getResponseCode() !== 200) {
       results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
+        "lookup_failure",
         {
           error: hf_buildPseUnavailableError_(
             hf_buildPseHttpErrorMessage_(
@@ -3658,28 +3763,27 @@ function hf_executePseQuoteRouteBatch_(jobs) {
     try {
       listing = hf_tryResolvePseListingFromHtml_(
         responses[i].response.getContentText(),
-        jobs[responses[i].request.index].routeState.symbol,
+        responses[i].request.symbol,
       );
 
       if (!listing) {
-        frameRequests.push({
-          cacheKey:
-            "hoodlefinance:pse:" +
-            jobs[responses[i].request.index].routeState.symbol,
-          index: responses[i].request.index,
-          url: hf_buildPseSecurityFrameUrl_(
-            jobs[responses[i].request.index].routeState.symbol,
-          ),
-        });
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: new Error(
+              'No PSE listing was found for "' +
+                responses[i].request.symbol +
+                '".',
+            ),
+          },
+        );
         continue;
       }
 
       hf_cachePseListing_(listing);
       jobs[responses[i].request.index].routeState.listing = listing;
       stockRequests.push({
-        cacheKey:
-          "hoodlefinance:pse:" +
-          jobs[responses[i].request.index].routeState.symbol,
+        cacheKey: "hoodlefinance:pse:" + responses[i].request.symbol,
         index: responses[i].request.index,
         url:
           HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
@@ -3698,62 +3802,12 @@ function hf_executePseQuoteRouteBatch_(jobs) {
     }
   }
 
-  responses = hf_fetchAllInChunks_("pse", frameRequests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: hf_buildPseUnavailableError_(
-            responses[i].error && responses[i].error.message
-              ? responses[i].error.message
-              : responses[i].error,
-          ),
-        },
-      );
-      continue;
-    }
-
-    if (responses[i].response.getResponseCode() !== 200) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: hf_buildPseUnavailableError_(
-            hf_buildPseHttpErrorMessage_(
-              responses[i].response.getResponseCode(),
-            ),
-          ),
-        },
-      );
-      continue;
-    }
-
-    try {
-      quote = hf_extractPseFrameQuote_(
-        responses[i].response.getContentText(),
-        jobs[responses[i].request.index].routeState.symbol,
-      );
-      hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
-      results[responses[i].request.index] = hf_createRouteResult_("success", {
-        quote: quote,
-      });
-    } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
   responses = hf_fetchAllInChunks_("pse", stockRequests);
 
   for (i = 0; i < responses.length; i += 1) {
     if (responses[i].error) {
       results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
+        "lookup_failure",
         {
           error: hf_buildPseUnavailableError_(
             responses[i].error && responses[i].error.message
@@ -3767,7 +3821,7 @@ function hf_executePseQuoteRouteBatch_(jobs) {
 
     if (responses[i].response.getResponseCode() !== 200) {
       results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
+        "lookup_failure",
         {
           error: hf_buildPseUnavailableError_(
             hf_buildPseHttpErrorMessage_(
@@ -4367,6 +4421,12 @@ function hf_isPseListingNotFoundError_(error) {
   return /No PSE listing was found for "/i.test(hf_errorMessage_(error));
 }
 
+function hf_isPseUnavailableError_(error) {
+  return /The PSE data source is currently unavailable/i.test(
+    hf_errorMessage_(error),
+  );
+}
+
 function hf_fetchPseFrameQuote_(symbol) {
   return hf_extractPseFrameQuote_(
     hf_fetchPseText_(hf_buildPseSecurityFrameUrl_(symbol)),
@@ -4508,9 +4568,14 @@ function hf_extractPseFrameQuote_(html, symbol) {
     .toUpperCase();
   const metadata = hf_extractPseFrameStockMetadata_(html);
   const extractedSymbol =
-    metadata && metadata.name ? String(metadata.name).trim().toUpperCase() : "";
+    (metadata && metadata.name
+      ? String(metadata.name).trim().toUpperCase()
+      : "") ||
+    hf_extractPseFrameSymbol_(html) ||
+    expectedSymbol;
   const fullName =
-    metadata && metadata.full_name ? String(metadata.full_name).trim() : "";
+    (metadata && metadata.full_name ? String(metadata.full_name).trim() : "") ||
+    hf_extractPseFrameHeaderCompanyName_(html, extractedSymbol);
   const isin = hf_extractPseFrameField_(html, "ISIN").toUpperCase();
   const companyId = hf_extractPseFrameCompanyId_(html);
   const previousClose = hf_parseNumber_(
@@ -4595,6 +4660,13 @@ function hf_extractPseFrameCompanyId_(html) {
   return match ? String(match[1]) : "";
 }
 
+function hf_extractPseFrameSymbol_(html) {
+  const match = String(html || "").match(
+    /<input[^>]+id="symbol-json"[^>]+value="([^"]+)"/i,
+  );
+  return match ? hf_cleanHtmlText_(match[1]).toUpperCase() : "";
+}
+
 function hf_extractPseFrameStockMetadata_(html) {
   const match = String(html || "").match(
     /<input[^>]+id="stock-json"[^>]+value="([^"]+)"/i,
@@ -4610,6 +4682,21 @@ function hf_extractPseFrameStockMetadata_(html) {
   } catch (error) {
     return null;
   }
+}
+
+function hf_extractPseFrameHeaderCompanyName_(html, symbol) {
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
+  const pattern = new RegExp(
+    "<h3[^>]*>\\s*" +
+      hf_escapeRegex_(normalizedSymbol) +
+      "\\s*<\\/h3>[\\s\\S]*?<div[^>]*>\\s*([^<]+?)\\s*<\\/div>",
+    "i",
+  );
+  const match = String(html || "").match(pattern);
+
+  return match ? hf_cleanHtmlText_(match[1]) : "";
 }
 
 function hf_extractPseCompanyName_(html) {
@@ -6342,7 +6429,9 @@ function hf_resolveIsin_(isin) {
 }
 
 function hf_errorMessage_(error) {
-  return String(error && error.message ? error.message : error);
+  return String(error && error.message ? error.message : error)
+    .trim()
+    .replace(/\s*\(line \d+\)\.?$/i, "");
 }
 
 function hf_looksLikeIsin_(value) {

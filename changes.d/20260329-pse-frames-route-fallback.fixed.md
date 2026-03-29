@@ -1,0 +1,1 @@
+- PSE quotes now use the symbol-native Frames provider first and automatically fall back to the Edge provider when needed, improving reliability for preferred shares and suspended symbols.

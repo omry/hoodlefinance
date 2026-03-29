@@ -180,6 +180,97 @@ const PSE_FRAME_ACPAR_HTML = `
 <a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=57"></a>
 `;
 
+const PSE_FRAME_BDO_HTML = `
+<div class="security-header">
+  <h3 class="last-price">123.80</h3>
+  <span>As of March 27, 2026 03:00:00 PM</span>
+</div>
+<input
+  id="stock-json"
+  type="hidden"
+  value="{&quot;name&quot;:&quot;BDO&quot;,&quot;full_name&quot;:&quot;BDO Unibank, Inc.&quot;}"
+/>
+<table class="table table-striped">
+  <tr><td>ISIN</td><td>PHY077751022</td></tr>
+  <tr><td>Open</td><td>123.00</td></tr>
+  <tr><td>Prev Close</td><td>122.20</td></tr>
+  <tr><td>High</td><td>124.00</td></tr>
+  <tr><td>Low</td><td>122.90</td></tr>
+  <tr><td>Volume</td><td>1000</td></tr>
+</table>
+<a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=260"></a>
+`;
+
+const PSE_FRAME_AAA_HTML = `
+<div class="col-12 d-flex flex-row border-bottom py-4 justify-content-between px-0">
+  <div class="col-6 col-sm-4 col-md-6 col-lg-8 align-items-center px-0">
+    <div class="col-12 align-items-center px-0">
+      <h3 style="font-weight: 900; color: #003579;">AAA</h3>
+    </div>
+    <div class="col-12 align-items-center px-0" style="font-weight: normal;">
+      Asia Amalgamated Holdings Corporation
+    </div>
+  </div>
+  <div class="col-6 col-lg-4 d-flex flex-row px-0">
+    <div class="col-10 col-lg-11 align-items-center text-right pl-0 pr-3">
+      <div class="col-12 align-items-center px-0 font-weight-bolder">
+        <h3 class="last-price">1.61</h3>
+      </div>
+      <div class="col-12 align-items-center d-flex flex-row justify-content-end px-0">
+        <div class="col-12 px-0">
+          <span class="mr-md-2">0.00</span> (0.00%)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="table-responsive my-2 d-none d-md-flex">
+  <table class="table table-striped table-hover table-borderless">
+    <tbody>
+      <tr class="border-0">
+        <td class="border-0" style="color: #003579;">Status:</td>
+        <td class="border-0 text-right">Suspended</td>
+        <td class="border-0" style="color: #003579;">Open:</td>
+        <td class="border-0 text-right">0.00</td>
+        <td class="border-0" style="color: #003579;">Prev Close: <span class="text-muted"> (May 15, 2015)</span></td>
+        <td class="border-0 text-right">1.61</td>
+      </tr>
+      <tr class="border-0">
+        <td style="color: #003579;">Volume:</td>
+        <td class="text-right">0</td>
+        <td style="color: #003579;">High:</td>
+        <td class="text-right">0.00</td>
+        <td style="color: #003579;">52 Wk Low: </td>
+        <td class="text-right">0.00</td>
+      </tr>
+      <tr class="border-0">
+        <td style="color: #003579;">Value:</td>
+        <td class="text-right">0.00</td>
+        <td style="color: #003579;">Low:</td>
+        <td class="text-right">0.00</td>
+        <td style="color: #003579;">52 Wk High: </td>
+        <td class="text-right">0.00</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<input
+  id="stock-json"
+  type="hidden"
+  value="{&quot;name&quot;:&quot;&quot;,&quot;full_name&quot;:&quot;&quot;,&quot;description&quot;:&quot;&quot;}"
+/>
+<input id="symbol-json" name="_symbol" type="hidden" value="AAA" />
+<table class="table table-striped">
+  <tr><td>ISIN</td><td>PHY030431175</td></tr>
+  <tr><td>Open</td><td>0.00</td></tr>
+  <tr><td>Prev Close <span class="text-muted">(May 15, 2015)</span></td><td>1.61</td></tr>
+  <tr><td>High</td><td>0.00</td></tr>
+  <tr><td>Low</td><td>0.00</td></tr>
+  <tr><td>Volume</td><td>0</td></tr>
+</table>
+<a href="https://www.pse.com.ph/companyDisclosures/form.do?cmpy_id=55"></a>
+`;
+
 const PSE_FRAME_INVALID_HTML = `
 <div class="security-header">
   <h3 class="last-price">0.00</h3>
@@ -1665,7 +1756,10 @@ function readCurrentRepoVersion() {
     /const HOODLEFINANCE_VERSION_ = "([^"]+)"/,
   );
 
-  assert.ok(versionMatch, "Expected HOODLEFINANCE_VERSION_ in hoodlefinance.js");
+  assert.ok(
+    versionMatch,
+    "Expected HOODLEFINANCE_VERSION_ in hoodlefinance.js",
+  );
 
   return versionMatch[1];
 }
@@ -1819,8 +1913,14 @@ test("source introspection suffixes return the planned route or the supported so
 
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "FX -> GOOGLE");
   assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE");
-  assert.equal(ctx.HOODLEFINANCE("PSE:AAA@?"), "PSE-TICKER -> PSE");
-  assert.equal(ctx.HOODLEFINANCE("AP.PS@?"), "PSE-TICKER -> PSE");
+  assert.equal(
+    ctx.HOODLEFINANCE("PSE:AAA@?"),
+    "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
+  );
+  assert.equal(
+    ctx.HOODLEFINANCE("AP.PS@?"),
+    "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
+  );
   assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "FX-SAME -> LOCAL");
   assert.equal(ctx.HOODLEFINANCE("GOOG@?"), "TICKER -> YAHOO");
   assert.equal(
@@ -1829,7 +1929,7 @@ test("source introspection suffixes return the planned route or the supported so
   );
   assert.equal(
     ctx.HOODLEFINANCE("US02079K1079@?"),
-    "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+    "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@"),
@@ -1857,11 +1957,11 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
       ],
       ["FX", "EURUSD", "FX -> GOOGLE"],
       ["FX-SAME", "USDUSD", "FX-SAME -> LOCAL"],
-      ["PSE-TICKER", "PSE:BDO", "PSE-TICKER -> PSE"],
+      ["PSE-TICKER", "PSE:BDO", "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE"],
       [
         "ISIN",
         "US02079K1079",
-        "ISIN -> PSE-MAP -> (PSE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+        "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
       ],
       ["FORCED:YAHOO", "GOOG@YAHOO", "FORCED:YAHOO -> YAHOO"],
       [
@@ -1870,7 +1970,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
         "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
       ],
       ["FORCED:GOOGLE", "EURUSD@GOOGLE", "FORCED:GOOGLE -> GOOGLE"],
-      ["FORCED:PSE", "PSE:BDO@PSE", "FORCED:PSE -> PSE"],
+      ["FORCED:PSE", "PSE:BDO@PSE", "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE"],
     ]),
   );
   assert.equal(ctx.HOODLEFINANCE_ROUTES("GOOG"), "TICKER -> YAHOO");
@@ -3265,6 +3365,8 @@ test("direct Philippine ISIN input uses the mapped PSE ticker directly in the sh
     JSON.stringify(seenUrls),
     JSON.stringify([
       "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+      "https://frames.pse.com.ph/security/BDO",
+      "https://frames.pse.com.ph/security/BDO",
       "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
       "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
     ]),
@@ -3274,6 +3376,7 @@ test("direct Philippine ISIN input uses the mapped PSE ticker directly in the sh
     assert.equal(
       JSON.stringify(seenBatches),
       JSON.stringify([
+        ["https://frames.pse.com.ph/security/BDO"],
         ["https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"],
         [
           "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
@@ -3297,12 +3400,6 @@ test("direct Philippine preferred-share ISIN input can reach the PSE frame fallb
       return createHttpResponse(200, PSE_ISIN_MAP_PROPERTIES);
     }
 
-    if (
-      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
-    ) {
-      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
-    }
-
     if (url === "https://frames.pse.com.ph/security/DDPR") {
       return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
     }
@@ -3313,7 +3410,6 @@ test("direct Philippine preferred-share ISIN input can reach the PSE frame fallb
   assert.equal(ctx.HOODLEFINANCE("PHY2105Y1166", "price"), 94.5);
   assert.deepEqual(seenUrls, [
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
-    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR",
     "https://frames.pse.com.ph/security/DDPR",
   ]);
 });
@@ -5179,58 +5275,40 @@ test("parses suspended PSE stock pages and falls back to previous close for pric
   assert.equal(quote.regularMarketChangePercent, 0);
 });
 
-test("fetches PSE quotes through the direct PSE path", () => {
+test("parses suspended PSE frame pages even when stock-json names are blank", () => {
+  const ctx = loadHoodlefinance();
+  const quote = ctx.hf_extractPseFrameQuote_(PSE_FRAME_AAA_HTML, "AAA");
+
+  assert.equal(quote.symbol, "AAA");
+  assert.equal(quote.longName, "Asia Amalgamated Holdings Corporation");
+  assert.equal(quote.isin, "PHY030431175");
+  assert.equal(quote.regularMarketPrice, 1.61);
+  assert.equal(quote.regularMarketPreviousClose, 1.61);
+});
+
+test("fetches PSE quotes through the primary PSE frames provider", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
-    if (
-      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=AAA"
-    ) {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return PSE_SEARCH_AAA_HTML;
-        },
-      };
-    }
-
-    if (
-      url ===
-      "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=55&security_id=347"
-    ) {
-      return {
-        getResponseCode() {
-          return 200;
-        },
-        getContentText() {
-          return PSE_STOCK_AAA_HTML;
-        },
-      };
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(200, PSE_FRAME_BDO_HTML);
     }
 
     throw new Error("Unexpected URL " + url);
   };
 
-  const quote = ctx.hf_fetchQuote_("PSE:AAA");
+  const quote = ctx.hf_fetchQuote_("PSE:BDO");
 
-  assert.equal(quote.symbol, "AAA");
+  assert.equal(quote.symbol, "BDO");
   assert.equal(quote.currency, "PHP");
-  assert.equal(quote.isin, "PHY030431175");
-  assert.equal(quote.regularMarketPrice, 1.63);
+  assert.equal(quote.isin, "PHY077751022");
+  assert.equal(quote.regularMarketPrice, 123.8);
 });
 
-test("fetches PSE preferred-share quotes when the directory search misses the exact symbol", () => {
+test("fetches PSE preferred-share quotes through the primary PSE frames provider", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
-    if (
-      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
-    ) {
-      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
-    }
-
     if (url === "https://frames.pse.com.ph/security/DDPR") {
       return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
     }
@@ -5249,22 +5327,24 @@ test("fetches PSE preferred-share quotes when the directory search misses the ex
   assert.equal(quote.regularMarketPrice, 94.5);
 });
 
-test("reports a not-found error when the PSE frame fallback is blank", () => {
+test("reports a not-found error when the PSE frames provider is blank and edge also misses", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
 
+  primeCurrencyCodeData(ctx);
+
   ctx.UrlFetchApp.fetch = function (url) {
     seenUrls.push(url);
+
+    if (url === "https://frames.pse.com.ph/security/ZZZZZZ") {
+      return createHttpResponse(200, PSE_FRAME_INVALID_HTML);
+    }
 
     if (
       url ===
       "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ"
     ) {
       return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
-    }
-
-    if (url === "https://frames.pse.com.ph/security/ZZZZZZ") {
-      return createHttpResponse(200, PSE_FRAME_INVALID_HTML);
     }
 
     throw new Error("Unexpected URL " + url);
@@ -5274,8 +5354,8 @@ test("reports a not-found error when the PSE frame fallback is blank", () => {
     ctx.hf_fetchPseQuote_("PSE:ZZZZZZ");
   }, /No PSE listing was found for "ZZZZZZ"\./);
   assert.deepEqual(seenUrls, [
-    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ",
     "https://frames.pse.com.ph/security/ZZZZZZ",
+    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=ZZZZZZ",
   ]);
 });
 
@@ -5283,6 +5363,50 @@ test("routes Yahoo-style .PS tickers through the dedicated PSE path", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(200, PSE_FRAME_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "name"), "BDO Unibank, Inc.");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "symbol"), "PSE:BDO");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "symbol:yahoo"), "BDO.PS");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "exchange"), "PSE");
+  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "exchange:yahoo"), "PSE");
+});
+
+test("reports a clearer outage error when both PSE providers are unavailable", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+    }
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
+    ) {
+      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(function () {
+    ctx.hf_fetchQuote_("PSE:BDO");
+  }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\. Failed nodes: PSE-FRAMES, PSE-EDGE\./);
+});
+
+test("falls back to the PSE edge provider when the PSE frames page is unavailable", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(502, "Bad Gateway");
+    }
+
     if (
       url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
     ) {
@@ -5299,49 +5423,44 @@ test("routes Yahoo-style .PS tickers through the dedicated PSE path", () => {
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "name"), "BDO Unibank, Inc.");
-  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "symbol"), "PSE:BDO");
-  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "symbol:yahoo"), "BDO.PS");
-  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "exchange"), "PSE");
-  assert.equal(ctx.HOODLEFINANCE("BDO.PS", "exchange:yahoo"), "PSE");
-});
+  const quote = ctx.hf_fetchQuote_("PSE:BDO");
 
-test("reports a clearer outage error when the PSE search page is unavailable", () => {
-  const ctx = loadHoodlefinance();
-
-  ctx.UrlFetchApp.fetch = function (url) {
-    assert.equal(
-      url,
-      "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
-    );
-    return createHttpResponse(520, PSE_HTTP_520_TEXT);
-  };
-
-  assert.throws(function () {
-    ctx.hf_fetchQuote_("PSE:BDO");
-  }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./);
+  assert.equal(quote.symbol, "BDO");
+  assert.equal(quote.longName, "BDO Unibank, Inc.");
+  assert.equal(quote.isin, "PHY077751022");
+  assert.equal(quote.regularMarketPrice, 123.8);
 });
 
 test("reports a clearer outage error for lower-level PSE fetch failures", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
-    assert.equal(
-      url,
-      "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
-    );
-    throw new Error("Could not resolve host: edge.pse.com.ph");
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      throw new Error("Could not resolve host: frames.pse.com.ph");
+    }
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
+    ) {
+      throw new Error("Could not resolve host: edge.pse.com.ph");
+    }
+
+    throw new Error("Unexpected URL " + url);
   };
 
   assert.throws(function () {
     ctx.hf_fetchQuote_("PSE:BDO");
-  }, /The PSE data source is currently unavailable \(Could not resolve host: edge\.pse\.com\.ph\)\. Please try again later\./);
+  }, /The PSE data source is currently unavailable \(Could not resolve host: (?:frames|edge)\.pse\.com\.ph\)\. Please try again later\./);
 });
 
-test("reports a clearer outage error when the PSE stock page is unavailable", () => {
+test("falls back to the PSE edge provider when the PSE frames page is blank", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(200, PSE_FRAME_INVALID_HTML);
+    }
+
     if (
       url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
     ) {
@@ -5352,24 +5471,30 @@ test("reports a clearer outage error when the PSE stock page is unavailable", ()
       url ===
       "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468"
     ) {
-      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
     }
 
     throw new Error("Unexpected URL " + url);
   };
 
-  assert.throws(function () {
-    ctx.hf_fetchQuote_("PSE:BDO");
-  }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./);
+  const quote = ctx.hf_fetchQuote_("PSE:BDO");
+
+  assert.equal(quote.symbol, "BDO");
+  assert.equal(quote.isin, "PHY077751022");
+  assert.equal(quote.regularMarketPrice, 123.8);
 });
 
-test("shared batch PSE fetches reuse a warmed listing cache", () => {
+test("shared batch PSE fetches reuse a warmed listing cache after the frames provider misses", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
   const seenBatches = [];
 
   ctx.UrlFetchApp.fetch = function (url) {
     seenUrls.push(url);
+
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(200, PSE_FRAME_INVALID_HTML);
+    }
 
     if (
       url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
@@ -5399,11 +5524,13 @@ test("shared batch PSE fetches reuse a warmed listing cache", () => {
     JSON.stringify([[123.8], [123.8]]),
   );
   assert.deepEqual(seenUrls, [
+    "https://frames.pse.com.ph/security/BDO",
     "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
   ]);
   assert.equal(
     JSON.stringify(seenBatches),
     JSON.stringify([
+      ["https://frames.pse.com.ph/security/BDO"],
       [
         "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
       ],
@@ -5411,19 +5538,13 @@ test("shared batch PSE fetches reuse a warmed listing cache", () => {
   );
 });
 
-test("shared batch PSE fetches can resolve preferred-share symbols through the frame fallback", () => {
+test("shared batch PSE fetches can resolve preferred-share symbols through the primary frames provider", () => {
   const ctx = loadHoodlefinance();
   const seenUrls = [];
   const seenBatches = [];
 
   ctx.UrlFetchApp.fetch = function (url) {
     seenUrls.push(url);
-
-    if (
-      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
-    ) {
-      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
-    }
 
     if (url === "https://frames.pse.com.ph/security/DDPR") {
       return createHttpResponse(200, PSE_FRAME_DDPR_HTML);
@@ -5442,21 +5563,19 @@ test("shared batch PSE fetches can resolve preferred-share symbols through the f
   );
   assert.equal(
     JSON.stringify(seenBatches),
-    JSON.stringify([
-      ["https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"],
-      ["https://frames.pse.com.ph/security/DDPR"],
-    ]),
+    JSON.stringify([["https://frames.pse.com.ph/security/DDPR"]]),
   );
-  assert.deepEqual(seenUrls, [
-    "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR",
-    "https://frames.pse.com.ph/security/DDPR",
-  ]);
+  assert.deepEqual(seenUrls, ["https://frames.pse.com.ph/security/DDPR"]);
 });
 
 test("shared batch PSE fetches surface a clearer outage error", () => {
   const ctx = loadHoodlefinance();
 
   ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+    }
+
     if (
       url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
     ) {
@@ -5471,7 +5590,59 @@ test("shared batch PSE fetches surface a clearer outage error", () => {
 
   assert.throws(function () {
     ctx.HOODLEFINANCE("PSE:BDO", "price");
-  }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\./);
+  }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\. Failed nodes: PSE-FRAMES, PSE-EDGE\./);
+});
+
+test("surfaced error messages strip trailing line-number suffixes", () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(ctx.hf_errorMessage_(new Error("Boom (line 3858).")), "Boom");
+  assert.equal(ctx.hf_errorMessage_(new Error("Boom (line 12)")), "Boom");
+});
+
+test("shared batch PSE fetches can recover from a frames outage through the edge provider", () => {
+  const ctx = loadHoodlefinance();
+  const seenBatches = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/BDO") {
+      return createHttpResponse(502, "Bad Gateway");
+    }
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
+    }
+
+    if (
+      url ===
+      "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468"
+    ) {
+      return createHttpResponse(200, PSE_STOCK_BDO_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    seenBatches.push(requests.map((request) => request.url));
+    return requests.map((request) => ctx.UrlFetchApp.fetch(request.url));
+  };
+
+  assert.equal(
+    JSON.stringify(ctx.HOODLEFINANCE([["PSE:BDO"], ["PSE:BDO"]], "price")),
+    JSON.stringify([[123.8], [123.8]]),
+  );
+  assert.equal(
+    JSON.stringify(seenBatches),
+    JSON.stringify([
+      ["https://frames.pse.com.ph/security/BDO"],
+      ["https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"],
+      [
+        "https://edge.pse.com.ph/companyPage/stockData.do?cmpy_id=260&security_id=468",
+      ],
+    ]),
+  );
 });
 
 test("isin@PSE returns direct quote isin", () => {
