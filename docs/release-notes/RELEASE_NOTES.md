@@ -1,5 +1,22 @@
 # Release Notes
 
+## v0.9.7 - 2026-03-29
+
+### Changed
+
+- Removed the decorative bottom bar-chart accents from the shared website and Marketplace banner and hero artwork.
+- Standardized the website and Marketplace branding assets around shared light and dark SVG sources, and refreshed the website to use the chart-based icon set.
+
+### Fixed
+
+- Fixed PSE ISIN identifier lookups for alternate securities such as `PSE:DDPR` and `PSE:ACPAR`, and updated local smoke checks to use the checked-out PSE ISIN map.
+- Fixed PSE lookups for symbols such as `PSE:DDPR` by falling back to the PSE security page when the main directory search misses the exact ticker.
+
+### Documentation
+
+- Grouped the website legal pages under a dedicated source directory while preserving the existing public URLs for the Individual CLA, Privacy Policy, and Terms of Service.
+- Added alternate PSE securities such as `PSE:DDPR` and `PSE:ACPAR` to the live support-matrix samples.
+
 ## v0.9.6 - 2026-03-25
 
 ### Changed
