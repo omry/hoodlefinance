@@ -334,6 +334,37 @@ test("prepareWorkspace writes a staging deployment marker file for staging targe
     GENERATED_DEPLOYMENT_CONFIG_FILENAME,
     "hoodlefinance.js",
   ]);
+  assert.match(
+    fs.readFileSync(path.join(workspace.workDir, "hoodlefinance.js"), "utf8"),
+    /const HOODLEFINANCE_VERSION_ = "0\.9\.3-dev-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}[+-]\d{4}";/,
+  );
+});
+
+test("buildDefaultVersionDescription appends a dev timestamp for staging", function () {
+  const fixture = createFixture();
+  const now = new Date("2026-03-29T10:11:12Z");
+  const utcOffsetMinutes = 480;
+  const expectedTimestamp = "2026-03-29_18-11-12+0800";
+
+  assert.match(
+    buildDefaultVersionDescription({
+      now: now,
+      rootDir: fixture.rootDir,
+      targetName: "staging",
+      utcOffsetMinutes: utcOffsetMinutes,
+    }),
+    new RegExp(
+      "^HOODLEFINANCE 0\\.9\\.3-dev-" + escapeRegex(expectedTimestamp) + "$",
+    ),
+  );
+  assert.equal(
+    buildDefaultVersionDescription({
+      now: now,
+      rootDir: fixture.rootDir,
+      targetName: "production",
+    }),
+    "HOODLEFINANCE 0.9.3 (2026-03-29)",
+  );
 });
 
 test("deployAddon dry run prepares the workspace without calling clasp", async function () {
@@ -378,6 +409,68 @@ test("deployAddon dry run prepares the workspace without calling clasp", async f
       fs.existsSync(path.join(fixture.workDir, "hoodlefinance.js")),
       true,
     );
+  } finally {
+    process.chdir(previousCwd);
+  }
+});
+
+test("deployAddon staging dry run stamps the bundled version and description", async function () {
+  const fixture = createFixture();
+  const stagingWorkDir = path.join(fixture.stagingDir, "work");
+  const stagingTargetConfigPath = path.join(fixture.stagingDir, "target.json");
+  const previousCwd = process.cwd();
+  const now = new Date("2026-03-29T10:11:12Z");
+  const utcOffsetMinutes = 480;
+  const expectedTimestamp = "2026-03-29_18-11-12+0800";
+
+  fs.writeFileSync(
+    stagingTargetConfigPath,
+    JSON.stringify({ scriptId: "script-staging-123" }, null, 2) + "\n",
+    "utf8",
+  );
+
+  process.chdir(fixture.rootDir);
+  try {
+    const calls = [];
+    const result = await deployAddon(
+      {
+        createVersion: true,
+        dryRun: true,
+        layoutPath: fixture.layoutPath,
+        target: "staging",
+        targetConfigPath: stagingTargetConfigPath,
+        versionDescription: "",
+      },
+      {
+        now: now,
+        runCommand: async function (command, args) {
+          calls.push([path.basename(command)].concat(args));
+          return { stdout: "3.1.3\n", stderr: "" };
+        },
+        rootDir: fixture.rootDir,
+        utcOffsetMinutes: utcOffsetMinutes,
+        workDir: stagingWorkDir,
+      },
+    );
+
+    assert.equal(result.scriptId, "script-staging-123");
+    assert.equal(
+      result.versionDescription,
+      "HOODLEFINANCE 0.9.3-dev-" + expectedTimestamp,
+    );
+    assert.equal(
+      result.deploymentConfigPath,
+      path.join(stagingWorkDir, GENERATED_DEPLOYMENT_CONFIG_FILENAME),
+    );
+    assert.match(
+      fs.readFileSync(path.join(stagingWorkDir, "hoodlefinance.js"), "utf8"),
+      new RegExp(
+        'const HOODLEFINANCE_VERSION_ = "0\\.9\\.3-dev-' +
+          escapeRegex(expectedTimestamp) +
+          '";',
+      ),
+    );
+    assert.deepEqual(calls, [["clasp", "--version"]]);
   } finally {
     process.chdir(previousCwd);
   }

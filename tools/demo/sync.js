@@ -15,6 +15,7 @@ const {
   printContextBlock,
 } = require("../cli-reporting.js");
 const { getClaspCommand, getClaspAuth } = require("../clasp-auth.js");
+const { stampVersionInSource } = require("../_shared/version-stamp.js");
 const {
   DEFAULT_STYLES,
   buildFormulaCellFormatRequests,
@@ -1047,22 +1048,7 @@ async function syncBoundScriptWithClasp(config, options, claspAuth) {
   const claspAuthPath = getClaspAuthPath(claspAuth);
 
   if (!options.production) {
-    const d = new Date();
-    const offset = -d.getTimezoneOffset();
-    const pad = function (n) {
-      return String(n).padStart(2, "0");
-    };
-    const localIso = new Date(d.getTime() + offset * 60000).toISOString();
-    const timestamp =
-      localIso.replace("T", "_").replace(/:/g, "-").slice(0, 19) +
-      (offset >= 0 ? "+" : "-") +
-      pad(Math.floor(Math.abs(offset) / 60)) +
-      pad(Math.abs(offset) % 60);
-
-    source = source.replace(
-      /const HOODLEFINANCE_VERSION_ = "([^"]+)";/,
-      'const HOODLEFINANCE_VERSION_ = "$1-dev-' + timestamp + '";',
-    );
+    source = stampVersionInSource(source);
   }
 
   await ensureCommandExists(claspCommand);

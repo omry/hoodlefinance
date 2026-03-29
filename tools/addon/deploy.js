@@ -15,6 +15,10 @@ const {
   printContextBlock,
 } = require("../cli-reporting.js");
 const { getClaspCommand, getClaspAuth } = require("../clasp-auth.js");
+const {
+  buildStampedVersion,
+  stampVersionInSource,
+} = require("../_shared/version-stamp.js");
 
 const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const LOCAL_DIR = path.join(ROOT_DIR, ".addon-deploy.local");
@@ -451,11 +455,30 @@ async function getAddonDeployCredentialReport(options, overrides) {
 function buildDefaultVersionDescription(options) {
   const normalizedOptions = options || {};
   const rootDir = normalizedOptions.rootDir || ROOT_DIR;
+  const targetName = normalizeAddonTargetName(
+    normalizedOptions.targetName || DEFAULT_TARGET_NAME,
+  );
+  const version = readVersionMetadata(path.join(rootDir, "version.properties"));
+
+  if (targetName === "staging") {
+    return (
+      "HOODLEFINANCE " +
+      buildStampedVersion(version, normalizedOptions.now, {
+        utcOffsetMinutes: normalizedOptions.utcOffsetMinutes,
+      })
+    );
+  }
+
   return (
     "HOODLEFINANCE " +
-    readVersionMetadata(path.join(rootDir, "version.properties")) +
+    version +
     " (" +
-    new Date().toISOString().slice(0, 10) +
+    (normalizedOptions.now instanceof Date
+      ? new Date(normalizedOptions.now.getTime())
+      : new Date()
+    )
+      .toISOString()
+      .slice(0, 10) +
     ")"
   );
 }
@@ -534,6 +557,19 @@ async function prepareWorkspace(layout, target, options) {
     targetPath = path.join(workDir, relativePath);
     await fsp.mkdir(path.dirname(targetPath), { recursive: true });
     await fsp.copyFile(sourcePath, targetPath);
+    if (targetName === "staging") {
+      await fsp.writeFile(
+        targetPath,
+        stampVersionInSource(
+          await fsp.readFile(targetPath, "utf8"),
+          normalizedOptions.now,
+          {
+            utcOffsetMinutes: normalizedOptions.utcOffsetMinutes,
+          },
+        ),
+        "utf8",
+      );
+    }
     bundleFiles.push(relativePath);
   }
 
@@ -571,12 +607,19 @@ async function deployAddon(options, overrides) {
     ? String(
         options.versionDescription ||
           normalizedOverrides.versionDescription ||
-          buildDefaultVersionDescription({ rootDir: rootDir }),
+          buildDefaultVersionDescription({
+            now: normalizedOverrides.now,
+            rootDir: rootDir,
+            targetName: targetName,
+            utcOffsetMinutes: normalizedOverrides.utcOffsetMinutes,
+          }),
       ).trim()
     : "";
   const workspace = await prepareWorkspace(layout, target, {
+    now: normalizedOverrides.now,
     rootDir: rootDir,
     targetName: targetName,
+    utcOffsetMinutes: normalizedOverrides.utcOffsetMinutes,
     workDir:
       normalizedOverrides.workDir || getAddonWorkDir(rootDir, targetName),
   });

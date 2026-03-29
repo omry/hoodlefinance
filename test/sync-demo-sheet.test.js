@@ -4,6 +4,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const {
+  buildLocalTimestamp,
+  buildStampedVersion,
+  stampVersionInSource,
+} = require("../tools/_shared/version-stamp.js");
 
 const {
   buildAutoResizeColumnsRequest,
@@ -94,6 +99,34 @@ test("assertNoLikelyMissingNpmArgSeparator catches swallowed npm dry-run flags",
       "demo:sync",
     );
   });
+});
+
+test("shared staging version helpers stamp local timestamps into source", function () {
+  const now = new Date("2026-03-29T10:11:12Z");
+  const utcOffsetMinutes = 480;
+
+  assert.equal(
+    buildLocalTimestamp(now, {
+      utcOffsetMinutes: utcOffsetMinutes,
+    }),
+    "2026-03-29_18-11-12+0800",
+  );
+  assert.equal(
+    buildStampedVersion("0.9.6", now, {
+      utcOffsetMinutes: utcOffsetMinutes,
+    }),
+    "0.9.6-dev-2026-03-29_18-11-12+0800",
+  );
+  assert.equal(
+    stampVersionInSource(
+      'const HOODLEFINANCE_VERSION_ = "0.9.6";\n',
+      now,
+      {
+        utcOffsetMinutes: utcOffsetMinutes,
+      },
+    ),
+    'const HOODLEFINANCE_VERSION_ = "0.9.6-dev-2026-03-29_18-11-12+0800";\n',
+  );
 });
 
 test("parseClaspUserIdentity preserves unknown-user results for dry-run reporting", function () {
