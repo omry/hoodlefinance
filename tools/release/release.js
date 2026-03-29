@@ -52,17 +52,17 @@ const DEFAULT_RELEASE_TEMPLATE = [
 ].join("\n");
 const DEFAULT_PREPARE_VERIFICATION_STEPS = [
   {
-    args: ["--test", "--test-reporter=spec", "test/hoodlefinance.test.js"],
+    args: ["--test", "--test-reporter=dot", "test/hoodlefinance.test.js"],
     command: process.execPath,
     label: "hoodlefinance test suite",
   },
   {
-    args: ["--test", "--test-reporter=spec", "test/release.test.js"],
+    args: ["--test", "--test-reporter=dot", "test/release.test.js"],
     command: process.execPath,
     label: "release test suite",
   },
   {
-    args: ["--test", "--test-reporter=spec", "test/sync-demo-sheet.test.js"],
+    args: ["--test", "--test-reporter=dot", "test/sync-demo-sheet.test.js"],
     command: process.execPath,
     label: "demo-sheet test suite",
   },

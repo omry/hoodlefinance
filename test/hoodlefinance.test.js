@@ -1656,6 +1656,20 @@ function loadHoodlefinance(extraGlobals) {
   return sandbox;
 }
 
+function readCurrentRepoVersion() {
+  const sourceText = fs.readFileSync(
+    path.join(__dirname, "..", "hoodlefinance.js"),
+    "utf8",
+  );
+  const versionMatch = sourceText.match(
+    /const HOODLEFINANCE_VERSION_ = "([^"]+)"/,
+  );
+
+  assert.ok(versionMatch, "Expected HOODLEFINANCE_VERSION_ in hoodlefinance.js");
+
+  return versionMatch[1];
+}
+
 function createHttpResponse(statusCode, content) {
   return {
     getResponseCode() {
@@ -3759,11 +3773,16 @@ test("the staging Sheets add-on homepage and version UI include the staging mark
     HF_IS_ADDON_STAGING: true,
   });
   const card = ctx.hoodlefinanceBuildSheetsAddOnHomepage({});
+  const version = readCurrentRepoVersion();
 
   assert.equal(card.header.title, "Hoodlefinance [Staging]");
   assert.match(
     card.sections[0].widgets[0].text,
-    /Installed version: <b>0\.9\.6 \(staging\)<\/b>/,
+    new RegExp(
+      "Installed version: <b>" +
+        version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+        " \\(staging\\)<\\/b>",
+    ),
   );
   assert.match(
     card.sections[0].widgets[2].text,
@@ -3773,7 +3792,7 @@ test("the staging Sheets add-on homepage and version UI include the staging mark
   ctx.hoodlefinanceShowInstalledVersion();
   assert.deepEqual(ctx.__uiState.alerts[0], [
     "HOODLEFINANCE version [Staging]",
-    "Installed version: 0.9.6 (staging)",
+    "Installed version: " + version + " (staging)",
     "OK",
   ]);
 });
@@ -3783,6 +3802,7 @@ test("the staging enable toast includes the staging marker", () => {
     HF_IS_ADDON_STAGING: true,
   });
   const seenToasts = [];
+  const version = readCurrentRepoVersion();
 
   ctx.SpreadsheetApp.getActive = function () {
     return {
@@ -3795,7 +3815,9 @@ test("the staging enable toast includes the staging marker", () => {
   ctx.enable_();
 
   assert.deepEqual(seenToasts, [
-    "Hoodlefinance [Staging] 0.9.6 (staging) enabled for this spreadsheet",
+    "Hoodlefinance [Staging] " +
+      version +
+      " (staging) enabled for this spreadsheet",
   ]);
 });
 
