@@ -58,27 +58,9 @@ HoodleFinance currently has two installation modes:
 - **Manual Apps Script install:** the current install path for general use.
 - **Google Workspace Marketplace add-on:** a future lower-friction install path.
 
-### Manual Apps Script Install
+For full step-by-step setup, update, add-on, and troubleshooting guidance, see the [Installation](Installation) guide.
 
-This is the installation path you should use today.
-
-1. Open a Google Sheet.
-2. Go to `Extensions -> Apps Script`.
-3. Copy the contents of [`hoodlefinance.js` (raw)](https://raw.githubusercontent.com/omry/hoodlefinance/main/hoodlefinance.js) into a new script file named `HoodleFinance`.
-4. Save the Apps Script project.
-5. Reload the spreadsheet.
-
-The manual install also adds a `Hoodlefinance` menu in Sheets for version and update-related actions.
-
-To update a manual install, replace the Apps Script code with the latest `hoodlefinance.js` version and reload the spreadsheet.
-
-### Google Workspace Marketplace Add-On
-
-The Marketplace add-on is intended to become the lower-friction install path, but it is not publicly available yet. The add-on path has already passed private Marketplace validation, while public Marketplace approval is still pending.
-
-If and when the Marketplace add-on becomes publicly available, it should be treated as an alternative install method rather than something to combine with a pasted-script install in the same spreadsheet.
-
-Note: When using the Marketplace add-on, it must be enabled per spreadsheet from the Add-ons menu before the `HOODLEFINANCE` custom function becomes available for use in that specific spreadsheet.
+Today, the practical path is the manual Apps Script install. The Marketplace add-on is intended to become the lower-friction path later, but it is not publicly available yet.
 
 ## Limits
 

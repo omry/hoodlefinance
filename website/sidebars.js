@@ -19,6 +19,7 @@
 const sidebars = {
   tutorialSidebar: [
     "intro",
+    "installation",
     {
       type: "category",
       label: "API",
