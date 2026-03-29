@@ -5399,6 +5399,28 @@ test("reports a clearer outage error when both PSE providers are unavailable", (
   }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\. Failed nodes: PSE-FRAMES, PSE-EDGE\./);
 });
 
+test("preserves a frames outage when edge later misses a frames-only PSE symbol", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (url === "https://frames.pse.com.ph/security/DDPR") {
+      return createHttpResponse(520, PSE_HTTP_520_TEXT);
+    }
+
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=DDPR"
+    ) {
+      return createHttpResponse(200, PSE_SEARCH_NO_DATA_HTML);
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.throws(function () {
+    ctx.hf_fetchQuote_("PSE:DDPR");
+  }, /The PSE data source is currently unavailable \(PSE upstream returned Cloudflare HTTP 520\.\)\. Please try again later\. Failed nodes: PSE-FRAMES, PSE-EDGE\./);
+});
+
 test("falls back to the PSE edge provider when the PSE frames page is unavailable", () => {
   const ctx = loadHoodlefinance();
 

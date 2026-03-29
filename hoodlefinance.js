@@ -2375,6 +2375,7 @@ function hf_createRouteJob_(options) {
     routeIndex: 0,
     routeKind: extras.routeKind || "quote",
     routeLastLookupFailure: "",
+    routePreferredLookupFailure: "",
     routeRuntimeTrace: [],
     routeState: extras.routeState || {},
     sourceQuote: extras.sourceQuote || null,
@@ -2423,6 +2424,7 @@ function hf_prepareRouteJob_(job, plan) {
   targetJob.routeState = hf_cloneRouteState_(routePlan.routeState || {});
   targetJob.routeRuntimeTrace = [];
   targetJob.routeLastLookupFailure = "";
+  targetJob.routePreferredLookupFailure = "";
 }
 
 function hf_isMultiCellTickerGrid_(tickerGrid) {
@@ -3097,6 +3099,10 @@ function hf_formatRouteFailureMessage_(job, message) {
   return normalizedMessage + " Failed nodes: " + failedLabels.join(", ") + ".";
 }
 
+function hf_shouldPreferLookupFailureMessage_(message) {
+  return /currently unavailable/i.test(String(message || ""));
+}
+
 function hf_applyRouteResult_(job, attempt, result) {
   const normalizedResult =
     result ||
@@ -3144,6 +3150,13 @@ function hf_applyRouteResult_(job, attempt, result) {
   if (normalizedResult.status === "lookup_failure") {
     if (errorMessage) {
       job.routeLastLookupFailure = errorMessage;
+
+      if (
+        hf_shouldPreferLookupFailureMessage_(errorMessage) &&
+        !job.routePreferredLookupFailure
+      ) {
+        job.routePreferredLookupFailure = errorMessage;
+      }
     }
 
     if (normalizedResult.nextAttempts && normalizedResult.nextAttempts.length) {
@@ -3157,7 +3170,8 @@ function hf_applyRouteResult_(job, attempt, result) {
     if (job.routeIndex >= job.routeAttempts.length) {
       job.error = hf_formatRouteFailureMessage_(
         job,
-        job.routeLastLookupFailure ||
+        job.routePreferredLookupFailure ||
+          job.routeLastLookupFailure ||
           errorMessage ||
           hf_defaultRouteFailureMessage_(job),
       );
@@ -3210,8 +3224,12 @@ function hf_executeRouteJobs_(orderedJobs) {
 
       if (!attempt) {
         if (!job.error) {
-          job.error =
-            job.routeLastLookupFailure || hf_defaultRouteFailureMessage_(job);
+          job.error = hf_formatRouteFailureMessage_(
+            job,
+            job.routePreferredLookupFailure ||
+              job.routeLastLookupFailure ||
+              hf_defaultRouteFailureMessage_(job),
+          );
         }
         continue;
       }
