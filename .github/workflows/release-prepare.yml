@@ -38,7 +38,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Prepare release files
-        run: node tools/release.js prepare "${{ inputs.version }}"
+        run: node tools/release/release.js prepare "${{ inputs.version }}"
 
       - name: Open release pull request
         uses: peter-evans/create-pull-request@v8

@@ -28,7 +28,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-demo-credentials:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release ref
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Validate demo deployment credentials
+        env:
+          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
+          DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
+        run: |
+          test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
+          test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
+          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+
+          exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
+          exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
+          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          trap 'exec {oauth_client_fd}<&-; exec {oauth_token_fd}<&-; exec {clasp_rc_fd}<&-' EXIT
+          unset CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
+
+          CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+          DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
+          DEMO_SHEET_OAUTH_TOKEN_PATH="/proc/$$/fd/${oauth_token_fd}" \
+          node tools/demo/validate-credentials.js
+
   publish:
+    needs:
+      - validate-demo-credentials
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
     outputs:
@@ -148,4 +190,22 @@ jobs:
           DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
           DEMO_SHEET_OAUTH_TOKEN_PATH="/proc/$$/fd/${oauth_token_fd}" \
           HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY="1" \
-          node tools/sync-demo-sheet.js --live-demo
+          node tools/demo/sync.js --production
+
+  rollback-release-on-demo-failure:
+    needs:
+      - publish
+      - sync-demo
+    if: needs.publish.result == 'success' && needs.sync-demo.result == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Delete partially published release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.publish.outputs.tag_name }}
+        run: |
+          test -n "${TAG_NAME}" || { echo "Missing tag name for rollback."; exit 1; }
+          gh release delete "${TAG_NAME}" --cleanup-tag --yes
