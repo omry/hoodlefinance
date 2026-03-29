@@ -2,5 +2,6 @@
 - Evaluate the option of symbol:ibkr which will resolve a stock to the IBKR symbol
 - Investigate add-on custom-function cache misses where repeated identical `HOODLEFINANCE()` calls still take about 3 seconds on consecutive runs.
 - Pick the next concrete cache improvement from `docs/design/cache-matrix.md` and implement it.
+- Evaluate whether `HOODLEFINANCE()` should support multi-attribute spill output so one formula can return a compact record such as price, currency, unit, source, and instrument type together.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
