@@ -36,38 +36,37 @@ test("routing table rows cover the current quote classifications", function () {
       {
         classification: "ISIN",
         example: "US02079K1079",
-        route:
-          "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+        route: "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
       },
       {
         classification: "FORCED:YAHOO",
         example: "GOOG@YAHOO",
-        route: "FORCED:YAHOO -> YAHOO",
+        route: "YAHOO",
       },
       {
         classification: "FORCED:YAHOO-ISIN",
         example: "US02079K1079@YAHOO",
-        route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
+        route: "IDENTIFIER:YAHOO-ISIN -> YAHOO-ISIN => YAHOO",
       },
       {
         classification: "FORCED:GOOGLE",
         example: "EURUSD@GOOGLE",
-        route: "FORCED:GOOGLE -> GOOGLE",
+        route: "GOOGLE",
       },
       {
         classification: "FORCED:PSE",
         example: "PSE:BDO@PSE",
-        route: "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE",
+        route: "PSE-FRAMES -> PSE-EDGE",
       },
       {
         classification: "FORCED:PSE-FRAMES",
         example: "PSE:BDO@PSE-FRAMES",
-        route: "FORCED:PSE-FRAMES -> PSE-FRAMES",
+        route: "PSE-FRAMES",
       },
       {
         classification: "FORCED:PSE-EDGE",
         example: "PSE:BDO@PSE-EDGE",
-        route: "FORCED:PSE-EDGE -> PSE-EDGE",
+        route: "PSE-EDGE",
       },
     ]),
   );
@@ -84,7 +83,7 @@ test("routing table formatter emits a readable header and rows", function () {
   );
   assert.match(
     output,
-    /FORCED:PSE\tPSE:BDO@PSE\tFORCED:PSE -> PSE-FRAMES -> PSE-EDGE/,
+    /FORCED:PSE\tPSE:BDO@PSE\tPSE-FRAMES -> PSE-EDGE/,
   );
 });
 
@@ -133,28 +132,24 @@ test("trace output includes the planned route and runtime trace summary", functi
     },
     hf_classifyTickerJob_() {
       return {
-        routeAttempts: [{ adapterId: "yahoo-chart", traceLabel: "YAHOO" }],
+        nodes: [{ name: "YAHOO", traceLabel: "YAHOO" }],
+        routeClass: "TICKER",
+        routePath: "YAHOO",
         routeState: { yahooSymbol: "GOOG" },
-        routeTrace: "TICKER -> YAHOO",
-        source: "yahoo-chart",
       };
-    },
-    hf_cloneRouteAttempts_(attempts) {
-      return attempts.slice();
     },
     hf_cloneRouteState_(state) {
       return Object.assign({}, state);
     },
     hf_prepareRouteJob_(job, plan) {
       job.plan = plan;
-      job.routeAttempts = this.hf_cloneRouteAttempts_(plan.routeAttempts || []);
-      job.routeIndex = 0;
+      job.routeNodes = (plan.nodes || []).slice();
       job.routeState = this.hf_cloneRouteState_(plan.routeState || {});
       job.routeRuntimeTrace = [];
       job.routeLastLookupFailure = "";
     },
     hf_describePlanSource_(plan) {
-      return plan.routeTrace;
+      return [plan.routeClass, plan.routePath].filter(Boolean).join(" -> ");
     },
     hf_executeRouteJobs_(jobs) {
       jobs[0].routeRuntimeTrace.push({

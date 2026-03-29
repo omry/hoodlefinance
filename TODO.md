@@ -6,3 +6,4 @@
 - Evaluate whether this project should adopt a TypeScript-to-Apps-Script workflow for stronger typing in complex routing and request-shape code.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
+- vstm ticker is causing an error

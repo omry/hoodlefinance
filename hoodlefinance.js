@@ -106,18 +106,6 @@ const HOODLEFINANCE_UNSUPPORTED_FX_ATTRIBUTES_ = hf_buildSet_([
   "volume",
 ]);
 
-const HOODLEFINANCE_SOURCE_OVERRIDES_ = hf_buildSet_([
-  "ARIVA",
-  "GOOGLE",
-  "IBKR",
-  "LON",
-  "PSE",
-  "PSE-EDGE",
-  "PSE-FRAMES",
-  "TRADINGVIEW",
-  "YAHOO",
-]);
-
 function hf_formatPublicAttributes_() {
   return HOODLEFINANCE_PUBLIC_ATTRIBUTE_GROUPS_.map(function (group) {
     return group.label + ": " + group.attributes.join(", ");
@@ -1814,16 +1802,13 @@ function hf_escapeHtml_(text) {
 
 function hf_fetchQuote_(ticker) {
   const job = hf_createQuoteRouteJob_(String(ticker).trim(), "price");
+  const jobs = {
+    jobByKey: {},
+    orderedJobs: [job],
+  };
 
-  job.plan = hf_classifyTickerJob_(job.tickerInput, "price");
-
-  if (hf_isDebugRoutePlan_(job.plan)) {
-    throw new Error("Debug-only ticker requests cannot be fetched as quotes.");
-  }
-
-  hf_prepareRouteJob_(job, job.plan);
-
-  hf_executeRouteJobs_([job]);
+  jobs.jobByKey[job.key] = job;
+  hf_prefetchTickerJobs_(jobs);
 
   if (job.error) {
     throw new Error(job.error);
@@ -2262,63 +2247,32 @@ function hf_extractTickerInfoMode_(ticker) {
 }
 
 function hf_listSupportedSources_() {
-  return [
-    "ARIVA",
-    "GOOGLE",
-    "IBKR",
-    "LON",
-    "PSE (PSE-FRAMES, PSE-EDGE)",
-    "TRADINGVIEW",
-    "YAHOO",
-  ].join(", ");
+  return HOODLEFINANCE_SOURCE_LIST_ORDER_.map(function (source) {
+    const groupedSources = HOODLEFINANCE_SOURCE_GROUPED_SOURCES_BY_NAME_[source] || [];
+
+    return groupedSources.length
+      ? source + " (" + groupedSources.join(", ") + ")"
+      : source;
+  }).join(", ");
 }
 
-function hf_resolveForcedPseSymbol_(normalizedTicker, upperTicker, sourceLabel) {
-  let isinValue;
-  let pseTicker;
+const HOODLEFINANCE_SOURCE_LIST_ORDER_ = [
+  "ARIVA",
+  "GOOGLE",
+  "IBKR",
+  "LON",
+  "PSE",
+  "TRADINGVIEW",
+  "YAHOO",
+];
 
-  if (hf_isPseTicker_(normalizedTicker)) {
-    return hf_parsePseSymbol_(normalizedTicker);
-  }
+const HOODLEFINANCE_SOURCE_GROUPED_SOURCES_BY_NAME_ = {
+  PSE: ["PSE-FRAMES", "PSE-EDGE"],
+};
 
-  isinValue = hf_looksLikeIsin_(normalizedTicker)
-    ? upperTicker
-    : upperTicker.indexOf("ISIN:") === 0
-      ? upperTicker.slice(5).trim()
-      : "";
-
-  if (isinValue) {
-    pseTicker = hf_resolvePseTickerFromIsinMap_(isinValue);
-    if (!pseTicker) {
-      throw new Error(
-        'No PSE ticker was found for ISIN "' +
-          isinValue +
-          '" when using "@' +
-          sourceLabel +
-          '".',
-      );
-    }
-
-    return hf_parsePseSymbol_(pseTicker);
-  }
-
-  throw new Error(
-    '"@' +
-      sourceLabel +
-      '" can only be used with PSE tickers and PSE-mapped ISINs.',
-  );
-}
-
-function hf_createForcedPseRoutePlan_(routeClass, traceLabel, symbol) {
-  return hf_createSingleAttemptRoutePlan_(
-    routeClass,
-    traceLabel === "PSE-FRAMES" ? "pse-frames-quote" : "pse-edge-quote",
-    traceLabel,
-    {
-      routeState: { symbol: symbol },
-    },
-  );
-}
+const HOODLEFINANCE_SOURCE_OVERRIDES_ = hf_buildSet_(
+  HOODLEFINANCE_SOURCE_LIST_ORDER_.concat(["PSE-FRAMES", "PSE-EDGE"]),
+);
 
 function hf_normalizeTickerGrid_(ticker) {
   let i;
@@ -2429,9 +2383,9 @@ function hf_createRouteJob_(options) {
     plan: extras.plan || null,
     quote: extras.quote || null,
     routeContext: extras.routeContext || null,
-    routeIndex: 0,
     routeKind: extras.routeKind || "quote",
     routeLastLookupFailure: "",
+    routeNodes: extras.routeNodes || [],
     routePreferredLookupFailure: "",
     routeRuntimeTrace: [],
     routeState: extras.routeState || {},
@@ -2469,15 +2423,32 @@ function hf_createAttributeRouteJob_(attribute, quote, context, routeKind) {
   });
 }
 
+function hf_createResolverRouteJob_(request) {
+  if (request instanceof RequestInput) {
+    return hf_createRouteJob_({
+      attribute: request.attribute,
+      routeKind: "identifier",
+      tickerInput: request.identifier,
+    });
+  }
+
+  return hf_createRouteJob_({
+    attribute: request && request.input ? request.input.attribute : "",
+    routeKind: "quote",
+    tickerInput: request && request.input ? request.input.identifier : "",
+  });
+}
+
+function hf_prepareResolverJob_(job, resolverPlan, request) {
+  hf_prepareRouteJob_(job, resolverPlan.buildRuntimePlan(request));
+}
+
 function hf_prepareRouteJob_(job, plan) {
   const targetJob = job;
   const routePlan = plan || targetJob.plan || {};
 
   targetJob.plan = routePlan;
-  targetJob.routeAttempts = hf_cloneRouteAttempts_(
-    routePlan.routeAttempts || [],
-  );
-  targetJob.routeIndex = 0;
+  targetJob.routeNodes = (routePlan.nodes || []).slice();
   targetJob.routeState = hf_cloneRouteState_(routePlan.routeState || {});
   targetJob.routeRuntimeTrace = [];
   targetJob.routeLastLookupFailure = "";
@@ -2525,21 +2496,80 @@ function hf_prefetchTickerJobs_(jobs) {
   const orderedJobs = jobs.orderedJobs;
   let i;
   let plan;
+  let requestInput;
+  let resolvedRequest;
+  let identifierResult;
 
   for (i = 0; i < orderedJobs.length; i += 1) {
     try {
-      plan = hf_classifyTickerJob_(
+      requestInput = new RequestInput(
         orderedJobs[i].tickerInput,
         orderedJobs[i].attribute,
       );
-      orderedJobs[i].plan = plan;
+      orderedJobs[i].requestInput = requestInput;
 
-      if (hf_isDebugRoutePlan_(plan)) {
-        orderedJobs[i].value = plan.debugValue;
-        orderedJobs[i].valueResolved = true;
+      if (requestInput.infoMode) {
+        plan = hf_classifyTickerJob_(
+          orderedJobs[i].tickerInput,
+          orderedJobs[i].attribute,
+        );
+        orderedJobs[i].plan = plan;
+
+        if (hf_isDebugRoutePlan_(plan)) {
+          orderedJobs[i].value = plan.debugValue;
+          orderedJobs[i].valueResolved = true;
+          continue;
+        }
+      }
+
+      resolvedRequest = hf_resolveIdentifierDirect_(requestInput);
+
+      if (resolvedRequest) {
+        orderedJobs[i].resolvedRequest = resolvedRequest;
+        orderedJobs[i].resolverPlan = hf_buildQuoteRoutePlanForResolvedRequest_(
+          requestInput,
+          resolvedRequest,
+        );
+        hf_prepareResolverJob_(
+          orderedJobs[i],
+          orderedJobs[i].resolverPlan,
+          resolvedRequest,
+        );
         continue;
       }
-      hf_prepareRouteJob_(orderedJobs[i], plan);
+
+      plan = hf_buildIdentifierResolutionPlan_(requestInput);
+
+      if (!plan) {
+        throw new Error("Identifier resolution failed.");
+      }
+
+      identifierResult = plan.resolve(requestInput);
+
+      if (!identifierResult || identifierResult.status !== "success") {
+        throw new Error(
+          identifierResult && identifierResult.error
+            ? identifierResult.error
+            : "Identifier resolution failed.",
+        );
+      }
+
+      resolvedRequest = identifierResult.value;
+
+      if (!resolvedRequest) {
+        throw new Error("Identifier resolution failed.");
+      }
+
+      orderedJobs[i].resolvedRequest = resolvedRequest;
+      orderedJobs[i].resolverPlan = hf_buildQuoteRoutePlanForResolvedRequest_(
+        requestInput,
+        resolvedRequest,
+      );
+      hf_prepareResolverJob_(
+        orderedJobs[i],
+        orderedJobs[i].resolverPlan,
+        resolvedRequest,
+      );
     } catch (error) {
       orderedJobs[i].error = hf_errorMessage_(error);
     }
@@ -2548,101 +2578,46 @@ function hf_prefetchTickerJobs_(jobs) {
   hf_executeRouteJobs_(orderedJobs);
 }
 
-function hf_buildForcedSourcePlan_(
-  normalizedTicker,
-  normalizedAttribute,
-  upperTicker,
-  fxPair,
-  sourceOverride,
-) {
-  let symbol;
+function hf_buildForcedSourcePlan_(request) {
+  const normalizedSourceOverride = String(request.sourceOverride || "")
+    .trim()
+    .toUpperCase();
+  const forcedAttributePlan =
+    HOODLEFINANCE_FORCED_ATTRIBUTE_PLAN_BY_SOURCE_[normalizedSourceOverride];
 
-  if (sourceOverride === "YAHOO") {
-    isinValue = hf_looksLikeIsin_(normalizedTicker)
-      ? upperTicker
-      : upperTicker.indexOf("ISIN:") === 0
-        ? upperTicker.slice(5).trim()
-        : "";
-
-    if (isinValue) {
-      return hf_createRoutePlan_({
-        routeClass: "FORCED:YAHOO-ISIN",
-        routeAttempts: [hf_createYahooIsinAttempt_("yahoo-only")],
-        routeState: { isin: isinValue },
-        routePath: "YAHOO-ISIN -> YAHOO",
-      });
-    }
-
-    return hf_createSingleAttemptRoutePlan_(
-      "FORCED:YAHOO",
-      "yahoo-chart",
-      "YAHOO",
-      {
-        attemptOptions: { allowTradingviewFallback: false },
-        routeState: {
-          fxPair: fxPair,
-          yahooSymbol: hf_buildForcedYahooSymbol_(normalizedTicker, fxPair),
-        },
-      },
-    );
-  }
-
-  if (sourceOverride === "GOOGLE") {
-    if (!fxPair) {
-      throw new Error('"@GOOGLE" can only be used with currency pairs.');
-    }
-
-    return hf_createSingleAttemptRoutePlan_(
-      "FORCED:GOOGLE",
-      "google-finance-fx",
-      "GOOGLE",
-      {
-        routeState: { fxPair: fxPair },
-      },
-    );
-  }
-
-  if (sourceOverride === "PSE") {
-    symbol = hf_resolveForcedPseSymbol_(normalizedTicker, upperTicker, "PSE");
-    return hf_createPseQuoteRoutePlan_("FORCED:PSE", symbol);
-  }
-
-  if (sourceOverride === "PSE-FRAMES") {
-    if (normalizedAttribute === "isin") {
-      throw new Error('"@PSE-FRAMES" can only be used with quote attributes.');
-    }
-
-    symbol = hf_resolveForcedPseSymbol_(
-      normalizedTicker,
-      upperTicker,
-      "PSE-FRAMES",
-    );
-    return hf_createForcedPseRoutePlan_(
-      "FORCED:PSE-FRAMES",
-      "PSE-FRAMES",
-      symbol,
-    );
-  }
-
-  if (sourceOverride === "PSE-EDGE") {
-    if (normalizedAttribute === "isin") {
-      throw new Error('"@PSE-EDGE" can only be used with quote attributes.');
-    }
-
-    symbol = hf_resolveForcedPseSymbol_(
-      normalizedTicker,
-      upperTicker,
-      "PSE-EDGE",
-    );
-    return hf_createForcedPseRoutePlan_("FORCED:PSE-EDGE", "PSE-EDGE", symbol);
-  }
-
-  if (normalizedAttribute === "isin") {
+  if (request.attributeType === "isin") {
     return null;
   }
 
-  throw new Error(
-    '"@' + sourceOverride + '" can only be used with the "isin" attribute.',
+  if (!forcedAttributePlan) {
+    throw new Error(
+      '"@' +
+        normalizedSourceOverride +
+        '" can only be used with the "isin" attribute.',
+    );
+  }
+
+  const resolvedRequest = hf_resolveIdentifierDirect_(request);
+
+  if (resolvedRequest) {
+    return forcedAttributePlan
+      .buildPlan(
+        request,
+        resolvedRequest,
+      )
+      .buildRuntimePlan(resolvedRequest);
+  }
+
+  const identifierPlan = hf_buildIdentifierResolutionPlan_(request);
+
+  if (!identifierPlan) {
+    throw new Error("Identifier resolution failed.");
+  }
+
+  return hf_createDebugRoutePlan_(
+    hf_describePlanSource_(identifierPlan.buildRuntimePlan(request)) +
+      " => " +
+      forcedAttributePlan.routePath,
   );
 }
 
@@ -2651,63 +2626,88 @@ function hf_describePlanSource_(plan) {
     return "";
   }
 
-  return plan.routeTrace || "";
+  if (hf_isDebugRoutePlan_(plan)) {
+    return String(plan.debugValue || "");
+  }
+
+  const routeClass =
+    plan.routeClass != null ? String(plan.routeClass).trim() : "";
+  const routePath = plan.routePath != null ? String(plan.routePath).trim() : "";
+
+  if (!routeClass) {
+    return routePath;
+  }
+
+  if (!routePath || routeClass.indexOf("FORCED:") === 0) {
+    return routePath || routeClass;
+  }
+
+  return routeClass + " -> " + routePath;
+}
+
+function hf_buildPseQuoteRouteState_(request) {
+  return { symbol: request.symbol };
+}
+
+function hf_buildEquityYahooQuoteRouteState_(equityRequest) {
+  return {
+    fxPair: null,
+    yahooSymbol: equityRequest.yahooSymbol,
+  };
 }
 
 const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
-  { classification: "TICKER", example: "GOOG", route: "TICKER -> YAHOO" },
+  { classification: "TICKER", example: "GOOG" },
   {
     classification: "TICKER-IL-FUND",
     example: "TLV:KSMF59",
-    route: "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW",
   },
-  { classification: "FX", example: "EURUSD", route: "FX -> GOOGLE" },
-  { classification: "FX-SAME", example: "USDUSD", route: "FX-SAME -> LOCAL" },
+  { classification: "FX", example: "EURUSD" },
+  { classification: "FX-SAME", example: "USDUSD" },
   {
     classification: "PSE-TICKER",
     example: "PSE:BDO",
-    route: "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
   },
   {
     classification: "ISIN",
     example: "US02079K1079",
-    route:
-      "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
   },
   {
     classification: "FORCED:YAHOO",
     example: "GOOG@YAHOO",
-    route: "FORCED:YAHOO -> YAHOO",
   },
   {
     classification: "FORCED:YAHOO-ISIN",
     example: "US02079K1079@YAHOO",
-    route: "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
   },
   {
     classification: "FORCED:GOOGLE",
     example: "EURUSD@GOOGLE",
-    route: "FORCED:GOOGLE -> GOOGLE",
   },
   {
     classification: "FORCED:PSE",
     example: "PSE:BDO@PSE",
-    route: "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE",
   },
   {
     classification: "FORCED:PSE-FRAMES",
     example: "PSE:BDO@PSE-FRAMES",
-    route: "FORCED:PSE-FRAMES -> PSE-FRAMES",
   },
   {
     classification: "FORCED:PSE-EDGE",
     example: "PSE:BDO@PSE-EDGE",
-    route: "FORCED:PSE-EDGE -> PSE-EDGE",
   },
 ];
 
+function hf_buildRoutingTableRow_(row) {
+  return {
+    classification: row.classification,
+    example: row.example,
+    route: hf_describePlanSource_(hf_classifyTickerJob_(row.example, "price")),
+  };
+}
+
 function hf_getRoutingTableRows_() {
-  return HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_.slice();
+  return HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_.map(hf_buildRoutingTableRow_);
 }
 
 function hf_buildRoutingTableGrid_() {
@@ -2722,33 +2722,6 @@ function hf_buildRoutingTableGrid_() {
   return grid;
 }
 
-function hf_buildRouteTrace_(routeClass, routeTrace) {
-  const normalizedClass = String(routeClass || "").trim();
-  const normalizedTrace = String(routeTrace || "").trim();
-
-  if (!normalizedClass) {
-    return normalizedTrace;
-  }
-
-  if (!normalizedTrace) {
-    return normalizedClass;
-  }
-
-  return normalizedClass + " -> " + normalizedTrace;
-}
-
-function hf_createRoutePlan_(options) {
-  return {
-    routeClass: options.routeClass || "",
-    routeAttempts: options.routeAttempts || [],
-    routeState: options.routeState || {},
-    routeTrace:
-      options.routeTrace != null
-        ? String(options.routeTrace)
-        : hf_buildRouteTrace_(options.routeClass, options.routePath || ""),
-  };
-}
-
 function hf_createDebugRoutePlan_(value) {
   return { debugValue: value };
 }
@@ -2757,180 +2730,1530 @@ function hf_isDebugRoutePlan_(plan) {
   return !!plan && Object.prototype.hasOwnProperty.call(plan, "debugValue");
 }
 
+function hf_createResolutionResult_(status, options) {
+  const result = { status: status };
+  const extras = options || {};
+  let key;
+
+  for (key in extras) {
+    if (Object.prototype.hasOwnProperty.call(extras, key)) {
+      result[key] = extras[key];
+    }
+  }
+
+  return result;
+}
+
+function hf_createResolutionSuccess_(value, elapsedMs) {
+  return hf_createResolutionResult_("success", {
+    elapsedMs: Math.max(0, Number(elapsedMs) || 0),
+    value: value,
+  });
+}
+
+function hf_createResolutionFailure_(error, elapsedMs) {
+  return hf_createResolutionResult_("failure", {
+    elapsedMs: Math.max(0, Number(elapsedMs) || 0),
+    error: hf_errorMessage_(error),
+  });
+}
+
+class RequestInput {
+  constructor(identifier, attribute) {
+    const rawIdentifier = String(identifier == null ? "" : identifier).trim();
+    const normalizedAttribute = hf_normalizeAttribute_(attribute);
+    const attributeRequest = hf_parseAttributeRequest_(normalizedAttribute);
+    const parsedIdentifier = hf_parseTickerRequest_(rawIdentifier);
+    const requestTicker = parsedIdentifier.ticker;
+
+    this.attribute = normalizedAttribute;
+    this.attributeRequest = attributeRequest;
+    this.attributeType =
+      attributeRequest.baseAttribute === "isin" ? "isin" : "quote";
+    this.fxPair = hf_parseFxTicker_(requestTicker);
+    this.identifier = rawIdentifier;
+    this.infoMode = parsedIdentifier.infoMode;
+    this.sourceOverride = parsedIdentifier.sourceOverride;
+    this.ticker = requestTicker;
+    this.upperTicker = requestTicker.toUpperCase();
+  }
+}
+
+class BaseRequest {
+  constructor(input, identifierResolutionMs) {
+    this.identifierResolutionMs =
+      identifierResolutionMs != null && isFinite(identifierResolutionMs)
+        ? Math.max(0, Number(identifierResolutionMs))
+        : 0;
+    this.input = {
+      attribute: input.attribute,
+      identifier: input.identifier,
+    };
+  }
+}
+
+class EquityRequest extends BaseRequest {
+  constructor(input, options) {
+    const config = options || {};
+
+    super(input, config.identifierResolutionMs);
+    this.requestType = "equity";
+    this.allowTradingviewFallback = config.allowTradingviewFallback === true;
+    this.exchange = config.exchange || "";
+    this.symbol = config.symbol || "";
+    this.yahooSymbol = config.yahooSymbol || "";
+  }
+}
+
+class FxRequest extends BaseRequest {
+  constructor(input, fxPair, identifierResolutionMs) {
+    super(input, identifierResolutionMs);
+    this.requestType = "fx";
+    this.baseCurrency = fxPair.baseCanonicalCode;
+    this.fxPair = fxPair;
+    this.quoteCurrency = fxPair.quoteCanonicalCode;
+  }
+}
+
+class Resolver {
+  constructor(name) {
+    this.name = name || "";
+  }
+
+  canHandle(_request) {
+    return true;
+  }
+
+  buildRuntimePlan(_request) {
+    throw new Error(
+      'Resolver "' + this.name + '" must implement buildRuntimePlan().',
+    );
+  }
+
+  resolve(request) {
+    const startedAtMs = Date.now();
+    let plan;
+    let job;
+    let value;
+
+    try {
+      plan = this.buildRuntimePlan(request);
+      job = hf_createResolverRouteJob_(request);
+      job.plan = plan;
+      hf_prepareRouteJob_(job, plan);
+      hf_executeRouteJobs_([job]);
+
+      if (job.error) {
+        return hf_createResolutionFailure_(
+          job.error,
+          Date.now() - startedAtMs,
+        );
+      }
+
+      value = job.valueResolved ? job.value : job.quote;
+      return hf_createResolutionSuccess_(value, Date.now() - startedAtMs);
+    } catch (error) {
+      return hf_createResolutionFailure_(error, Date.now() - startedAtMs);
+    }
+  }
+}
+
+class AttemptResolver extends Resolver {
+  constructor(name, traceLabel) {
+    super(name);
+    this.traceLabel = traceLabel;
+  }
+
+  buildRouteState(_request) {
+    return {};
+  }
+
+  batchKey(_job, _attempt) {
+    return "";
+  }
+
+  executeBatch(_jobs) {
+    throw new Error(
+      'Resolver "' + this.name + '" must implement executeBatch().',
+    );
+  }
+
+  getRouteClass(_request) {
+    return this.name;
+  }
+
+  getRoutePath(_request) {
+    return this.traceLabel;
+  }
+
+  buildRuntimePlan(request) {
+    return {
+      nodes: [this],
+      routeClass: this.getRouteClass(request),
+      routePath: this.getRoutePath(request),
+      routeState: this.buildRouteState(request),
+    };
+  }
+}
+
+class ResolverPlan extends Resolver {
+  constructor(name, nodes, options) {
+    const config = options || {};
+
+    super(name);
+    this.nodes = nodes || [];
+    this.routeClass = config.routeClass || name;
+    this.routePath = config.routePath || "";
+    this.routeStateBuilder = config.routeStateBuilder || null;
+    this.nodeSelector = config.nodeSelector || null;
+  }
+
+  getNodesForRequest(request) {
+    const selected = this.nodeSelector
+      ? this.nodeSelector(this.nodes, request)
+      : this.nodes;
+
+    return selected.filter(function (node) {
+      return !node.canHandle || node.canHandle(request);
+    });
+  }
+
+  canHandle(request) {
+    return this.getNodesForRequest(request).length > 0;
+  }
+
+  buildRouteState(request) {
+    const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
+
+    if (this.routeStateBuilder) {
+      return this.routeStateBuilder(request);
+    }
+
+    if (singleNode && singleNode.buildRouteState) {
+      return singleNode.buildRouteState(request);
+    }
+
+    return {};
+  }
+
+  buildRoutePath(request) {
+    let routePath = this.routePath;
+
+    if (typeof routePath === "function") {
+      routePath = routePath(request);
+    }
+
+    if (routePath) {
+      return routePath;
+    }
+
+    return this.getNodesForRequest(request)
+      .map(function (node) {
+        return node.traceLabel || node.name;
+      })
+      .join(" -> ");
+  }
+
+  buildRuntimePlan(request) {
+    let routeClass = this.routeClass;
+    const nodes = this.getNodesForRequest(request);
+
+    if (!nodes.length) {
+      throw new Error(
+        'Resolver plan "' + this.name + '" cannot handle this request.',
+      );
+    }
+
+    if (typeof routeClass === "function") {
+      routeClass = routeClass(request);
+    }
+
+    return {
+      nodes: nodes,
+      routeClass: routeClass,
+      routePath: this.buildRoutePath(request),
+      routeState: this.buildRouteState(request),
+    };
+  }
+}
+
+class DirectIdentifierResolver extends Resolver {
+  constructor() {
+    super("DIRECT-IDENTIFIER");
+  }
+
+  canHandle(input) {
+    return input instanceof RequestInput && !hf_extractIsinFromRequestInput_(input);
+  }
+
+  resolve(input) {
+    const startedAtMs = Date.now();
+    let resolvedRequest;
+
+    try {
+      if (!this.canHandle(input)) {
+        return hf_createResolutionFailure_(
+          "Identifier resolution requires a discovery resolver.",
+          Date.now() - startedAtMs,
+        );
+      }
+
+      resolvedRequest = hf_buildTypedRequestFromParsedInput_(input, input, 0);
+      resolvedRequest.identifierResolutionMs = Math.max(
+        0,
+        Date.now() - startedAtMs,
+      );
+
+      return hf_createResolutionSuccess_(
+        resolvedRequest,
+        resolvedRequest.identifierResolutionMs,
+      );
+    } catch (error) {
+      return hf_createResolutionFailure_(error, Date.now() - startedAtMs);
+    }
+  }
+}
+
+class PseIsinMapResolver extends AttemptResolver {
+  constructor() {
+    super("PSE-MAP", "pse-isin-map", "PSE-MAP");
+  }
+
+  canHandle(input) {
+    return input instanceof RequestInput && !!hf_extractIsinFromRequestInput_(input);
+  }
+
+  buildRouteState(input) {
+    return {
+      input: input,
+      isin: hf_extractIsinFromRequestInput_(input),
+    };
+  }
+
+  executeBatch(jobs) {
+    let i;
+    let pseTicker;
+    let identifierRequest;
+    const results = [];
+
+    for (i = 0; i < jobs.length; i += 1) {
+      try {
+        pseTicker = hf_resolvePseTickerFromIsinMap_(jobs[i].routeState.isin);
+
+        if (!pseTicker) {
+          results.push(hf_createRouteResult_("lookup_failure"));
+          continue;
+        }
+
+        identifierRequest = hf_buildTypedRequestFromResolvedTicker_(
+          jobs[i].routeState.input,
+          pseTicker,
+          0,
+        );
+        results.push(
+          hf_createRouteResult_("success", {
+            value: identifierRequest,
+          }),
+        );
+      } catch (error) {
+        results.push(hf_createRouteResult_("terminal_error", { error: error }));
+      }
+    }
+
+    return results;
+  }
+}
+
+class YahooIsinSearchResolver extends AttemptResolver {
+  constructor(resolvedSymbolMode) {
+    super("YAHOO-ISIN", "YAHOO-ISIN");
+    this.resolvedSymbolMode = resolvedSymbolMode || "default";
+  }
+
+  canHandle(input) {
+    return input instanceof RequestInput && !!hf_extractIsinFromRequestInput_(input);
+  }
+
+  buildRouteState(input) {
+    return {
+      input: input,
+      isin: hf_extractIsinFromRequestInput_(input),
+    };
+  }
+
+  executeBatch(jobs) {
+    const results = jobs.map(function () {
+      return null;
+    });
+    const requests = [];
+    let i;
+    let cacheKey;
+    let cached;
+    let responses;
+    let identifierRequest;
+
+    for (i = 0; i < jobs.length; i += 1) {
+      cacheKey = "hoodlefinance:isin:" + jobs[i].routeState.isin;
+      cached = hf_getCachedString_(cacheKey);
+
+      if (cached) {
+        identifierRequest = hf_buildTypedRequestFromResolvedTicker_(
+          jobs[i].routeState.input,
+          cached,
+          0,
+        );
+        results[i] = hf_createRouteResult_("success", {
+          value: identifierRequest,
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey: cacheKey,
+        index: i,
+        isin: jobs[i].routeState.isin,
+        url: hf_buildYahooIsinSearchUrl_(jobs[i].routeState.isin),
+      });
+    }
+
+    responses = hf_fetchAllInChunks_("yahoo-isin-search", requests);
+
+    for (i = 0; i < responses.length; i += 1) {
+      if (responses[i].error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: responses[i].error,
+          },
+        );
+        continue;
+      }
+
+      try {
+        cached = hf_extractYahooSymbolFromSearchResponse_(
+          responses[i].response,
+          responses[i].request.isin,
+        );
+        hf_putCachedString_(responses[i].request.cacheKey, cached, 21600);
+        identifierRequest = hf_buildTypedRequestFromResolvedTicker_(
+          jobs[responses[i].request.index].routeState.input,
+          cached,
+          0,
+        );
+        results[responses[i].request.index] = hf_createRouteResult_("success", {
+          value: identifierRequest,
+        });
+      } catch (error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: error,
+          },
+        );
+      }
+    }
+
+    return results;
+  }
+}
+
+class LocalFxResolver extends AttemptResolver {
+  constructor() {
+    super("LOCAL", "LOCAL");
+  }
+
+  canHandle(request) {
+    return (
+      request instanceof FxRequest &&
+      request.fxPair &&
+      request.fxPair.isSameCurrency
+    );
+  }
+
+  buildRouteState(request) {
+    return { fxPair: request.fxPair };
+  }
+
+  executeBatch(jobs) {
+    let i;
+    const results = [];
+
+    for (i = 0; i < jobs.length; i += 1) {
+      try {
+        results.push(
+          hf_createRouteResult_("success", {
+            quote: hf_buildSameCurrencyQuote_(jobs[i].routeState.fxPair),
+          }),
+        );
+      } catch (error) {
+        results.push(hf_createRouteResult_("terminal_error", { error: error }));
+      }
+    }
+
+    return results;
+  }
+}
+
+class GoogleFxResolver extends AttemptResolver {
+  constructor() {
+    super("GOOGLE", "GOOGLE");
+  }
+
+  canHandle(request) {
+    return (
+      request instanceof FxRequest &&
+      request.fxPair &&
+      !request.fxPair.isSameCurrency
+    );
+  }
+
+  buildRouteState(request) {
+    return { fxPair: request.fxPair };
+  }
+
+  executeBatch(jobs) {
+    let i;
+    const results = [];
+
+    for (i = 0; i < jobs.length; i += 1) {
+      try {
+        results.push(
+          hf_createRouteResult_("success", {
+            quote: hf_fetchGoogleFinanceFxPairQuote_(jobs[i].routeState.fxPair),
+          }),
+        );
+      } catch (error) {
+        results.push(hf_createRouteResult_("terminal_error", { error: error }));
+      }
+    }
+
+    return results;
+  }
+}
+
+class YahooQuoteResolver extends AttemptResolver {
+  constructor() {
+    super("YAHOO", "YAHOO");
+  }
+
+  canHandle(request) {
+    return (
+      ((request instanceof EquityRequest &&
+        request.exchange !== "PSE" &&
+        !!request.yahooSymbol) ||
+        (request instanceof FxRequest &&
+          request.fxPair &&
+          !!request.fxPair.yahooChartSymbol))
+    );
+  }
+
+  buildRouteState(request) {
+    return {
+      fxPair: request instanceof FxRequest ? request.fxPair : null,
+      yahooSymbol:
+        request instanceof FxRequest
+          ? request.fxPair.yahooChartSymbol
+          : request.yahooSymbol,
+    };
+  }
+
+  getRouteClass(request) {
+    if (request instanceof FxRequest) {
+      return "FORCED:YAHOO";
+    }
+
+    return request.allowTradingviewFallback ? "TICKER-IL-FUND" : "TICKER";
+  }
+
+  getRoutePath(request) {
+    if (request instanceof FxRequest) {
+      return "YAHOO";
+    }
+
+    return request.allowTradingviewFallback ? "YAHOO -> TRADINGVIEW" : "YAHOO";
+  }
+
+  executeBatch(jobs) {
+    const results = jobs.map(function () {
+      return null;
+    });
+    const requests = [];
+    let i;
+    let cacheKey;
+    let cached;
+    let responses;
+    let quote;
+    let error;
+
+    for (i = 0; i < jobs.length; i += 1) {
+      cacheKey = "hoodlefinance:" + jobs[i].routeState.yahooSymbol;
+      cached = hf_getCachedJson_(cacheKey);
+
+      if (cached) {
+        results[i] = hf_createRouteResult_("success", {
+          quote: hf_decorateFxQuote_(cached, jobs[i].routeState.fxPair),
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey: cacheKey,
+        index: i,
+        url: hf_buildYahooChartUrl_(jobs[i].routeState.yahooSymbol),
+      });
+    }
+
+    responses = hf_fetchAllInChunks_("yahoo-chart", requests);
+
+    for (i = 0; i < responses.length; i += 1) {
+      error = responses[i].error || null;
+
+      if (!error) {
+        try {
+          quote = hf_decorateFxQuote_(
+            hf_extractYahooQuoteMetaFromResponse_(
+              responses[i].response,
+              jobs[responses[i].request.index].tickerInput,
+            ),
+            jobs[responses[i].request.index].routeState.fxPair,
+          );
+          hf_putCachedJson_(
+            responses[i].request.cacheKey,
+            hf_extractRawQuote_(quote),
+            60,
+          );
+          results[responses[i].request.index] = hf_createRouteResult_(
+            "success",
+            {
+              quote: quote,
+            },
+          );
+          continue;
+        } catch (extractError) {
+          error = extractError;
+        }
+      }
+
+      if (
+        error &&
+        /No quote data was found|Quote lookup failed/i.test(
+          hf_errorMessage_(error),
+        )
+      ) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: error,
+          },
+        );
+      } else {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "terminal_error",
+          {
+            error: error,
+          },
+        );
+      }
+    }
+
+    return results;
+  }
+}
+
+class TradingviewFundResolver extends AttemptResolver {
+  constructor() {
+    super("TRADINGVIEW", "TRADINGVIEW");
+  }
+
+  canHandle(request) {
+    return request instanceof EquityRequest && request.allowTradingviewFallback;
+  }
+
+  buildRouteState(request) {
+    return {
+      yahooSymbol: request.yahooSymbol,
+    };
+  }
+
+  executeBatch(jobs) {
+    const results = jobs.map(function () {
+      return null;
+    });
+    const requests = [];
+    let i;
+    let fallbackInfo;
+    let cacheKey;
+    let primaryCacheKey;
+    let cached;
+    let responses;
+    let quote;
+
+    for (i = 0; i < jobs.length; i += 1) {
+      fallbackInfo = hf_buildIsraeliFundTradingviewFallbackInfo_(
+        jobs[i].tickerInput,
+        jobs[i].routeState.yahooSymbol,
+      );
+      cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
+      primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
+      cached = hf_getCachedJson_(cacheKey);
+
+      if (cached) {
+        hf_putCachedJson_(primaryCacheKey, cached, 60);
+        results[i] = hf_createRouteResult_("success", {
+          quote: cached,
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey: cacheKey,
+        expectedSymbol: fallbackInfo.expectedSymbol,
+        index: i,
+        primaryCacheKey: primaryCacheKey,
+        url: fallbackInfo.url,
+        yahooSymbol: fallbackInfo.yahooSymbol,
+      });
+    }
+
+    responses = hf_fetchAllInChunks_("tradingview-quote", requests);
+
+    for (i = 0; i < responses.length; i += 1) {
+      if (responses[i].error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "terminal_error",
+          {
+            error: responses[i].error,
+          },
+        );
+        continue;
+      }
+
+      try {
+        quote = hf_extractTradingviewFundQuoteFromResponse_(
+          responses[i].response,
+          responses[i].request.yahooSymbol,
+          responses[i].request.expectedSymbol,
+        );
+        hf_putCachedJson_(responses[i].request.cacheKey, quote, 60);
+        hf_putCachedJson_(responses[i].request.primaryCacheKey, quote, 60);
+        results[responses[i].request.index] = hf_createRouteResult_("success", {
+          quote: quote,
+        });
+      } catch (error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "terminal_error",
+          {
+            error: error,
+          },
+        );
+      }
+    }
+
+    return results;
+  }
+}
+
+class FunctionValueResolver extends AttemptResolver {
+  constructor(name, traceLabel, resolveValue) {
+    super(name, traceLabel);
+    this.resolveValue = resolveValue;
+  }
+
+  executeBatch(jobs) {
+    let i;
+    const results = [];
+
+    for (i = 0; i < jobs.length; i += 1) {
+      try {
+        results.push(
+          hf_createRouteResult_("success", {
+            value: this.resolveValue(jobs[i]),
+          }),
+        );
+      } catch (error) {
+        results.push(hf_createRouteResult_("terminal_error", { error: error }));
+      }
+    }
+
+    return results;
+  }
+}
+
+class PSEFramesResolver extends AttemptResolver {
+  constructor() {
+    super("PSE-FRAMES", "PSE-FRAMES");
+  }
+
+  canHandle(request) {
+    return request instanceof EquityRequest && request.exchange === "PSE";
+  }
+
+  buildRouteState(request) {
+    return { symbol: request.symbol };
+  }
+
+  executeBatch(jobs) {
+    const results = jobs.map(function () {
+      return null;
+    });
+    const requests = [];
+    let i;
+    let cacheKey;
+    let cached;
+    let responses;
+    let quote;
+
+    for (i = 0; i < jobs.length; i += 1) {
+      cacheKey = "hoodlefinance:pse:" + jobs[i].routeState.symbol;
+      cached = hf_getCachedJson_(cacheKey);
+
+      if (cached) {
+        results[i] = hf_createRouteResult_("success", {
+          quote: cached,
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey: cacheKey,
+        index: i,
+        symbol: jobs[i].routeState.symbol,
+        url: hf_buildPseSecurityFrameUrl_(jobs[i].routeState.symbol),
+      });
+    }
+
+    responses = hf_fetchAllInChunks_("pse", requests);
+
+    for (i = 0; i < responses.length; i += 1) {
+      if (responses[i].error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: hf_buildPseUnavailableError_(
+              responses[i].error && responses[i].error.message
+                ? responses[i].error.message
+                : responses[i].error,
+            ),
+          },
+        );
+        continue;
+      }
+
+      if (responses[i].response.getResponseCode() !== 200) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: hf_buildPseUnavailableError_(
+              hf_buildPseHttpErrorMessage_(
+                responses[i].response.getResponseCode(),
+              ),
+            ),
+          },
+        );
+        continue;
+      }
+
+      try {
+        quote = hf_extractPseFrameQuote_(
+          responses[i].response.getContentText(),
+          responses[i].request.symbol,
+        );
+        hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
+        results[responses[i].request.index] = hf_createRouteResult_("success", {
+          quote: quote,
+        });
+      } catch (error) {
+        if (
+          hf_isPseListingNotFoundError_(error) ||
+          hf_isPseUnavailableError_(error)
+        ) {
+          results[responses[i].request.index] = hf_createRouteResult_(
+            "lookup_failure",
+            {
+              error: error,
+            },
+          );
+          continue;
+        }
+
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "terminal_error",
+          {
+            error: error,
+          },
+        );
+      }
+    }
+
+    return results;
+  }
+}
+
+class PSEEdgeResolver extends AttemptResolver {
+  constructor() {
+    super("PSE-EDGE", "PSE-EDGE");
+  }
+
+  canHandle(request) {
+    return request instanceof EquityRequest && request.exchange === "PSE";
+  }
+
+  buildRouteState(request) {
+    return { symbol: request.symbol };
+  }
+
+  executeBatch(jobs) {
+    const results = jobs.map(function () {
+      return null;
+    });
+    const searchRequests = [];
+    const stockRequests = [];
+    let i;
+    let cacheKey;
+    let cached;
+    let listing;
+    let responses;
+    let quote;
+
+    for (i = 0; i < jobs.length; i += 1) {
+      cacheKey = "hoodlefinance:pse:" + jobs[i].routeState.symbol;
+      cached = hf_getCachedJson_(cacheKey);
+
+      if (cached) {
+        results[i] = hf_createRouteResult_("success", {
+          quote: cached,
+        });
+        continue;
+      }
+
+      listing = hf_getCachedPseListing_(jobs[i].routeState.symbol);
+
+      if (listing) {
+        jobs[i].routeState.listing = listing;
+        stockRequests.push({
+          cacheKey: cacheKey,
+          index: i,
+          url:
+            HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+            "?cmpy_id=" +
+            encodeURIComponent(listing.companyId) +
+            "&security_id=" +
+            encodeURIComponent(listing.securityId),
+        });
+        continue;
+      }
+
+      searchRequests.push({
+        index: i,
+        symbol: jobs[i].routeState.symbol,
+        url:
+          HOODLEFINANCE_PSE_SEARCH_URL_ +
+          encodeURIComponent(jobs[i].routeState.symbol),
+      });
+    }
+
+    responses = hf_fetchAllInChunks_("pse", searchRequests);
+
+    for (i = 0; i < responses.length; i += 1) {
+      if (responses[i].error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: hf_buildPseUnavailableError_(
+              responses[i].error && responses[i].error.message
+                ? responses[i].error.message
+                : responses[i].error,
+            ),
+          },
+        );
+        continue;
+      }
+
+      if (responses[i].response.getResponseCode() !== 200) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: hf_buildPseUnavailableError_(
+              hf_buildPseHttpErrorMessage_(
+                responses[i].response.getResponseCode(),
+              ),
+            ),
+          },
+        );
+        continue;
+      }
+
+      try {
+        listing = hf_tryResolvePseListingFromHtml_(
+          responses[i].response.getContentText(),
+          responses[i].request.symbol,
+        );
+
+        if (!listing) {
+          results[responses[i].request.index] = hf_createRouteResult_(
+            "lookup_failure",
+            {
+              error: new Error(
+                'No PSE listing was found for "' +
+                  responses[i].request.symbol +
+                  '".',
+              ),
+            },
+          );
+          continue;
+        }
+
+        hf_cachePseListing_(listing);
+        jobs[responses[i].request.index].routeState.listing = listing;
+        stockRequests.push({
+          cacheKey: "hoodlefinance:pse:" + responses[i].request.symbol,
+          index: responses[i].request.index,
+          url:
+            HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
+            "?cmpy_id=" +
+            encodeURIComponent(listing.companyId) +
+            "&security_id=" +
+            encodeURIComponent(listing.securityId),
+        });
+      } catch (error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "terminal_error",
+          {
+            error: error,
+          },
+        );
+      }
+    }
+
+    responses = hf_fetchAllInChunks_("pse", stockRequests);
+
+    for (i = 0; i < responses.length; i += 1) {
+      if (responses[i].error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: hf_buildPseUnavailableError_(
+              responses[i].error && responses[i].error.message
+                ? responses[i].error.message
+                : responses[i].error,
+            ),
+          },
+        );
+        continue;
+      }
+
+      if (responses[i].response.getResponseCode() !== 200) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "lookup_failure",
+          {
+            error: hf_buildPseUnavailableError_(
+              hf_buildPseHttpErrorMessage_(
+                responses[i].response.getResponseCode(),
+              ),
+            ),
+          },
+        );
+        continue;
+      }
+
+      try {
+        quote = hf_extractPseQuote_(
+          responses[i].response.getContentText(),
+          jobs[responses[i].request.index].routeState.listing,
+        );
+
+        if (!quote || !quote.symbol) {
+          throw new Error(
+            "No PSE quote data was found for " +
+              jobs[responses[i].request.index].tickerInput +
+              ".",
+          );
+        }
+
+        hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
+        results[responses[i].request.index] = hf_createRouteResult_("success", {
+          quote: quote,
+        });
+      } catch (error) {
+        results[responses[i].request.index] = hf_createRouteResult_(
+          "terminal_error",
+          {
+            error: error,
+          },
+        );
+      }
+    }
+
+    return results;
+  }
+}
+
+class IdentifierResolutionPlan extends ResolverPlan {}
+class AttributeResolutionPlan extends ResolverPlan {}
+
+class PSEQuotePlan extends AttributeResolutionPlan {
+  constructor(routeClass) {
+    super(
+      routeClass || "PSE-TICKER",
+      [HOODLEFINANCE_PSE_FRAMES_RESOLVER_, HOODLEFINANCE_PSE_EDGE_RESOLVER_],
+      {
+        routePath: "PSE-FRAMES -> PSE-EDGE",
+        routeStateBuilder: hf_buildPseQuoteRouteState_,
+      },
+    );
+  }
+}
+
+const HOODLEFINANCE_DIRECT_IDENTIFIER_RESOLVER_ =
+  new DirectIdentifierResolver();
+const HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_ = new PseIsinMapResolver();
+const HOODLEFINANCE_YAHOO_ISIN_RESOLVER_ = new YahooIsinSearchResolver();
+const HOODLEFINANCE_YAHOO_ONLY_ISIN_RESOLVER_ = new YahooIsinSearchResolver(
+  "yahoo-only",
+);
+const HOODLEFINANCE_LOCAL_FX_RESOLVER_ = new LocalFxResolver();
+const HOODLEFINANCE_GOOGLE_FX_RESOLVER_ = new GoogleFxResolver();
+const HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_ = new YahooQuoteResolver();
+const HOODLEFINANCE_TRADINGVIEW_FUND_RESOLVER_ = new TradingviewFundResolver();
+const HOODLEFINANCE_DIRECT_ISIN_RESOLVER_ = new FunctionValueResolver(
+  "DIRECT",
+  "DIRECT",
+  function (job) {
+    return String(job.routeState.isin || "").trim().toUpperCase();
+  },
+);
+const HOODLEFINANCE_ARIVA_ISIN_RESOLVER_ = new FunctionValueResolver(
+  "ARIVA",
+  "ARIVA",
+  function (job) {
+    return hf_resolveArivaIsin_(job.sourceQuote, job.routeContext);
+  },
+);
+const HOODLEFINANCE_IBKR_ISIN_RESOLVER_ = new FunctionValueResolver(
+  "IBKR",
+  "IBKR",
+  function (job) {
+    return hf_resolveIbkrIsin_(job.sourceQuote, job.routeContext);
+  },
+);
+const HOODLEFINANCE_LON_ISIN_RESOLVER_ = new FunctionValueResolver(
+  "LON",
+  "LON",
+  function (job) {
+    return hf_resolveLonIsin_(job.sourceQuote, job.routeContext);
+  },
+);
+const HOODLEFINANCE_PSE_ISIN_VALUE_RESOLVER_ = new FunctionValueResolver(
+  "PSE",
+  "PSE",
+  function (job) {
+    return hf_resolvePseIsin_(job.sourceQuote, job.routeContext);
+  },
+);
+const HOODLEFINANCE_TRADINGVIEW_ISIN_RESOLVER_ = new FunctionValueResolver(
+  "TRADINGVIEW",
+  "TRADINGVIEW",
+  function (job) {
+    return hf_resolveTradingviewIsin_(job.sourceQuote, job.routeContext);
+  },
+);
+const HOODLEFINANCE_ISIN_RESOLVER_BY_SOURCE_ = {
+  ARIVA: HOODLEFINANCE_ARIVA_ISIN_RESOLVER_,
+  IBKR: HOODLEFINANCE_IBKR_ISIN_RESOLVER_,
+  LON: HOODLEFINANCE_LON_ISIN_RESOLVER_,
+  PSE: HOODLEFINANCE_PSE_ISIN_VALUE_RESOLVER_,
+  TRADINGVIEW: HOODLEFINANCE_TRADINGVIEW_ISIN_RESOLVER_,
+};
+const HOODLEFINANCE_PSE_FRAMES_RESOLVER_ = new PSEFramesResolver();
+const HOODLEFINANCE_PSE_EDGE_RESOLVER_ = new PSEEdgeResolver();
+var HOODLEFINANCE_ROUTING_TYPES_ = {
+  BaseRequest: BaseRequest,
+  EquityRequest: EquityRequest,
+  FxRequest: FxRequest,
+  RequestInput: RequestInput,
+};
+const HOODLEFINANCE_PSE_SOURCE_OVERRIDES_ = hf_buildSet_([
+  "PSE",
+  "PSE-FRAMES",
+  "PSE-EDGE",
+]);
+const HOODLEFINANCE_IDENTIFIER_OVERRIDE_PLAN_BY_SOURCE_ = {
+  YAHOO: {
+    resolver: HOODLEFINANCE_YAHOO_ONLY_ISIN_RESOLVER_,
+    routeClass: "IDENTIFIER:YAHOO-ISIN",
+    routePath: "YAHOO-ISIN",
+  },
+  PSE: {
+    resolver: HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_,
+    routeClass: "IDENTIFIER:PSE-MAP",
+    routePath: "PSE-MAP",
+  },
+  "PSE-FRAMES": {
+    resolver: HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_,
+    routeClass: "IDENTIFIER:PSE-MAP",
+    routePath: "PSE-MAP",
+  },
+  "PSE-EDGE": {
+    resolver: HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_,
+    routeClass: "IDENTIFIER:PSE-MAP",
+    routePath: "PSE-MAP",
+  },
+};
+
+function hf_extractIsinFromRequestInput_(input) {
+  const ticker = String((input && input.ticker) || "").trim();
+  const upperTicker = String((input && input.upperTicker) || "").trim();
+
+  if (hf_looksLikeIsin_(ticker)) {
+    return upperTicker;
+  }
+
+  return upperTicker.indexOf("ISIN:") === 0 ? upperTicker.slice(5).trim() : "";
+}
+
+function hf_buildTypedRequestFromParsedInput_(
+  originalInput,
+  parsedInput,
+  identifierResolutionMs,
+) {
+  const resolvedTicker = String((parsedInput && parsedInput.ticker) || "").trim();
+  const fxPair = parsedInput && parsedInput.fxPair
+    ? parsedInput.fxPair
+    : hf_parseFxTicker_(resolvedTicker);
+  let normalizedYahooTicker;
+  let explicitExchange;
+  let symbol;
+  let yahooExchange;
+
+  if (hf_isPseTicker_(resolvedTicker)) {
+    symbol = hf_parsePseSymbol_(resolvedTicker);
+
+    return new EquityRequest(originalInput, {
+      exchange: "PSE",
+      identifierResolutionMs: identifierResolutionMs,
+      symbol: symbol,
+      yahooSymbol: symbol + ".PS",
+    });
+  }
+
+  if (hf_isPseYahooSymbol_(resolvedTicker)) {
+    symbol = hf_parsePseYahooSymbol_(resolvedTicker);
+
+    return new EquityRequest(originalInput, {
+      exchange: "PSE",
+      identifierResolutionMs: identifierResolutionMs,
+      symbol: symbol,
+      yahooSymbol: symbol + ".PS",
+    });
+  }
+
+  if (fxPair) {
+    return new FxRequest(originalInput, fxPair, identifierResolutionMs);
+  }
+
+  normalizedYahooTicker = hf_normalizeTickerWithoutIsin_(resolvedTicker);
+  explicitExchange = hf_extractTickerExchange_(resolvedTicker);
+  yahooExchange = hf_extractYahooExchangeFromSymbol_(normalizedYahooTicker);
+  symbol = explicitExchange
+    ? String(resolvedTicker).split(":").slice(1).join(":").trim().toUpperCase()
+    : normalizedYahooTicker;
+
+  return new EquityRequest(originalInput, {
+    allowTradingviewFallback:
+      hf_looksLikeIsraeliFundYahooSymbol_(normalizedYahooTicker),
+    exchange: explicitExchange || yahooExchange,
+    identifierResolutionMs: identifierResolutionMs,
+    symbol: symbol,
+    yahooSymbol: normalizedYahooTicker,
+  });
+}
+
+function hf_buildTypedRequestFromResolvedTicker_(
+  originalInput,
+  resolvedTicker,
+  identifierResolutionMs,
+) {
+  const parsedResolvedInput = new RequestInput(
+    resolvedTicker,
+    originalInput.attribute,
+  );
+
+  return hf_buildTypedRequestFromParsedInput_(
+    originalInput,
+    parsedResolvedInput,
+    identifierResolutionMs,
+  );
+}
+
+function hf_resolveIdentifierDirect_(input) {
+  const result = HOODLEFINANCE_DIRECT_IDENTIFIER_RESOLVER_.resolve(input);
+
+  return result.status === "success" ? result.value : null;
+}
+
+function hf_buildIsinIdentifierRouteState_(request) {
+  return {
+    input: request,
+    isin: hf_extractIsinFromRequestInput_(request),
+  };
+}
+
+function hf_buildSingleResolverIdentifierPlan_(routeClass, resolver, routePath) {
+  return new IdentifierResolutionPlan(routeClass, [resolver], {
+    routePath: routePath,
+    routeStateBuilder: hf_buildIsinIdentifierRouteState_,
+  });
+}
+
+function hf_buildYahooQuoteRouteState_(request) {
+  return {
+    fxPair: request.fxPair || null,
+    yahooSymbol:
+      request.requestType === "fx"
+        ? request.fxPair.yahooChartSymbol
+        : request.yahooSymbol,
+  };
+}
+
+function hf_buildSingleResolverAttributePlan_(
+  routeClass,
+  resolver,
+  routePath,
+  routeStateBuilder,
+) {
+  const options = { routePath: routePath };
+
+  if (routeStateBuilder) {
+    options.routeStateBuilder = routeStateBuilder;
+  }
+
+  return new AttributeResolutionPlan(routeClass, [resolver], options);
+}
+
+function hf_buildForcedPseSubsourceQuotePlan_(
+  input,
+  request,
+  sourceOverride,
+  resolver,
+) {
+  if (input.attributeType !== "quote") {
+    throw new Error('"@' + sourceOverride + '" can only be used with quote attributes.');
+  }
+
+  if (request.exchange !== "PSE") {
+    throw new Error(
+      '"@' +
+        sourceOverride +
+        '" can only be used with PSE tickers and PSE-mapped ISINs.',
+    );
+  }
+
+  return hf_buildSingleResolverAttributePlan_(
+    "FORCED:" + sourceOverride,
+    resolver,
+    sourceOverride,
+  );
+}
+
+const HOODLEFINANCE_FORCED_ATTRIBUTE_PLAN_BY_SOURCE_ = {
+  YAHOO: {
+    routePath: "YAHOO",
+    buildPlan: function (_input, request) {
+      return hf_buildSingleResolverAttributePlan_(
+        "FORCED:YAHOO",
+        HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_,
+        "YAHOO",
+        function () {
+          return hf_buildYahooQuoteRouteState_(request);
+        },
+      );
+    },
+  },
+  GOOGLE: {
+    routePath: "GOOGLE",
+    buildPlan: function (_input, request) {
+      if (request.requestType !== "fx") {
+        throw new Error('"@GOOGLE" can only be used with currency pairs.');
+      }
+
+      return hf_buildSingleResolverAttributePlan_(
+        "FORCED:GOOGLE",
+        HOODLEFINANCE_GOOGLE_FX_RESOLVER_,
+        "GOOGLE",
+      );
+    },
+  },
+  PSE: {
+    routePath: "PSE-FRAMES -> PSE-EDGE",
+    buildPlan: function (_input, request) {
+      if (request.exchange !== "PSE") {
+        throw new Error(
+          '"@PSE" can only be used with PSE tickers and PSE-mapped ISINs.',
+        );
+      }
+
+      return new PSEQuotePlan("FORCED:PSE");
+    },
+  },
+  "PSE-FRAMES": {
+    routePath: "PSE-FRAMES",
+    buildPlan: function (input, request) {
+      return hf_buildForcedPseSubsourceQuotePlan_(
+        input,
+        request,
+        "PSE-FRAMES",
+        HOODLEFINANCE_PSE_FRAMES_RESOLVER_,
+      );
+    },
+  },
+  "PSE-EDGE": {
+    routePath: "PSE-EDGE",
+    buildPlan: function (input, request) {
+      return hf_buildForcedPseSubsourceQuotePlan_(
+        input,
+        request,
+        "PSE-EDGE",
+        HOODLEFINANCE_PSE_EDGE_RESOLVER_,
+      );
+    },
+  },
+};
+
+function hf_buildIdentifierResolutionPlan_(input) {
+  const isinValue = hf_extractIsinFromRequestInput_(input);
+  const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
+  const overridePlan =
+    HOODLEFINANCE_IDENTIFIER_OVERRIDE_PLAN_BY_SOURCE_[sourceOverride];
+
+  if (!isinValue) {
+    return null;
+  }
+
+  if (sourceOverride === "GOOGLE") {
+    throw new Error('"@GOOGLE" can only be used with currency pairs.');
+  }
+
+  if (
+    HOODLEFINANCE_PSE_SOURCE_OVERRIDES_[sourceOverride] &&
+    sourceOverride !== "PSE" &&
+    input.attributeType !== "quote"
+  ) {
+    throw new Error('"@' + sourceOverride + '" can only be used with quote attributes.');
+  }
+
+  if (overridePlan) {
+    return hf_buildSingleResolverIdentifierPlan_(
+      overridePlan.routeClass,
+      overridePlan.resolver,
+      overridePlan.routePath,
+    );
+  }
+
+  return new IdentifierResolutionPlan(
+    "IDENTIFIER:ISIN",
+    [
+      HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_,
+      HOODLEFINANCE_YAHOO_ISIN_RESOLVER_,
+    ],
+    {
+      routePath: "PSE-MAP -> YAHOO-ISIN",
+      routeStateBuilder: hf_buildIsinIdentifierRouteState_,
+    },
+  );
+}
+
+function hf_buildQuoteRoutePlanForResolvedRequest_(input, request) {
+  const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
+  const forcedPlan =
+    HOODLEFINANCE_FORCED_ATTRIBUTE_PLAN_BY_SOURCE_[sourceOverride];
+
+  if (forcedPlan) {
+    return forcedPlan.buildPlan(input, request);
+  }
+
+  if (sourceOverride && input.attributeType === "quote") {
+    throw new Error(
+      '"@' + sourceOverride + '" can only be used with the "isin" attribute.',
+    );
+  }
+
+  if (request.requestType === "fx") {
+    if (request.fxPair.isSameCurrency) {
+      return hf_buildSingleResolverAttributePlan_(
+        "FX-SAME",
+        HOODLEFINANCE_LOCAL_FX_RESOLVER_,
+        "LOCAL",
+      );
+    }
+
+    return hf_buildSingleResolverAttributePlan_(
+      "FX",
+      HOODLEFINANCE_GOOGLE_FX_RESOLVER_,
+      "GOOGLE",
+    );
+  }
+
+  if (request.exchange === "PSE") {
+    return new PSEQuotePlan("PSE-TICKER");
+  }
+
+  return new AttributeResolutionPlan(
+    request.allowTradingviewFallback ? "TICKER-IL-FUND" : "TICKER",
+    [
+      HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_,
+      HOODLEFINANCE_TRADINGVIEW_FUND_RESOLVER_,
+    ],
+    {
+      routeClass: function (equityRequest) {
+        return equityRequest.allowTradingviewFallback
+          ? "TICKER-IL-FUND"
+          : "TICKER";
+      },
+      routePath: function (equityRequest) {
+        return equityRequest.allowTradingviewFallback
+          ? "YAHOO -> TRADINGVIEW"
+          : "YAHOO";
+      },
+      routeStateBuilder: hf_buildEquityYahooQuoteRouteState_,
+    },
+  );
+}
+
 function hf_classifyTickerJob_(ticker, attribute) {
   const normalizedTicker = String(ticker).trim();
-  const normalizedAttribute = String(attribute == null ? "price" : attribute)
-    .trim()
-    .toLowerCase();
-  const request = hf_parseTickerRequest_(normalizedTicker);
-  const infoMode = request.infoMode;
-  const requestTicker = request.ticker;
-  const sourceOverride = request.sourceOverride;
-  const requestUpperTicker = requestTicker.toUpperCase();
-  const fxPair = hf_parseFxTicker_(requestTicker);
+  const requestInput = new RequestInput(normalizedTicker, attribute);
+  const infoMode = requestInput.infoMode;
   let plan;
-  let normalizedYahooTicker;
-  let isIsraeliFundTicker;
+  let resolvedRequest;
 
   if (infoMode === "source-list") {
     return hf_createDebugRoutePlan_(hf_listSupportedSources_());
   }
 
   if (infoMode === "source-name") {
-    plan = hf_classifyTickerJob_(requestTicker, attribute);
+    plan = hf_classifyTickerJob_(requestInput.ticker, attribute);
     return hf_createDebugRoutePlan_(hf_describePlanSource_(plan));
   }
 
-  if (sourceOverride) {
-    plan = hf_buildForcedSourcePlan_(
-      requestTicker,
-      normalizedAttribute,
-      requestUpperTicker,
-      fxPair,
-      sourceOverride,
-    );
+  if (requestInput.sourceOverride) {
+    plan = hf_buildForcedSourcePlan_(requestInput);
 
     if (plan) {
       return plan;
     }
   }
 
-  if (hf_isPseTicker_(requestTicker)) {
-    return hf_createPseQuoteRoutePlan_(
-      "PSE-TICKER",
-      hf_parsePseSymbol_(requestTicker),
-    );
+  resolvedRequest = hf_resolveIdentifierDirect_(requestInput);
+
+  if (resolvedRequest) {
+    return hf_buildQuoteRoutePlanForResolvedRequest_(
+      requestInput,
+      resolvedRequest,
+    ).buildRuntimePlan(resolvedRequest);
   }
 
-  if (hf_isPseYahooSymbol_(requestTicker)) {
-    return hf_createPseQuoteRoutePlan_(
-      "PSE-TICKER",
-      hf_parsePseYahooSymbol_(requestTicker),
-    );
-  }
-
-  if (fxPair && fxPair.isSameCurrency) {
-    return hf_createRoutePlan_({
-      routeClass: "FX-SAME",
-      routeAttempts: [hf_createRouteAttempt_("local-fx", "LOCAL")],
-      routeState: { fxPair: fxPair },
-      routePath: "LOCAL",
-    });
-  }
-
-  if (fxPair) {
-    return hf_createRoutePlan_({
-      routeClass: "FX",
-      routeAttempts: [hf_createRouteAttempt_("google-finance-fx", "GOOGLE")],
-      routeState: { fxPair: fxPair },
-      routePath: "GOOGLE",
-    });
-  }
-
-  if (hf_looksLikeIsin_(requestTicker)) {
-    return hf_createRoutePlan_({
-      routeClass: "ISIN",
-      routeAttempts: [
-        hf_createRouteAttempt_("pse-isin-map", "PSE-MAP"),
-        hf_createYahooIsinAttempt_("default"),
-      ],
-      routeState: { isin: requestUpperTicker },
-      routePath:
-        "PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
-    });
-  }
-
-  if (requestUpperTicker.indexOf("ISIN:") === 0) {
-    return hf_createRoutePlan_({
-      routeClass: "ISIN",
-      routeAttempts: [
-        hf_createRouteAttempt_("pse-isin-map", "PSE-MAP"),
-        hf_createYahooIsinAttempt_("default"),
-      ],
-      routeState: { isin: requestUpperTicker.slice(5).trim() },
-      routePath:
-        "PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
-    });
-  }
-
-  normalizedYahooTicker = fxPair
-    ? fxPair.yahooSymbol
-    : hf_normalizeTickerWithoutIsin_(requestTicker);
-  isIsraeliFundTicker = hf_looksLikeIsraeliFundYahooSymbol_(
-    normalizedYahooTicker,
-  );
-
-  return hf_createRoutePlan_({
-    routeClass: isIsraeliFundTicker ? "TICKER-IL-FUND" : "TICKER",
-    routeAttempts: [hf_createYahooChartAttempt_(isIsraeliFundTicker)],
-    routeState: {
-      fxPair: fxPair,
-      yahooSymbol: normalizedYahooTicker,
-    },
-    routePath: isIsraeliFundTicker ? "YAHOO -> TRADINGVIEW" : "YAHOO",
-  });
-}
-
-function hf_createRouteAttempt_(adapterId, traceLabel, options) {
-  const attempt = {
-    adapterId: adapterId,
-    traceLabel: traceLabel,
-  };
-  const extras = options || {};
-  let key;
-
-  for (key in extras) {
-    if (Object.prototype.hasOwnProperty.call(extras, key)) {
-      attempt[key] = extras[key];
-    }
-  }
-
-  return attempt;
-}
-
-function hf_createYahooChartAttempt_(allowTradingviewFallback) {
-  return hf_createRouteAttempt_("yahoo-chart", "YAHOO", {
-    allowTradingviewFallback: allowTradingviewFallback === true,
-  });
-}
-
-function hf_createYahooIsinAttempt_(resolvedSymbolMode) {
-  return hf_createRouteAttempt_("yahoo-isin-search", "YAHOO-ISIN", {
-    resolvedSymbolMode: resolvedSymbolMode || "default",
-  });
-}
-
-function hf_createPseQuoteAttempts_() {
-  return [
-    hf_createRouteAttempt_("pse-frames-quote", "PSE-FRAMES"),
-    hf_createRouteAttempt_("pse-edge-quote", "PSE-EDGE"),
-  ];
-}
-
-function hf_createPseQuoteRoutePlan_(routeClass, symbol) {
-  return hf_createRoutePlan_({
-    routeClass: routeClass,
-    routeAttempts: hf_createPseQuoteAttempts_(),
-    routeState: { symbol: symbol },
-    routePath: "PSE-FRAMES -> PSE-EDGE",
-  });
-}
-
-function hf_cloneRouteAttempts_(attempts) {
-  let i;
-  const cloned = [];
-
-  for (i = 0; i < attempts.length; i += 1) {
-    cloned.push(
-      hf_createRouteAttempt_(
-        attempts[i].adapterId,
-        attempts[i].traceLabel,
-        attempts[i],
-      ),
-    );
-  }
-
-  return cloned;
+  plan = hf_buildIdentifierResolutionPlan_(requestInput);
+  return plan ? plan.buildRuntimePlan(requestInput) : null;
 }
 
 function hf_cloneRouteState_(state) {
@@ -2961,24 +4284,6 @@ function hf_createRouteResult_(status, options) {
   return result;
 }
 
-function hf_createSingleAttemptRoutePlan_(
-  routeClass,
-  adapterId,
-  traceLabel,
-  options,
-) {
-  const config = options || {};
-
-  return hf_createRoutePlan_({
-    routeClass: routeClass,
-    routeAttempts: [
-      hf_createRouteAttempt_(adapterId, traceLabel, config.attemptOptions),
-    ],
-    routeState: config.routeState || {},
-    routePath: config.routePath != null ? config.routePath : traceLabel,
-  });
-}
-
 function hf_buildForcedYahooSymbol_(normalizedTicker, fxPair) {
   if (hf_isPseTicker_(normalizedTicker)) {
     return hf_parsePseSymbol_(normalizedTicker) + ".PS";
@@ -2989,129 +4294,12 @@ function hf_buildForcedYahooSymbol_(normalizedTicker, fxPair) {
     : hf_normalizeTickerWithoutIsin_(normalizedTicker);
 }
 
-function hf_buildQuoteAttemptsForResolvedIdentifier_(resolvedIdentifier, mode) {
-  const normalizedMode = mode || "default";
-  const normalizedIdentifier = hf_buildForcedYahooSymbol_(
-    resolvedIdentifier,
-    hf_parseFxTicker_(resolvedIdentifier),
-  );
-  const allowTradingviewFallback =
-    normalizedMode !== "yahoo-only" &&
-    hf_looksLikeIsraeliFundYahooSymbol_(normalizedIdentifier);
-
-  if (hf_isPseTicker_(resolvedIdentifier) && normalizedMode !== "yahoo-only") {
-    return {
-      nextAttempts: hf_createPseQuoteAttempts_(),
-      stateChanges: {
-        resolvedIdentifier: resolvedIdentifier,
-        symbol: hf_parsePseSymbol_(resolvedIdentifier),
-      },
-    };
-  }
-
-  return {
-    nextAttempts: [hf_createYahooChartAttempt_(allowTradingviewFallback)],
-    stateChanges: {
-      resolvedIdentifier: resolvedIdentifier,
-      yahooSymbol: normalizedIdentifier,
-    },
-  };
-}
-
-function hf_createRouteAdapter_(adapterId, executeBatch) {
-  return {
-    adapterId: adapterId,
-    batchKey: function () {
-      return "";
-    },
-    executeBatch: executeBatch,
-  };
-}
-
-function hf_createIsinResolverRouteAdapter_(adapterId, resolveIsin) {
-  return hf_createRouteAdapter_(adapterId, function (jobs) {
-    return hf_executeIsinResolverRouteBatch_(jobs, resolveIsin);
-  });
-}
-
-const HOODLEFINANCE_ROUTE_ADAPTERS_ = {
-  "google-finance-fx": hf_createRouteAdapter_(
-    "google-finance-fx",
-    hf_executeGoogleFinanceFxRouteBatch_,
-  ),
-  "isin-ariva": hf_createIsinResolverRouteAdapter_(
-    "isin-ariva",
-    function (quote, context) {
-      return hf_resolveArivaIsin_(quote, context);
-    },
-  ),
-  "isin-direct": hf_createRouteAdapter_(
-    "isin-direct",
-    hf_executeDirectIsinRouteBatch_,
-  ),
-  "isin-ibkr": hf_createIsinResolverRouteAdapter_(
-    "isin-ibkr",
-    function (quote, context) {
-      return hf_resolveIbkrIsin_(quote, context);
-    },
-  ),
-  "isin-lon": hf_createIsinResolverRouteAdapter_(
-    "isin-lon",
-    function (quote, context) {
-      return hf_resolveLonIsin_(quote, context);
-    },
-  ),
-  "isin-pse": hf_createIsinResolverRouteAdapter_(
-    "isin-pse",
-    function (quote, context) {
-      return hf_resolvePseIsin_(quote, context);
-    },
-  ),
-  "isin-tradingview": hf_createIsinResolverRouteAdapter_(
-    "isin-tradingview",
-    function (quote, context) {
-      return hf_resolveTradingviewIsin_(quote, context);
-    },
-  ),
-  "local-fx": hf_createRouteAdapter_("local-fx", hf_executeLocalFxRouteBatch_),
-  "pse-isin-map": hf_createRouteAdapter_(
-    "pse-isin-map",
-    hf_executePseIsinMapRouteBatch_,
-  ),
-  "pse-edge-quote": hf_createRouteAdapter_(
-    "pse-edge-quote",
-    hf_executePseEdgeQuoteRouteBatch_,
-  ),
-  "pse-frames-quote": hf_createRouteAdapter_(
-    "pse-frames-quote",
-    hf_executePseFramesQuoteRouteBatch_,
-  ),
-  "tradingview-fund": hf_createRouteAdapter_(
-    "tradingview-fund",
-    hf_executeTradingviewFundRouteBatch_,
-  ),
-  "yahoo-chart": hf_createRouteAdapter_(
-    "yahoo-chart",
-    hf_executeYahooChartRouteBatch_,
-  ),
-  "yahoo-isin-search": hf_createRouteAdapter_(
-    "yahoo-isin-search",
-    hf_executeYahooIsinRouteBatch_,
-  ),
-};
-
-function hf_getCurrentRouteAttempt_(job) {
-  if (
-    !job ||
-    !job.routeAttempts ||
-    job.routeIndex == null ||
-    job.routeIndex < 0 ||
-    job.routeIndex >= job.routeAttempts.length
-  ) {
+function hf_getCurrentRouteNode_(job) {
+  if (!job || !job.routeNodes || !job.routeNodes.length) {
     return null;
   }
 
-  return job.routeAttempts[job.routeIndex];
+  return job.routeNodes[0];
 }
 
 function hf_mergeRouteState_(job, stateChanges) {
@@ -3173,7 +4361,7 @@ function hf_shouldPreferLookupFailureMessage_(message) {
   return /currently unavailable/i.test(String(message || ""));
 }
 
-function hf_applyRouteResult_(job, attempt, result, elapsedMs) {
+function hf_applyRouteResult_(job, node, result, elapsedMs) {
   const normalizedResult =
     result ||
     hf_createRouteResult_("terminal_error", {
@@ -3190,7 +4378,7 @@ function hf_applyRouteResult_(job, attempt, result, elapsedMs) {
   job.routeRuntimeTrace.push({
     elapsedMs:
       elapsedMs != null && isFinite(elapsedMs) ? Math.max(0, elapsedMs) : null,
-    label: attempt && attempt.traceLabel ? attempt.traceLabel : "",
+    label: node ? node.traceLabel || node.name || "" : "",
     status: normalizedResult.status,
   });
 
@@ -3211,14 +4399,6 @@ function hf_applyRouteResult_(job, attempt, result, elapsedMs) {
     return;
   }
 
-  if (normalizedResult.status === "pivot") {
-    job.routeAttempts = hf_cloneRouteAttempts_(
-      normalizedResult.nextAttempts || [],
-    );
-    job.routeIndex = 0;
-    return;
-  }
-
   if (normalizedResult.status === "lookup_failure") {
     if (errorMessage) {
       job.routeLastLookupFailure = errorMessage;
@@ -3231,15 +4411,11 @@ function hf_applyRouteResult_(job, attempt, result, elapsedMs) {
       }
     }
 
-    if (normalizedResult.nextAttempts && normalizedResult.nextAttempts.length) {
-      job.routeAttempts = hf_cloneRouteAttempts_(normalizedResult.nextAttempts);
-      job.routeIndex = 0;
-      return;
+    if (job.routeNodes && job.routeNodes.length) {
+      job.routeNodes.shift();
     }
 
-    job.routeIndex += 1;
-
-    if (job.routeIndex >= job.routeAttempts.length) {
+    if (!job.routeNodes || !job.routeNodes.length) {
       job.error = hf_formatRouteFailureMessage_(
         job,
         job.routePreferredLookupFailure ||
@@ -3258,14 +4434,19 @@ function hf_applyRouteResult_(job, attempt, result, elapsedMs) {
   );
 }
 
-function hf_getRouteAdapter_(adapterId) {
-  const adapter = HOODLEFINANCE_ROUTE_ADAPTERS_[adapterId];
-
-  if (!adapter) {
-    throw new Error('Unknown route adapter "' + adapterId + '".');
+function hf_getRouteExecutor_(node) {
+  if (node && typeof node.executeBatch === "function") {
+    return {
+      executorId: node.name || node.traceLabel || "resolver",
+      executeBatch: function (jobs) {
+        return node.executeBatch(jobs);
+      },
+    };
   }
 
-  return adapter;
+  throw new Error(
+    'Route node "' + (node ? node.name || "" : "") + '" has no batch executor.',
+  );
 }
 
 function hf_executeRouteJobs_(orderedJobs) {
@@ -3274,7 +4455,7 @@ function hf_executeRouteJobs_(orderedJobs) {
   let groupOrder;
   let i;
   let job;
-  let attempt;
+  let node;
   let adapter;
   let groupKey;
   let results;
@@ -3295,9 +4476,9 @@ function hf_executeRouteJobs_(orderedJobs) {
         continue;
       }
 
-      attempt = hf_getCurrentRouteAttempt_(job);
+      node = hf_getCurrentRouteNode_(job);
 
-      if (!attempt) {
+      if (!node) {
         if (!job.error) {
           job.error = hf_formatRouteFailureMessage_(
             job,
@@ -3309,8 +4490,8 @@ function hf_executeRouteJobs_(orderedJobs) {
         continue;
       }
 
-      adapter = hf_getRouteAdapter_(attempt.adapterId);
-      groupKey = adapter.adapterId + "\n" + adapter.batchKey(job, attempt);
+      adapter = hf_getRouteExecutor_(node);
+      groupKey = adapter.executorId;
 
       if (!groupsByKey[groupKey]) {
         groupsByKey[groupKey] = {
@@ -3343,658 +4524,13 @@ function hf_executeRouteJobs_(orderedJobs) {
       ) {
         hf_applyRouteResult_(
           groupsByKey[groupOrder[i]].jobs[resultIndex],
-          hf_getCurrentRouteAttempt_(
-            groupsByKey[groupOrder[i]].jobs[resultIndex],
-          ),
+          hf_getCurrentRouteNode_(groupsByKey[groupOrder[i]].jobs[resultIndex]),
           results[resultIndex],
           elapsedMs,
         );
       }
     }
   }
-}
-
-function hf_executeLocalFxRouteBatch_(jobs) {
-  let i;
-  const results = [];
-
-  for (i = 0; i < jobs.length; i += 1) {
-    try {
-      results.push(
-        hf_createRouteResult_("success", {
-          quote: hf_buildSameCurrencyQuote_(jobs[i].routeState.fxPair),
-        }),
-      );
-    } catch (error) {
-      results.push(hf_createRouteResult_("terminal_error", { error: error }));
-    }
-  }
-
-  return results;
-}
-
-function hf_executeGoogleFinanceFxRouteBatch_(jobs) {
-  let i;
-  const results = [];
-
-  for (i = 0; i < jobs.length; i += 1) {
-    try {
-      results.push(
-        hf_createRouteResult_("success", {
-          quote: hf_fetchGoogleFinanceFxPairQuote_(jobs[i].routeState.fxPair),
-        }),
-      );
-    } catch (error) {
-      results.push(hf_createRouteResult_("terminal_error", { error: error }));
-    }
-  }
-
-  return results;
-}
-
-function hf_executePseIsinMapRouteBatch_(jobs) {
-  let i;
-  let pseTicker;
-  let nextRoute;
-  const results = [];
-
-  for (i = 0; i < jobs.length; i += 1) {
-    try {
-      pseTicker = hf_resolvePseTickerFromIsinMap_(jobs[i].routeState.isin);
-
-      if (!pseTicker) {
-        results.push(hf_createRouteResult_("lookup_failure"));
-        continue;
-      }
-
-      nextRoute = hf_buildQuoteAttemptsForResolvedIdentifier_(
-        pseTicker,
-        "default",
-      );
-      results.push(
-        hf_createRouteResult_("pivot", {
-          nextAttempts: nextRoute.nextAttempts,
-          stateChanges: nextRoute.stateChanges,
-        }),
-      );
-    } catch (error) {
-      results.push(hf_createRouteResult_("terminal_error", { error: error }));
-    }
-  }
-
-  return results;
-}
-
-function hf_executeYahooIsinRouteBatch_(jobs) {
-  const results = jobs.map(function () {
-    return null;
-  });
-  const requests = [];
-  let i;
-  let cacheKey;
-  let cached;
-  let responses;
-  let routeInfo;
-
-  for (i = 0; i < jobs.length; i += 1) {
-    cacheKey = "hoodlefinance:isin:" + jobs[i].routeState.isin;
-    cached = hf_getCachedString_(cacheKey);
-
-    if (cached) {
-      routeInfo = hf_buildQuoteAttemptsForResolvedIdentifier_(
-        cached,
-        hf_getCurrentRouteAttempt_(jobs[i]).resolvedSymbolMode,
-      );
-      results[i] = hf_createRouteResult_("pivot", {
-        nextAttempts: routeInfo.nextAttempts,
-        stateChanges: routeInfo.stateChanges,
-      });
-      continue;
-    }
-
-    requests.push({
-      cacheKey: cacheKey,
-      index: i,
-      isin: jobs[i].routeState.isin,
-      url: hf_buildYahooIsinSearchUrl_(jobs[i].routeState.isin),
-    });
-  }
-
-  responses = hf_fetchAllInChunks_("yahoo-isin-search", requests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: responses[i].error,
-        },
-      );
-      continue;
-    }
-
-    try {
-      cached = hf_extractYahooSymbolFromSearchResponse_(
-        responses[i].response,
-        responses[i].request.isin,
-      );
-      hf_putCachedString_(responses[i].request.cacheKey, cached, 21600);
-      routeInfo = hf_buildQuoteAttemptsForResolvedIdentifier_(
-        cached,
-        hf_getCurrentRouteAttempt_(jobs[responses[i].request.index])
-          .resolvedSymbolMode,
-      );
-      results[responses[i].request.index] = hf_createRouteResult_("pivot", {
-        nextAttempts: routeInfo.nextAttempts,
-        stateChanges: routeInfo.stateChanges,
-      });
-    } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
-  return results;
-}
-
-function hf_executeYahooChartRouteBatch_(jobs) {
-  const results = jobs.map(function () {
-    return null;
-  });
-  const requests = [];
-  let i;
-  let cacheKey;
-  let cached;
-  let responses;
-  let quote;
-  let error;
-  let attempt;
-
-  for (i = 0; i < jobs.length; i += 1) {
-    cacheKey = "hoodlefinance:" + jobs[i].routeState.yahooSymbol;
-    cached = hf_getCachedJson_(cacheKey);
-
-    if (cached) {
-      results[i] = hf_createRouteResult_("success", {
-        quote: hf_decorateFxQuote_(cached, jobs[i].routeState.fxPair),
-      });
-      continue;
-    }
-
-    requests.push({
-      cacheKey: cacheKey,
-      index: i,
-      url: hf_buildYahooChartUrl_(jobs[i].routeState.yahooSymbol),
-    });
-  }
-
-  responses = hf_fetchAllInChunks_("yahoo-chart", requests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    attempt = hf_getCurrentRouteAttempt_(jobs[responses[i].request.index]);
-    error = responses[i].error || null;
-
-    if (!error) {
-      try {
-        quote = hf_decorateFxQuote_(
-          hf_extractYahooQuoteMetaFromResponse_(
-            responses[i].response,
-            jobs[responses[i].request.index].tickerInput,
-          ),
-          jobs[responses[i].request.index].routeState.fxPair,
-        );
-        hf_putCachedJson_(
-          responses[i].request.cacheKey,
-          hf_extractRawQuote_(quote),
-          60,
-        );
-        results[responses[i].request.index] = hf_createRouteResult_("success", {
-          quote: quote,
-        });
-        continue;
-      } catch (extractError) {
-        error = extractError;
-      }
-    }
-
-    if (
-      attempt &&
-      attempt.allowTradingviewFallback &&
-      hf_shouldUseIsraeliFundTradingviewFallback_(
-        jobs[responses[i].request.index],
-        error,
-      )
-    ) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: error,
-          nextAttempts: [
-            hf_createRouteAttempt_("tradingview-fund", "TRADINGVIEW"),
-          ],
-        },
-      );
-    } else if (
-      error &&
-      /No quote data was found|Quote lookup failed/i.test(
-        hf_errorMessage_(error),
-      )
-    ) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: error,
-        },
-      );
-    } else {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
-  return results;
-}
-
-function hf_executeTradingviewFundRouteBatch_(jobs) {
-  const results = jobs.map(function () {
-    return null;
-  });
-  const requests = [];
-  let i;
-  let fallbackInfo;
-  let cacheKey;
-  let primaryCacheKey;
-  let cached;
-  let responses;
-  let quote;
-
-  for (i = 0; i < jobs.length; i += 1) {
-    fallbackInfo = hf_buildIsraeliFundTradingviewFallbackInfo_(
-      jobs[i].tickerInput,
-      jobs[i].routeState.yahooSymbol,
-    );
-    cacheKey = "hoodlefinance:tradingview:quote:" + fallbackInfo.yahooSymbol;
-    primaryCacheKey = "hoodlefinance:" + fallbackInfo.yahooSymbol;
-    cached = hf_getCachedJson_(cacheKey);
-
-    if (cached) {
-      hf_putCachedJson_(primaryCacheKey, cached, 60);
-      results[i] = hf_createRouteResult_("success", {
-        quote: cached,
-      });
-      continue;
-    }
-
-    requests.push({
-      cacheKey: cacheKey,
-      expectedSymbol: fallbackInfo.expectedSymbol,
-      index: i,
-      primaryCacheKey: primaryCacheKey,
-      url: fallbackInfo.url,
-      yahooSymbol: fallbackInfo.yahooSymbol,
-    });
-  }
-
-  responses = hf_fetchAllInChunks_("tradingview-quote", requests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: responses[i].error,
-        },
-      );
-      continue;
-    }
-
-    try {
-      quote = hf_extractTradingviewFundQuoteFromResponse_(
-        responses[i].response,
-        responses[i].request.yahooSymbol,
-        responses[i].request.expectedSymbol,
-      );
-      hf_putCachedJson_(responses[i].request.cacheKey, quote, 60);
-      hf_putCachedJson_(responses[i].request.primaryCacheKey, quote, 60);
-      results[responses[i].request.index] = hf_createRouteResult_("success", {
-        quote: quote,
-      });
-    } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
-  return results;
-}
-
-function hf_executePseFramesQuoteRouteBatch_(jobs) {
-  const results = jobs.map(function () {
-    return null;
-  });
-  const requests = [];
-  let i;
-  let cacheKey;
-  let cached;
-  let responses;
-  let quote;
-
-  for (i = 0; i < jobs.length; i += 1) {
-    cacheKey = "hoodlefinance:pse:" + jobs[i].routeState.symbol;
-    cached = hf_getCachedJson_(cacheKey);
-
-    if (cached) {
-      results[i] = hf_createRouteResult_("success", {
-        quote: cached,
-      });
-      continue;
-    }
-
-    requests.push({
-      cacheKey: cacheKey,
-      index: i,
-      symbol: jobs[i].routeState.symbol,
-      url: hf_buildPseSecurityFrameUrl_(jobs[i].routeState.symbol),
-    });
-  }
-
-  responses = hf_fetchAllInChunks_("pse", requests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: hf_buildPseUnavailableError_(
-            responses[i].error && responses[i].error.message
-              ? responses[i].error.message
-              : responses[i].error,
-          ),
-        },
-      );
-      continue;
-    }
-
-    if (responses[i].response.getResponseCode() !== 200) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: hf_buildPseUnavailableError_(
-            hf_buildPseHttpErrorMessage_(
-              responses[i].response.getResponseCode(),
-            ),
-          ),
-        },
-      );
-      continue;
-    }
-
-    try {
-      quote = hf_extractPseFrameQuote_(
-        responses[i].response.getContentText(),
-        responses[i].request.symbol,
-      );
-      hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
-      results[responses[i].request.index] = hf_createRouteResult_("success", {
-        quote: quote,
-      });
-    } catch (error) {
-      if (
-        hf_isPseListingNotFoundError_(error) ||
-        hf_isPseUnavailableError_(error)
-      ) {
-        results[responses[i].request.index] = hf_createRouteResult_(
-          "lookup_failure",
-          {
-            error: error,
-          },
-        );
-        continue;
-      }
-
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
-  return results;
-}
-
-function hf_executePseEdgeQuoteRouteBatch_(jobs) {
-  const results = jobs.map(function () {
-    return null;
-  });
-  const searchRequests = [];
-  const stockRequests = [];
-  let i;
-  let cacheKey;
-  let cached;
-  let listing;
-  let responses;
-  let quote;
-
-  for (i = 0; i < jobs.length; i += 1) {
-    cacheKey = "hoodlefinance:pse:" + jobs[i].routeState.symbol;
-    cached = hf_getCachedJson_(cacheKey);
-
-    if (cached) {
-      results[i] = hf_createRouteResult_("success", {
-        quote: cached,
-      });
-      continue;
-    }
-
-    listing = hf_getCachedPseListing_(jobs[i].routeState.symbol);
-
-    if (listing) {
-      jobs[i].routeState.listing = listing;
-      stockRequests.push({
-        cacheKey: cacheKey,
-        index: i,
-        url:
-          HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-          "?cmpy_id=" +
-          encodeURIComponent(listing.companyId) +
-          "&security_id=" +
-          encodeURIComponent(listing.securityId),
-      });
-      continue;
-    }
-
-    searchRequests.push({
-      index: i,
-      symbol: jobs[i].routeState.symbol,
-      url:
-        HOODLEFINANCE_PSE_SEARCH_URL_ +
-        encodeURIComponent(jobs[i].routeState.symbol),
-    });
-  }
-
-  responses = hf_fetchAllInChunks_("pse", searchRequests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: hf_buildPseUnavailableError_(
-            responses[i].error && responses[i].error.message
-              ? responses[i].error.message
-              : responses[i].error,
-          ),
-        },
-      );
-      continue;
-    }
-
-    if (responses[i].response.getResponseCode() !== 200) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: hf_buildPseUnavailableError_(
-            hf_buildPseHttpErrorMessage_(
-              responses[i].response.getResponseCode(),
-            ),
-          ),
-        },
-      );
-      continue;
-    }
-
-    try {
-      listing = hf_tryResolvePseListingFromHtml_(
-        responses[i].response.getContentText(),
-        responses[i].request.symbol,
-      );
-
-      if (!listing) {
-        results[responses[i].request.index] = hf_createRouteResult_(
-          "lookup_failure",
-          {
-            error: new Error(
-              'No PSE listing was found for "' +
-                responses[i].request.symbol +
-                '".',
-            ),
-          },
-        );
-        continue;
-      }
-
-      hf_cachePseListing_(listing);
-      jobs[responses[i].request.index].routeState.listing = listing;
-      stockRequests.push({
-        cacheKey: "hoodlefinance:pse:" + responses[i].request.symbol,
-        index: responses[i].request.index,
-        url:
-          HOODLEFINANCE_PSE_STOCK_DATA_URL_ +
-          "?cmpy_id=" +
-          encodeURIComponent(listing.companyId) +
-          "&security_id=" +
-          encodeURIComponent(listing.securityId),
-      });
-    } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
-  responses = hf_fetchAllInChunks_("pse", stockRequests);
-
-  for (i = 0; i < responses.length; i += 1) {
-    if (responses[i].error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: hf_buildPseUnavailableError_(
-            responses[i].error && responses[i].error.message
-              ? responses[i].error.message
-              : responses[i].error,
-          ),
-        },
-      );
-      continue;
-    }
-
-    if (responses[i].response.getResponseCode() !== 200) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "lookup_failure",
-        {
-          error: hf_buildPseUnavailableError_(
-            hf_buildPseHttpErrorMessage_(
-              responses[i].response.getResponseCode(),
-            ),
-          ),
-        },
-      );
-      continue;
-    }
-
-    try {
-      quote = hf_extractPseQuote_(
-        responses[i].response.getContentText(),
-        jobs[responses[i].request.index].routeState.listing,
-      );
-
-      if (!quote || !quote.symbol) {
-        throw new Error(
-          "No PSE quote data was found for " +
-            jobs[responses[i].request.index].tickerInput +
-            ".",
-        );
-      }
-
-      hf_putCachedJson_(responses[i].request.cacheKey, quote, 300);
-      results[responses[i].request.index] = hf_createRouteResult_("success", {
-        quote: quote,
-      });
-    } catch (error) {
-      results[responses[i].request.index] = hf_createRouteResult_(
-        "terminal_error",
-        {
-          error: error,
-        },
-      );
-    }
-  }
-
-  return results;
-}
-
-function hf_executeDirectIsinRouteBatch_(jobs) {
-  let i;
-  const results = [];
-
-  for (i = 0; i < jobs.length; i += 1) {
-    results.push(
-      hf_createRouteResult_("success", {
-        value: String(jobs[i].routeState.isin || "")
-          .trim()
-          .toUpperCase(),
-      }),
-    );
-  }
-
-  return results;
-}
-
-function hf_executeIsinResolverRouteBatch_(jobs, resolver) {
-  let i;
-  const results = [];
-
-  for (i = 0; i < jobs.length; i += 1) {
-    try {
-      results.push(
-        hf_createRouteResult_("success", {
-          value: resolver(jobs[i].sourceQuote, jobs[i].routeContext),
-        }),
-      );
-    } catch (error) {
-      results.push(hf_createRouteResult_("terminal_error", { error: error }));
-    }
-  }
-
-  return results;
 }
 
 function hf_resolvePrefetchedTickerJobs_(jobs) {
@@ -4396,20 +4932,6 @@ function hf_convertAttributeValueToOutputCurrency_(
   }
 
   return value * conversionRate;
-}
-
-function hf_shouldUseIsraeliFundTradingviewFallback_(job, error) {
-  const yahooSymbol =
-    job && job.routeState && job.routeState.yahooSymbol
-      ? String(job.routeState.yahooSymbol).trim().toUpperCase()
-      : "";
-  const message = hf_errorMessage_(error);
-
-  if (!hf_looksLikeIsraeliFundYahooSymbol_(yahooSymbol)) {
-    return false;
-  }
-
-  return /No quote data was found|Quote lookup failed/i.test(message);
 }
 
 function hf_buildIsraeliFundTradingviewFallbackInfo_(tickerInput, yahooSymbol) {
@@ -4894,14 +5416,6 @@ function hf_resolveIbkrIsin_(quote, context) {
   throw new Error("No IBKR ISIN is available for this ticker.");
 }
 
-const HOODLEFINANCE_ISIN_ROUTE_ADAPTER_BY_SOURCE_ = {
-  ARIVA: "isin-ariva",
-  IBKR: "isin-ibkr",
-  LON: "isin-lon",
-  PSE: "isin-pse",
-  TRADINGVIEW: "isin-tradingview",
-};
-
 function hf_buildIsinRoutePlan_(quote, context) {
   const directIsinInput = hf_extractDirectIsinInput_(context);
   const sourceOverride =
@@ -4914,10 +5428,12 @@ function hf_buildIsinRoutePlan_(quote, context) {
     (exchange ? HOODLEFINANCE_ISIN_SOURCE_BY_EXCHANGE_[exchange] || "" : "");
 
   if (directIsinInput) {
-    return hf_createSingleAttemptRoutePlan_("DIRECT", "isin-direct", "DIRECT", {
-      routeState: { isin: directIsinInput },
+    return {
+      nodes: [HOODLEFINANCE_DIRECT_ISIN_RESOLVER_],
+      routeClass: "DIRECT",
       routePath: "",
-    });
+      routeState: { isin: directIsinInput },
+    };
   }
 
   if (hf_isFxContext_(quote, context)) {
@@ -4945,18 +5461,15 @@ function hf_buildIsinPlanForSource_(source) {
   const normalizedSource = String(source || "")
     .trim()
     .toUpperCase();
-  const adapterId =
-    HOODLEFINANCE_ISIN_ROUTE_ADAPTER_BY_SOURCE_[normalizedSource];
+  const resolver = HOODLEFINANCE_ISIN_RESOLVER_BY_SOURCE_[normalizedSource];
 
-  if (adapterId) {
-    return hf_createSingleAttemptRoutePlan_(
-      normalizedSource,
-      adapterId,
-      normalizedSource,
-      {
-        routePath: "",
-      },
-    );
+  if (resolver) {
+    return {
+      nodes: [resolver],
+      routeClass: normalizedSource,
+      routePath: "",
+      routeState: {},
+    };
   }
 
   throw new Error(

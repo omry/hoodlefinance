@@ -137,7 +137,141 @@ function printRoutingTable() {
 function traceRoutingForSymbol(symbol, ctx) {
   const runtime = ctx || loadHoodlefinance();
   const startedAtMs = Date.now();
-  const job = runtime.hf_createQuoteRouteJob_(String(symbol).trim(), "price");
+  const ticker = String(symbol).trim();
+  const RequestInput = runtime.HOODLEFINANCE_ROUTING_TYPES_
+    ? runtime.HOODLEFINANCE_ROUTING_TYPES_.RequestInput
+    : null;
+  const plannedRouteParts = [];
+  let requestInput;
+  let resolvedRequest;
+  let identifierPlan;
+  let attributePlan;
+  let identifierJob;
+  let attributeJob;
+  let runtimeTrace;
+  let plannedRoute;
+  let resultValue;
+  let resultError;
+  const job = runtime.hf_createQuoteRouteJob_(ticker, "price");
+
+  if (
+    RequestInput &&
+    runtime.hf_resolveIdentifierDirect_ &&
+    runtime.hf_buildIdentifierResolutionPlan_ &&
+    runtime.hf_buildQuoteRoutePlanForResolvedRequest_ &&
+    runtime.hf_createResolverRouteJob_ &&
+    runtime.hf_prepareResolverJob_
+  ) {
+    try {
+      requestInput = new RequestInput(ticker, "price");
+
+      if (requestInput.infoMode) {
+        job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, "price");
+
+        if (Object.prototype.hasOwnProperty.call(job.plan || {}, "debugValue")) {
+          return {
+            ok: true,
+            plannedRoute: String(job.plan.debugValue || ""),
+            totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
+            runtimeTrace: [],
+            value: null,
+          };
+        }
+      }
+
+      resolvedRequest = runtime.hf_resolveIdentifierDirect_(requestInput);
+
+      if (!resolvedRequest) {
+        identifierPlan = runtime.hf_buildIdentifierResolutionPlan_(requestInput);
+
+        if (!identifierPlan) {
+          throw new Error("Identifier resolution failed.");
+        }
+
+        plannedRouteParts.push(
+          runtime.hf_describePlanSource_(identifierPlan.buildRuntimePlan(requestInput)),
+        );
+
+        identifierJob = runtime.hf_createResolverRouteJob_(requestInput);
+        runtime.hf_prepareResolverJob_(identifierJob, identifierPlan, requestInput);
+        runtime.hf_executeRouteJobs_([identifierJob]);
+
+        if (identifierJob.error) {
+          throw new Error(identifierJob.error);
+        }
+
+        resolvedRequest = identifierJob.value;
+
+        if (!resolvedRequest) {
+          throw new Error("Identifier resolution failed.");
+        }
+      }
+
+      attributePlan = runtime.hf_buildQuoteRoutePlanForResolvedRequest_(
+        requestInput,
+        resolvedRequest,
+      );
+      plannedRouteParts.push(
+        runtime.hf_describePlanSource_(attributePlan.buildRuntimePlan(resolvedRequest)),
+      );
+
+      attributeJob = runtime.hf_createResolverRouteJob_(resolvedRequest);
+      runtime.hf_prepareResolverJob_(attributeJob, attributePlan, resolvedRequest);
+      runtime.hf_executeRouteJobs_([attributeJob]);
+
+      resultError = attributeJob.error || "";
+      resultValue = attributeJob.quote || null;
+      runtimeTrace = []
+        .concat(identifierJob && identifierJob.routeRuntimeTrace
+          ? identifierJob.routeRuntimeTrace
+          : [])
+        .concat(attributeJob.routeRuntimeTrace || []);
+      plannedRoute = plannedRouteParts.filter(Boolean).join(" => ");
+
+      return {
+        error: resultError,
+        ok: !resultError,
+        plannedRoute: plannedRoute || "(none)",
+        totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
+        runtimeTrace: runtimeTrace.map(function (entry) {
+          return {
+            elapsedMs:
+              entry && entry.elapsedMs != null && isFinite(entry.elapsedMs)
+                ? Number(entry.elapsedMs)
+                : null,
+            label: String((entry && entry.label) || ""),
+            status: String((entry && entry.status) || ""),
+          };
+        }),
+        value: resultValue,
+      };
+    } catch (error) {
+      return {
+        error: error && error.message ? error.message : String(error),
+        ok: false,
+        plannedRoute: plannedRouteParts.filter(Boolean).join(" => "),
+        totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
+        runtimeTrace: []
+          .concat(identifierJob && identifierJob.routeRuntimeTrace
+            ? identifierJob.routeRuntimeTrace
+            : [])
+          .concat(attributeJob && attributeJob.routeRuntimeTrace
+            ? attributeJob.routeRuntimeTrace
+            : [])
+          .map(function (entry) {
+            return {
+              elapsedMs:
+                entry && entry.elapsedMs != null && isFinite(entry.elapsedMs)
+                  ? Number(entry.elapsedMs)
+                  : null,
+              label: String((entry && entry.label) || ""),
+              status: String((entry && entry.status) || ""),
+            };
+          }),
+        value: null,
+      };
+    }
+  }
 
   try {
     job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, "price");

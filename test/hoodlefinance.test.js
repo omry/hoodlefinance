@@ -1937,7 +1937,7 @@ test("source introspection suffixes return the planned route or the supported so
   );
   assert.equal(
     ctx.HOODLEFINANCE("US02079K1079@?"),
-    "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+    "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@"),
@@ -1969,25 +1969,25 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
       [
         "ISIN",
         "US02079K1079",
-        "ISIN -> PSE-MAP -> (PSE-FRAMES -> PSE-EDGE|YAHOO-ISIN -> (YAHOO|YAHOO -> TRADINGVIEW))",
+        "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
       ],
-      ["FORCED:YAHOO", "GOOG@YAHOO", "FORCED:YAHOO -> YAHOO"],
+      ["FORCED:YAHOO", "GOOG@YAHOO", "YAHOO"],
       [
         "FORCED:YAHOO-ISIN",
         "US02079K1079@YAHOO",
-        "FORCED:YAHOO-ISIN -> YAHOO-ISIN -> YAHOO",
+        "IDENTIFIER:YAHOO-ISIN -> YAHOO-ISIN => YAHOO",
       ],
-      ["FORCED:GOOGLE", "EURUSD@GOOGLE", "FORCED:GOOGLE -> GOOGLE"],
-      ["FORCED:PSE", "PSE:BDO@PSE", "FORCED:PSE -> PSE-FRAMES -> PSE-EDGE"],
+      ["FORCED:GOOGLE", "EURUSD@GOOGLE", "GOOGLE"],
+      ["FORCED:PSE", "PSE:BDO@PSE", "PSE-FRAMES -> PSE-EDGE"],
       [
         "FORCED:PSE-FRAMES",
         "PSE:BDO@PSE-FRAMES",
-        "FORCED:PSE-FRAMES -> PSE-FRAMES",
+        "PSE-FRAMES",
       ],
       [
         "FORCED:PSE-EDGE",
         "PSE:BDO@PSE-EDGE",
-        "FORCED:PSE-EDGE -> PSE-EDGE",
+        "PSE-EDGE",
       ],
     ]),
   );
@@ -2053,6 +2053,70 @@ test("forced PSE sub-sources are quote-only overrides", () => {
     () => ctx.HOODLEFINANCE("PSE:BDO@PSE-EDGE", "isin"),
     /"@PSE-EDGE" can only be used with quote attributes\./,
   );
+});
+
+test("direct identifier resolution builds typed equity and fx requests", () => {
+  const ctx = loadHoodlefinance();
+  const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
+  let request;
+  let resolved;
+
+  primeCurrencyCodeData(ctx);
+
+  request = new RequestInput("PSE:BDO", "price");
+  assert.equal(request.constructor.name, "RequestInput");
+  resolved = ctx.hf_resolveIdentifierDirect_(request);
+  assert.equal(resolved.constructor.name, "EquityRequest");
+  assert.equal(resolved.requestType, "equity");
+  assert.equal(resolved.exchange, "PSE");
+  assert.equal(resolved.symbol, "BDO");
+
+  request = new RequestInput("EURUSD", "price");
+  resolved = ctx.hf_resolveIdentifierDirect_(request);
+  assert.equal(resolved.constructor.name, "FxRequest");
+  assert.equal(resolved.requestType, "fx");
+  assert.equal(resolved.baseCurrency, "EUR");
+  assert.equal(resolved.quoteCurrency, "USD");
+});
+
+test("quote routing builds resolver plans for identifier and attribute phases", () => {
+  const ctx = loadHoodlefinance();
+  const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
+  const identifierInput = new RequestInput("PHY077751022", "price");
+  const quoteInput = new RequestInput("PSE:BDO", "price");
+  const identifierPlan = ctx.hf_buildIdentifierResolutionPlan_(identifierInput);
+  const directRequest = ctx.hf_resolveIdentifierDirect_(quoteInput);
+  const attributePlan = ctx.hf_buildQuoteRoutePlanForResolvedRequest_(
+    quoteInput,
+    directRequest,
+  );
+
+  assert.equal(identifierPlan.constructor.name, "IdentifierResolutionPlan");
+  assert.equal(attributePlan.constructor.name, "PSEQuotePlan");
+  assert.equal(identifierPlan.resolve.constructor.name, "Function");
+  assert.equal(attributePlan.resolve.constructor.name, "Function");
+});
+
+test("identifier-phase PSE ISIN resolution returns a typed request directly", () => {
+  const ctx = loadHoodlefinance();
+  const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
+  const input = new RequestInput("PHY077751022", "price");
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.pseIsinMap",
+    JSON.stringify({
+      fetchedAtMs: new Date().getTime(),
+      text: PSE_ISIN_MAP_PROPERTIES,
+    }),
+  );
+  const results = [
+    ctx.hf_buildIdentifierResolutionPlan_(input).resolve(input),
+  ];
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].status, "success");
+  assert.equal(results[0].value.requestType, "equity");
+  assert.equal(results[0].value.exchange, "PSE");
+  assert.equal(results[0].value.symbol, "BDO");
 });
 
 test("normalizes Yahoo-style Israeli fund tickers to canonical dotted forms", () => {
@@ -3375,7 +3439,6 @@ test("range calls batch yahoo isin search before quote lookup", () => {
     JSON.stringify(seenBatches),
     JSON.stringify([
       [
-        "https://query2.finance.yahoo.com/v1/finance/search?q=US02079K1079&quotesCount=10&newsCount=0",
         "https://query2.finance.yahoo.com/v1/finance/search?q=US02079K1079&quotesCount=10&newsCount=0",
       ],
       [
