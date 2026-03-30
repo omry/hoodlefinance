@@ -1,0 +1,1 @@
+- Fixed lowercase ticker lookups such as `vstm` so they no longer fail on an internal cache-key validation error before quote resolution starts.

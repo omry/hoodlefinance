@@ -7,4 +7,3 @@
 - Rework source identity, grouped-source semantics, and source introspection around the gaps captured in `docs/design/routing-source-gaps.md`.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
-- vstm ticker is causing an error

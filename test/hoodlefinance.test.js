@@ -2854,6 +2854,26 @@ test("symbol and exchange attributes resolve U.S. quotes in yahoo and google sty
   assert.equal(ctx.HOODLEFINANCE("GOOG", "exchange"), "NASDAQ");
 });
 
+test("symbol and exchange attributes treat Yahoo NCM quotes as NASDAQ", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    assert.equal(
+      url,
+      "https://query1.finance.yahoo.com/v8/finance/chart/VSTM?interval=1d&range=1d",
+    );
+    return createYahooChartResponse("VSTM", {
+      exchangeName: "NCM",
+      regularMarketPrice: 5.04,
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("VSTM", "symbol:yahoo"), "VSTM");
+  assert.equal(ctx.HOODLEFINANCE("VSTM", "symbol"), "NASDAQ:VSTM");
+  assert.equal(ctx.HOODLEFINANCE("VSTM", "exchange:yahoo"), "NCM");
+  assert.equal(ctx.HOODLEFINANCE("VSTM", "exchange"), "NASDAQ");
+});
+
 test("symbol and exchange attributes resolve non-U.S. quotes in yahoo and google styles", () => {
   const ctx = loadHoodlefinance();
 
@@ -3152,6 +3172,15 @@ test("versioned cache key helper rejects already-versioned cache keys", () => {
         "hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":test:key",
       ),
     /Cache key must be a normalized unversioned "hoodlefinance:" key\./,
+  );
+});
+
+test('versioned cache key helper allows unversioned keys such as "hoodlefinance:vstm"', () => {
+  const ctx = loadHoodlefinance();
+
+  assert.equal(
+    ctx.hf_versionCacheKey_("hoodlefinance:vstm"),
+    "hoodlefinance:v" + ctx.HOODLEFINANCE_VERSION() + ":vstm",
   );
 });
 

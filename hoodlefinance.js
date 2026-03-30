@@ -389,7 +389,7 @@ const HOODLEFINANCE_YAHOO_EXCHANGE_BY_SUFFIX_ = {
 const HOODLEFINANCE_YAHOO_EXCHANGE_BY_META_NAME_ = hf_buildGroupedMap_({
   AMEX: ["AMEX", "ASE"],
   BATS: ["BATS"],
-  NASDAQ: ["NASDAQ", "NMS"],
+  NASDAQ: ["NASDAQ", "NCM", "NMS"],
   NEO: ["NEO"],
   NYSE: ["NYQ", "NYSE"],
   NYSEARCA: ["ARCA", "ARCX", "PCX", "NYSE ARCA", "NYSEARCA"],
@@ -400,7 +400,7 @@ const HOODLEFINANCE_GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY_ = hf_buildGroupedMap_({
   AMEX: ["AMEX", "ASE"],
   BATS: ["BATS"],
   CURRENCY: ["CURRENCY"],
-  NASDAQ: ["NASDAQ", "NMS"],
+  NASDAQ: ["NASDAQ", "NCM", "NMS"],
   NEO: ["NEO"],
   NYSE: ["NYQ", "NYSE"],
   NYSEARCA: ["ARCA", "ARCX", "PCX", "NYSE ARCA"],
@@ -1245,7 +1245,7 @@ function hf_versionCacheKey_(cacheKey) {
   if (
     key !== key.trim() ||
     key.indexOf("hoodlefinance:") !== 0 ||
-    key.indexOf("hoodlefinance:v") === 0
+    /^hoodlefinance:v[^:]+:/.test(key)
   ) {
     throw new Error(
       'Cache key must be a normalized unversioned "hoodlefinance:" key.',
