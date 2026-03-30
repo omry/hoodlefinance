@@ -9,7 +9,8 @@ Repo-local refresh on March 28, 2026:
 - the public-review Marketplace app path is in place
 - the clean public-review install path has already been revalidated
 - the OAuth review package has now been submitted
-- the current state is waiting for Google reviewer feedback
+- Google has now verified both branding and data access for the public-review
+  Cloud project
 
 ## Done
 
@@ -100,7 +101,10 @@ Repo-local refresh on March 28, 2026:
   - one or two representative formulas working in Sheets
 - [x] Submit for OAuth review:
   - submitted on March 28, 2026
-  - current state: awaiting Google feedback
+  - current state: branding and data access are verified in Google Cloud
+- [x] Public-review OAuth verification completed in Google Cloud:
+  - branding status: verified
+  - data access status: verified
 
 ## Blocked Or Open Questions
 
@@ -112,7 +116,9 @@ Repo-local refresh on March 28, 2026:
 
 ## Submission Gate
 
-Submission was filed on March 28, 2026. While it is under review, keep these conditions as the baseline for any resubmission or reviewer follow-up:
+Submission was filed on March 28, 2026, and Google Cloud now shows both
+branding and data access as verified. Keep these conditions as the baseline for
+any Marketplace follow-up or reviewer resubmission:
 
 - the final scope set is stable
 - the listing and policy surface are final

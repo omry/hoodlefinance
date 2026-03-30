@@ -117,6 +117,9 @@ Checklist:
 - [x] Public-review Apps Script version created and chosen for Marketplace use
 - [x] Public-review Marketplace configuration completed
 - [x] Public-review OAuth requirements fully prepared
+- [x] Public-review OAuth verification completed in Google Cloud:
+  - branding status: verified
+  - data access status: verified
 
 ## 4. Listing Material
 
