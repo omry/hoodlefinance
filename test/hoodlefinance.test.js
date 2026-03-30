@@ -1962,6 +1962,10 @@ test("source introspection suffixes return the planned route or the supported so
     ctx.HOODLEFINANCE("PH0000056814@"),
     "identifier: PSE, YAHOO; attribute: PSE (PSE-FRAMES, PSE-EDGE), YAHOO",
   );
+  assert.equal(
+    ctx.HOODLEFINANCE("TLV:KSMF59@"),
+    "TRADINGVIEW, YAHOO",
+  );
 });
 
 test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route", () => {
@@ -2764,6 +2768,9 @@ test("unsupported quote-source overrides fail clearly", () => {
   assert.throws(function () {
     ctx.HOODLEFINANCE("TLV:KSMF59@TRADINGVIEW", "price");
   }, /"@TRADINGVIEW" can only be used with the "isin" attribute\./);
+  assert.throws(function () {
+    ctx.HOODLEFINANCE("US02079K1079@PSE", "price");
+  }, /"@PSE" can only be used with PSE tickers and PSE-mapped ISINs\./);
 });
 
 test("scalar calls use the shared batch fetch pipeline", () => {

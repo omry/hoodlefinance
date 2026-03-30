@@ -5,7 +5,6 @@
 - Evaluate whether `HOODLEFINANCE()` should support multi-attribute spill output so one formula can return a compact record such as price, currency, unit, source, and instrument type together.
 - Evaluate whether this project should adopt a TypeScript-to-Apps-Script workflow for stronger typing in complex routing and request-shape code.
 - Rework source identity, grouped-source semantics, and source introspection around the gaps captured in `docs/design/routing-source-gaps.md`.
-- Make direct `isin` source-list introspection phase-aware so requests like `GOOG@` with the `isin` attribute list only viable ISIN sources.
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
 - vstm ticker is causing an error

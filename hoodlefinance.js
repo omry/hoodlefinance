@@ -2273,6 +2273,7 @@ const HOODLEFINANCE_SOURCE_NAME_BY_RESOLVER_NAME_ = {
   "PSE-EDGE": "PSE",
   "PSE-FRAMES": "PSE",
   "PSE-MAP": "PSE",
+  "TRADINGVIEW-FUND": "TRADINGVIEW",
   YAHOO: "YAHOO",
   "YAHOO-ISIN": "YAHOO",
   "YAHOO-ISIN-ONLY": "YAHOO",
@@ -4281,6 +4282,23 @@ function hf_buildIdentifierResolutionPlan_(input) {
   }
 
   if (overridePlan) {
+    if (!overridePlan.resolver.canHandle(input)) {
+      if (
+        sourceOverride === "PSE" ||
+        HOODLEFINANCE_PSE_SOURCE_OVERRIDES_[sourceOverride]
+      ) {
+        throw new Error(
+          '"@' +
+            sourceOverride +
+            '" can only be used with PSE tickers and PSE-mapped ISINs.',
+        );
+      }
+
+      throw new Error(
+        '"@' + sourceOverride + '" cannot resolve this identifier.',
+      );
+    }
+
     return hf_buildSingleResolverIdentifierPlan_(
       overridePlan.routeClass,
       overridePlan.resolver,
