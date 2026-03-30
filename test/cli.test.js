@@ -37,7 +37,7 @@ test("routing table rows cover the current quote classifications", function () {
       {
         classification: "ISIN",
         example: "US02079K1079",
-        route: "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
+        route: "IDENTIFIER:ISIN -> YAHOO-ISIN",
       },
       {
         classification: "FORCED:YAHOO",
@@ -183,5 +183,14 @@ test("trace uses the real planned route for source-list requests", function () {
 
   assert.equal(trace.ok, true);
   assert.equal(trace.plannedRoute, "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN");
+  assert.deepEqual(trace.runtimeTrace, []);
+});
+
+test("trace uses the country-selected identifier route for non-PH ISINs", function () {
+  const ctx = loadHoodlefinance();
+  const trace = traceRoutingForSymbol("US02079K1079@", ctx);
+
+  assert.equal(trace.ok, true);
+  assert.equal(trace.plannedRoute, "IDENTIFIER:ISIN -> YAHOO-ISIN");
   assert.deepEqual(trace.runtimeTrace, []);
 });

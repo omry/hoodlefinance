@@ -1948,7 +1948,7 @@ test("source introspection suffixes return the planned route or the supported so
   );
   assert.equal(
     ctx.HOODLEFINANCE("US02079K1079@?"),
-    "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
+    "IDENTIFIER:ISIN -> YAHOO-ISIN",
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@"),
@@ -1964,7 +1964,7 @@ test("source introspection suffixes return the planned route or the supported so
   );
   assert.equal(
     ctx.HOODLEFINANCE("TLV:KSMF59@"),
-    "TRADINGVIEW, YAHOO",
+    "YAHOO, TRADINGVIEW",
   );
 });
 
@@ -1988,7 +1988,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
       [
         "ISIN",
         "US02079K1079",
-        "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
+        "IDENTIFIER:ISIN -> YAHOO-ISIN",
       ],
       ["FORCED:YAHOO", "GOOG@YAHOO", "YAHOO"],
       [
@@ -2111,7 +2111,8 @@ test("quote routing builds resolver plans for identifier and attribute phases", 
   );
 
   assert.equal(identifierPlan.constructor.name, "IdentifierResolutionPlan");
-  assert.equal(attributePlan.constructor.name, "PSEQuotePlan");
+  assert.equal(attributePlan.constructor.name, "AttributeResolutionPlan");
+  assert.equal(attributePlan.sourceName, "PSE");
   assert.equal(identifierPlan.resolve.constructor.name, "Function");
   assert.equal(attributePlan.resolve.constructor.name, "Function");
 });
@@ -2124,6 +2125,9 @@ test("resolve plan is the single canonical planner output", () => {
   const identifierPlan = ctx.hf_buildResolvePlan_(
     new RequestInput("PHY077751022", "price"),
   );
+  const genericIsinPlan = ctx.hf_buildResolvePlan_(
+    new RequestInput("US02079K1079", "price"),
+  );
   const sourceListPlan = ctx.hf_buildResolvePlan_(
     new RequestInput("PHY077751022@", "price"),
   );
@@ -2132,7 +2136,8 @@ test("resolve plan is the single canonical planner output", () => {
 
   assert.equal(directPlan.requestInput.constructor.name, "RequestInput");
   assert.equal(directPlan.resolvedRequest.constructor.name, "EquityRequest");
-  assert.equal(directPlan.attributePlan.constructor.name, "PSEQuotePlan");
+  assert.equal(directPlan.attributePlan.constructor.name, "AttributeResolutionPlan");
+  assert.equal(directPlan.attributePlan.sourceName, "PSE");
   assert.equal(directPlan.identifierPlan, null);
   assert.equal(directPlan.buildAttributePlan, null);
   assert.equal(directPlan.plannedRoute, "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE");
@@ -2148,6 +2153,10 @@ test("resolve plan is the single canonical planner output", () => {
   assert.equal(
     identifierPlan.plannedRoute,
     "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
+  );
+  assert.equal(
+    genericIsinPlan.plannedRoute,
+    "IDENTIFIER:ISIN -> YAHOO-ISIN",
   );
   assert.equal(
     sourceListPlan.debugValue,
@@ -2168,7 +2177,8 @@ test("resolve plan is the single canonical planner output", () => {
   resolvedRequest = identifierPlan.identifierPlan.resolve(identifierPlan.requestInput).value;
   attributePlan = identifierPlan.buildAttributePlan(resolvedRequest);
   assert.equal(resolvedRequest.constructor.name, "EquityRequest");
-  assert.equal(attributePlan.constructor.name, "PSEQuotePlan");
+  assert.equal(attributePlan.constructor.name, "AttributeResolutionPlan");
+  assert.equal(attributePlan.sourceName, "PSE");
 });
 
 test("identifier-phase PSE ISIN resolution returns a typed request directly", () => {
