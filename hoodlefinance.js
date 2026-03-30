@@ -2267,9 +2267,157 @@ const HOODLEFINANCE_SOURCE_GROUPED_SOURCES_BY_NAME_ = {
   PSE: ["PSE-FRAMES", "PSE-EDGE"],
 };
 
+const HOODLEFINANCE_SOURCE_NAME_BY_RESOLVER_NAME_ = {
+  GOOGLE: "GOOGLE",
+  PSE: "PSE",
+  "PSE-EDGE": "PSE",
+  "PSE-FRAMES": "PSE",
+  "PSE-MAP": "PSE",
+  YAHOO: "YAHOO",
+  "YAHOO-ISIN": "YAHOO",
+  "YAHOO-ISIN-ONLY": "YAHOO",
+};
+
 const HOODLEFINANCE_SOURCE_OVERRIDES_ = hf_buildSet_(
   HOODLEFINANCE_SOURCE_LIST_ORDER_.concat(["PSE-FRAMES", "PSE-EDGE"]),
 );
+
+function hf_formatSupportedSources_(supportedSourcesByName, includeGroupedSources) {
+  return HOODLEFINANCE_SOURCE_LIST_ORDER_.filter(function (source) {
+    return !!supportedSourcesByName[source];
+  })
+    .map(function (source) {
+      const groupedSources =
+        HOODLEFINANCE_SOURCE_GROUPED_SOURCES_BY_NAME_[source] || [];
+
+      return includeGroupedSources && groupedSources.length
+        ? source + " (" + groupedSources.join(", ") + ")"
+        : source;
+    })
+    .join(", ");
+}
+
+function hf_collectSupportedSourcesFromPlan_(
+  node,
+  request,
+  supportedSourcesByName,
+) {
+  const normalizedName = String((node && node.name) || "")
+    .trim()
+    .toUpperCase();
+  let nodes;
+  let i;
+
+  if (!node) {
+    return;
+  }
+
+  if (HOODLEFINANCE_SOURCE_NAME_BY_RESOLVER_NAME_[normalizedName]) {
+    supportedSourcesByName[
+      HOODLEFINANCE_SOURCE_NAME_BY_RESOLVER_NAME_[normalizedName]
+    ] = true;
+  }
+
+  if (!(node instanceof ResolverPlan)) {
+    return;
+  }
+
+  nodes = node.getNodesForRequest(request);
+
+  for (i = 0; i < nodes.length; i += 1) {
+    hf_collectSupportedSourcesFromPlan_(nodes[i], request, supportedSourcesByName);
+  }
+}
+
+function hf_listSupportedIdentifierSources_(requestInput) {
+  const supportedSourcesByName = {};
+  const identifierPlan = hf_buildIdentifierResolutionPlan_(requestInput);
+
+  if (!identifierPlan) {
+    return "";
+  }
+
+  hf_collectSupportedSourcesFromPlan_(
+    identifierPlan,
+    requestInput,
+    supportedSourcesByName,
+  );
+
+  return hf_formatSupportedSources_(supportedSourcesByName, false);
+}
+
+function hf_listSupportedQuoteOverrideSourcesForIdentifierRequest_(requestInput) {
+  const supportedSourcesByName = {};
+  const identifierPlan = hf_buildIdentifierResolutionPlan_(requestInput);
+  let nodes;
+  let i;
+  let attributeOverrideSources;
+  let j;
+
+  if (!identifierPlan) {
+    return "";
+  }
+
+  nodes = identifierPlan.getNodesForRequest(requestInput);
+
+  for (i = 0; i < nodes.length; i += 1) {
+    attributeOverrideSources =
+      nodes[i] && typeof nodes[i].getAttributeOverrideSources === "function"
+        ? nodes[i].getAttributeOverrideSources(requestInput)
+        : [];
+
+    for (j = 0; j < attributeOverrideSources.length; j += 1) {
+      supportedSourcesByName[
+        String(attributeOverrideSources[j] || "").trim().toUpperCase()
+      ] = true;
+    }
+  }
+
+  return hf_formatSupportedSources_(supportedSourcesByName, true);
+}
+
+function hf_listSupportedQuoteSources_(request) {
+  const supportedSourcesByName = {};
+  const attributePlan = hf_buildDefaultAttributePlanForResolvedRequest_(request);
+
+  hf_collectSupportedSourcesFromPlan_(
+    attributePlan,
+    request,
+    supportedSourcesByName,
+  );
+
+  if (request.requestType === "fx") {
+    supportedSourcesByName.YAHOO = true;
+  }
+
+  return hf_formatSupportedSources_(supportedSourcesByName, true);
+}
+
+function hf_listSupportedSourcesForRequest_(requestInput) {
+  const resolvedRequest = hf_resolveIdentifierDirect_(requestInput);
+  const identifierSources = hf_listSupportedIdentifierSources_(requestInput);
+  const attributeSources =
+    requestInput.attributeType === "quote"
+      ? hf_listSupportedQuoteOverrideSourcesForIdentifierRequest_(requestInput)
+      : "";
+
+  if (resolvedRequest && requestInput.attributeType === "quote") {
+    return hf_listSupportedQuoteSources_(resolvedRequest);
+  }
+
+  if (!resolvedRequest) {
+    if (requestInput.attributeType === "quote") {
+      return [
+        "identifier: " + identifierSources,
+        "attribute: " + attributeSources,
+      ].join("; ");
+    }
+
+    return identifierSources;
+  }
+
+  return hf_listSupportedSources_();
+}
 
 function hf_normalizeTickerGrid_(ticker) {
   let i;
@@ -2785,6 +2933,10 @@ class Resolver {
     return true;
   }
 
+  getAttributeOverrideSources(_request) {
+    return [];
+  }
+
   buildRuntimePlan(_request) {
     throw new Error(
       'Resolver "' + this.name + '" must implement buildRuntimePlan().',
@@ -2981,7 +3133,15 @@ class PseIsinMapResolver extends AttemptResolver {
   }
 
   canHandle(input) {
-    return input instanceof RequestInput && !!hf_extractIsinFromRequestInput_(input);
+    const isin = hf_extractIsinFromRequestInput_(input);
+
+    return input instanceof RequestInput && isin.indexOf("PH") === 0;
+  }
+
+  getAttributeOverrideSources(input) {
+    return this.canHandle(input) && input.attributeType === "quote"
+      ? ["PSE"]
+      : [];
   }
 
   buildRouteState(input) {
@@ -3027,12 +3187,23 @@ class PseIsinMapResolver extends AttemptResolver {
 
 class YahooIsinSearchResolver extends AttemptResolver {
   constructor(resolvedSymbolMode) {
-    super("YAHOO-ISIN", "YAHOO-ISIN");
-    this.resolvedSymbolMode = resolvedSymbolMode || "default";
+    const mode = resolvedSymbolMode || "default";
+
+    super(
+      mode === "yahoo-only" ? "YAHOO-ISIN-ONLY" : "YAHOO-ISIN",
+      "YAHOO-ISIN",
+    );
+    this.resolvedSymbolMode = mode;
   }
 
   canHandle(input) {
     return input instanceof RequestInput && !!hf_extractIsinFromRequestInput_(input);
+  }
+
+  getAttributeOverrideSources(input) {
+    return this.canHandle(input) && input.attributeType === "quote"
+      ? ["YAHOO"]
+      : [];
   }
 
   buildRouteState(input) {
@@ -3323,7 +3494,7 @@ class YahooQuoteResolver extends AttemptResolver {
 
 class TradingviewFundResolver extends AttemptResolver {
   constructor() {
-    super("TRADINGVIEW", "TRADINGVIEW");
+    super("TRADINGVIEW-FUND", "TRADINGVIEW");
   }
 
   canHandle(request) {
@@ -3766,59 +3937,94 @@ class PSEQuotePlan extends AttributeResolutionPlan {
   }
 }
 
+const HOODLEFINANCE_REGISTERED_RESOLVERS_BY_NAME_ = {};
+
+function hf_registerResolver_(resolver) {
+  const name = String((resolver && resolver.name) || "")
+    .trim()
+    .toUpperCase();
+  const existing = name
+    ? HOODLEFINANCE_REGISTERED_RESOLVERS_BY_NAME_[name] || null
+    : null;
+
+  if (existing && existing !== resolver) {
+    throw new Error(
+      'Resolver name "' + name + '" is already registered to a different resolver.',
+    );
+  }
+
+  if (name) {
+    HOODLEFINANCE_REGISTERED_RESOLVERS_BY_NAME_[name] = resolver;
+  }
+
+  return resolver;
+}
+
 const HOODLEFINANCE_DIRECT_IDENTIFIER_RESOLVER_ =
-  new DirectIdentifierResolver();
-const HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_ = new PseIsinMapResolver();
-const HOODLEFINANCE_YAHOO_ISIN_RESOLVER_ = new YahooIsinSearchResolver();
-const HOODLEFINANCE_YAHOO_ONLY_ISIN_RESOLVER_ = new YahooIsinSearchResolver(
-  "yahoo-only",
+  hf_registerResolver_(new DirectIdentifierResolver());
+const HOODLEFINANCE_PSE_ISIN_MAP_RESOLVER_ = hf_registerResolver_(
+  new PseIsinMapResolver(),
 );
-const HOODLEFINANCE_LOCAL_FX_RESOLVER_ = new LocalFxResolver();
-const HOODLEFINANCE_GOOGLE_FX_RESOLVER_ = new GoogleFxResolver();
-const HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_ = new YahooQuoteResolver();
-const HOODLEFINANCE_TRADINGVIEW_FUND_RESOLVER_ = new TradingviewFundResolver();
-const HOODLEFINANCE_DIRECT_ISIN_RESOLVER_ = new FunctionValueResolver(
+const HOODLEFINANCE_YAHOO_ISIN_RESOLVER_ = hf_registerResolver_(
+  new YahooIsinSearchResolver(),
+);
+const HOODLEFINANCE_YAHOO_ONLY_ISIN_RESOLVER_ = hf_registerResolver_(
+  new YahooIsinSearchResolver("yahoo-only"),
+);
+const HOODLEFINANCE_LOCAL_FX_RESOLVER_ = hf_registerResolver_(
+  new LocalFxResolver(),
+);
+const HOODLEFINANCE_GOOGLE_FX_RESOLVER_ = hf_registerResolver_(
+  new GoogleFxResolver(),
+);
+const HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_ = hf_registerResolver_(
+  new YahooQuoteResolver(),
+);
+const HOODLEFINANCE_TRADINGVIEW_FUND_RESOLVER_ = hf_registerResolver_(
+  new TradingviewFundResolver(),
+);
+const HOODLEFINANCE_DIRECT_ISIN_RESOLVER_ = hf_registerResolver_(new FunctionValueResolver(
   "DIRECT",
   "DIRECT",
   function (job) {
     return String(job.routeState.isin || "").trim().toUpperCase();
   },
-);
-const HOODLEFINANCE_ARIVA_ISIN_RESOLVER_ = new FunctionValueResolver(
+));
+const HOODLEFINANCE_ARIVA_ISIN_RESOLVER_ = hf_registerResolver_(new FunctionValueResolver(
   "ARIVA",
   "ARIVA",
   function (job) {
     return hf_resolveArivaIsin_(job.sourceQuote, job.routeContext);
   },
-);
-const HOODLEFINANCE_IBKR_ISIN_RESOLVER_ = new FunctionValueResolver(
+));
+const HOODLEFINANCE_IBKR_ISIN_RESOLVER_ = hf_registerResolver_(new FunctionValueResolver(
   "IBKR",
   "IBKR",
   function (job) {
     return hf_resolveIbkrIsin_(job.sourceQuote, job.routeContext);
   },
-);
-const HOODLEFINANCE_LON_ISIN_RESOLVER_ = new FunctionValueResolver(
+));
+const HOODLEFINANCE_LON_ISIN_RESOLVER_ = hf_registerResolver_(new FunctionValueResolver(
   "LON",
   "LON",
   function (job) {
     return hf_resolveLonIsin_(job.sourceQuote, job.routeContext);
   },
-);
-const HOODLEFINANCE_PSE_ISIN_VALUE_RESOLVER_ = new FunctionValueResolver(
+));
+const HOODLEFINANCE_PSE_ISIN_VALUE_RESOLVER_ = hf_registerResolver_(new FunctionValueResolver(
   "PSE",
   "PSE",
   function (job) {
     return hf_resolvePseIsin_(job.sourceQuote, job.routeContext);
   },
-);
-const HOODLEFINANCE_TRADINGVIEW_ISIN_RESOLVER_ = new FunctionValueResolver(
+));
+const HOODLEFINANCE_TRADINGVIEW_ISIN_RESOLVER_ = hf_registerResolver_(new FunctionValueResolver(
   "TRADINGVIEW",
   "TRADINGVIEW",
   function (job) {
     return hf_resolveTradingviewIsin_(job.sourceQuote, job.routeContext);
   },
-);
+));
 const HOODLEFINANCE_ISIN_RESOLVER_BY_SOURCE_ = {
   ARIVA: HOODLEFINANCE_ARIVA_ISIN_RESOLVER_,
   IBKR: HOODLEFINANCE_IBKR_ISIN_RESOLVER_,
@@ -3826,8 +4032,12 @@ const HOODLEFINANCE_ISIN_RESOLVER_BY_SOURCE_ = {
   PSE: HOODLEFINANCE_PSE_ISIN_VALUE_RESOLVER_,
   TRADINGVIEW: HOODLEFINANCE_TRADINGVIEW_ISIN_RESOLVER_,
 };
-const HOODLEFINANCE_PSE_FRAMES_RESOLVER_ = new PSEFramesResolver();
-const HOODLEFINANCE_PSE_EDGE_RESOLVER_ = new PSEEdgeResolver();
+const HOODLEFINANCE_PSE_FRAMES_RESOLVER_ = hf_registerResolver_(
+  new PSEFramesResolver(),
+);
+const HOODLEFINANCE_PSE_EDGE_RESOLVER_ = hf_registerResolver_(
+  new PSEEdgeResolver(),
+);
 var HOODLEFINANCE_ROUTING_TYPES_ = {
   BaseRequest: BaseRequest,
   EquityRequest: EquityRequest,
@@ -4191,6 +4401,9 @@ function hf_buildQuoteRoutePlanForResolvedRequest_(input, request) {
 }
 
 function hf_buildResolvePlan_(requestInput) {
+  const nonInfoRequestInput = requestInput.infoMode
+    ? new RequestInput(requestInput.ticker, requestInput.attribute)
+    : requestInput;
   const infoMode = requestInput.infoMode;
   const sourceOverride = String(requestInput.sourceOverride || "")
     .trim()
@@ -4201,7 +4414,8 @@ function hf_buildResolvePlan_(requestInput) {
 
   if (infoMode === "source-list") {
     return hf_createResolvePlan_({
-      debugValue: hf_listSupportedSources_(),
+      debugValue: hf_listSupportedSourcesForRequest_(nonInfoRequestInput),
+      plannedRoute: hf_buildResolvePlan_(nonInfoRequestInput).plannedRoute,
       requestInput: requestInput,
     });
   }

@@ -168,7 +168,7 @@ function traceRoutingForSymbol(symbol, ctx) {
       if (resolvePlan.debugValue) {
         return {
           ok: true,
-          plannedRoute: String(resolvePlan.debugValue || ""),
+          plannedRoute: String(resolvePlan.plannedRoute || resolvePlan.debugValue || ""),
           totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
           runtimeTrace: [],
           value: null,
@@ -279,7 +279,7 @@ function traceRoutingForSymbol(symbol, ctx) {
   if (Object.prototype.hasOwnProperty.call(job.plan || {}, "debugValue")) {
     return {
       ok: true,
-      plannedRoute: String(job.plan.debugValue || ""),
+      plannedRoute: String(job.plan.plannedRoute || job.plan.debugValue || ""),
       totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
       runtimeTrace: [],
       value: null,

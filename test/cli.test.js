@@ -10,6 +10,7 @@ const {
   formatRoutingTrace,
   getRoutingTableRows,
   loadHoodlefinance,
+  traceRoutingForSymbol,
 } = require("../tools/_shared/cli.js");
 
 test("routing table rows cover the current quote classifications", function () {
@@ -174,4 +175,13 @@ test("CLI seeds the local PSE ISIN map for direct PSE ISIN resolution", function
   assert.equal(ctx.hf_resolveIsin_("PHY1001D1010"), "PSE:AREIT");
   assert.equal(ctx.hf_resolveIsin_("PH0000056814"), "PSE:ACPAR");
   assert.equal(ctx.hf_resolveIsin_("PHY2105Y1166"), "PSE:DDPR");
+});
+
+test("trace uses the real planned route for source-list requests", function () {
+  const ctx = loadHoodlefinance();
+  const trace = traceRoutingForSymbol("PH0000056814@", ctx);
+
+  assert.equal(trace.ok, true);
+  assert.equal(trace.plannedRoute, "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN");
+  assert.deepEqual(trace.runtimeTrace, []);
 });

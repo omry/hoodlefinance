@@ -1856,6 +1856,16 @@ function primeCurrencyCodeData(ctx, fetchedAtMs) {
   );
 }
 
+function primePseIsinMapData(ctx, fetchedAtMs) {
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.pseIsinMap",
+    JSON.stringify({
+      fetchedAtMs: fetchedAtMs == null ? new Date().getTime() : fetchedAtMs,
+      text: PSE_ISIN_MAP_PROPERTIES,
+    }),
+  );
+}
+
 test("normalizes GOOGLEFINANCE-style tickers to Yahoo symbols", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
@@ -1918,6 +1928,7 @@ test("source overrides are parsed separately from ticker normalization", () => {
 test("source introspection suffixes return the planned route or the supported source list", () => {
   const ctx = loadHoodlefinance();
   primeCurrencyCodeData(ctx);
+  primePseIsinMapData(ctx);
 
   assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "FX -> GOOGLE");
   assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE");
@@ -1941,11 +1952,15 @@ test("source introspection suffixes return the planned route or the supported so
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@"),
-    "ARIVA, GOOGLE, IBKR, LON, PSE (PSE-FRAMES, PSE-EDGE), TRADINGVIEW, YAHOO",
+    "GOOGLE, YAHOO",
   );
   assert.equal(
     ctx.HOODLEFINANCE("BTCUSD@MYSTERY"),
-    "ARIVA, GOOGLE, IBKR, LON, PSE (PSE-FRAMES, PSE-EDGE), TRADINGVIEW, YAHOO",
+    "GOOGLE, YAHOO",
+  );
+  assert.equal(
+    ctx.HOODLEFINANCE("PH0000056814@"),
+    "identifier: PSE, YAHOO; attribute: PSE (PSE-FRAMES, PSE-EDGE), YAHOO",
   );
 });
 
@@ -2100,9 +2115,13 @@ test("quote routing builds resolver plans for identifier and attribute phases", 
 test("resolve plan is the single canonical planner output", () => {
   const ctx = loadHoodlefinance();
   const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
+  primePseIsinMapData(ctx);
   const directPlan = ctx.hf_buildResolvePlan_(new RequestInput("PSE:BDO", "price"));
   const identifierPlan = ctx.hf_buildResolvePlan_(
     new RequestInput("PHY077751022", "price"),
+  );
+  const sourceListPlan = ctx.hf_buildResolvePlan_(
+    new RequestInput("PHY077751022@", "price"),
   );
   let resolvedRequest;
   let attributePlan;
@@ -2124,6 +2143,14 @@ test("resolve plan is the single canonical planner output", () => {
   assert.equal(identifierPlan.attributePlan, null);
   assert.equal(
     identifierPlan.plannedRoute,
+    "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
+  );
+  assert.equal(
+    sourceListPlan.debugValue,
+    "identifier: PSE, YAHOO; attribute: PSE (PSE-FRAMES, PSE-EDGE), YAHOO",
+  );
+  assert.equal(
+    sourceListPlan.plannedRoute,
     "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
   );
 
@@ -2734,6 +2761,9 @@ test("unsupported quote-source overrides fail clearly", () => {
   assert.throws(function () {
     ctx.HOODLEFINANCE("GOOG@IBKR", "price");
   }, /"@IBKR" can only be used with the "isin" attribute\./);
+  assert.throws(function () {
+    ctx.HOODLEFINANCE("TLV:KSMF59@TRADINGVIEW", "price");
+  }, /"@TRADINGVIEW" can only be used with the "isin" attribute\./);
 });
 
 test("scalar calls use the shared batch fetch pipeline", () => {
