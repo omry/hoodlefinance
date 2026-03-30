@@ -577,7 +577,7 @@ function HOODLEFINANCE_VERSION() {
  */
 function HOODLEFINANCE_ROUTES(ticker) {
   let normalizedTicker;
-  let plan;
+  let resolvePlan;
 
   if (!hf_hasValue_(ticker)) {
     return hf_buildRoutingTableGrid_();
@@ -589,13 +589,10 @@ function HOODLEFINANCE_ROUTES(ticker) {
     return hf_buildRoutingTableGrid_();
   }
 
-  plan = hf_classifyTickerJob_(String(normalizedTicker).trim(), "price");
-
-  if (hf_isDebugRoutePlan_(plan)) {
-    return String(plan.debugValue || "");
-  }
-
-  return hf_describePlanSource_(plan);
+  resolvePlan = hf_buildResolvePlan_(
+    new RequestInput(String(normalizedTicker).trim(), "price"),
+  );
+  return resolvePlan.debugValue || resolvePlan.plannedRoute;
 }
 
 function onOpen(e) {
@@ -2495,10 +2492,11 @@ function hf_shouldTreatRangeTickerAsBlank_(ticker) {
 function hf_prefetchTickerJobs_(jobs) {
   const orderedJobs = jobs.orderedJobs;
   let i;
-  let plan;
+  let resolvePlan;
   let requestInput;
   let resolvedRequest;
   let identifierResult;
+  let attributePlan;
 
   for (i = 0; i < orderedJobs.length; i += 1) {
     try {
@@ -2507,64 +2505,47 @@ function hf_prefetchTickerJobs_(jobs) {
         orderedJobs[i].attribute,
       );
       orderedJobs[i].requestInput = requestInput;
+      resolvePlan = hf_buildResolvePlan_(requestInput);
+      orderedJobs[i].resolvePlan = resolvePlan;
 
-      if (requestInput.infoMode) {
-        plan = hf_classifyTickerJob_(
-          orderedJobs[i].tickerInput,
-          orderedJobs[i].attribute,
-        );
-        orderedJobs[i].plan = plan;
-
-        if (hf_isDebugRoutePlan_(plan)) {
-          orderedJobs[i].value = plan.debugValue;
-          orderedJobs[i].valueResolved = true;
-          continue;
-        }
-      }
-
-      resolvedRequest = hf_resolveIdentifierDirect_(requestInput);
-
-      if (resolvedRequest) {
-        orderedJobs[i].resolvedRequest = resolvedRequest;
-        orderedJobs[i].resolverPlan = hf_buildQuoteRoutePlanForResolvedRequest_(
-          requestInput,
-          resolvedRequest,
-        );
-        hf_prepareResolverJob_(
-          orderedJobs[i],
-          orderedJobs[i].resolverPlan,
-          resolvedRequest,
-        );
+      if (resolvePlan.debugValue) {
+        orderedJobs[i].plan = hf_createDebugRoutePlan_(resolvePlan.debugValue);
+        orderedJobs[i].value = resolvePlan.debugValue;
+        orderedJobs[i].valueResolved = true;
         continue;
       }
 
-      plan = hf_buildIdentifierResolutionPlan_(requestInput);
-
-      if (!plan) {
-        throw new Error("Identifier resolution failed.");
-      }
-
-      identifierResult = plan.resolve(requestInput);
-
-      if (!identifierResult || identifierResult.status !== "success") {
-        throw new Error(
-          identifierResult && identifierResult.error
-            ? identifierResult.error
-            : "Identifier resolution failed.",
-        );
-      }
-
-      resolvedRequest = identifierResult.value;
+      resolvedRequest = resolvePlan.resolvedRequest;
+      attributePlan = resolvePlan.attributePlan;
 
       if (!resolvedRequest) {
-        throw new Error("Identifier resolution failed.");
+        if (!resolvePlan.identifierPlan) {
+          throw new Error("Identifier resolution failed.");
+        }
+
+        identifierResult = resolvePlan.identifierPlan.resolve(requestInput);
+
+        if (!identifierResult || identifierResult.status !== "success") {
+          throw new Error(
+            identifierResult && identifierResult.error
+              ? identifierResult.error
+              : "Identifier resolution failed.",
+          );
+        }
+
+        resolvedRequest = identifierResult.value;
+
+        if (!resolvedRequest) {
+          throw new Error("Identifier resolution failed.");
+        }
+
+        attributePlan = resolvePlan.buildAttributePlan
+          ? resolvePlan.buildAttributePlan(resolvedRequest)
+          : null;
       }
 
       orderedJobs[i].resolvedRequest = resolvedRequest;
-      orderedJobs[i].resolverPlan = hf_buildQuoteRoutePlanForResolvedRequest_(
-        requestInput,
-        resolvedRequest,
-      );
+      orderedJobs[i].resolverPlan = attributePlan;
       hf_prepareResolverJob_(
         orderedJobs[i],
         orderedJobs[i].resolverPlan,
@@ -2576,49 +2557,6 @@ function hf_prefetchTickerJobs_(jobs) {
   }
 
   hf_executeRouteJobs_(orderedJobs);
-}
-
-function hf_buildForcedSourcePlan_(request) {
-  const normalizedSourceOverride = String(request.sourceOverride || "")
-    .trim()
-    .toUpperCase();
-  const forcedAttributePlan =
-    HOODLEFINANCE_FORCED_ATTRIBUTE_PLAN_BY_SOURCE_[normalizedSourceOverride];
-
-  if (request.attributeType === "isin") {
-    return null;
-  }
-
-  if (!forcedAttributePlan) {
-    throw new Error(
-      '"@' +
-        normalizedSourceOverride +
-        '" can only be used with the "isin" attribute.',
-    );
-  }
-
-  const resolvedRequest = hf_resolveIdentifierDirect_(request);
-
-  if (resolvedRequest) {
-    return forcedAttributePlan
-      .buildPlan(
-        request,
-        resolvedRequest,
-      )
-      .buildRuntimePlan(resolvedRequest);
-  }
-
-  const identifierPlan = hf_buildIdentifierResolutionPlan_(request);
-
-  if (!identifierPlan) {
-    throw new Error("Identifier resolution failed.");
-  }
-
-  return hf_createDebugRoutePlan_(
-    hf_describePlanSource_(identifierPlan.buildRuntimePlan(request)) +
-      " => " +
-      forcedAttributePlan.routePath,
-  );
 }
 
 function hf_describePlanSource_(plan) {
@@ -2654,6 +2592,25 @@ function hf_buildEquityYahooQuoteRouteState_(equityRequest) {
     fxPair: null,
     yahooSymbol: equityRequest.yahooSymbol,
   };
+}
+
+function hf_createResolvePlan_(options) {
+  const config = options || {};
+
+  return Object.freeze({
+    attributePlan: config.attributePlan || null,
+    buildAttributePlan:
+      typeof config.buildAttributePlan === "function"
+        ? config.buildAttributePlan
+        : null,
+    debugValue:
+      config.debugValue != null ? String(config.debugValue) : "",
+    identifierPlan: config.identifierPlan || null,
+    plannedRoute:
+      config.plannedRoute != null ? String(config.plannedRoute) : "",
+    requestInput: config.requestInput || null,
+    resolvedRequest: config.resolvedRequest || null,
+  });
 }
 
 const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
@@ -2699,10 +2656,14 @@ const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
 ];
 
 function hf_buildRoutingTableRow_(row) {
+  const resolvePlan = hf_buildResolvePlan_(
+    new RequestInput(row.example, "price"),
+  );
+
   return {
     classification: row.classification,
     example: row.example,
-    route: hf_describePlanSource_(hf_classifyTickerJob_(row.example, "price")),
+    route: resolvePlan.debugValue || resolvePlan.plannedRoute,
   };
 }
 
@@ -3794,9 +3755,10 @@ class AttributeResolutionPlan extends ResolverPlan {}
 class PSEQuotePlan extends AttributeResolutionPlan {
   constructor(routeClass) {
     super(
-      routeClass || "PSE-TICKER",
+      "PSE",
       [HOODLEFINANCE_PSE_FRAMES_RESOLVER_, HOODLEFINANCE_PSE_EDGE_RESOLVER_],
       {
+        routeClass: routeClass || "PSE-TICKER",
         routePath: "PSE-FRAMES -> PSE-EDGE",
         routeStateBuilder: hf_buildPseQuoteRouteState_,
       },
@@ -4005,119 +3967,86 @@ function hf_buildSingleResolverIdentifierPlan_(routeClass, resolver, routePath) 
   });
 }
 
-function hf_buildYahooQuoteRouteState_(request) {
-  return {
-    fxPair: request.fxPair || null,
-    yahooSymbol:
-      request.requestType === "fx"
-        ? request.fxPair.yahooChartSymbol
-        : request.yahooSymbol,
-  };
-}
-
 function hf_buildSingleResolverAttributePlan_(
   routeClass,
   resolver,
   routePath,
-  routeStateBuilder,
 ) {
-  const options = { routePath: routePath };
-
-  if (routeStateBuilder) {
-    options.routeStateBuilder = routeStateBuilder;
-  }
-
-  return new AttributeResolutionPlan(routeClass, [resolver], options);
+  return new AttributeResolutionPlan(routeClass, [resolver], {
+    routePath: routePath,
+  });
 }
 
-function hf_buildForcedPseSubsourceQuotePlan_(
-  input,
-  request,
-  sourceOverride,
-  resolver,
-) {
-  if (input.attributeType !== "quote") {
-    throw new Error('"@' + sourceOverride + '" can only be used with quote attributes.');
-  }
-
-  if (request.exchange !== "PSE") {
-    throw new Error(
-      '"@' +
-        sourceOverride +
-        '" can only be used with PSE tickers and PSE-mapped ISINs.',
-    );
+function hf_buildForcedSelectedAttributePlan_(resolverOrPlan, request) {
+  if (resolverOrPlan instanceof ResolverPlan) {
+    return new AttributeResolutionPlan("", resolverOrPlan.getNodesForRequest(request), {
+      routePath: resolverOrPlan.buildRoutePath(request),
+      routeStateBuilder: resolverOrPlan.routeStateBuilder || null,
+    });
   }
 
   return hf_buildSingleResolverAttributePlan_(
-    "FORCED:" + sourceOverride,
-    resolver,
-    sourceOverride,
+    "",
+    resolverOrPlan,
+    resolverOrPlan.traceLabel || resolverOrPlan.name,
   );
 }
 
-const HOODLEFINANCE_FORCED_ATTRIBUTE_PLAN_BY_SOURCE_ = {
-  YAHOO: {
-    routePath: "YAHOO",
-    buildPlan: function (_input, request) {
-      return hf_buildSingleResolverAttributePlan_(
-        "FORCED:YAHOO",
-        HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_,
-        "YAHOO",
-        function () {
-          return hf_buildYahooQuoteRouteState_(request);
-        },
-      );
-    },
-  },
-  GOOGLE: {
-    routePath: "GOOGLE",
-    buildPlan: function (_input, request) {
-      if (request.requestType !== "fx") {
-        throw new Error('"@GOOGLE" can only be used with currency pairs.');
-      }
+function hf_findNamedResolverNode_(node, name, request) {
+  let nodes;
+  let i;
+  let found;
 
-      return hf_buildSingleResolverAttributePlan_(
-        "FORCED:GOOGLE",
-        HOODLEFINANCE_GOOGLE_FX_RESOLVER_,
-        "GOOGLE",
-      );
-    },
-  },
-  PSE: {
-    routePath: "PSE-FRAMES -> PSE-EDGE",
-    buildPlan: function (_input, request) {
-      if (request.exchange !== "PSE") {
-        throw new Error(
-          '"@PSE" can only be used with PSE tickers and PSE-mapped ISINs.',
-        );
-      }
+  if (!node || !name) {
+    return null;
+  }
 
-      return new PSEQuotePlan("FORCED:PSE");
-    },
-  },
-  "PSE-FRAMES": {
-    routePath: "PSE-FRAMES",
-    buildPlan: function (input, request) {
-      return hf_buildForcedPseSubsourceQuotePlan_(
-        input,
-        request,
-        "PSE-FRAMES",
-        HOODLEFINANCE_PSE_FRAMES_RESOLVER_,
-      );
-    },
-  },
-  "PSE-EDGE": {
-    routePath: "PSE-EDGE",
-    buildPlan: function (input, request) {
-      return hf_buildForcedPseSubsourceQuotePlan_(
-        input,
-        request,
-        "PSE-EDGE",
-        HOODLEFINANCE_PSE_EDGE_RESOLVER_,
-      );
-    },
-  },
-};
+  if (String(node.name || "").trim().toUpperCase() === name) {
+    return node;
+  }
+
+  if (!(node instanceof ResolverPlan)) {
+    return null;
+  }
+
+  nodes = node.getNodesForRequest(request);
+
+  for (i = 0; i < nodes.length; i += 1) {
+    found = hf_findNamedResolverNode_(nodes[i], name, request);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function hf_describeForcedAttributeSourcePath_(sourceOverride) {
+  const normalizedSource = String(sourceOverride || "").trim().toUpperCase();
+
+  if (normalizedSource === "PSE") {
+    return new PSEQuotePlan().buildRoutePath({});
+  }
+
+  if (normalizedSource === "PSE-FRAMES") {
+    return HOODLEFINANCE_PSE_FRAMES_RESOLVER_.traceLabel;
+  }
+
+  if (normalizedSource === "PSE-EDGE") {
+    return HOODLEFINANCE_PSE_EDGE_RESOLVER_.traceLabel;
+  }
+
+  if (normalizedSource === "YAHOO") {
+    return HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_.traceLabel;
+  }
+
+  if (normalizedSource === "GOOGLE") {
+    return HOODLEFINANCE_GOOGLE_FX_RESOLVER_.traceLabel;
+  }
+
+  return normalizedSource;
+}
 
 function hf_buildIdentifierResolutionPlan_(input) {
   const isinValue = hf_extractIsinFromRequestInput_(input);
@@ -4162,21 +4091,7 @@ function hf_buildIdentifierResolutionPlan_(input) {
   );
 }
 
-function hf_buildQuoteRoutePlanForResolvedRequest_(input, request) {
-  const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
-  const forcedPlan =
-    HOODLEFINANCE_FORCED_ATTRIBUTE_PLAN_BY_SOURCE_[sourceOverride];
-
-  if (forcedPlan) {
-    return forcedPlan.buildPlan(input, request);
-  }
-
-  if (sourceOverride && input.attributeType === "quote") {
-    throw new Error(
-      '"@' + sourceOverride + '" can only be used with the "isin" attribute.',
-    );
-  }
-
+function hf_buildDefaultAttributePlanForResolvedRequest_(request) {
   if (request.requestType === "fx") {
     if (request.fxPair.isSameCurrency) {
       return hf_buildSingleResolverAttributePlan_(
@@ -4219,41 +4134,152 @@ function hf_buildQuoteRoutePlanForResolvedRequest_(input, request) {
   );
 }
 
-function hf_classifyTickerJob_(ticker, attribute) {
-  const normalizedTicker = String(ticker).trim();
-  const requestInput = new RequestInput(normalizedTicker, attribute);
+function hf_buildForcedAttributePlanForResolvedRequest_(input, request) {
+  const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
+  const defaultPlan = hf_buildDefaultAttributePlanForResolvedRequest_(request);
+  let selectedNode;
+
+  if (input.attributeType !== "quote") {
+    throw new Error(
+      '"@' + sourceOverride + '" can only be used with quote attributes.',
+    );
+  }
+
+  if (sourceOverride === "YAHOO" && request.requestType === "fx") {
+    return hf_buildSingleResolverAttributePlan_(
+      "",
+      HOODLEFINANCE_YAHOO_QUOTE_RESOLVER_,
+      "YAHOO",
+    );
+  }
+
+  selectedNode = hf_findNamedResolverNode_(defaultPlan, sourceOverride, request);
+
+  if (selectedNode instanceof ResolverPlan) {
+    return hf_buildForcedSelectedAttributePlan_(selectedNode, request);
+  }
+
+  if (selectedNode) {
+    return hf_buildForcedSelectedAttributePlan_(selectedNode, request);
+  }
+
+  if (sourceOverride === "GOOGLE") {
+    throw new Error('"@GOOGLE" can only be used with currency pairs.');
+  }
+
+  if (sourceOverride === "PSE" || HOODLEFINANCE_PSE_SOURCE_OVERRIDES_[sourceOverride]) {
+    throw new Error(
+      '"@' +
+        sourceOverride +
+        '" can only be used with PSE tickers and PSE-mapped ISINs.',
+    );
+  }
+
+  throw new Error(
+    '"@' + sourceOverride + '" can only be used with the "isin" attribute.',
+  );
+}
+
+function hf_buildQuoteRoutePlanForResolvedRequest_(input, request) {
+  const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
+
+  if (sourceOverride && input.attributeType === "quote") {
+    return hf_buildForcedAttributePlanForResolvedRequest_(input, request);
+  }
+
+  return hf_buildDefaultAttributePlanForResolvedRequest_(request);
+}
+
+function hf_buildResolvePlan_(requestInput) {
   const infoMode = requestInput.infoMode;
-  let plan;
-  let resolvedRequest;
+  const sourceOverride = String(requestInput.sourceOverride || "")
+    .trim()
+    .toUpperCase();
+  const hasForcedQuoteSource =
+    requestInput.attributeType === "quote" && !!requestInput.sourceOverride;
+  const resolvedRequest = hf_resolveIdentifierDirect_(requestInput);
 
   if (infoMode === "source-list") {
-    return hf_createDebugRoutePlan_(hf_listSupportedSources_());
+    return hf_createResolvePlan_({
+      debugValue: hf_listSupportedSources_(),
+      requestInput: requestInput,
+    });
   }
 
   if (infoMode === "source-name") {
-    plan = hf_classifyTickerJob_(requestInput.ticker, attribute);
-    return hf_createDebugRoutePlan_(hf_describePlanSource_(plan));
+    return hf_createResolvePlan_({
+      debugValue: hf_buildResolvePlan_(
+        new RequestInput(requestInput.ticker, requestInput.attribute),
+      ).plannedRoute,
+      requestInput: requestInput,
+    });
   }
 
-  if (requestInput.sourceOverride) {
-    plan = hf_buildForcedSourcePlan_(requestInput);
-
-    if (plan) {
-      return plan;
-    }
+  if (
+    requestInput.attributeType !== "quote" &&
+    HOODLEFINANCE_PSE_SOURCE_OVERRIDES_[sourceOverride] &&
+    sourceOverride !== "PSE"
+  ) {
+    throw new Error(
+      '"@' + sourceOverride + '" can only be used with quote attributes.',
+    );
   }
-
-  resolvedRequest = hf_resolveIdentifierDirect_(requestInput);
 
   if (resolvedRequest) {
-    return hf_buildQuoteRoutePlanForResolvedRequest_(
+    const attributePlan = hf_buildQuoteRoutePlanForResolvedRequest_(
       requestInput,
       resolvedRequest,
-    ).buildRuntimePlan(resolvedRequest);
+    );
+
+    return hf_createResolvePlan_({
+      attributePlan: attributePlan,
+      plannedRoute: hf_describePlanSource_(
+        attributePlan.buildRuntimePlan(resolvedRequest),
+      ),
+      requestInput: requestInput,
+      resolvedRequest: resolvedRequest,
+    });
   }
 
-  plan = hf_buildIdentifierResolutionPlan_(requestInput);
-  return plan ? plan.buildRuntimePlan(requestInput) : null;
+  const identifierPlan = hf_buildIdentifierResolutionPlan_(requestInput);
+
+  if (!identifierPlan) {
+    throw new Error("Identifier resolution failed.");
+  }
+
+  return hf_createResolvePlan_({
+    buildAttributePlan: function (resolvedIdentifierRequest) {
+      return hf_buildQuoteRoutePlanForResolvedRequest_(
+        requestInput,
+        resolvedIdentifierRequest,
+      );
+    },
+    identifierPlan: identifierPlan,
+    plannedRoute: hasForcedQuoteSource
+      ? hf_describePlanSource_(identifierPlan.buildRuntimePlan(requestInput)) +
+        " => " +
+        hf_describeForcedAttributeSourcePath_(sourceOverride)
+      : hf_describePlanSource_(identifierPlan.buildRuntimePlan(requestInput)),
+    requestInput: requestInput,
+  });
+}
+
+function hf_classifyTickerJob_(ticker, attribute) {
+  const resolvePlan = hf_buildResolvePlan_(
+    new RequestInput(String(ticker).trim(), attribute),
+  );
+
+  if (resolvePlan.debugValue) {
+    return hf_createDebugRoutePlan_(resolvePlan.debugValue);
+  }
+
+  if (resolvePlan.attributePlan && resolvePlan.resolvedRequest) {
+    return resolvePlan.attributePlan.buildRuntimePlan(resolvePlan.resolvedRequest);
+  }
+
+  return resolvePlan.identifierPlan
+    ? resolvePlan.identifierPlan.buildRuntimePlan(resolvePlan.requestInput)
+    : null;
 }
 
 function hf_cloneRouteState_(state) {

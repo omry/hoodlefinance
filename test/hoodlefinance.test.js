@@ -2097,6 +2097,49 @@ test("quote routing builds resolver plans for identifier and attribute phases", 
   assert.equal(attributePlan.resolve.constructor.name, "Function");
 });
 
+test("resolve plan is the single canonical planner output", () => {
+  const ctx = loadHoodlefinance();
+  const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
+  const directPlan = ctx.hf_buildResolvePlan_(new RequestInput("PSE:BDO", "price"));
+  const identifierPlan = ctx.hf_buildResolvePlan_(
+    new RequestInput("PHY077751022", "price"),
+  );
+  let resolvedRequest;
+  let attributePlan;
+
+  assert.equal(directPlan.requestInput.constructor.name, "RequestInput");
+  assert.equal(directPlan.resolvedRequest.constructor.name, "EquityRequest");
+  assert.equal(directPlan.attributePlan.constructor.name, "PSEQuotePlan");
+  assert.equal(directPlan.identifierPlan, null);
+  assert.equal(directPlan.buildAttributePlan, null);
+  assert.equal(directPlan.plannedRoute, "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE");
+
+  assert.equal(identifierPlan.requestInput.constructor.name, "RequestInput");
+  assert.equal(identifierPlan.resolvedRequest, null);
+  assert.equal(
+    identifierPlan.identifierPlan.constructor.name,
+    "IdentifierResolutionPlan",
+  );
+  assert.equal(typeof identifierPlan.buildAttributePlan, "function");
+  assert.equal(identifierPlan.attributePlan, null);
+  assert.equal(
+    identifierPlan.plannedRoute,
+    "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
+  );
+
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.pseIsinMap",
+    JSON.stringify({
+      fetchedAtMs: new Date().getTime(),
+      text: PSE_ISIN_MAP_PROPERTIES,
+    }),
+  );
+  resolvedRequest = identifierPlan.identifierPlan.resolve(identifierPlan.requestInput).value;
+  attributePlan = identifierPlan.buildAttributePlan(resolvedRequest);
+  assert.equal(resolvedRequest.constructor.name, "EquityRequest");
+  assert.equal(attributePlan.constructor.name, "PSEQuotePlan");
+});
+
 test("identifier-phase PSE ISIN resolution returns a typed request directly", () => {
   const ctx = loadHoodlefinance();
   const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;

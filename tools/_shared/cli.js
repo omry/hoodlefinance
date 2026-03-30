@@ -141,11 +141,11 @@ function traceRoutingForSymbol(symbol, ctx) {
   const RequestInput = runtime.HOODLEFINANCE_ROUTING_TYPES_
     ? runtime.HOODLEFINANCE_ROUTING_TYPES_.RequestInput
     : null;
+  const buildResolvePlan = runtime.hf_buildResolvePlan_ || null;
   const plannedRouteParts = [];
+  let resolvePlan;
   let requestInput;
   let resolvedRequest;
-  let identifierPlan;
-  let attributePlan;
   let identifierJob;
   let attributeJob;
   let runtimeTrace;
@@ -156,44 +156,35 @@ function traceRoutingForSymbol(symbol, ctx) {
 
   if (
     RequestInput &&
+    buildResolvePlan &&
     runtime.hf_resolveIdentifierDirect_ &&
-    runtime.hf_buildIdentifierResolutionPlan_ &&
-    runtime.hf_buildQuoteRoutePlanForResolvedRequest_ &&
     runtime.hf_createResolverRouteJob_ &&
     runtime.hf_prepareResolverJob_
   ) {
     try {
       requestInput = new RequestInput(ticker, "price");
+      resolvePlan = buildResolvePlan(requestInput);
 
-      if (requestInput.infoMode) {
-        job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, "price");
-
-        if (Object.prototype.hasOwnProperty.call(job.plan || {}, "debugValue")) {
-          return {
-            ok: true,
-            plannedRoute: String(job.plan.debugValue || ""),
-            totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
-            runtimeTrace: [],
-            value: null,
-          };
-        }
+      if (resolvePlan.debugValue) {
+        return {
+          ok: true,
+          plannedRoute: String(resolvePlan.debugValue || ""),
+          totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
+          runtimeTrace: [],
+          value: null,
+        };
       }
 
-      resolvedRequest = runtime.hf_resolveIdentifierDirect_(requestInput);
+      plannedRouteParts.push(String(resolvePlan.plannedRoute || ""));
+      resolvedRequest = resolvePlan.resolvedRequest;
 
       if (!resolvedRequest) {
-        identifierPlan = runtime.hf_buildIdentifierResolutionPlan_(requestInput);
-
-        if (!identifierPlan) {
-          throw new Error("Identifier resolution failed.");
-        }
-
-        plannedRouteParts.push(
-          runtime.hf_describePlanSource_(identifierPlan.buildRuntimePlan(requestInput)),
-        );
-
         identifierJob = runtime.hf_createResolverRouteJob_(requestInput);
-        runtime.hf_prepareResolverJob_(identifierJob, identifierPlan, requestInput);
+        runtime.hf_prepareResolverJob_(
+          identifierJob,
+          resolvePlan.identifierPlan,
+          requestInput,
+        );
         runtime.hf_executeRouteJobs_([identifierJob]);
 
         if (identifierJob.error) {
@@ -207,16 +198,15 @@ function traceRoutingForSymbol(symbol, ctx) {
         }
       }
 
-      attributePlan = runtime.hf_buildQuoteRoutePlanForResolvedRequest_(
-        requestInput,
+      attributeJob = runtime.hf_createResolverRouteJob_(resolvedRequest);
+      runtime.hf_prepareResolverJob_(
+        attributeJob,
+        resolvePlan.attributePlan ||
+          (resolvePlan.buildAttributePlan
+            ? resolvePlan.buildAttributePlan(resolvedRequest)
+            : null),
         resolvedRequest,
       );
-      plannedRouteParts.push(
-        runtime.hf_describePlanSource_(attributePlan.buildRuntimePlan(resolvedRequest)),
-      );
-
-      attributeJob = runtime.hf_createResolverRouteJob_(resolvedRequest);
-      runtime.hf_prepareResolverJob_(attributeJob, attributePlan, resolvedRequest);
       runtime.hf_executeRouteJobs_([attributeJob]);
 
       resultError = attributeJob.error || "";
