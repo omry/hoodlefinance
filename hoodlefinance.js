@@ -6553,10 +6553,16 @@ function hf_resolveTradingviewIsin_(quote, context) {
   const yahooExchange = hf_inferIsinExchange_(quote, context);
   const tradingviewExchange = hf_inferTradingviewExchange_(quote, context);
   const code = hf_extractTradingviewCode_(quote, context);
+  const tickerInput =
+    context && context.tickerInput
+      ? String(hf_stripTickerSourceOverride_(context.tickerInput) || "")
+          .trim()
+      : "";
   const cacheKey =
     "hoodlefinance:tradingview:isin:" + tradingviewExchange + ":" + code;
   const expectedSymbol =
     tradingviewExchange && code ? tradingviewExchange + ":" + code : "";
+  const displaySymbol = tickerInput || expectedSymbol;
 
   if (!tradingviewExchange) {
     if (yahooExchange) {
@@ -6591,7 +6597,7 @@ function hf_resolveTradingviewIsin_(quote, context) {
     if (resolvedSymbol && resolvedSymbol !== expectedSymbol) {
       throw new Error(
         'TradingView resolved "' +
-          expectedSymbol +
+          displaySymbol +
           '" to "' +
           resolvedSymbol +
           '" instead of an exact symbol match.',
@@ -6600,7 +6606,7 @@ function hf_resolveTradingviewIsin_(quote, context) {
 
     if (!isin) {
       throw new Error(
-        'No TradingView ISIN is available for "' + expectedSymbol + '".',
+        'No TradingView ISIN is available for "' + displaySymbol + '".',
       );
     }
 

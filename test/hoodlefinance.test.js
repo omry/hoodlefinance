@@ -5323,6 +5323,27 @@ test("isin helper errors avoid source-internal lookup jargon", () => {
   }, /Could not determine the ticker code needed for TradingView ISIN lookup\./);
 });
 
+test("TradingView ISIN errors report the original input symbol", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.hf_fetchText_ = function () {
+    return "<html></html>";
+  };
+  ctx.hf_extractTradingviewResolvedSymbol_ = function () {
+    return "";
+  };
+  ctx.hf_extractTradingviewIsin_ = function () {
+    return "";
+  };
+
+  assert.throws(function () {
+    ctx.hf_resolveTradingviewIsin_(
+      { symbol: "ZPRX.DE" },
+      { tickerInput: "ZPRX.DE" },
+    );
+  }, /No TradingView ISIN is available for "ZPRX\.DE"\./);
+});
+
 test("extracts TradingView symbol metadata from the page bootstrap", () => {
   const ctx = loadHoodlefinance();
 
@@ -5455,7 +5476,7 @@ test("isin@TRADINGVIEW rejects mismatched TradingView symbols", () => {
     ctx.hf_extractAttribute_({ symbol: "ZPRX.DE" }, "isin", {
       tickerInput: "ZPRX.DE@TRADINGVIEW",
     });
-  }, /TradingView resolved "XETR:ZPRX" to "LSE:SJPA" instead of an exact symbol match\./);
+  }, /TradingView resolved "ZPRX\.DE" to "LSE:SJPA" instead of an exact symbol match\./);
 });
 
 test("extracts exact PSE listing matches from search results", () => {
