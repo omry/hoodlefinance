@@ -6,14 +6,14 @@ slug: /terms-of-service
 
 Last updated: March 22, 2026
 
-These Terms of Service apply to the HoodleFinance Google Sheets add-on and the underlying Google Apps Script project. By installing or using the add-on, you agree to these terms.
+These Terms of Service apply to the HoodleFinance Google Sheets™ add-on and the underlying Google Apps Script™ project. By installing or using the add-on, you agree to these terms.
 
 ## Permitted Use
 
-You may use HoodleFinance as a Google Sheets add-on for financial data retrieval, lookup, conversion, and related spreadsheet functionality, subject to:
+You may use HoodleFinance as a Google Sheets™ add-on for financial data retrieval, lookup, conversion, and related spreadsheet functionality, subject to:
 
 - These Terms of Service.
-- The terms that govern Google Workspace, Google Sheets, and Google Apps Script.
+- The terms that govern Google Workspace™, Google Sheets™, and Google Apps Script™.
 - The terms, availability, and acceptable use policies of any upstream third-party data sources utilized by the project.
 
 ## No Guarantee of Availability or Termination
