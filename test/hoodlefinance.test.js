@@ -1963,6 +1963,10 @@ test("source introspection suffixes return the planned route or the supported so
     "identifier: PSE, YAHOO; attribute: PSE (PSE-FRAMES, PSE-EDGE), YAHOO",
   );
   assert.equal(
+    ctx.HOODLEFINANCE("PSE:AAA@"),
+    "PSE (PSE-FRAMES, PSE-EDGE)",
+  );
+  assert.equal(
     ctx.HOODLEFINANCE("TLV:KSMF59@"),
     "YAHOO, TRADINGVIEW",
   );
@@ -2066,11 +2070,11 @@ test("forced PSE sub-sources are quote-only overrides", () => {
 
   assert.throws(
     () => ctx.HOODLEFINANCE("PSE:BDO@PSE-FRAMES", "isin"),
-    /"@PSE-FRAMES" can only be used with quote attributes\./,
+    /"@PSE-FRAMES" is not available for ISIN lookups\./,
   );
   assert.throws(
     () => ctx.HOODLEFINANCE("PSE:BDO@PSE-EDGE", "isin"),
-    /"@PSE-EDGE" can only be used with quote attributes\./,
+    /"@PSE-EDGE" is not available for ISIN lookups\./,
   );
 });
 
@@ -2769,18 +2773,29 @@ test("forced Google source routes fiat FX pairs through Google Finance quote pag
   assert.deepEqual(seenUrls, ["https://www.google.com/finance/quote/EUR-USD"]);
 });
 
-test("unsupported quote-source overrides fail clearly", () => {
+test("quote-source overrides route through matching plan nodes and reject unavailable ones", () => {
   const ctx = loadHoodlefinance();
 
+  ctx.UrlFetchApp.fetch = function () {
+    throw new Error("Unexpected direct fetch");
+  };
+  ctx.UrlFetchApp.fetchAll = function (requests) {
+    return requests.map((request) => {
+      if (request.url === "https://www.tradingview.com/symbols/TASE-KSM.F59/") {
+        return createHttpResponse(200, TRADINGVIEW_TASE_KSM_F59_HTML);
+      }
+
+      throw new Error("Unexpected URL " + request.url);
+    });
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59@TRADINGVIEW", "price"), 405.6);
   assert.throws(function () {
     ctx.HOODLEFINANCE("GOOG@IBKR", "price");
-  }, /"@IBKR" can only be used with the "isin" attribute\./);
-  assert.throws(function () {
-    ctx.HOODLEFINANCE("TLV:KSMF59@TRADINGVIEW", "price");
-  }, /"@TRADINGVIEW" can only be used with the "isin" attribute\./);
+  }, /"@IBKR" is not available for this request\./);
   assert.throws(function () {
     ctx.HOODLEFINANCE("US02079K1079@PSE", "price");
-  }, /"@PSE" can only be used with PSE tickers and PSE-mapped ISINs\./);
+  }, /"@PSE" is not available for this request\./);
 });
 
 test("scalar calls use the shared batch fetch pipeline", () => {

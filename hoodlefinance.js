@@ -2245,7 +2245,7 @@ function hf_listSupportedSources_() {
 function hf_listRegisteredSourceOverrideNodes_() {
   return Object.keys(HOODLEFINANCE_REGISTERED_RESOLVERS_BY_NAME_).map(function (name) {
     return HOODLEFINANCE_REGISTERED_RESOLVERS_BY_NAME_[name];
-  }).concat(hf_getGroupedSourceDisplayPlans_());
+  }).concat(hf_listSourceOverridePlans_());
 }
 
 function hf_listSourceOverrideNames_() {
@@ -2276,7 +2276,7 @@ function hf_isGroupedSourceName_(source) {
   let i;
   let j;
 
-  groupedPlans = hf_getGroupedSourceDisplayPlans_();
+  groupedPlans = hf_listSourceOverridePlans_();
 
   for (i = 0; i < groupedPlans.length; i += 1) {
     const groupedSources = groupedPlans[i].getGroupedSourceNames({}) || [];
@@ -2291,22 +2291,12 @@ function hf_isGroupedSourceName_(source) {
   return false;
 }
 
-function hf_getGroupedSourceDisplayPlans_() {
-  return HOODLEFINANCE_GROUPED_SOURCE_DISPLAY_PLANS_;
-}
-
-function hf_isPseQuoteSource_(source) {
-  const normalizedSource = String(source || "").trim().toUpperCase();
-  const psePlan = hf_getGroupedSourceDisplayPlans_()[0];
-
-  return (
-    psePlan.matchesSourceName(normalizedSource) ||
-    psePlan.getGroupedSourceNames({}).indexOf(normalizedSource) >= 0
-  );
+function hf_listSourceOverridePlans_() {
+  return HOODLEFINANCE_SOURCE_OVERRIDE_PLANS_;
 }
 
 function hf_getGroupedSourceNamesForDisplay_(source, request) {
-  const groupedPlan = hf_getGroupedSourceDisplayPlans_().find(function (plan) {
+  const groupedPlan = hf_listSourceOverridePlans_().find(function (plan) {
     return plan && plan.matchesSourceName(source);
   });
 
@@ -2345,7 +2335,7 @@ function hf_collectSupportedSourcesFromPlan_(
   let nodes;
   let i;
 
-  if (!node) {
+  if (!node || (node.canHandle && !node.canHandle(request))) {
     return;
   }
 
@@ -2353,11 +2343,11 @@ function hf_collectSupportedSourcesFromPlan_(
     supportedSourcesByName[normalizedSourceName] = true;
   }
 
-  if (!(node instanceof ResolverPlan)) {
+  if (!(node instanceof ResolverPlan) || hf_isSourceOverridePlanNode_(node)) {
     return;
   }
 
-  nodes = node.getNodesForRequest(request);
+  nodes = hf_listSearchablePlanNodes_(node, request);
 
   for (i = 0; i < nodes.length; i += 1) {
     hf_collectSupportedSourcesFromPlan_(nodes[i], request, supportedSourcesByName);
@@ -2420,10 +2410,6 @@ function hf_listSupportedQuoteSources_(request) {
     request,
     supportedSourcesByName,
   );
-
-  if (request.requestType === "fx") {
-    supportedSourcesByName.YAHOO = true;
-  }
 
   return hf_formatSupportedSources_(supportedSourcesByName, true, request);
 }
@@ -2770,6 +2756,10 @@ function hf_buildPseQuoteRouteState_(request) {
   return { symbol: request.symbol };
 }
 
+function hf_buildFxQuoteRouteState_(request) {
+  return { fxPair: request.fxPair };
+}
+
 function hf_buildEquityYahooQuoteRouteState_(equityRequest) {
   return {
     fxPair: null,
@@ -2965,6 +2955,7 @@ class Resolver {
 
     this.code = code || "";
     this.name = this.code;
+    this.representativeTicker = config.representativeTicker || "";
     this.sourceName = sourceName != null ? sourceName : this.code;
     this.isSourceOverrideable = config.isSourceOverrideable === true;
   }
@@ -3281,6 +3272,14 @@ class ResolverPlan extends Resolver {
       delete materializedOptions.routeStateBuilderRef;
     }
 
+    if (sourceOptions.nodeSelectorRef) {
+      materializedOptions.nodeSelector =
+        HOODLEFINANCE_PLAN_NODE_SELECTOR_BY_REF_[
+          sourceOptions.nodeSelectorRef
+        ] || null;
+      delete materializedOptions.nodeSelectorRef;
+    }
+
     if (nodeSelector) {
       materializedOptions.nodeSelector = nodeSelector;
     }
@@ -3297,6 +3296,24 @@ class ResolverPlan extends Resolver {
       this.materializeOptions(spec, overrides),
     );
   }
+}
+
+function hf_listSearchablePlanNodes_(node, request) {
+  if (!(node instanceof ResolverPlan)) {
+    return [];
+  }
+
+  return (node.nodes || []).filter(function (childNode) {
+    return !childNode || !childNode.canHandle || childNode.canHandle(request);
+  });
+}
+
+function hf_isSourceOverridePlanNode_(node) {
+  return (
+    node instanceof ResolverPlan &&
+    node.isSourceOverrideable === true &&
+    !!String(node.sourceName || "").trim()
+  );
 }
 
 class DirectIdentifierResolver extends Resolver {
@@ -3531,7 +3548,10 @@ class LocalFxResolver extends AttemptResolver {
 
 class GoogleFxResolver extends AttemptResolver {
   constructor() {
-    super("GOOGLE", { isSourceOverrideable: true });
+    super("GOOGLE", {
+      isSourceOverrideable: true,
+      representativeTicker: "EURUSD",
+    });
   }
 
   canHandle(request) {
@@ -3568,7 +3588,10 @@ class GoogleFxResolver extends AttemptResolver {
 
 class YahooQuoteResolver extends AttemptResolver {
   constructor() {
-    super("YAHOO", { isSourceOverrideable: true });
+    super("YAHOO", {
+      isSourceOverrideable: true,
+      representativeTicker: "GOOG",
+    });
   }
 
   canHandle(request) {
@@ -3697,7 +3720,9 @@ class YahooQuoteResolver extends AttemptResolver {
 
 class TradingviewFundResolver extends AttemptResolver {
   constructor() {
-    super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW");
+    super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW", {
+      representativeTicker: "TLV:KSMF59",
+    });
   }
 
   canHandle(request) {
@@ -3858,7 +3883,10 @@ class FunctionValueResolver extends AttemptResolver {
 
 class PSEFramesResolver extends AttemptResolver {
   constructor() {
-    super("PSE-FRAMES", { isSourceOverrideable: true });
+    super("PSE-FRAMES", {
+      isSourceOverrideable: true,
+      representativeTicker: "PSE:BDO",
+    });
   }
 
   canHandle(request) {
@@ -3968,7 +3996,10 @@ class PSEFramesResolver extends AttemptResolver {
 
 class PSEEdgeResolver extends AttemptResolver {
   constructor() {
-    super("PSE-EDGE", { isSourceOverrideable: true });
+    super("PSE-EDGE", {
+      isSourceOverrideable: true,
+      representativeTicker: "PSE:BDO",
+    });
   }
 
   canHandle(request) {
@@ -4320,11 +4351,33 @@ const HOODLEFINANCE_PLAN_SPECS_BY_CODE_ = {
       routeStateBuilderRef: "ISIN_IDENTIFIER",
     },
   },
+  "FX-SAME": {
+    nodeCodes: ["LOCAL"],
+    resolverClass: "AttributeResolutionPlan",
+    options: {
+      defaultAttributeOrder: 10,
+      routeClass: "FX-SAME",
+      routePath: "LOCAL",
+    },
+  },
+  FX: {
+    nodeCodes: ["GOOGLE", "YAHOO"],
+    resolverClass: "AttributeResolutionPlan",
+    options: {
+      defaultAttributeOrder: 20,
+      nodeSelectorRef: "DEFAULT_FX_QUOTE",
+      routeClass: "FX",
+      routePath: "GOOGLE",
+      routeStateBuilderRef: "FX_QUOTE",
+    },
+  },
   PSE: {
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
     resolverClass: "AttributeResolutionPlan",
     options: {
+      defaultAttributeOrder: 30,
       isSourceOverrideable: true,
+      representativeTicker: "PSE:BDO",
       routeClass: "PSE-TICKER",
       routeStateBuilderRef: "PSE_QUOTE",
       sourceName: "PSE",
@@ -4334,10 +4387,15 @@ const HOODLEFINANCE_PLAN_SPECS_BY_CODE_ = {
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     resolverClass: "AttributeResolutionPlan",
     options: {
+      defaultAttributeOrder: 40,
       routeClassRef: "EQUITY_TICKER_CLASS",
       routePathRef: "EQUITY_TICKER_PATH",
       routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
     },
+  },
+  "ISIN-SOURCE": {
+    nodeCodes: ["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"],
+    resolverClass: "AttributeResolutionPlan",
   },
 };
 
@@ -4371,14 +4429,6 @@ const HOODLEFINANCE_RESOLVERS_BY_CODE_ = hf_materializeResolversByCode_(
   HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_,
 );
 
-const HOODLEFINANCE_ISIN_RESOLVER_BY_SOURCE_ = {
-  ARIVA: HOODLEFINANCE_RESOLVERS_BY_CODE_.ARIVA,
-  IBKR: HOODLEFINANCE_RESOLVERS_BY_CODE_.IBKR,
-  LON: HOODLEFINANCE_RESOLVERS_BY_CODE_.LON,
-  PSE: HOODLEFINANCE_RESOLVERS_BY_CODE_.PSE,
-  TRADINGVIEW: HOODLEFINANCE_RESOLVERS_BY_CODE_.TRADINGVIEW,
-};
-
 const HOODLEFINANCE_PLAN_ROUTE_CLASS_BY_REF_ = {
   EQUITY_TICKER_CLASS: function (equityRequest) {
     return equityRequest.allowTradingviewFallback
@@ -4395,8 +4445,17 @@ const HOODLEFINANCE_PLAN_ROUTE_PATH_BY_REF_ = {
   },
 };
 
+const HOODLEFINANCE_PLAN_NODE_SELECTOR_BY_REF_ = {
+  DEFAULT_FX_QUOTE: function (nodes) {
+    return nodes.filter(function (node) {
+      return String((node && node.name) || "").trim().toUpperCase() === "GOOGLE";
+    });
+  },
+};
+
 const HOODLEFINANCE_PLAN_ROUTE_STATE_BUILDER_BY_REF_ = {
   EQUITY_YAHOO_QUOTE: hf_buildEquityYahooQuoteRouteState_,
+  FX_QUOTE: hf_buildFxQuoteRouteState_,
   ISIN_IDENTIFIER: hf_buildIsinIdentifierRouteState_,
   PSE_QUOTE: hf_buildPseQuoteRouteState_,
 };
@@ -4428,15 +4487,39 @@ function hf_materializePlanFromSpec_(code, optionOverrides) {
   );
 }
 
-const HOODLEFINANCE_GROUPED_SOURCE_DISPLAY_PLANS_ = [
-  hf_materializePlanFromSpec_("PSE"),
-];
-
-function hf_getPseQuoteSourceNames_() {
-  const psePlan = hf_getGroupedSourceDisplayPlans_()[0];
-
-  return [psePlan.sourceName].concat(psePlan.getGroupedSourceNames({}));
+function hf_materializeSourceOverridePlans_() {
+  return Object.keys(HOODLEFINANCE_PLAN_SPECS_BY_CODE_).filter(function (code) {
+    return !!(
+      ((HOODLEFINANCE_PLAN_SPECS_BY_CODE_[code] || {}).options || {})
+        .isSourceOverrideable
+    );
+  }).map(function (code) {
+    return hf_materializePlanFromSpec_(code);
+  });
 }
+
+function hf_materializeDefaultAttributePlans_() {
+  return Object.keys(HOODLEFINANCE_PLAN_SPECS_BY_CODE_).map(function (code) {
+    const spec = HOODLEFINANCE_PLAN_SPECS_BY_CODE_[code] || {};
+    const options = spec.options || {};
+
+    return {
+      order: Number(options.defaultAttributeOrder),
+      plan: hf_materializePlanFromSpec_(code),
+    };
+  }).filter(function (entry) {
+    return isFinite(entry.order);
+  }).sort(function (left, right) {
+    return left.order - right.order;
+  }).map(function (entry) {
+    return entry.plan;
+  });
+}
+
+const HOODLEFINANCE_SOURCE_OVERRIDE_PLANS_ =
+  hf_materializeSourceOverridePlans_();
+const HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_ =
+  hf_materializeDefaultAttributePlans_();
 
 function hf_extractIsinFromRequestInput_(input) {
   const ticker = String((input && input.ticker) || "").trim();
@@ -4543,42 +4626,114 @@ function hf_buildSingleResolverIdentifierPlan_(routeClass, resolver, routePath) 
   });
 }
 
-function hf_findIdentifierOverrideResolver_(input, sourceOverride) {
-  const normalizedSource = String(sourceOverride || "").trim().toUpperCase();
+function hf_matchesResolverNodeName_(node, name) {
+  const normalizedName = String(name || "").trim().toUpperCase();
 
-  return [
-    HOODLEFINANCE_RESOLVERS_BY_CODE_["PSE-MAP"],
-    HOODLEFINANCE_RESOLVERS_BY_CODE_["YAHOO-ISIN"],
-  ].find(function (resolver) {
-    return (
-      resolver.canHandle(input) &&
-      (
-        resolver.matchesSourceName(normalizedSource) ||
-        resolver.getAttributeOverrideSources(input).some(function (overrideSource) {
-          const normalizedOverrideSource = String(overrideSource || "")
-            .trim()
-            .toUpperCase();
-
-          return (
-            normalizedOverrideSource === normalizedSource ||
-            hf_getGroupedSourceNamesForDisplay_(normalizedOverrideSource, input).indexOf(
-              normalizedSource,
-            ) >= 0
-          );
-        })
-      )
-    );
-  }) || null;
+  return !!(
+    normalizedName &&
+    node &&
+    (
+      String((node && node.name) || "").trim().toUpperCase() === normalizedName ||
+      String((node && node.sourceName) || "").trim().toUpperCase() === normalizedName
+    )
+  );
 }
 
-function hf_buildIdentifierOverridePlan_(resolver) {
-  const routeSegment = String((resolver && resolver.name) || "")
+function hf_findNamedResolverNode_(node, name, request, options) {
+  const config = options || {};
+  const requireCanHandle = config.requireCanHandle !== false;
+  let nodes;
+  let i;
+  let found;
+
+  if (!node || !name) {
+    return null;
+  }
+
+  if (requireCanHandle && node.canHandle && !node.canHandle(request)) {
+    return null;
+  }
+
+  if (hf_matchesResolverNodeName_(node, name)) {
+    return node;
+  }
+
+  if (!(node instanceof ResolverPlan)) {
+    return null;
+  }
+
+  nodes = requireCanHandle
+    ? hf_listSearchablePlanNodes_(node, request)
+    : (node.nodes || []);
+
+  for (i = 0; i < nodes.length; i += 1) {
+    found = hf_findNamedResolverNode_(nodes[i], name, request, config);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function hf_buildSourceOverrideUnavailableError_(sourceOverride, contextLabel) {
+  const suffix = contextLabel ? " for " + contextLabel : " for this request";
+
+  return new Error('"@' + sourceOverride + '" is not available' + suffix + ".");
+}
+
+function hf_validateNonQuoteSourceOverride_(requestInput, resolvedRequest) {
+  const sourceOverride = String((requestInput && requestInput.sourceOverride) || "")
     .trim()
     .toUpperCase();
 
+  if (!sourceOverride || requestInput.attributeType === "quote") {
+    return;
+  }
+
+  if (resolvedRequest && resolvedRequest.requestType === "fx") {
+    return;
+  }
+
+  if (requestInput.attributeType === "isin") {
+    if (
+      hf_findNamedResolverNode_(
+        hf_materializePlanFromSpec_("ISIN-SOURCE"),
+        sourceOverride,
+        null,
+        { requireCanHandle: false },
+      )
+    ) {
+      return;
+    }
+
+    throw hf_buildSourceOverrideUnavailableError_(sourceOverride, "ISIN lookups");
+  }
+
+  throw hf_buildSourceOverrideUnavailableError_(sourceOverride);
+}
+
+function hf_buildSelectedIdentifierPlan_(resolverOrPlan, request) {
+  const routeSegment = String((resolverOrPlan && resolverOrPlan.name) || "")
+    .trim()
+    .toUpperCase();
+
+  if (resolverOrPlan instanceof ResolverPlan) {
+    return new IdentifierResolutionPlan(
+      "IDENTIFIER:" + routeSegment,
+      resolverOrPlan.getNodesForRequest(request),
+      {
+        routePath: resolverOrPlan.buildRoutePath(request),
+        routeStateBuilder:
+          resolverOrPlan.routeStateBuilder || hf_buildIsinIdentifierRouteState_,
+      },
+    );
+  }
+
   return hf_buildSingleResolverIdentifierPlan_(
     "IDENTIFIER:" + routeSegment,
-    resolver,
+    resolverOrPlan,
     routeSegment,
   );
 }
@@ -4608,115 +4763,66 @@ function hf_buildForcedSelectedAttributePlan_(resolverOrPlan, request) {
   );
 }
 
-function hf_findNamedResolverNode_(node, name, request) {
-  let nodes;
+function hf_buildRepresentativeForcedAttributeRequest_(input) {
+  const sourceOverride = String((input && input.sourceOverride) || "")
+    .trim()
+    .toUpperCase();
   let i;
-  let found;
+  let selectedNode;
 
-  if (!node || !name) {
-    return null;
-  }
+  for (i = 0; i < HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_.length; i += 1) {
+    selectedNode = hf_findNamedResolverNode_(
+      HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_[i],
+      sourceOverride,
+      null,
+      { requireCanHandle: false },
+    );
 
-  if (String(node.name || "").trim().toUpperCase() === name) {
-    return node;
-  }
-
-  if (!(node instanceof ResolverPlan)) {
-    return null;
-  }
-
-  nodes = node.getNodesForRequest(request);
-
-  for (i = 0; i < nodes.length; i += 1) {
-    found = hf_findNamedResolverNode_(nodes[i], name, request);
-
-    if (found) {
-      return found;
+    if (selectedNode && selectedNode.representativeTicker) {
+      return hf_buildTypedRequestFromResolvedTicker_(
+        input,
+        selectedNode.representativeTicker,
+        0,
+      );
     }
   }
 
   return null;
 }
 
-function hf_buildRepresentativeForcedAttributeRequest_(input) {
-  const sourceOverride = String((input && input.sourceOverride) || "")
-    .trim()
-    .toUpperCase();
-
-  return hf_buildTypedRequestFromResolvedTicker_(
-    input,
-    sourceOverride === "GOOGLE"
-      ? "EURUSD"
-      : hf_isPseQuoteSource_(sourceOverride)
-        ? "PSE:BDO"
-        : "GOOG",
-    0,
-  );
-}
-
 function hf_buildIdentifierResolutionPlan_(input) {
   const isinValue = hf_extractIsinFromRequestInput_(input);
   const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
-  const overrideResolver = hf_findIdentifierOverrideResolver_(
-    input,
-    sourceOverride,
-  );
+  const identifierPlan = hf_materializePlanFromSpec_("IDENTIFIER:ISIN");
+  const selectedNode = sourceOverride
+    ? hf_findNamedResolverNode_(identifierPlan, sourceOverride, input)
+    : null;
 
   if (!isinValue) {
     return null;
   }
 
-  if (sourceOverride === "GOOGLE") {
-    throw new Error('"@GOOGLE" can only be used with currency pairs.');
+  if (selectedNode) {
+    return hf_buildSelectedIdentifierPlan_(selectedNode, input);
   }
 
-  if (
-    hf_isPseQuoteSource_(sourceOverride) &&
-    sourceOverride !== "PSE" &&
-    input.attributeType !== "quote"
-  ) {
-    throw new Error('"@' + sourceOverride + '" can only be used with quote attributes.');
+  if (sourceOverride) {
+    throw hf_buildSourceOverrideUnavailableError_(sourceOverride);
   }
 
-  if (sourceOverride && hf_isPseQuoteSource_(sourceOverride) && !overrideResolver) {
-    throw new Error(
-      '"@' +
-        sourceOverride +
-        '" can only be used with PSE tickers and PSE-mapped ISINs.',
-    );
-  }
-
-  if (overrideResolver) {
-    return hf_buildIdentifierOverridePlan_(overrideResolver);
-  }
-
-  return hf_materializePlanFromSpec_("IDENTIFIER:ISIN");
+  return identifierPlan;
 }
 
 function hf_buildDefaultAttributePlanForResolvedRequest_(request) {
-  if (request.requestType === "fx") {
-    if (request.fxPair.isSameCurrency) {
-      return hf_buildSingleResolverAttributePlan_(
-        "FX-SAME",
-        HOODLEFINANCE_RESOLVERS_BY_CODE_.LOCAL,
-        "LOCAL",
-      );
-    }
+  const attributePlan = HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_.find(function (plan) {
+    return plan.canHandle(request);
+  });
 
-    return hf_buildSingleResolverAttributePlan_(
-      "FX",
-      HOODLEFINANCE_RESOLVERS_BY_CODE_.GOOGLE,
-      "GOOGLE",
-    );
+  if (!attributePlan) {
+    throw new Error("No attribute route is available for this request.");
   }
 
-  if (request.exchange === "PSE") {
-    return hf_materializePlanFromSpec_("PSE", {
-      routeClass: "PSE-TICKER",
-    });
-  }
-
-  return hf_materializePlanFromSpec_("TICKER");
+  return attributePlan;
 }
 
 function hf_buildForcedAttributePlanForResolvedRequest_(input, request) {
@@ -4725,44 +4831,16 @@ function hf_buildForcedAttributePlanForResolvedRequest_(input, request) {
   let selectedNode;
 
   if (input.attributeType !== "quote") {
-    throw new Error(
-      '"@' + sourceOverride + '" can only be used with quote attributes.',
-    );
-  }
-
-  if (sourceOverride === "YAHOO" && request.requestType === "fx") {
-    return hf_buildSingleResolverAttributePlan_(
-      "",
-      HOODLEFINANCE_RESOLVERS_BY_CODE_.YAHOO,
-      "YAHOO",
-    );
+    throw hf_buildSourceOverrideUnavailableError_(sourceOverride);
   }
 
   selectedNode = hf_findNamedResolverNode_(defaultPlan, sourceOverride, request);
-
-  if (selectedNode instanceof ResolverPlan) {
-    return hf_buildForcedSelectedAttributePlan_(selectedNode, request);
-  }
 
   if (selectedNode) {
     return hf_buildForcedSelectedAttributePlan_(selectedNode, request);
   }
 
-  if (sourceOverride === "GOOGLE") {
-    throw new Error('"@GOOGLE" can only be used with currency pairs.');
-  }
-
-  if (hf_isPseQuoteSource_(sourceOverride)) {
-    throw new Error(
-      '"@' +
-        sourceOverride +
-        '" can only be used with PSE tickers and PSE-mapped ISINs.',
-    );
-  }
-
-  throw new Error(
-    '"@' + sourceOverride + '" can only be used with the "isin" attribute.',
-  );
+  throw hf_buildSourceOverrideUnavailableError_(sourceOverride);
 }
 
 function hf_buildQuoteRoutePlanForResolvedRequest_(input, request) {
@@ -4807,14 +4885,14 @@ function hf_buildResolvePlan_(requestInput) {
     });
   }
 
+  hf_validateNonQuoteSourceOverride_(requestInput, resolvedRequest);
+
   if (
-    requestInput.attributeType !== "quote" &&
-    hf_isPseQuoteSource_(sourceOverride) &&
-    sourceOverride !== "PSE"
+    hasForcedQuoteSource &&
+    !resolvedRequest &&
+    !representativeForcedAttributeRequest
   ) {
-    throw new Error(
-      '"@' + sourceOverride + '" can only be used with quote attributes.',
-    );
+    throw hf_buildSourceOverrideUnavailableError_(sourceOverride);
   }
 
   if (resolvedRequest) {
@@ -4846,12 +4924,14 @@ function hf_buildResolvePlan_(requestInput) {
     },
     identifierPlan: identifierPlan,
     plannedRoute: hasForcedQuoteSource
-      ? identifierPlan.describe(requestInput) +
+      ? representativeForcedAttributeRequest
+        ? identifierPlan.describe(requestInput) +
         " => " +
         hf_buildForcedAttributePlanForResolvedRequest_(
           requestInput,
           representativeForcedAttributeRequest,
         ).describe(representativeForcedAttributeRequest)
+        : identifierPlan.describe(requestInput)
       : identifierPlan.describe(requestInput),
     requestInput: requestInput,
   });
@@ -6080,7 +6160,12 @@ function hf_buildIsinPlanForSource_(source) {
   const normalizedSource = String(source || "")
     .trim()
     .toUpperCase();
-  const resolver = HOODLEFINANCE_ISIN_RESOLVER_BY_SOURCE_[normalizedSource];
+  const resolver = hf_findNamedResolverNode_(
+    hf_materializePlanFromSpec_("ISIN-SOURCE"),
+    normalizedSource,
+    null,
+    { requireCanHandle: false },
+  );
 
   if (resolver) {
     return {
@@ -6091,9 +6176,7 @@ function hf_buildIsinPlanForSource_(source) {
     };
   }
 
-  throw new Error(
-    '"@' + normalizedSource + '" is not available for ISIN lookups.',
-  );
+  throw hf_buildSourceOverrideUnavailableError_(normalizedSource, "ISIN lookups");
 }
 
 function hf_resolveDefaultIsin_(quote, context) {
