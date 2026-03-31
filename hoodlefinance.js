@@ -2787,54 +2787,20 @@ function hf_createResolvePlan_(options) {
 }
 
 const HOODLEFINANCE_ROUTING_TABLE_EXAMPLES_ = [
-  { classification: "TICKER", example: "GOOG" },
-  {
-    classification: "TICKER-IL-FUND",
-    example: "TLV:KSMF59",
-  },
-  { classification: "FX", example: "EURUSD" },
-  { classification: "FX-SAME", example: "USDUSD" },
-  {
-    classification: "PSE-TICKER",
-    example: "PSE:BDO",
-  },
-  {
-    classification: "ISIN",
-    example: "US02079K1079",
-  },
-  {
-    classification: "FORCED:YAHOO",
-    example: "GOOG@YAHOO",
-  },
-  {
-    classification: "FORCED:YAHOO-ISIN",
-    example: "US02079K1079@YAHOO",
-  },
-  {
-    classification: "FORCED:GOOGLE",
-    example: "EURUSD@GOOGLE",
-  },
-  {
-    classification: "FORCED:PSE",
-    example: "PSE:BDO@PSE",
-  },
-  {
-    classification: "FORCED:PSE-FRAMES",
-    example: "PSE:BDO@PSE-FRAMES",
-  },
-  {
-    classification: "FORCED:PSE-EDGE",
-    example: "PSE:BDO@PSE-EDGE",
-  },
+  { example: "GOOG" },
+  { example: "TLV:KSMF59" },
+  { example: "EURUSD" },
+  { example: "USDUSD" },
+  { example: "PSE:BDO" },
+  { example: "US02079K1079" },
 ];
 
 function hf_buildRoutingTableRow_(row) {
-  const resolvePlan = hf_buildResolvePlan_(
-    new RequestInput(row.example, "price"),
-  );
+  const requestInput = new RequestInput(row.example, "price");
+  const resolvePlan = hf_buildResolvePlan_(requestInput);
 
   return {
-    classification: row.classification,
+    classification: requestInput.classification,
     example: row.example,
     route: resolvePlan.debugValue || resolvePlan.plannedRoute,
   };
@@ -2854,6 +2820,33 @@ function hf_buildRoutingTableGrid_() {
   }
 
   return grid;
+}
+
+function hf_formatRoutingPlanTreeLabel_(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function hf_buildRoutingPlanTreeNode_(node) {
+  const isPlanNode = node instanceof ResolverPlan;
+
+  return {
+    children: isPlanNode
+      ? node.getRoutingNodes().map(hf_buildRoutingPlanTreeNode_)
+      : [],
+    label: isPlanNode
+      ? hf_formatRoutingPlanTreeLabel_(
+          (node && (node.routingLabel || node.name)) || "",
+        )
+      : String(
+          node && typeof node.describeRoutingNode === "function"
+            ? node.describeRoutingNode()
+            : hf_formatRoutingPlanTreeLabel_(node && node.name),
+        ),
+  };
+}
+
+function hf_getRoutingPlanTree_() {
+  return hf_buildRoutingPlanTreeNode_(hf_materializePlanFromSpec_("ROOT"));
 }
 
 function hf_createDebugRoutePlan_(value) {
@@ -2910,6 +2903,7 @@ class RequestInput {
     this.sourceOverride = parsedIdentifier.sourceOverride;
     this.ticker = requestTicker;
     this.upperTicker = requestTicker.toUpperCase();
+    this.classification = hf_classifyRequestInput_(this);
   }
 }
 
@@ -2931,6 +2925,7 @@ class EquityRequest extends BaseRequest {
     const config = options || {};
 
     super(input, config.identifierResolutionMs);
+    this.classification = "equity";
     this.requestType = "equity";
     this.allowTradingviewFallback = config.allowTradingviewFallback === true;
     this.exchange = config.exchange || "";
@@ -2942,6 +2937,7 @@ class EquityRequest extends BaseRequest {
 class FxRequest extends BaseRequest {
   constructor(input, fxPair, identifierResolutionMs) {
     super(input, identifierResolutionMs);
+    this.classification = "fx";
     this.requestType = "fx";
     this.baseCurrency = fxPair.baseCanonicalCode;
     this.fxPair = fxPair;
@@ -2955,6 +2951,8 @@ class Resolver {
 
     this.code = code || "";
     this.name = this.code;
+    this.routingLabel = config.routingLabel || "";
+    this.routingDescription = config.routingDescription || "";
     this.representativeTicker = config.representativeTicker || "";
     this.sourceName = sourceName != null ? sourceName : this.code;
     this.isSourceOverrideable = config.isSourceOverrideable === true;
@@ -2976,6 +2974,12 @@ class Resolver {
 
   describe(request) {
     return hf_describePlanSource_(this.buildRuntimePlan(request));
+  }
+
+  describeRoutingNode() {
+    const name = hf_formatRoutingPlanTreeLabel_(this.name);
+    const description = String(this.routingDescription || "").trim();
+    return description ? name + " - " + description : name;
   }
 
   getGroupedSourceNames(_request) {
@@ -3093,6 +3097,8 @@ class ResolverPlan extends Resolver {
       : "";
 
     super(name, sourceName, config);
+    this.canHandlePredicate = config.canHandle || null;
+    this.isRoutingNode = config.isRoutingNode === true;
     this.nodes = nodes || [];
     this.routeClass = config.routeClass || name;
     this.routePath = config.routePath || "";
@@ -3110,7 +3116,23 @@ class ResolverPlan extends Resolver {
     });
   }
 
+  getRoutingNodes() {
+    if (!this.nodeSelector || this.isRoutingNode) {
+      return (this.nodes || []).slice();
+    }
+
+    if (this.nodeSelector.requestDependent === true) {
+      return (this.nodes || []).slice();
+    }
+
+    return (this.nodeSelector(this.nodes, null) || []).slice();
+  }
+
   canHandle(request) {
+    if (this.canHandlePredicate && !this.canHandlePredicate(request)) {
+      return false;
+    }
+
     return this.getNodesForRequest(request).length > 0;
   }
 
@@ -3221,7 +3243,7 @@ class ResolverPlan extends Resolver {
       return null;
     }
 
-    return function (nodes, request) {
+    const selector = function (nodes, request) {
       const nodeByCode = {};
       const selectedNodes = [];
       const countryCode = hf_extractIsinCountryCode_(request);
@@ -3241,6 +3263,9 @@ class ResolverPlan extends Resolver {
 
       return selectedNodes;
     };
+
+    selector.requestDependent = true;
+    return selector;
   }
 
   static materializeOptions(spec, overrides) {
@@ -3280,6 +3305,14 @@ class ResolverPlan extends Resolver {
       delete materializedOptions.nodeSelectorRef;
     }
 
+    if (sourceOptions.canHandleRef) {
+      materializedOptions.canHandle =
+        HOODLEFINANCE_PLAN_CAN_HANDLE_BY_REF_[
+          sourceOptions.canHandleRef
+        ] || null;
+      delete materializedOptions.canHandleRef;
+    }
+
     if (nodeSelector) {
       materializedOptions.nodeSelector = nodeSelector;
     }
@@ -3288,10 +3321,17 @@ class ResolverPlan extends Resolver {
   }
 
   static fromSpec(code, spec, resolverMap, overrides) {
+    const resolveNodeByCode =
+      typeof resolverMap === "function"
+        ? resolverMap
+        : function (nodeCode) {
+            return resolverMap[String(nodeCode || "").trim().toUpperCase()] || null;
+          };
+
     return new this(
       code,
       this.getSpecNodeCodes(spec).map(function (nodeCode) {
-        return resolverMap[String(nodeCode || "").trim().toUpperCase()] || null;
+        return resolveNodeByCode(nodeCode);
       }),
       this.materializeOptions(spec, overrides),
     );
@@ -3355,7 +3395,9 @@ class DirectIdentifierResolver extends Resolver {
 
 class PseIsinMapResolver extends AttemptResolver {
   constructor() {
-    super("PSE-MAP", "pse-isin-map", "PSE");
+    super("PSE-MAP", "pse-isin-map", "PSE", {
+      routingDescription: "PSE ISIN map lookup",
+    });
   }
 
   canHandle(input) {
@@ -3413,7 +3455,9 @@ class PseIsinMapResolver extends AttemptResolver {
 
 class YahooIsinSearchResolver extends AttemptResolver {
   constructor() {
-    super("YAHOO-ISIN", "YAHOO-ISIN", "YAHOO");
+    super("YAHOO-ISIN", "YAHOO-ISIN", "YAHOO", {
+      routingDescription: "Yahoo search by ISIN",
+    });
   }
 
   canHandle(input) {
@@ -3511,7 +3555,9 @@ class YahooIsinSearchResolver extends AttemptResolver {
 
 class LocalFxResolver extends AttemptResolver {
   constructor() {
-    super("LOCAL", "LOCAL");
+    super("LOCAL", "LOCAL", {
+      routingDescription: "Same-currency FX identity rate",
+    });
   }
 
   canHandle(request) {
@@ -3549,6 +3595,7 @@ class LocalFxResolver extends AttemptResolver {
 class GoogleFxResolver extends AttemptResolver {
   constructor() {
     super("GOOGLE", {
+      routingDescription: "Google Finance FX quote lookup",
       isSourceOverrideable: true,
       representativeTicker: "EURUSD",
     });
@@ -3589,6 +3636,7 @@ class GoogleFxResolver extends AttemptResolver {
 class YahooQuoteResolver extends AttemptResolver {
   constructor() {
     super("YAHOO", {
+      routingDescription: "Yahoo quote lookup",
       isSourceOverrideable: true,
       representativeTicker: "GOOG",
     });
@@ -3721,6 +3769,7 @@ class YahooQuoteResolver extends AttemptResolver {
 class TradingviewFundResolver extends AttemptResolver {
   constructor() {
     super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW", {
+      routingDescription: "TradingView fund quote lookup",
       representativeTicker: "TLV:KSMF59",
     });
   }
@@ -3884,6 +3933,7 @@ class FunctionValueResolver extends AttemptResolver {
 class PSEFramesResolver extends AttemptResolver {
   constructor() {
     super("PSE-FRAMES", {
+      routingDescription: "PSE frames quote lookup",
       isSourceOverrideable: true,
       representativeTicker: "PSE:BDO",
     });
@@ -3997,6 +4047,7 @@ class PSEFramesResolver extends AttemptResolver {
 class PSEEdgeResolver extends AttemptResolver {
   constructor() {
     super("PSE-EDGE", {
+      routingDescription: "PSE edge quote lookup",
       isSourceOverrideable: true,
       representativeTicker: "PSE:BDO",
     });
@@ -4246,6 +4297,7 @@ const HOODLEFINANCE_RESOLVER_CLASSES_BY_NAME_ = {
   FunctionValueResolver: FunctionValueResolver,
   PSEFramesResolver: PSEFramesResolver,
   PSEEdgeResolver: PSEEdgeResolver,
+  ResolverPlan: ResolverPlan,
   AttributeResolutionPlan: AttributeResolutionPlan,
   IdentifierResolutionPlan: IdentifierResolutionPlan,
 };
@@ -4302,6 +4354,7 @@ const HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_ = {
     resolveFunctionRef: "ARIVA",
     options: {
       isSourceOverrideable: true,
+      routingDescription: "ARIVA ISIN lookup",
     },
   },
   IBKR: {
@@ -4309,6 +4362,7 @@ const HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_ = {
     resolveFunctionRef: "IBKR",
     options: {
       isSourceOverrideable: true,
+      routingDescription: "IBKR contract search ISIN lookup",
     },
   },
   LON: {
@@ -4316,6 +4370,7 @@ const HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_ = {
     resolveFunctionRef: "LON",
     options: {
       isSourceOverrideable: true,
+      routingDescription: "LSE search ISIN lookup",
     },
   },
   PSE: {
@@ -4323,6 +4378,7 @@ const HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_ = {
     resolveFunctionRef: "PSE",
     options: {
       isSourceOverrideable: true,
+      routingDescription: "PSE quote ISIN lookup",
     },
   },
   TRADINGVIEW: {
@@ -4330,6 +4386,7 @@ const HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_ = {
     resolveFunctionRef: "TRADINGVIEW",
     options: {
       isSourceOverrideable: true,
+      routingDescription: "TradingView symbol page ISIN lookup",
     },
   },
   "PSE-FRAMES": {
@@ -4351,51 +4408,101 @@ const HOODLEFINANCE_PLAN_SPECS_BY_CODE_ = {
       routeStateBuilderRef: "ISIN_IDENTIFIER",
     },
   },
-  "FX-SAME": {
+  "QUOTE:FX-SAME": {
     nodeCodes: ["LOCAL"],
     resolverClass: "AttributeResolutionPlan",
     options: {
-      defaultAttributeOrder: 10,
-      routeClass: "FX-SAME",
+      routingLabel: "FX-SAME",
+      routeClass: "FX",
       routePath: "LOCAL",
     },
   },
-  FX: {
+  "QUOTE:FX": {
     nodeCodes: ["GOOGLE", "YAHOO"],
     resolverClass: "AttributeResolutionPlan",
     options: {
-      defaultAttributeOrder: 20,
       nodeSelectorRef: "DEFAULT_FX_QUOTE",
+      routingLabel: "FX",
       routeClass: "FX",
       routePath: "GOOGLE",
       routeStateBuilderRef: "FX_QUOTE",
     },
   },
-  PSE: {
+  "QUOTE:PSE": {
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
     resolverClass: "AttributeResolutionPlan",
     options: {
-      defaultAttributeOrder: 30,
       isSourceOverrideable: true,
       representativeTicker: "PSE:BDO",
-      routeClass: "PSE-TICKER",
+      routingLabel: "PSE",
+      routeClass: "EQUITY -> PSE",
       routeStateBuilderRef: "PSE_QUOTE",
       sourceName: "PSE",
     },
   },
-  TICKER: {
+  "QUOTE:TICKER": {
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     resolverClass: "AttributeResolutionPlan",
     options: {
-      defaultAttributeOrder: 40,
+      routingLabel: "TICKER",
       routeClassRef: "EQUITY_TICKER_CLASS",
       routePathRef: "EQUITY_TICKER_PATH",
       routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
     },
   },
+  "DEFAULT-ATTRIBUTE:EQUITY": {
+    nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
+    resolverClass: "ResolverPlan",
+    options: {
+      canHandleRef: "CLASSIFICATION_EQUITY",
+      isRoutingNode: true,
+      routingLabel: "EQUITY",
+    },
+  },
+  "DEFAULT-ATTRIBUTE:FX": {
+    nodeCodes: ["QUOTE:FX-SAME", "QUOTE:FX"],
+    resolverClass: "ResolverPlan",
+    options: {
+      canHandleRef: "CLASSIFICATION_FX",
+      isRoutingNode: true,
+      routingLabel: "FX",
+    },
+  },
+  "DEFAULT-ATTRIBUTE": {
+    nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
+    resolverClass: "ResolverPlan",
+    options: {
+      isRoutingNode: true,
+      routingLabel: "DEFAULT ATTRIBUTE",
+    },
+  },
+  "IDENTIFIER-ROOT": {
+    nodeCodes: ["IDENTIFIER:ISIN"],
+    resolverClass: "ResolverPlan",
+    options: {
+      isRoutingNode: true,
+      routingLabel: "IDENTIFIER",
+    },
+  },
+  "ISIN-ATTRIBUTE-ROOT": {
+    nodeCodes: ["ISIN-SOURCE"],
+    resolverClass: "ResolverPlan",
+    options: {
+      isRoutingNode: true,
+      routingLabel: "ISIN ATTRIBUTE",
+    },
+  },
   "ISIN-SOURCE": {
     nodeCodes: ["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"],
     resolverClass: "AttributeResolutionPlan",
+  },
+  ROOT: {
+    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT", "ISIN-ATTRIBUTE-ROOT"],
+    resolverClass: "ResolverPlan",
+    options: {
+      isRoutingNode: true,
+      routingLabel: "ROOT",
+    },
   },
 };
 
@@ -4430,10 +4537,8 @@ const HOODLEFINANCE_RESOLVERS_BY_CODE_ = hf_materializeResolversByCode_(
 );
 
 const HOODLEFINANCE_PLAN_ROUTE_CLASS_BY_REF_ = {
-  EQUITY_TICKER_CLASS: function (equityRequest) {
-    return equityRequest.allowTradingviewFallback
-      ? "TICKER-IL-FUND"
-      : "TICKER";
+  EQUITY_TICKER_CLASS: function (_equityRequest) {
+    return "EQUITY -> TICKER";
   },
 };
 
@@ -4460,6 +4565,19 @@ const HOODLEFINANCE_PLAN_ROUTE_STATE_BUILDER_BY_REF_ = {
   PSE_QUOTE: hf_buildPseQuoteRouteState_,
 };
 
+const HOODLEFINANCE_PLAN_CAN_HANDLE_BY_REF_ = {
+  CLASSIFICATION_EQUITY: function (request) {
+    return String((request && request.classification) || "")
+      .trim()
+      .toLowerCase() === "equity";
+  },
+  CLASSIFICATION_FX: function (request) {
+    return String((request && request.classification) || "")
+      .trim()
+      .toLowerCase() === "fx";
+  },
+};
+
 function hf_extractIsinCountryCode_(request) {
   const isin = hf_extractIsinFromRequestInput_(request);
 
@@ -4467,22 +4585,53 @@ function hf_extractIsinCountryCode_(request) {
 }
 
 function hf_materializePlanFromSpec_(code, optionOverrides) {
+  return hf_materializePlanNodeByCode_(code, optionOverrides, []);
+}
+
+function hf_materializePlanNodeByCode_(code, optionOverrides, ancestry) {
   const normalizedCode = String(code || "").trim().toUpperCase();
   const spec = HOODLEFINANCE_PLAN_SPECS_BY_CODE_[normalizedCode];
   const overrides = optionOverrides || {};
+  const planAncestry = ancestry || [];
   const PlanClass =
     spec && spec.resolverClass
       ? HOODLEFINANCE_RESOLVER_CLASSES_BY_NAME_[spec.resolverClass] || null
       : null;
 
+  if (spec && HOODLEFINANCE_RESOLVERS_BY_CODE_[normalizedCode]) {
+    throw new Error(
+      'Resolver code "' +
+        normalizedCode +
+        '" collides with a resolver plan spec of the same name.',
+    );
+  }
+
+  if (HOODLEFINANCE_RESOLVERS_BY_CODE_[normalizedCode]) {
+    return HOODLEFINANCE_RESOLVERS_BY_CODE_[normalizedCode];
+  }
+
   if (!spec || !PlanClass) {
     throw new Error('Unknown resolver plan spec "' + normalizedCode + '".');
+  }
+
+  if (planAncestry.indexOf(normalizedCode) >= 0) {
+    throw new Error(
+      'Resolver plan spec cycle detected: ' +
+        planAncestry.concat([normalizedCode]).join(" -> ") +
+        ".",
+    );
   }
 
   return PlanClass.fromSpec(
     normalizedCode,
     spec,
-    HOODLEFINANCE_RESOLVERS_BY_CODE_,
+    function (nodeCode) {
+      return hf_materializePlanNodeByCode_(
+        nodeCode,
+        null,
+        planAncestry.concat([normalizedCode]),
+      );
+    },
     overrides,
   );
 }
@@ -4498,28 +4647,8 @@ function hf_materializeSourceOverridePlans_() {
   });
 }
 
-function hf_materializeDefaultAttributePlans_() {
-  return Object.keys(HOODLEFINANCE_PLAN_SPECS_BY_CODE_).map(function (code) {
-    const spec = HOODLEFINANCE_PLAN_SPECS_BY_CODE_[code] || {};
-    const options = spec.options || {};
-
-    return {
-      order: Number(options.defaultAttributeOrder),
-      plan: hf_materializePlanFromSpec_(code),
-    };
-  }).filter(function (entry) {
-    return isFinite(entry.order);
-  }).sort(function (left, right) {
-    return left.order - right.order;
-  }).map(function (entry) {
-    return entry.plan;
-  });
-}
-
 const HOODLEFINANCE_SOURCE_OVERRIDE_PLANS_ =
   hf_materializeSourceOverridePlans_();
-const HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_ =
-  hf_materializeDefaultAttributePlans_();
 
 function hf_extractIsinFromRequestInput_(input) {
   const ticker = String((input && input.ticker) || "").trim();
@@ -4530,6 +4659,140 @@ function hf_extractIsinFromRequestInput_(input) {
   }
 
   return upperTicker.indexOf("ISIN:") === 0 ? upperTicker.slice(5).trim() : "";
+}
+
+function hf_classifyRequestInput_(input) {
+  if (hf_extractIsinFromRequestInput_(input)) {
+    return "isin";
+  }
+
+  if (input && input.fxPair) {
+    return "fx";
+  }
+
+  return "equity";
+}
+
+function hf_selectSinglePlanNode_(plan, request, options) {
+  const config = options || {};
+  const selectedNodes = plan && plan.getNodesForRequest
+    ? plan.getNodesForRequest(request)
+    : [];
+
+  if (!selectedNodes.length) {
+    if (config.allowNone === true) {
+      return null;
+    }
+
+    throw config.onNone
+      ? config.onNone()
+      : new Error('Resolver plan "' + String((plan && plan.name) || "") + '" matched no nodes.');
+  }
+
+  if (selectedNodes.length > 1) {
+    throw config.onMultiple
+      ? config.onMultiple(selectedNodes)
+      : new Error(
+          'Resolver plan "' +
+            String((plan && plan.name) || "") +
+            '" matched multiple nodes: ' +
+            selectedNodes
+              .map(function (node) {
+                return String((node && node.name) || "").trim() || "<unknown>";
+              })
+              .join(", ") +
+            ".",
+        );
+  }
+
+  return selectedNodes[0];
+}
+
+function hf_resolveRoutingNode_(node, request, options) {
+  const config = options || {};
+  let currentNode = node;
+
+  while (currentNode instanceof ResolverPlan && currentNode.isRoutingNode) {
+    currentNode = hf_selectSinglePlanNode_(currentNode, request, {
+      allowNone: config.allowNone === true,
+      onNone: function () {
+        return config.onNone
+          ? config.onNone(currentNode)
+          : new Error(
+              'Resolver plan "' +
+                String((currentNode && currentNode.name) || "") +
+                '" matched no nodes.',
+            );
+      },
+      onMultiple: function (selectedNodes) {
+        return config.onMultiple
+          ? config.onMultiple(currentNode, selectedNodes)
+          : new Error(
+              'Resolver plan "' +
+                String((currentNode && currentNode.name) || "") +
+                '" matched multiple nodes.',
+            );
+      },
+    });
+
+    if (!currentNode) {
+      return null;
+    }
+  }
+
+  return currentNode;
+}
+
+function hf_listDefaultAttributePlansForClassification_(classification) {
+  const defaultAttributeRoot = hf_materializePlanFromSpec_("DEFAULT-ATTRIBUTE");
+  const branchLabel = hf_formatRoutingPlanTreeLabel_(classification);
+  const branchPlan = (defaultAttributeRoot.nodes || []).find(function (node) {
+    return (
+      node instanceof ResolverPlan &&
+      hf_formatRoutingPlanTreeLabel_(node.routingLabel || node.name) === branchLabel
+    );
+  });
+
+  return branchPlan instanceof ResolverPlan ? (branchPlan.nodes || []).slice() : [];
+}
+
+function hf_listAllDefaultAttributePlans_() {
+  const allPlans = [];
+  const defaultAttributeRoot = hf_materializePlanFromSpec_("DEFAULT-ATTRIBUTE");
+
+  (defaultAttributeRoot.nodes || []).forEach(function (branchPlan) {
+    if (!(branchPlan instanceof ResolverPlan)) {
+      return;
+    }
+
+    (branchPlan.nodes || []).forEach(function (plan) {
+      if (allPlans.indexOf(plan) < 0) {
+        allPlans.push(plan);
+      }
+    });
+  });
+
+  return allPlans;
+}
+
+function hf_buildAmbiguousDefaultAttributeRouteError_(request, plans) {
+  const classification = String((request && request.classification) || "")
+    .trim()
+    .toLowerCase();
+  const planNames = (plans || []).map(function (plan) {
+    return (
+      String((plan && (plan.routingLabel || plan.name)) || "").trim() ||
+      "<unknown>"
+    );
+  });
+
+  return new Error(
+    'Ambiguous default attribute route for classification "' +
+      classification +
+      '": ' +
+      planNames.join(", ") +
+      ".",
+  );
 }
 
 function hf_buildTypedRequestFromParsedInput_(
@@ -4699,7 +4962,7 @@ function hf_validateNonQuoteSourceOverride_(requestInput, resolvedRequest) {
   if (requestInput.attributeType === "isin") {
     if (
       hf_findNamedResolverNode_(
-        hf_materializePlanFromSpec_("ISIN-SOURCE"),
+        hf_materializePlanFromSpec_("ISIN-ATTRIBUTE-ROOT"),
         sourceOverride,
         null,
         { requireCanHandle: false },
@@ -4767,12 +5030,13 @@ function hf_buildRepresentativeForcedAttributeRequest_(input) {
   const sourceOverride = String((input && input.sourceOverride) || "")
     .trim()
     .toUpperCase();
+  const defaultPlans = hf_listAllDefaultAttributePlans_();
   let i;
   let selectedNode;
 
-  for (i = 0; i < HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_.length; i += 1) {
+  for (i = 0; i < defaultPlans.length; i += 1) {
     selectedNode = hf_findNamedResolverNode_(
-      HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_[i],
+      defaultPlans[i],
       sourceOverride,
       null,
       { requireCanHandle: false },
@@ -4793,7 +5057,10 @@ function hf_buildRepresentativeForcedAttributeRequest_(input) {
 function hf_buildIdentifierResolutionPlan_(input) {
   const isinValue = hf_extractIsinFromRequestInput_(input);
   const sourceOverride = String(input.sourceOverride || "").trim().toUpperCase();
-  const identifierPlan = hf_materializePlanFromSpec_("IDENTIFIER:ISIN");
+  const identifierRoot = hf_materializePlanFromSpec_("IDENTIFIER-ROOT");
+  const identifierPlan = hf_resolveRoutingNode_(identifierRoot, input, {
+    allowNone: true,
+  });
   const selectedNode = sourceOverride
     ? hf_findNamedResolverNode_(identifierPlan, sourceOverride, input)
     : null;
@@ -4814,15 +5081,15 @@ function hf_buildIdentifierResolutionPlan_(input) {
 }
 
 function hf_buildDefaultAttributePlanForResolvedRequest_(request) {
-  const attributePlan = HOODLEFINANCE_DEFAULT_ATTRIBUTE_PLANS_.find(function (plan) {
-    return plan.canHandle(request);
+  const defaultAttributeRoot = hf_materializePlanFromSpec_("DEFAULT-ATTRIBUTE");
+  return hf_resolveRoutingNode_(defaultAttributeRoot, request, {
+    onMultiple: function (_routingNode, plans) {
+      return hf_buildAmbiguousDefaultAttributeRouteError_(request, plans);
+    },
+    onNone: function () {
+      return new Error("No attribute route is available for this request.");
+    },
   });
-
-  if (!attributePlan) {
-    throw new Error("No attribute route is available for this request.");
-  }
-
-  return attributePlan;
 }
 
 function hf_buildForcedAttributePlanForResolvedRequest_(input, request) {
@@ -6161,7 +6428,7 @@ function hf_buildIsinPlanForSource_(source) {
     .trim()
     .toUpperCase();
   const resolver = hf_findNamedResolverNode_(
-    hf_materializePlanFromSpec_("ISIN-SOURCE"),
+    hf_materializePlanFromSpec_("ISIN-ATTRIBUTE-ROOT"),
     normalizedSource,
     null,
     { requireCanHandle: false },

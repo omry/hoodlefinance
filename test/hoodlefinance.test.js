@@ -1934,17 +1934,17 @@ test("source introspection suffixes return the planned route or the supported so
   assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE");
   assert.equal(
     ctx.HOODLEFINANCE("PSE:AAA@?"),
-    "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
+    "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE",
   );
   assert.equal(
     ctx.HOODLEFINANCE("AP.PS@?"),
-    "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE",
+    "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE",
   );
-  assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "FX-SAME -> LOCAL");
-  assert.equal(ctx.HOODLEFINANCE("GOOG@?"), "TICKER -> YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("USDUSD@?"), "FX -> LOCAL");
+  assert.equal(ctx.HOODLEFINANCE("GOOG@?"), "EQUITY -> TICKER -> YAHOO");
   assert.equal(
     ctx.HOODLEFINANCE("TLV:KSMF59@?"),
-    "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW",
+    "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
   );
   assert.equal(
     ctx.HOODLEFINANCE("US02079K1079@?"),
@@ -1980,44 +1980,29 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
     JSON.stringify(ctx.HOODLEFINANCE_ROUTES()),
     JSON.stringify([
       ["classification", "example", "planned route"],
-      ["TICKER", "GOOG", "TICKER -> YAHOO"],
+      ["equity", "GOOG", "EQUITY -> TICKER -> YAHOO"],
       [
-        "TICKER-IL-FUND",
+        "equity",
         "TLV:KSMF59",
-        "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW",
+        "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
       ],
-      ["FX", "EURUSD", "FX -> GOOGLE"],
-      ["FX-SAME", "USDUSD", "FX-SAME -> LOCAL"],
-      ["PSE-TICKER", "PSE:BDO", "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE"],
+      ["fx", "EURUSD", "FX -> GOOGLE"],
+      ["fx", "USDUSD", "FX -> LOCAL"],
+      ["equity", "PSE:BDO", "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE"],
       [
-        "ISIN",
+        "isin",
         "US02079K1079",
         "IDENTIFIER:ISIN -> YAHOO-ISIN",
       ],
-      ["FORCED:YAHOO", "GOOG@YAHOO", "YAHOO"],
-      [
-        "FORCED:YAHOO-ISIN",
-        "US02079K1079@YAHOO",
-        "IDENTIFIER:YAHOO-ISIN -> YAHOO-ISIN => YAHOO",
-      ],
-      ["FORCED:GOOGLE", "EURUSD@GOOGLE", "GOOGLE"],
-      ["FORCED:PSE", "PSE:BDO@PSE", "PSE-FRAMES -> PSE-EDGE"],
-      [
-        "FORCED:PSE-FRAMES",
-        "PSE:BDO@PSE-FRAMES",
-        "PSE-FRAMES",
-      ],
-      [
-        "FORCED:PSE-EDGE",
-        "PSE:BDO@PSE-EDGE",
-        "PSE-EDGE",
-      ],
     ]),
   );
-  assert.equal(ctx.HOODLEFINANCE_ROUTES("GOOG"), "TICKER -> YAHOO");
+  assert.equal(
+    ctx.HOODLEFINANCE_ROUTES("GOOG"),
+    "EQUITY -> TICKER -> YAHOO",
+  );
   assert.equal(
     ctx.HOODLEFINANCE_ROUTES("TLV:KSMF59"),
-    "TICKER-IL-FUND -> YAHOO -> TRADINGVIEW",
+    "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
   );
   assert.equal(ctx.HOODLEFINANCE_ROUTES("EURUSD"), "FX -> GOOGLE");
   assert.equal(
@@ -2088,18 +2073,65 @@ test("direct identifier resolution builds typed equity and fx requests", () => {
 
   request = new RequestInput("PSE:BDO", "price");
   assert.equal(request.constructor.name, "RequestInput");
+  assert.equal(request.classification, "equity");
   resolved = ctx.hf_resolveIdentifierDirect_(request);
   assert.equal(resolved.constructor.name, "EquityRequest");
+  assert.equal(resolved.classification, "equity");
   assert.equal(resolved.requestType, "equity");
   assert.equal(resolved.exchange, "PSE");
   assert.equal(resolved.symbol, "BDO");
 
   request = new RequestInput("EURUSD", "price");
+  assert.equal(request.classification, "fx");
   resolved = ctx.hf_resolveIdentifierDirect_(request);
   assert.equal(resolved.constructor.name, "FxRequest");
+  assert.equal(resolved.classification, "fx");
   assert.equal(resolved.requestType, "fx");
   assert.equal(resolved.baseCurrency, "EUR");
   assert.equal(resolved.quoteCurrency, "USD");
+
+  request = new RequestInput("US02079K1079", "price");
+  assert.equal(request.classification, "isin");
+  resolved = ctx.hf_buildTypedRequestFromResolvedTicker_(request, "GOOG", 0);
+  assert.equal(resolved.constructor.name, "EquityRequest");
+  assert.equal(resolved.classification, "equity");
+});
+
+test("default attribute plan selection uses request classification and errors on ambiguity", () => {
+  const ctx = loadHoodlefinance();
+  const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
+  const request = ctx.hf_resolveIdentifierDirect_(new RequestInput("GOOG", "price"));
+  const plans = ctx.hf_listDefaultAttributePlansForClassification_("equity");
+  const attributePlanPrototype = Object.getPrototypeOf(plans[0]);
+  const originalCanHandle = attributePlanPrototype.canHandle;
+
+  try {
+    assert.equal(request.classification, "equity");
+    assert.equal(
+      ctx.hf_buildDefaultAttributePlanForResolvedRequest_(request).routingLabel,
+      "TICKER",
+    );
+
+    attributePlanPrototype.canHandle = function (_request) {
+      return this.routingLabel === "PSE" || this.routingLabel === "TICKER";
+    };
+
+    assert.throws(
+      () => ctx.hf_buildDefaultAttributePlanForResolvedRequest_(request),
+      /Ambiguous default attribute route for classification "equity": PSE, TICKER\./,
+    );
+
+    attributePlanPrototype.canHandle = function (_request) {
+      return false;
+    };
+
+    assert.throws(
+      () => ctx.hf_buildDefaultAttributePlanForResolvedRequest_(request),
+      /No attribute route is available for this request\./,
+    );
+  } finally {
+    attributePlanPrototype.canHandle = originalCanHandle;
+  }
 });
 
 test("quote routing builds resolver plans for identifier and attribute phases", () => {
@@ -2144,7 +2176,10 @@ test("resolve plan is the single canonical planner output", () => {
   assert.equal(directPlan.attributePlan.sourceName, "PSE");
   assert.equal(directPlan.identifierPlan, null);
   assert.equal(directPlan.buildAttributePlan, null);
-  assert.equal(directPlan.plannedRoute, "PSE-TICKER -> PSE-FRAMES -> PSE-EDGE");
+  assert.equal(
+    directPlan.plannedRoute,
+    "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE",
+  );
 
   assert.equal(identifierPlan.requestInput.constructor.name, "RequestInput");
   assert.equal(identifierPlan.resolvedRequest, null);

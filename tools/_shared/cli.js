@@ -117,6 +117,12 @@ function getRoutingTableRows(ctx) {
   return runtime.hf_getRoutingTableRows_();
 }
 
+function getRoutingPlanTree(ctx) {
+  const runtime = ctx || loadHoodlefinance();
+
+  return runtime.hf_getRoutingPlanTree_();
+}
+
 function formatRoutingTable(rows) {
   return [["classification", "example", "planned route"]]
     .concat(
@@ -130,8 +136,38 @@ function formatRoutingTable(rows) {
     .join("\n");
 }
 
+function formatRoutingPlanTree(tree) {
+  const root = tree && !Array.isArray(tree) ? tree : null;
+  const lines = [String((root && root.label) || "ROOT")];
+
+  function visit(node, prefix, isLast) {
+    const children = node && Array.isArray(node.children) ? node.children : [];
+    const connector = isLast ? "└── " : "├── ";
+    const childPrefix = prefix + (isLast ? "    " : "│   ");
+    let i;
+
+    lines.push(prefix + connector + String((node && node.label) || ""));
+
+    for (i = 0; i < children.length; i += 1) {
+      visit(children[i], childPrefix, i === children.length - 1);
+    }
+  }
+
+  (root && Array.isArray(root.children) ? root.children : tree || []).forEach(
+    function (node, index, nodes) {
+      visit(node, "", index === nodes.length - 1);
+    },
+  );
+
+  return lines.join("\n");
+}
+
 function printRoutingTable() {
   console.log(formatRoutingTable(getRoutingTableRows()));
+}
+
+function printRoutingPlanTree() {
+  console.log(formatRoutingPlanTree(getRoutingPlanTree()));
 }
 
 function traceRoutingForSymbol(symbol, ctx) {
@@ -389,6 +425,11 @@ function main() {
     return;
   }
 
+  if (ticker === "--routing") {
+    printRoutingPlanTree();
+    return;
+  }
+
   if (ticker === "--trace") {
     if (!process.argv[3]) {
       console.error("Usage: node cli.js --trace <symbol>");
@@ -401,6 +442,7 @@ function main() {
 
   if (!ticker) {
     console.error("Usage: node cli.js <ticker> [attribute]");
+    console.error("       node cli.js --routing");
     console.error("       node cli.js --routing-table");
     console.error("       node cli.js --trace <symbol>");
     process.exit(1);
@@ -427,12 +469,15 @@ function main() {
 }
 
 module.exports = {
+  formatRoutingPlanTree,
   formatRoutingTable,
   formatTraceResultSummary,
   formatTraceOutput,
   formatRoutingTrace,
+  getRoutingPlanTree,
   getRoutingTableRows,
   loadHoodlefinance,
+  printRoutingPlanTree,
   printRoutingTable,
   runLookup,
   traceRoutingForSymbol,
