@@ -2,9 +2,9 @@
 
 The files in this directory are the source of truth for the public `HOODLEFINANCE` demo sheet.
 
-- [`demo-sheet.json`](./demo-sheet.json): tracked metadata for the demo sheet and its bound Apps Script project. The production `spreadsheetId` here is the canonical demo-sheet identifier. The `publicUrl` field is runtime sync metadata.
+- [`demo-sheet.json`](./demo-sheet.json): tracked metadata for the demo sheet and its bound Apps Script™ project. The production `spreadsheetId` here is the canonical demo-sheet identifier. The `publicUrl` field is runtime sync metadata.
 - [`public-demo-link.json`](./public-demo-link.json): tracked website redirect target for `/demo`, refreshed by `Release Prepare` from the production `spreadsheetId`
-- `*.tsv`: one tab per file, written into Google Sheets with `USER_ENTERED` values
+- `*.tsv`: one tab per file, written into Google Sheets™ with `USER_ENTERED` values
 
 ## Managed Tabs
 
@@ -16,10 +16,10 @@ The files in this directory are the source of truth for the public `HOODLEFINANC
 
 ## Local Bootstrap
 
-1. In the dedicated Google Cloud project for demo maintenance, `HoodleFinance Demo Sheets`, create Google OAuth client credentials for a desktop app with access to:
-   - Google Sheets API
-   - Google Drive API
-   - Google Apps Script API
+1. In the dedicated Google Cloud™ project for demo maintenance, `HoodleFinance Demo Sheets`, create Google OAuth client credentials for a desktop app with access to:
+   - Google Sheets™ API
+   - Google Drive™ API
+   - Google Apps Script™ API
 2. Save the downloaded staging credentials JSON as:
 
 ```text
@@ -81,7 +81,7 @@ To confirm which `clasp` accounts the configured staging and production flows wi
 npm run clasp:user
 ```
 
-If the saved demo OAuth token is revoked or expires on the Google side, rerunning the relevant `npm run demo:sync:<target>` command will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud project permissions changed, you still need to fix that access manually.
+If the saved demo OAuth token is revoked or expires on the Google side, rerunning the relevant `npm run demo:sync:<target>` command will prompt a fresh browser authorization. If the OAuth client, test-user access, or Google Cloud™ project permissions changed, you still need to fix that access manually.
 
 ## GitHub Actions Automation
 
@@ -147,8 +147,8 @@ To add a new maintainer, the current owner should help them with these high-leve
 
 1. Share the public demo spreadsheet with edit access.
 2. Add the maintainer's Google account as a test user on the OAuth consent screen while the app remains in `Testing`.
-3. Make sure the maintainer can use the dedicated staging Google Cloud project for demo maintenance, or help them create a new desktop OAuth client in that project.
-4. Have the maintainer enable the Apps Script API for their own account at:
+3. Make sure the maintainer can use the dedicated staging Google Cloud™ project for demo maintenance, or help them create a new desktop OAuth client in that project.
+4. Have the maintainer enable the Apps Script™ API for their own account at:
 
 ```text
 https://script.google.com/home/usersettings
@@ -179,7 +179,7 @@ In practice, a successful first sync confirms that all required access is in pla
 
 - spreadsheet edit access
 - OAuth test-user access
-- Apps Script API enabled for the maintainer account
+- Apps Script™ API enabled for the maintainer account
 - working staging-local `clasp` login
 - working local OAuth credentials for the sync script
 

@@ -5,7 +5,7 @@ Make a copy	Use File -> Make a copy if you want to experiment with the formulas 
 Identifier forms and price conversion		
 Example	Formula	Result
 Version	'=HOODLEFINANCE_VERSION()	=HOODLEFINANCE_VERSION()
-Google Finance-style identifier	'=HOODLEFINANCE("NASDAQ:GOOG","name")	=HOODLEFINANCE("NASDAQ:GOOG","name")
+Google Finance™-style identifier	'=HOODLEFINANCE("NASDAQ:GOOG","name")	=HOODLEFINANCE("NASDAQ:GOOG","name")
 Yahoo-style identifier	'=HOODLEFINANCE("POLI.TA","name")	=HOODLEFINANCE("POLI.TA","name")
 ISIN identifier	'=HOODLEFINANCE("IL0006625771","name")	=HOODLEFINANCE("IL0006625771","name")
 Price currency conversion	'=HOODLEFINANCE("SJPA.L","price@USD")	=HOODLEFINANCE("SJPA.L","price@USD")

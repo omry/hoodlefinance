@@ -1,6 +1,6 @@
 # Contributing to HoodleFinance
 
-This is an Apps Script project with a Node-based local test harness, maintainer deployment tooling, and a Docusaurus-based website.
+This is an Apps Script™ project with a Node-based local test harness, maintainer deployment tooling, and a Docusaurus-based website.
 
 ## Contributor Agreement
 
@@ -42,7 +42,7 @@ The repo separates those Google auth paths on purpose:
 - local public `--production` syncs use `.demo-sheet.local/production/`
 - add-on deployment uses `.addon-deploy.local/production/` and `.addon-deploy.local/staging/`
 
-That keeps staging and production isolated from each other, while still allowing different Google Cloud projects to keep separate auth files.
+That keeps staging and production isolated from each other, while still allowing different Google Cloud™ projects to keep separate auth files.
 
 To confirm which `clasp` accounts the configured staging and production flows will use:
 
@@ -89,7 +89,7 @@ npm run check
 
 The codebase is intentionally simple:
 
-- [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script implementation
+- [`hoodlefinance.js`](./hoodlefinance.js): main Apps Script™ implementation
 - [`test/hoodlefinance.test.js`](./test/hoodlefinance.test.js): Node unit tests
 - [`tools/_shared/cli.js`](./tools/_shared/cli.js): local smoke-test wrapper
 - [`tools/demo/sync.js`](./tools/demo/sync.js): public demo sheet sync tool
@@ -173,7 +173,7 @@ npm run benchmark -- --attribute price --count 50
 npm run benchmark -- --tickers GOOG,AAPL,MSFT,AMZN,META
 ```
 
-The CLI loads the Apps Script source into a local VM and proxies `UrlFetchApp.fetch()` through the local Node HTTP transport, so it is useful for checking live endpoints without pasting into Google Sheets.
+The CLI loads the Apps Script™ source into a local VM and proxies `UrlFetchApp.fetch()` through the local Node HTTP transport, so it is useful for checking live endpoints without pasting into Google Sheets™.
 
 Sync the demo sheet locally. Choose the target explicitly. For staging:
 
@@ -192,13 +192,13 @@ The production public demo should normally be synced automatically by the releas
 
 When you pass extra flags through `npm run`, always include the `--` separator. For example, `npm run demo:sync -- --production --dry-run`. Without that separator, npm can consume flags like `--dry-run` itself instead of passing them to the sync tool.
 
-Before a staging sync will work, you need to set up the staging target's own Google Cloud credentials under `.demo-sheet.local/staging/`. If you want staging to stay fully isolated from production, use a separate Google Cloud project and desktop OAuth client for staging.
+Before a staging sync will work, you need to set up the staging target's own Google Cloud™ credentials under `.demo-sheet.local/staging/`. If you want staging to stay fully isolated from production, use a separate Google Cloud™ project and desktop OAuth client for staging.
 
 Set up the following:
 
-1. **OAuth Client for Sheets API**:
-   - Go to Google Cloud Console and create a new project (e.g. `HoodleFinance Demo Staging`).
-   - Enable the **Google Sheets API**, **Google Drive API**, and **Apps Script API**.
+1. **OAuth Client for Google Sheets™ API**:
+   - Go to Google Cloud Console™ and create a new project (e.g. `HoodleFinance Demo Staging`).
+   - Enable the **Google Sheets™ API**, **Google Drive™ API**, and **Apps Script™ API**.
    - Generate an OAuth 2.0 Client ID (Application type: "Desktop app").
    - Download the JSON file and save it as `.demo-sheet.local/staging/oauth-client.json` (this is ignored by `git`).
 2. **Clasp Authentication**:
@@ -223,7 +223,7 @@ npm run support-matrix -- --details
 npm run support-matrix -- --update-page
 ```
 
-Map Google Finance FX page coverage across the canonical currency/crypto pair set:
+Map Google Finance™ FX page coverage across the canonical currency/crypto pair set:
 
 ```sh
 npm run fx-coverage
@@ -260,7 +260,7 @@ For any new or changed functionality that depends on a live/public endpoint, liv
 - For symbol-page sources, reject mismatches instead of silently accepting nearby results.
 - Keep generic `isin` routing conservative. Only change defaults when coverage is strong enough to justify it.
 - If a source is useful but not yet strong enough as a default, add it as an explicit attribute first.
-- Preserve Apps Script compatibility. The main source file should stay usable when pasted directly into `Code.gs`.
+- Preserve Apps Script™ compatibility. The main source file should stay usable when pasted directly into `Code.gs`.
 - Keep tests in `test/` and helper scripts in `tools/` so the repo layout stays predictable.
 
 ## Documentation Rule

@@ -17,7 +17,7 @@ Use it as a quick reference for current live probe results by exchange and featu
       <th colspan="5">Attributes</th>
     </tr>
     <tr>
-      <th><span title="Representative exchange-prefixed inputs such as `LON:SJPA`, `TLV:POLI`, or `NASDAQ:GOOG`.">Google Finance query<br /><sub><code>LON:SJPA</code></sub></span></th>
+      <th><span title="Representative exchange-prefixed inputs such as `LON:SJPA`, `TLV:POLI`, or `NASDAQ:GOOG`.">Google Finance™ query<br /><sub><code>LON:SJPA</code></sub></span></th>
       <th><span title="Representative Yahoo-style inputs such as `SJPA.L`, `POLI.TA`, or `GOOG`.">Yahoo style<br /><sub><code>SJPA.L</code></sub></span></th>
       <th><span title="Direct ISIN input such as `IE00...`, `IL00...`, or `US...`.">ISIN<br /><sub><code>IE00B4L5YX21</code></sub></span></th>
       <th><span title="Grouped attributes: price, name, currency">Basic quote<br /><sub><code>price</code><br /><code>name</code><br /><code>currency</code></sub></span></th>

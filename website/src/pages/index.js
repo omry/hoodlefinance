@@ -25,7 +25,7 @@ function HomepageHeader() {
           </Heading>
           <p className={styles.heroText}>
             Market data for U.S. and international listings, identifier lookups,
-            and built-in currency conversion for Google Sheets.
+            and built-in currency conversion for Google Sheets™.
           </p>
           <div className={styles.buttons}>
             <Link className="button button--primary button--lg" to="/docs/">
@@ -49,7 +49,7 @@ export default function Home() {
   return (
     <Layout
       title={siteConfig.title}
-      description="HoodleFinance brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets."
+      description="HoodleFinance brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets™."
     >
       <HomepageHeader />
       <main>

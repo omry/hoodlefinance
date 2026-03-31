@@ -1,6 +1,6 @@
-# Google Sheets Editor Add-on Prototype
+# Google Sheets™ Editor Add-on Prototype
 
-This folder holds an experimental prototype for a Google Sheets Editor add-on version of `HOODLEFINANCE`.
+This folder holds an experimental prototype for a Google Sheets™ Editor add-on version of `HOODLEFINANCE`.
 
 It does not replace the current public install path yet. The current supported install flow is still the manual bound-script flow documented in [`README.md`](../../README.md) and [`website/docs/api/overview.md`](../../website/docs/api/overview.md).
 
@@ -26,23 +26,23 @@ On March 21, 2026, manual testing of the unpublished Editor add-on test deployme
 
 ## Private Marketplace Dry-Run Finding
 
-Later on March 21, 2026, a private internal Google Workspace Marketplace dry run showed:
+Later on March 21, 2026, a private internal Google Workspace Marketplace™ dry run showed:
 
 - the Marketplace-installed add-on exposed `HOODLEFINANCE()` in Sheets
 - the add-on menu appeared under `Extensions`
 - the `Enable` menu item appeared and worked from the add-on menu
 
-This answered the main product question that unpublished Apps Script test deployments could not answer: Marketplace packaging can make the custom functions discoverable in Sheets.
+This answered the main product question that unpublished Apps Script™ test deployments could not answer: Marketplace packaging can make the custom functions discoverable in Sheets™.
 
 ## Current State
 
 - This is still a prototype scaffold, not a public Marketplace release.
-- Apps Script test deployments were sufficient for menu-level validation, but did not verify custom-function exposure in Sheets.
+- Apps Script™ test deployments were sufficient for menu-level validation, but did not verify custom-function exposure in Sheets™.
 - The private Marketplace dry run now validates that Marketplace packaging can expose the custom functions in Sheets.
 - Google's current Editor add-on docs say unpublished test deployments run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons run `onOpen()` in `AuthMode.NONE`. That means the unpublished manual test does not fully validate publish-time menu behavior.
 - The current prototype now uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
 - Listing assets, policy pages, and support links now exist, but public-review readiness is still follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) for the actual execution checklist.
-- The runtime behavior of the custom functions is still subject to the same Apps Script execution and fetch limits described in [`docs/design/google-sheets-deployment-strategy.md`](../design/google-sheets-deployment-strategy.md).
+- The runtime behavior of the custom functions is still subject to the same Apps Script™ execution and fetch limits described in [`docs/design/google-sheets-deployment-strategy.md`](../design/google-sheets-deployment-strategy.md).
 
 ## Next Steps
 
@@ -75,7 +75,7 @@ For production:
 ```
 
 2. Set the target `scriptId` in that local file.
-3. Download the OAuth client JSON for the add-on deployment Google Cloud project and save it at:
+3. Download the OAuth client JSON for the add-on deployment Google Cloud™ project and save it at:
 
 ```text
 .addon-deploy.local/production/oauth-client.json
@@ -87,7 +87,7 @@ For production:
 npm exec -- clasp -A .addon-deploy.local/production/.clasprc.json login --creds .addon-deploy.local/production/oauth-client.json
 ```
 
-5. Confirm that `clasp` created the ignored repo-local auth file at `.addon-deploy.local/production/.clasprc.json`, and that it belongs to the Google account that can edit the target Apps Script project.
+5. Confirm that `clasp` created the ignored repo-local auth file at `.addon-deploy.local/production/.clasprc.json`, and that it belongs to the Google account that can edit the target Apps Script™ project.
 
 For staging, use the same file names under `.addon-deploy.local/staging/` and run:
 
@@ -125,7 +125,7 @@ By default, the deploy helper:
 
 - prepares a temporary `clasp` worktree under `.addon-deploy.local/<target>/`
 - pushes the configured manifest and source files to the target script project
-- creates a new Apps Script version and prints that version number for Marketplace use
+- creates a new Apps Script™ version and prints that version number for Marketplace use
 - injects a generated staging marker only for `--staging` deploys so staging installs are visibly labeled in the add-on UI without changing custom function names
 
 Use `--push-only` if you want to sync source without creating a new version.

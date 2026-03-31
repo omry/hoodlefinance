@@ -10,14 +10,14 @@ Repo-local refresh on March 28, 2026:
 - the clean public-review install path has already been revalidated
 - the OAuth review package has now been submitted
 - Google has now verified both branding and data access for the public-review
-  Cloud project
+  Google Cloud™ project
 
 ## Done
 
-- [x] Dedicated standard Google Cloud project created for the add-on
-- [x] Apps Script project linked to that Cloud project
+- [x] Dedicated standard Google Cloud™ project created for the add-on
+- [x] Apps Script™ project linked to that Google Cloud™ project
 - [x] Marketplace SDK listing configured and validated for a private install
-- [x] OAuth consent configured for the linked Cloud project
+- [x] OAuth consent configured for the linked Google Cloud™ project
 - [x] Private Marketplace dry run succeeded
 - [x] `HOODLEFINANCE()` is recognized in Sheets from the Marketplace-installed add-on
 - [x] Add-on homepage loads successfully
@@ -33,7 +33,7 @@ Repo-local refresh on March 28, 2026:
 - [x] Public support email now receives mail at `support@hoodlefinance.com`
 - [x] Listing text, icons, banner, and screenshot assets exist
 - [x] Scope justifications are documented in [`oauth-review-prep.md`](./oauth-review-prep.md)
-- [x] Separate public-review Cloud project created:
+- [x] Separate public-review Google Cloud™ project created:
   - name: `HoodleFinance Public`
   - id: `hoodlefinance-public`
   - number: `826310867331`
@@ -45,14 +45,14 @@ Repo-local refresh on March 28, 2026:
 - [x] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
 - [x] Public-review Marketplace installation mode chosen:
   - `Individual + Admin Install`
-- [x] Public-review Apps Script target chosen for the add-on code push path
-- [x] Code push to the public-review add-on Apps Script project succeeded:
+- [x] Public-review Apps Script™ target chosen for the add-on code push path
+- [x] Code push to the public-review add-on Apps Script™ project succeeded:
   - `npm run addon:deploy -- --production --push-only`
   - pull-back verification confirmed both `hoodlefinance.js` and `appsscript.json` on the remote script project
-- [x] Fresh public-review Apps Script project created and linked:
+- [x] Fresh public-review Apps Script™ project created and linked:
   - name: `HoodleFinance Public`
   - script ID: `1zB8ohVlbARtuJeNJhdLX0_xnIm9MNlslfdh0z0-OjcNcC3yKrmBNLPrW`
-- [x] Active Sheets add-on deployment created for the public-review Apps Script project
+- [x] Active Sheets add-on deployment created for the public-review Apps Script™ project
 - [x] Public-review Marketplace draft install now works end to end:
   - homepage loads
   - menu appears
@@ -63,12 +63,12 @@ Repo-local refresh on March 28, 2026:
   - `getInstallationSource()` and `getUserProperties()` were not available there
   - add-on detection was hardened so the add-on menu path still initializes safely
 - [x] New public Marketplace app created for the OAuth review submission path
-- [x] Public-review Apps Script version created and chosen for the public Marketplace app
+- [x] Public-review Apps Script™ version created and chosen for the public Marketplace app
 - [x] Reviewer explanation for each intentional scope is documented in [`oauth-review-prep.md`](./oauth-review-prep.md)
 - [x] Reviewer explanation for `userinfo.email` and `userinfo.profile` is drafted if they reappear:
   - treat them as Google-managed consent items rather than intentionally requested runtime scopes
 - [x] `urlFetchWhitelist` and `openLinkUrlPrefixes` in [`appsscript.json`](./appsscript.json) still match the repo's current add-on runtime surface:
-  - fetch allowlist covers the GitHub raw, IBKR, Ariva, LSE, TradingView, PSE, Google Finance, and Yahoo endpoints referenced in [`hoodlefinance.js`](../../hoodlefinance.js)
+  - fetch allowlist covers the GitHub raw, IBKR, Ariva, LSE, TradingView, PSE, Google Finance™, and Yahoo endpoints referenced in [`hoodlefinance.js`](../../hoodlefinance.js)
   - open-link allowlist covers the GitHub and `hoodlefinance.com` links exposed by the current add-on UI surface
 - [x] Manifest branding placeholder replaced in [`appsscript.json`](./appsscript.json):
   - `logoUrl` now points at the project-hosted HoodleFinance icon instead of the generic Google-hosted functions icon
@@ -81,7 +81,7 @@ Repo-local refresh on March 28, 2026:
 ## Remaining
 
 - [x] Do one final Google-side scope consistency check immediately before submission:
-  - Apps Script manifest still declares only `script.external_request` and `spreadsheets.currentonly`
+  - Apps Script™ manifest still declares only `script.external_request` and `spreadsheets.currentonly`
   - OAuth consent screen matches that final submitted scope set
   - Marketplace configuration matches that final submitted scope set
 - [x] Treat `userinfo.email` and `userinfo.profile` as Google-managed default consent items rather than a repo-controlled scope decision:
@@ -101,8 +101,8 @@ Repo-local refresh on March 28, 2026:
   - one or two representative formulas working in Sheets
 - [x] Submit for OAuth review:
   - submitted on March 28, 2026
-  - current state: branding and data access are verified in Google Cloud
-- [x] Public-review OAuth verification completed in Google Cloud:
+  - current state: branding and data access are verified in Google Cloud™
+- [x] Public-review OAuth verification completed in Google Cloud™:
   - branding status: verified
   - data access status: verified
 
@@ -116,7 +116,7 @@ Repo-local refresh on March 28, 2026:
 
 ## Submission Gate
 
-Submission was filed on March 28, 2026, and Google Cloud now shows both
+Submission was filed on March 28, 2026, and Google Cloud™ now shows both
 branding and data access as verified. Keep these conditions as the baseline for
 any Marketplace follow-up or reviewer resubmission:
 

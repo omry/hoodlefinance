@@ -270,7 +270,7 @@ This is for future debugging and potential live-trace surfaces such as `@TRACE`.
 The following logic should become pure adapters or adapter helpers:
 
 - Yahoo chart quote fetch
-- Google Finance FX fetch
+- Google Finance™ FX fetch
 - PSE quote fetch
 - Yahoo ISIN search
 - TradingView Israeli fund quote fetch

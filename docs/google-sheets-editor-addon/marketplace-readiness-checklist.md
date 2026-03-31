@@ -13,20 +13,20 @@ Its purpose is now broader than the original private dry run:
 
 Already done:
 
-- Google Workspace account created
+- Google Workspace™ account created
 - `falcon.yadan.net` chosen as the dedicated Workspace/testing domain
 - Gmail configured for `falcon.yadan.net`
 - MX updated for the Workspace subdomain
 - DKIM configured
-- dedicated Cloud project created:
+- dedicated Google Cloud™ project created:
   - name: `hoodlefinance-sheets-addon`
   - id: `hoodlefinance-sheets-addon`
   - number: `221506477564`
-- separate public-review Cloud project created:
+- separate public-review Google Cloud™ project created:
   - name: `HoodleFinance Public`
   - id: `hoodlefinance-public`
   - number: `826310867331`
-- dedicated Apps Script project created and linked to the standard Cloud project
+- dedicated Apps Script™ project created and linked to the standard Google Cloud™ project
 - Marketplace SDK listing configured
 - private install completed
 - `HOODLEFINANCE()` recognized in Sheets from the Marketplace-installed add-on
@@ -36,7 +36,7 @@ Already done:
 - representative formulas returned data successfully
 - public support email now receives mail at `support@hoodlefinance.com`
 - decision made to proceed toward public Marketplace review
-- fresh public-review Apps Script project created and linked:
+- fresh public-review Apps Script™ project created and linked:
   - name: `HoodleFinance Public`
   - script ID: `1zB8ohVlbARtuJeNJhdLX0_xnIm9MNlslfdh0z0-OjcNcC3yKrmBNLPrW`
 - active Sheets add-on deployment created for the public-review script project
@@ -53,22 +53,22 @@ Current next step:
 ## 1. Cloud Project And Script Wiring
 
 - Keep the private validated path and the public-review path separate.
-- Use a dedicated standard Google Cloud project for the current private/staging add-on.
-- Use a separate dedicated standard Google Cloud project for the public-review submission path.
-- Keep the Apps Script project and Marketplace listing tied to the intended script ID and version for each path.
+- Use a dedicated standard Google Cloud™ project for the current private/staging add-on.
+- Use a separate dedicated standard Google Cloud™ project for the public-review submission path.
+- Keep the Apps Script™ project and Marketplace listing tied to the intended script ID and version for each path.
 
 Checklist:
 
-- [x] Cloud project created
-- [x] Separate public-review Cloud project created
-- [x] Apps Script project linked to the dedicated standard Cloud project
+- [x] Google Cloud™ project created
+- [x] Separate public-review Google Cloud™ project created
+- [x] Apps Script™ project linked to the dedicated standard Google Cloud™ project
 - [x] Script ID recorded
 - [x] Public-review add-on script target chosen
 - [x] Code push to the public-review add-on script project verified:
   - `npm run addon:deploy -- --production --push-only`
   - pull-back verification confirmed the remote manifest and source files
 - [x] Public-review Marketplace listing points at the intended script project and version
-- [x] Active Sheets add-on deployment created for the public-review Apps Script project
+- [x] Active Sheets add-on deployment created for the public-review Apps Script™ project
 
 ## 2. Manifest And Runtime Surface
 
@@ -93,7 +93,7 @@ Checklist:
 
 ## 3. OAuth And Marketplace Configuration
 
-- Keep the OAuth consent screen configured for the linked Cloud project.
+- Keep the OAuth consent screen configured for the linked Google Cloud™ project.
 - Keep the Marketplace SDK configuration aligned with the current add-on shape.
 - Treat the old private Marketplace app as validation/staging only.
 - Build the real submission path in the new public-review project.
@@ -105,7 +105,7 @@ Checklist:
 - [x] Marketplace SDK enabled
 - [x] Listing configuration works for private install
 - [x] Marketplace listing reviewed end to end
-- [x] Public-review Cloud project created
+- [x] Public-review Google Cloud™ project created
 - [x] Public-review OAuth branding configured
 - [x] Public-review OAuth audience set to `External` with a test user
 - [x] Public-review Marketplace installation mode chosen:
@@ -114,10 +114,10 @@ Checklist:
   - `script.external_request`
   - `spreadsheets.currentonly`
 - [x] `userinfo.email` and `userinfo.profile` are not currently appearing in the public-review OAuth data-access view
-- [x] Public-review Apps Script version created and chosen for Marketplace use
+- [x] Public-review Apps Script™ version created and chosen for Marketplace use
 - [x] Public-review Marketplace configuration completed
 - [x] Public-review OAuth requirements fully prepared
-- [x] Public-review OAuth verification completed in Google Cloud:
+- [x] Public-review OAuth verification completed in Google Cloud™:
   - branding status: verified
   - data access status: verified
 
@@ -193,7 +193,7 @@ Checklist:
 
 - `falcon.yadan.net` is being used as a dedicated Workspace/testing domain.
 - The checklist does not assume Gmail becomes the mail host for `yadan.net`.
-- Google One storage and Google Workspace storage should be treated as separate concerns for this effort.
+- Google One™ storage and Google Workspace™ storage should be treated as separate concerns for this effort.
 
 ## Official References
 

@@ -1,0 +1,1 @@
+- Added trademark symbols for Google product names across the website and public documentation.

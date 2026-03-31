@@ -1,18 +1,18 @@
-# Google Sheets Deployment Strategy
+# Google Sheets™ Deployment Strategy
 
-This note evaluates realistic deployment paths for `HOODLEFINANCE` in Google Sheets.
+This note evaluates realistic deployment paths for `HOODLEFINANCE` in Google Sheets™.
 
 It is meant to answer one question:
 
 - how should users get the code into their spreadsheets over time?
 
-The current answer is "paste the script into a bound Apps Script project." This note evaluates whether that should remain the default, and what the most credible alternative is.
+The current answer is "paste the script into a bound Apps Script™ project." This note evaluates whether that should remain the default, and what the most credible alternative is.
 
 ## Current Baseline
 
 Today the repo has two different deployment stories:
 
-- public users manually paste [`hoodlefinance.js`](../../hoodlefinance.js) into a bound Apps Script project, as documented in [`README.md`](../../README.md) and [`website/docs/api/overview.md`](../../website/docs/api/overview.md)
+- public users manually paste [`hoodlefinance.js`](../../hoodlefinance.js) into a bound Apps Script™ project, as documented in [`README.md`](../../README.md) and [`website/docs/api/overview.md`](../../website/docs/api/overview.md)
 - trusted maintainers use [`tools/demo/sync.js`](../../tools/demo/sync.js) plus `clasp` and OAuth credentials to update the managed public demo sheet
 
 That distinction matters:
@@ -53,12 +53,12 @@ This is the current public model.
 
 Keep this as the current default until a better distribution path is worth the added product and operational complexity.
 
-## Option 2: Expand `clasp` / Apps Script API Deployment
+## Option 2: Expand `clasp` / Apps Script™ API Deployment
 
 This means leaning harder on the kind of tooling already used for the demo sheet:
 
 - `clasp` for local or CI-driven sync
-- Apps Script API project creation or update flows
+- Apps Script™ API project creation or update flows
 - possibly templated or scripted setup for trusted maintainers
 
 ### Pros
@@ -70,7 +70,7 @@ This means leaning harder on the kind of tooling already used for the demo sheet
 ### Cons
 
 - not a good general-user install flow
-- requires OAuth setup, Apps Script API access, and script-project permissions
+- requires OAuth setup, Apps Script™ API access, and script-project permissions
 - becomes awkward when the target spreadsheet belongs to an ordinary end user
 - starts to look like remote management of user script projects rather than a clean product distribution path
 
@@ -78,9 +78,9 @@ This means leaning harder on the kind of tooling already used for the demo sheet
 
 Useful for maintainer automation and internal operations, but not recommended as the primary public deployment strategy.
 
-## Option 3: Publish As An Apps Script Library
+## Option 3: Publish As An Apps Script™ Library
 
-This would move most code into a shared Apps Script library and have each spreadsheet keep only a thin wrapper script.
+This would move most code into a shared Apps Script™ library and have each spreadsheet keep only a thin wrapper script.
 
 ### Pros
 
@@ -99,11 +99,11 @@ This would move most code into a shared Apps Script library and have each spread
 
 Not recommended. It improves maintainer code reuse more than user installation, while adding runtime and setup complexity.
 
-## Option 4: Publish A Google Sheets Add-On
+## Option 4: Publish A Google Sheets™ Add-On
 
 This is the cleanest real alternative to manual paste install.
 
-For this project, the relevant path is a Google Sheets Editor add-on. If the product later grows into a broader Workspace integration surface, a wider Google Workspace add-on could be reconsidered then.
+For this project, the relevant path is a Google Sheets™ Editor add-on. If the product later grows into a broader Workspace™ integration surface, a wider Google Workspace™ add-on could be reconsidered then.
 
 ### Pros
 
@@ -117,7 +117,7 @@ For this project, the relevant path is a Google Sheets Editor add-on. If the pro
 - materially higher implementation and release complexity
 - requires add-on manifest work, authorization review, packaging, testing, and support
 - likely adds Marketplace or domain-install decisions to the project
-- Editor add-ons are Apps Script-based and desktop-oriented, so this is not a free portability upgrade
+- Editor add-ons are Apps Script™-based and desktop-oriented, so this is not a free portability upgrade
 
 ### Verdict
 
@@ -127,11 +127,11 @@ This is the strongest long-term direction if installation and update friction be
 
 Do not treat "self-updating bound scripts" as the likely solution.
 
-Using the Apps Script API to mutate arbitrary user-owned bound script projects would add significant consent, trust, and support complexity without giving the clean install experience of a real add-on. It is a poor middle ground between the current manual model and a proper published add-on.
+Using the Apps Script™ API to mutate arbitrary user-owned bound script projects would add significant consent, trust, and support complexity without giving the clean install experience of a real add-on. It is a poor middle ground between the current manual model and a proper published add-on.
 
 ## Risks And Breaking Modes
 
-There is no obvious immediate deal breaker in the add-on path, but the main technical risks come from Apps Script execution limits rather than from Marketplace publishing itself.
+There is no obvious immediate deal breaker in the add-on path, but the main technical risks come from Apps Script™ execution limits rather than from Marketplace publishing itself.
 
 The most relevant limits for `HOODLEFINANCE` are:
 
@@ -145,7 +145,7 @@ Those limits already apply to the current project. Packaging the code as a Sheet
 
 Under the current install model, most quota pressure is naturally partitioned:
 
-- each spreadsheet has its own bound Apps Script project
+- each spreadsheet has its own bound Apps Script™ project
 - ordinary users mostly affect their own sheet/project rather than unrelated users
 - per-user usage such as quote fetch volume is less likely to spill across separate installs
 
@@ -167,7 +167,7 @@ That means one heavy usage burst can be more likely to affect other users if the
 
 The likely user-visible failure modes are:
 
-- `#ERROR!` because a custom function exceeds the Apps Script execution time limit
+- `#ERROR!` because a custom function exceeds the Apps Script™ execution time limit
 - temporary concurrency errors during large sheet recalculations
 - temporary or daily fetch-limit errors when outbound quote lookups exceed available quota
 - public release delays when add-on review or policy requirements are not yet satisfied
@@ -180,7 +180,7 @@ The best current strategy is:
 
 - keep the public install path manual for now
 - keep `clasp`-based deployment limited to maintainer-owned automation such as the demo sheet
-- treat a Google Sheets Editor add-on as the main long-term upgrade path
+- treat a Google Sheets™ Editor add-on as the main long-term upgrade path
 
 In other words:
 
@@ -190,7 +190,7 @@ In other words:
 
 ## Sources
 
-- [Custom Functions in Google Sheets](https://developers.google.com/apps-script/guides/sheets/functions)
+- [Custom Functions in Google Sheets™](https://developers.google.com/apps-script/guides/sheets/functions)
 - [Libraries](https://developers.google.com/apps-script/guides/libraries)
 - [Use the command line interface with clasp](https://developers.google.com/apps-script/guides/clasp)
 - [Managing Projects](https://developers.google.com/apps-script/api/how-tos/manage-projects)
@@ -198,4 +198,4 @@ In other words:
 - [Container-bound scripts](https://developers.google.com/apps-script/guides/bound)
 - [Quotas for Google Services](https://developers.google.com/apps-script/guides/services/quotas)
 - [Add-on types](https://developers.google.com/workspace/add-ons/concepts/types)
-- [Extending Google Sheets with add-ons](https://developers.google.com/workspace/add-ons/editors/sheets)
+- [Extending Google Sheets™ with add-ons](https://developers.google.com/workspace/add-ons/editors/sheets)

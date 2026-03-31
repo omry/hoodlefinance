@@ -1,11 +1,11 @@
 # Marketplace Packaging Evaluation
 
-This note evaluates what it takes to move the experimental Google Sheets Editor add-on prototype from Apps Script test deployment into a real Google Workspace Marketplace package and toward public review.
+This note evaluates what it takes to move the experimental Google Sheets™ Editor add-on prototype from Apps Script™ test deployment into a real Google Workspace Marketplace™ package and toward public review.
 
 It focuses on three questions:
 
 - what Google requires for Marketplace packaging and review
-- which Apps Script runtime limits still matter after packaging
+- which Apps Script™ runtime limits still matter after packaging
 - what is still missing in this repo before a realistic public submission
 
 ## Bottom Line
@@ -24,27 +24,27 @@ The most important remaining blockers are now:
 
 At a high level, a publishable Editor add-on needs four things in place:
 
-1. a standard Google Cloud project, not the default Apps Script project
+1. a standard Google Cloud™ project, not the default Apps Script™ project
 2. a configured OAuth consent screen and matching declared scopes
-3. Google Workspace Marketplace SDK configuration for the add-on
+3. Google Workspace Marketplace™ SDK configuration for the add-on
 4. a store listing with required assets and support links
 
 ### Cloud Project And Publishing Identity
 
-Google's current add-on publishing docs say Apps Script's default Cloud project cannot be used for publishing. The add-on must be switched to a standard Google Cloud project first.
+Google's current add-on publishing docs say Apps Script™'s default Cloud project cannot be used for publishing. The add-on must be switched to a standard Google Cloud™ project first.
 
 For an Editor add-on, Marketplace SDK configuration uses:
 
-- the Apps Script project script ID
+- the Apps Script™ project script ID
 - the version number to publish
 
-This is different from Google Workspace add-ons that publish by deployment ID.
+This is different from Google Workspace™ add-ons that publish by deployment ID.
 
 ### OAuth Consent And Verification
 
 Before publishing, the OAuth consent screen must be completed and the scopes must match across:
 
-- the Apps Script manifest
+- the Apps Script™ manifest
 - the OAuth consent screen
 - the Marketplace SDK configuration
 
@@ -57,7 +57,7 @@ For public external publishing, OAuth verification can require:
 - publicly accessible app homepage and privacy policy pages on that domain
 - possibly a security assessment for restricted scopes
 
-For apps used only internally within one Google Workspace organization, Google documents that sensitive or restricted scopes do not require the same further review.
+For apps used only internally within one Google Workspace™ organization, Google documents that sensitive or restricted scopes do not require the same further review.
 
 ### Marketplace SDK Configuration
 
@@ -71,7 +71,7 @@ Marketplace SDK configuration determines:
 
 Visibility matters early because Google documents that once the visibility choice is saved, it cannot be changed later.
 
-That makes a private internal dry run the safest first packaging validation path if a suitable Google Workspace domain is available.
+That makes a private internal dry run the safest first packaging validation path if a suitable Google Workspace™ domain is available.
 
 ### Store Listing Assets
 
@@ -138,7 +138,7 @@ The current manifest logo URL is also still a generic Google-hosted icon, which 
 
 This was previously missing, but the private dry run established a working packaging path with:
 
-- a standard Google Cloud project
+- a standard Google Cloud™ project
 - OAuth consent configuration
 - Marketplace SDK app configuration
 - a script-ID and version-based Sheets add-on listing
@@ -159,18 +159,18 @@ That means Marketplace packaging is now a technically viable distribution path f
 
 ## Runtime Limits That Still Matter After Packaging
 
-Marketplace packaging improves install and update flow, but it does not relax Apps Script execution limits.
+Marketplace packaging improves install and update flow, but it does not relax Apps Script™ execution limits.
 
 The most relevant published limits for this project are:
 
 - custom function runtime: 30 seconds per execution
-- Google Workspace add-on runtime: 30 seconds per execution
+- Google Workspace™ add-on runtime: 30 seconds per execution
 - general script runtime: 6 minutes per execution
 - simultaneous executions per user: 30
 - simultaneous executions per script: 1,000
-- URL Fetch calls per day: 20,000 for consumer accounts, 100,000 for Google Workspace accounts
-- Properties read/write per day: 50,000 for consumer accounts, 500,000 for Google Workspace accounts
-- triggers total runtime per day: 90 minutes for consumer accounts, 6 hours for Google Workspace accounts
+- URL Fetch calls per day: 20,000 for consumer accounts, 100,000 for Google Workspace™ accounts
+- Properties read/write per day: 50,000 for consumer accounts, 500,000 for Google Workspace™ accounts
+- triggers total runtime per day: 90 minutes for consumer accounts, 6 hours for Google Workspace™ accounts
 
 ### What Changes Under A Published Add-On
 
@@ -256,8 +256,8 @@ If this is implemented in code, the safest design is a spreadsheet-level marker 
 
 A spreadsheet-visible marker is more promising than script-local properties because:
 
-- script properties are local to one Apps Script project
-- user properties are local to one Apps Script project and user
+- script properties are local to one Apps Script™ project
+- user properties are local to one Apps Script™ project and user
 - a same-spreadsheet conflict is fundamentally a document-level condition
 
 If conflict detection becomes important enough to implement, evaluate a document-scoped marker such as spreadsheet developer metadata or another document-visible flag that both the bound script and the add-on can read consistently.

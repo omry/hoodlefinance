@@ -69,7 +69,7 @@
 ### Changed
 
 - Updated the public demo sheet so the Ticker Forms tab now shows resolved `symbol` and `exchange` outputs for Google-style, Yahoo-style, and direct ISIN inputs.
-- Default currency-pair lookups now use Google Finance quote pages, improving coverage for pairs that Yahoo often misses such as `PHPILS`. Some FX-specific fields such as `high`, `low`, and `volume` may be unavailable when Google does not publish them for the requested pair.
+- Default currency-pair lookups now use Google Finance™ quote pages, improving coverage for pairs that Yahoo often misses such as `PHPILS`. Some FX-specific fields such as `high`, `low`, and `volume` may be unavailable when Google does not publish them for the requested pair.
 - Added debug-oriented identifier suffixes for source inspection and forcing specific lookup sources without fallback, and moved source-specific `isin` forcing to identifier-side `@SOURCE` forms such as `@PSE`, `@LON`, and `@TRADINGVIEW`.
 - The update dialog now includes a separate full-history changelog link alongside the per-version release notes link.
 
@@ -91,7 +91,7 @@
 
 - Added the initial `HOODLEFINANCE` release with practical quote and identifier lookups for stocks, ETFs, currencies, and direct ISIN input across many markets that `GOOGLEFINANCE` does not support well.
 
-- Added versioned release notes and clearer in-sheet update guidance, so update prompts now link directly to the relevant release notes before you replace the Apps Script code.
+- Added versioned release notes and clearer in-sheet update guidance, so update prompts now link directly to the relevant release notes before you replace the Apps Script™ code.
 
 ### Changed
 

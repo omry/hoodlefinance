@@ -4,9 +4,9 @@ sidebar_label: Introduction
 slug: /
 ---
 
-# HoodleFinance for Google Sheets
+# HoodleFinance for Google Sheets™
 
-`HOODLEFINANCE` brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets.
+`HOODLEFINANCE` brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets™.
 
 It is most useful when your sheets mix:
 
@@ -51,12 +51,12 @@ For mixed-currency portfolios, `price@USD`-style formulas are often one of the b
 
 HoodleFinance currently has one practical installation path for general use, plus a future Marketplace path:
 
-- **Manual Apps Script install:** the current install path for general use.
-- **Google Workspace Marketplace add-on:** a future lower-friction install path.
+- **Manual Apps Script™ install:** the current install path for general use.
+- **Google Workspace Marketplace™ add-on:** a future lower-friction install path.
 
 For full step-by-step setup, update, add-on, and troubleshooting guidance, see the [Installation](installation) guide.
 
-Today, the practical path is the manual Apps Script install. The Marketplace add-on is intended to become the lower-friction path later, but it is not publicly available yet.
+Today, the practical path is the manual Apps Script™ install. The Marketplace add-on is intended to become the lower-friction path later, but it is not publicly available yet.
 
 ## Limits
 

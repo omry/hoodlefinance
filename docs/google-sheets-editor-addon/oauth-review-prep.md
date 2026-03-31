@@ -1,10 +1,10 @@
 # OAuth Review Preparation
 
-This note captures the current OAuth-review surface for the Google Sheets Editor add-on prototype and the short justifications needed for public Marketplace review.
+This note captures the current OAuth-review surface for the Google Sheets™ Editor add-on prototype and the short justifications needed for public Marketplace review.
 
 ## Current Scope Set
 
-Apps Script manifest scopes in [`appsscript.json`](./appsscript.json):
+Apps Script™ manifest scopes in [`appsscript.json`](./appsscript.json):
 
 - `https://www.googleapis.com/auth/script.external_request`
 - `https://www.googleapis.com/auth/spreadsheets.currentonly`
@@ -14,7 +14,7 @@ Older Marketplace/OAuth consent behavior observed during the private dry run:
 - `https://www.googleapis.com/auth/userinfo.email`
 - `https://www.googleapis.com/auth/userinfo.profile`
 
-The two identity scopes above were not added intentionally to the Apps Script manifest. They were seen in earlier Google-side configuration despite not being part of the repo-local manifest, so they should be treated as Google-managed consent items if they reappear rather than as product-chosen runtime scopes.
+The two identity scopes above were not added intentionally to the Apps Script™ manifest. They were seen in earlier Google-side configuration despite not being part of the repo-local manifest, so they should be treated as Google-managed consent items if they reappear rather than as product-chosen runtime scopes.
 
 ## Scope Justifications
 
@@ -28,7 +28,7 @@ Without this scope, the add-on cannot retrieve quote, identifier, and conversion
 
 This scope is used so the add-on can operate on the current spreadsheet context only, instead of requesting broader spreadsheet access.
 
-This is the narrowest spreadsheet scope that still allows the add-on to run inside the active Google Sheet.
+This is the narrowest spreadsheet scope that still allows the add-on to run inside the active Google Sheets™ spreadsheet.
 
 ## Identity Scope Note
 
@@ -41,7 +41,7 @@ Working assumption for review:
 
 If Google asks about the identity scopes during OAuth verification, the safest explanation is:
 
-- they were surfaced automatically by the Google Workspace Marketplace / OAuth consent flow
+- they were surfaced automatically by the Google Workspace Marketplace™ / OAuth consent flow
 - they are not currently consumed directly by the add-on logic
 - the product's functional scope requirements are the two manifest scopes listed above
 

@@ -6,7 +6,7 @@ slug: /api
 
 # API Overview
 
-`HOODLEFINANCE` is a Google Apps Script custom function for Google Sheets. It is built for practical current-data use cases where `GOOGLEFINANCE` is too limited, especially for non-U.S. listings, Yahoo-style symbols, direct ISIN input, and output-currency conversion.
+`HOODLEFINANCE` is a Google Apps Script™ custom function for Google Sheets™. It is built for practical current-data use cases where `GOOGLEFINANCE` is too limited, especially for non-U.S. listings, Yahoo-style symbols, direct ISIN input, and output-currency conversion.
 
 For sampled live coverage by exchange, see the [Support Matrix](/docs/support-matrix).
 

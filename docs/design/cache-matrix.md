@@ -49,5 +49,5 @@ Legend:
 - Positive-result caches are the default pattern used in the service today.
 - Most missing cache work is now in resolver-specific intermediate steps, not in quote fetching.
 - If a new upstream source is added, prefer a targeted cache row here instead of introducing a generic fetch cache.
-- The PSE ISIN map also has an opportunistic in-memory global cache for the lifetime of a warm Apps Script runtime, but the matrix rows focus on the durable/shared layers (`CacheService`, properties, etc.).
+- The PSE ISIN map also has an opportunistic in-memory global cache for the lifetime of a warm Apps Script™ runtime, but the matrix rows focus on the durable/shared layers (`CacheService`, properties, etc.).
 - If the 24-hour PSE ISIN map refresh download fails, the last stored `ScriptProperties` copy is still reused instead of failing immediately.
