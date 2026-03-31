@@ -14,7 +14,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config = {
   title: "HoodleFinance",
   tagline: "Market data for U.S. and international listings in Google Sheets™",
-  favicon: "img/hoodlefinance/light/icon.svg",
+  favicon: "img/hoodlefinance/light/website-icon.svg",
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -27,7 +27,7 @@ const config = {
       attributes: {
         rel: "icon",
         type: "image/svg+xml",
-        href: "/img/hoodlefinance/light/icon.svg",
+        href: "/img/hoodlefinance/light/website-icon.svg",
         media: "(prefers-color-scheme: light)",
       },
     },
@@ -36,7 +36,7 @@ const config = {
       attributes: {
         rel: "icon",
         type: "image/svg+xml",
-        href: "/img/hoodlefinance/dark/icon.svg",
+        href: "/img/hoodlefinance/dark/website-icon.svg",
         media: "(prefers-color-scheme: dark)",
       },
     },
@@ -97,8 +97,8 @@ const config = {
         title: "HoodleFinance",
         logo: {
           alt: "HoodleFinance logo",
-          src: "img/hoodlefinance/light/icon.svg",
-          srcDark: "img/hoodlefinance/dark/icon.svg",
+          src: "img/hoodlefinance/light/website-icon.svg",
+          srcDark: "img/hoodlefinance/dark/website-icon.svg",
         },
         items: [
           {

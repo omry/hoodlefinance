@@ -22,7 +22,7 @@
   "addOns": {
     "common": {
       "name": "HoodleFinance",
-      "logoUrl": "https://hoodlefinance.com/img/hoodlefinance/light/icon.svg",
+      "logoUrl": "https://hoodlefinance.com/img/hoodlefinance/light/listing-icon-128.png",
       "openLinkUrlPrefixes": [
         "https://github.com/omry/hoodlefinance/",
         "https://hoodlefinance.com/"

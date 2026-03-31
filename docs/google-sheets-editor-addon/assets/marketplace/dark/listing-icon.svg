@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="HoodleFinance Marketplace listing icon">
+  <defs>
+    <style>
+      .h-fill { fill: #dce3f0; }
+      .f-fill { fill: #7ba7ea; }
+    </style>
+  </defs>
+
+  <g transform="translate(64 64) scale(4.35) translate(-56.5 -38.71)">
+    <path d="M43.84,31.42 L47.60,31.42 L47.60,36.98 L53.14,36.98 L53.14,31.42 L56.90,31.42 L56.90,46.00 L53.14,46.00 L53.14,39.82 L47.60,39.82 L47.60,46.00 L43.84,46.00 L43.84,31.42 Z" class="h-fill" fill-rule="evenodd"/>
+    <path d="M61.00,31.42 L71.15,31.42 L71.15,34.26 L64.76,34.26 L64.76,36.98 L70.77,36.98 L70.77,39.82 L64.76,39.82 L64.76,46.00 L61.00,46.00 L61.00,31.42 Z" class="f-fill" fill-rule="evenodd" transform="translate(-2 0)"/>
+  </g>
+</svg>

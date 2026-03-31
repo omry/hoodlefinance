@@ -14,6 +14,7 @@ backend: auto
 targets:
   - website_light_icon
   - website_dark_icon
+  - website_light_listing_icon
   - website_light_hero
   - website_dark_hero
   - marketplace_light_icon
@@ -24,13 +25,13 @@ targets:
 assets:
   website_light_icon:
     svg:
-      path: assets/svg/light/icon.svg
-      copy_to: website/static/img/hoodlefinance/light/icon.svg
+      path: assets/svg/light/website-icon.svg
+      copy_to: website/static/img/hoodlefinance/light/website-icon.svg
 
   website_dark_icon:
     svg:
-      path: assets/svg/dark/icon.svg
-      copy_to: website/static/img/hoodlefinance/dark/icon.svg
+      path: assets/svg/dark/website-icon.svg
+      copy_to: website/static/img/hoodlefinance/dark/website-icon.svg
 
   website_light_hero:
     svg:
@@ -50,8 +51,8 @@ assets:
 
   marketplace_light_icon:
     svg:
-      path: assets/svg/light/icon.svg
-      copy_to: docs/google-sheets-editor-addon/assets/marketplace/light/icon.svg
+      path: assets/svg/light/marketplace-listing-icon.svg
+      copy_to: docs/google-sheets-editor-addon/assets/marketplace/light/listing-icon.svg
       output:
         path: docs/google-sheets-editor-addon/assets/marketplace/light/icon
         resolutions: [32, 48, 96, 128]
@@ -59,11 +60,19 @@ assets:
 
   marketplace_dark_icon:
     svg:
-      path: assets/svg/dark/icon.svg
-      copy_to: docs/google-sheets-editor-addon/assets/marketplace/dark/icon.svg
+      path: assets/svg/dark/marketplace-listing-icon.svg
+      copy_to: docs/google-sheets-editor-addon/assets/marketplace/dark/listing-icon.svg
       output:
         path: docs/google-sheets-editor-addon/assets/marketplace/dark/icon
         resolutions: [32, 48, 96, 128]
+        name_pattern: ${.path}-{resolution}.png
+
+  website_light_listing_icon:
+    svg:
+      path: assets/svg/light/marketplace-listing-icon.svg
+      output:
+        path: website/static/img/hoodlefinance/light/listing-icon
+        resolutions: [128]
         name_pattern: ${.path}-{resolution}.png
 
   marketplace_light_banner:
