@@ -8,3 +8,4 @@
 - If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
 - wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step
 - Make another cleanup pass and ensure there is no logic about the specifics of plans outside of the plan definition and resolvers logic. e.g: HOODLEFINANCE_PLAN_ROUTE_PATH_BY_REF_
+- BUG: Preferred reits like NLY-I,RC-E,RITM-C are working in GOOGLEFINANCE but not for HF.
