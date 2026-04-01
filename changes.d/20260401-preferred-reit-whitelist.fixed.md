@@ -1,0 +1,1 @@
+- Preferred REIT lookups now use the local whitelist for smoke checks, and Google-style symbol output keeps the original input for whitelisted tickers.

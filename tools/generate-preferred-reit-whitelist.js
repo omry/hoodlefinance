@@ -253,6 +253,38 @@ function dedupeHoldings(holdings) {
   return deduped;
 }
 
+function normalizePreferredTickers(tickers) {
+  const normalized = [];
+  const seen = new Set();
+
+  for (const entry of Array.isArray(tickers) ? tickers : []) {
+    const ticker = String(entry || "").toUpperCase().trim();
+
+    if (!ticker || seen.has(ticker)) {
+      continue;
+    }
+
+    seen.add(ticker);
+    normalized.push(ticker);
+  }
+
+  normalized.sort(function (left, right) {
+    return left.localeCompare(right);
+  });
+
+  return normalized;
+}
+
+function stripPreferredReitLastChange(dataset) {
+  const value = dataset && typeof dataset === "object" ? dataset : {};
+
+  return {
+    preferredTickers: Array.isArray(value.preferredTickers)
+      ? value.preferredTickers
+      : [],
+  };
+}
+
 function extractXmlDocumentUrl(indexHtml, indexUrl) {
   const matches = [];
   const sourceText = String(indexHtml || "");
@@ -424,43 +456,68 @@ async function generatePreferredReitDataset(options) {
   const normalizedOptions = options || {};
   const source = normalizedOptions.source || DEFAULT_SOURCE;
   const sourceDataset = await loadPreferredReitSource(source, normalizedOptions);
-  const holdings = sourceDataset.holdings.slice().sort(function (left, right) {
-    return left.ticker.localeCompare(right.ticker);
-  });
-  const tickers = holdings
-    .map(function (holding) {
+  const tickers = normalizePreferredTickers(
+    sourceDataset.holdings.map(function (holding) {
       return holding.ticker;
-    })
-    .filter(function (symbol, index, all) {
-      return all.indexOf(symbol) === index;
-    });
+    }),
+  );
 
   return {
-    generatedAt: new Date().toISOString(),
     preferredTickers: tickers,
   };
 }
 
-function writePreferredReitDataset(outputPath, dataset) {
+function writePreferredReitDataset(outputPath, dataset, options) {
   const normalizedPath = normalizeText(outputPath) || DEFAULT_OUTPUT_PATH;
-  const payload = JSON.stringify(dataset, null, 2) + "\n";
-  const previous = fs.existsSync(normalizedPath)
-    ? fs.readFileSync(normalizedPath, "utf8")
-    : null;
+  const dryRun = Boolean(options && options.dryRun);
+  const now = options && options.now ? new Date(options.now).toISOString() : new Date().toISOString();
+  const preferredTickers = normalizePreferredTickers(
+    dataset && dataset.preferredTickers,
+  );
+  const payload = {
+    lastChange: now,
+    preferredTickers: preferredTickers,
+  };
+  let previousDataset = null;
+  const nextComparable = JSON.stringify(stripPreferredReitLastChange(payload));
 
-  if (previous === payload) {
+  if (fs.existsSync(normalizedPath)) {
+    try {
+      previousDataset = JSON.parse(fs.readFileSync(normalizedPath, "utf8"));
+    } catch (_error) {
+      previousDataset = null;
+    }
+  }
+
+  if (
+    previousDataset &&
+    JSON.stringify(stripPreferredReitLastChange(previousDataset)) === nextComparable
+  ) {
     return {
       changed: false,
       path: normalizedPath,
+      dataset: {
+        lastChange: normalizeText(previousDataset.lastChange) || now,
+        preferredTickers: preferredTickers,
+      },
+    };
+  }
+
+  if (dryRun) {
+    return {
+      changed: true,
+      path: normalizedPath,
+      dataset: payload,
     };
   }
 
   fs.mkdirSync(path.dirname(normalizedPath), { recursive: true });
-  fs.writeFileSync(normalizedPath, payload, "utf8");
+  fs.writeFileSync(normalizedPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
 
   return {
     changed: true,
     path: normalizedPath,
+    dataset: payload,
   };
 }
 
@@ -565,16 +622,15 @@ async function main(argv, deps) {
     source: options.source,
     userAgent: options.userAgent,
   });
-
-  if (!options.dryRun) {
-    writePreferredReitDataset(options.outputPath, dataset);
-  }
+  const writeResult = writePreferredReitDataset(options.outputPath, dataset, {
+    dryRun: options.dryRun,
+  });
 
   process.stdout.write(
     JSON.stringify(
       {
-        generatedAt: dataset.generatedAt,
-        records: dataset.preferredTickers.length,
+        lastChange: writeResult.dataset.lastChange,
+        records: writeResult.dataset.preferredTickers.length,
       },
       null,
       2,
@@ -583,7 +639,7 @@ async function main(argv, deps) {
 
   return {
     code: 0,
-    dataset: dataset,
+    dataset: writeResult.dataset,
   };
 }
 
@@ -608,6 +664,7 @@ module.exports = {
   normalizeCik,
   normalizeHoldingTicker,
   normalizeText,
+  normalizePreferredTickers,
   normalizeXmlValue,
   parseArgs,
   parseNportHoldings,

@@ -38,7 +38,7 @@ Repo-specific directives for coding agents working in this project.
 
 - Do not commit, push, merge, publish, or otherwise send changes outside the local working tree unless the user explicitly asks for that outward action.
 - If a change alters release automation, workflow triggers, deployment behavior, or other externally visible project mechanics, require an explicit user review checkpoint before any commit, push, merge, publish, or deployment action.
-- Only user-visible changes should have a release fragment under `changes.d/`.
+- Only product-user-visible changes should have a release fragment under `changes.d/`. Developer-only tooling, repo maintenance, and other internal workflow changes do not count unless they change the shipped product experience.
 - Fragment filenames must follow `YYYYMMDD-short-change-name.<category>.md`. Supported categories are `upgrade`, `added`, `changed`, `docs`, and `fixed`. Fragment text must be concise and user-facing.
 - The user handles releases. Do not edit version numbers, create release files, assemble release notes, or otherwise perform release-cut steps unless explicitly asked.
 - The release process is driven by GitHub Actions. Do not improvise a manual release flow or treat GitHub Release text as the source of truth.
@@ -47,4 +47,4 @@ Repo-specific directives for coding agents working in this project.
 ## Reviews
 
 - When asked to review a commit, pull request, or diff, cover correctness, completeness, documentation, and internal consistency.
-- Verify that each user-visible change includes an appropriate `changes.d/` fragment and that the fragment matches the implementation and docs.
+- Verify that each product-user-visible change includes an appropriate `changes.d/` fragment and that the fragment matches the implementation and docs.

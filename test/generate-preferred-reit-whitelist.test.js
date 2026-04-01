@@ -163,14 +163,26 @@ test("generatePreferredReitDataset follows the SEC filing path and writes a data
   });
 
   assert.deepEqual(dataset.preferredTickers, ["NLY.PI", "RITM.PC"]);
-  assert.equal(typeof dataset.generatedAt, "string");
+  assert.equal(Object.hasOwn(dataset, "generatedAt"), false);
   assert.equal(calls.length, 4);
   assert.equal(calls[0].options.headers["User-Agent"], "hoodlefinance-test/1.0");
   assert.equal(calls[1].options.headers["User-Agent"], "hoodlefinance-test/1.0");
   assert.equal(calls[2].options.headers["User-Agent"], "hoodlefinance-test/1.0");
   assert.equal(calls[3].options.headers["User-Agent"], "hoodlefinance-test/1.0");
 
-  assert.equal(writePreferredReitDataset(outputPath, dataset).changed, true);
-  assert.equal(writePreferredReitDataset(outputPath, dataset).changed, false);
-  assert.deepEqual(JSON.parse(fs.readFileSync(outputPath, "utf8")), dataset);
+  const firstWrite = writePreferredReitDataset(outputPath, dataset, {
+    now: "2026-04-01T00:00:00.000Z",
+  });
+  const secondWrite = writePreferredReitDataset(outputPath, dataset, {
+    now: "2026-04-01T01:00:00.000Z",
+  });
+
+  assert.equal(firstWrite.changed, true);
+  assert.equal(secondWrite.changed, false);
+  assert.deepEqual(firstWrite.dataset, {
+    lastChange: "2026-04-01T00:00:00.000Z",
+    preferredTickers: ["NLY.PI", "RITM.PC"],
+  });
+  assert.deepEqual(secondWrite.dataset, firstWrite.dataset);
+  assert.deepEqual(JSON.parse(fs.readFileSync(outputPath, "utf8")), firstWrite.dataset);
 });

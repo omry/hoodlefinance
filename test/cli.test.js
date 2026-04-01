@@ -2,6 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const {
   formatRoutingPlanTree,
@@ -282,6 +284,30 @@ test("CLI seeds the local PSE ISIN map for direct PSE ISIN resolution", function
   assert.equal(ctx.hf_resolveIsin_("PHY1001D1010"), "PSE:AREIT");
   assert.equal(ctx.hf_resolveIsin_("PH0000056814"), "PSE:ACPAR");
   assert.equal(ctx.hf_resolveIsin_("PHY2105Y1166"), "PSE:DDPR");
+});
+
+test("CLI seeds the local preferred REIT whitelist for smoke lookups", function () {
+  const ctx = loadHoodlefinance();
+  const storedPayload = JSON.parse(
+    ctx.PropertiesService.getScriptProperties().getProperty(
+      "hoodlefinance.preferredReitWhitelist",
+    ),
+  );
+  const localWhitelist = fs.readFileSync(
+    path.join(__dirname, "..", "data", "preferred-reit-whitelist.json"),
+    "utf8",
+  );
+
+  assert.equal(typeof storedPayload.fetchedAtMs, "number");
+  assert.equal(storedPayload.text, localWhitelist);
+});
+
+test("CLI prefers the local Yahoo fallback symbol for whitelisted REITs", function () {
+  const ctx = loadHoodlefinance();
+  const plan = ctx.hf_classifyTickerJob_("NLY-I", "price");
+
+  assert.equal(plan.routeState.preferredYahooSymbol, "NLY-PI");
+  assert.equal(plan.routeState.yahooSymbol, "NLY-I");
 });
 
 test("trace uses the real planned route for source-list requests", function () {

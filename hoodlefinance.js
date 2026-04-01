@@ -149,6 +149,18 @@ const HOODLEFINANCE_UPDATE_CACHE_KEY_ = "hoodlefinance:update:latestVersion";
 const HOODLEFINANCE_UPDATE_CACHE_TTL_SECONDS_ = 6 * 60 * 60;
 const HOODLEFINANCE_MENU_TITLE_ = "Hoodlefinance";
 const HOODLEFINANCE_FETCHALL_BATCH_SIZE_ = 50;
+const HOODLEFINANCE_PREFERRED_REIT_WHITELIST_URL_ =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json";
+const HOODLEFINANCE_PREFERRED_REIT_WHITELIST_PROPERTY_ =
+  "hoodlefinance.preferredReitWhitelist";
+const HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_KEY_ =
+  "hoodlefinance:preferredReitWhitelist";
+const HOODLEFINANCE_PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS_ =
+  6 * 60 * 60 * 1000;
+const HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS_ =
+  6 * 60 * 60;
+let HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_ = null;
+let HOODLEFINANCE_PREFERRED_REIT_TICKER_SET_ = null;
 
 function hf_getDeploymentUiConfig_() {
   const staging =
@@ -2761,9 +2773,18 @@ function hf_buildFxQuoteRouteState_(request) {
 }
 
 function hf_buildEquityYahooQuoteRouteState_(equityRequest) {
+  const yahooResolver = HOODLEFINANCE_RESOLVERS_BY_CODE_
+    ? HOODLEFINANCE_RESOLVERS_BY_CODE_.YAHOO
+    : null;
+
   return {
     fxPair: null,
     yahooSymbol: equityRequest.yahooSymbol,
+    preferredYahooSymbol:
+      yahooResolver &&
+      typeof yahooResolver.resolvePreferredYahooSymbol_ === "function"
+        ? yahooResolver.resolvePreferredYahooSymbol_(equityRequest.yahooSymbol)
+        : "",
   };
 }
 
@@ -3660,6 +3681,10 @@ class YahooQuoteResolver extends AttemptResolver {
         request instanceof FxRequest
           ? request.fxPair.yahooChartSymbol
           : request.yahooSymbol,
+      preferredYahooSymbol:
+        request instanceof FxRequest
+          ? ""
+          : this.resolvePreferredYahooSymbol_(request.yahooSymbol),
     };
   }
 
@@ -3679,6 +3704,246 @@ class YahooQuoteResolver extends AttemptResolver {
     return request.allowTradingviewFallback ? "YAHOO -> TRADINGVIEW" : "YAHOO";
   }
 
+  normalizePreferredTickerKey_(ticker) {
+    const match = String(ticker || "")
+      .trim()
+      .toUpperCase()
+      .match(/^([A-Z0-9]+)-([A-Z])$/);
+
+    return match ? match[1] + "-" + match[2] : "";
+  }
+
+  buildPreferredFallbackSymbol_(ticker) {
+    const normalized = this.normalizePreferredTickerKey_(ticker);
+
+    return normalized ? normalized.replace(/-([A-Z])$/, "-P$1") : "";
+  }
+
+  resolvePreferredYahooSymbol_(ticker) {
+    const normalizedKey = this.normalizePreferredTickerKey_(ticker);
+
+    if (!normalizedKey) {
+      return "";
+    }
+
+    try {
+      return this.getPreferredReitTickerSet_().has(normalizedKey)
+        ? this.buildPreferredFallbackSymbol_(ticker)
+        : "";
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  getPreferredReitWhitelist_() {
+    if (HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_) {
+      return HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_;
+    }
+
+    const cache = CacheService.getScriptCache();
+    const properties = hf_getPersistentProperties_();
+    const cachedText = cache.get(
+      HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_KEY_,
+    );
+    const nowMs = new Date().getTime();
+    let storedPayload = null;
+    let storedPayloadText = properties
+      ? properties.getProperty(
+          HOODLEFINANCE_PREFERRED_REIT_WHITELIST_PROPERTY_,
+        )
+      : null;
+
+    if (cachedText) {
+      try {
+        const cachedData = JSON.parse(cachedText);
+        HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_ = cachedData;
+        return cachedData;
+      } catch (_error) {
+        // fall through to refresh
+      }
+    }
+
+    if (storedPayloadText) {
+      try {
+        storedPayload = JSON.parse(storedPayloadText);
+      } catch (_error) {
+        storedPayload = null;
+      }
+    }
+
+    if (
+      storedPayload &&
+      storedPayload.fetchedAtMs != null &&
+      nowMs - Number(storedPayload.fetchedAtMs) <=
+        HOODLEFINANCE_PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS_
+    ) {
+      try {
+        const storedData = JSON.parse(storedPayload.text);
+        HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_ = storedData;
+        if (storedPayload.text) {
+          cache.put(
+            HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_KEY_,
+            storedPayload.text,
+            HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS_,
+          );
+        }
+        return storedData;
+      } catch (_error) {
+        // continue to download
+      }
+    }
+
+    let downloadText = null;
+    let downloadData = null;
+
+    try {
+      downloadText = hf_fetchText_(HOODLEFINANCE_PREFERRED_REIT_WHITELIST_URL_);
+      downloadData =
+        downloadText && downloadText.length
+          ? JSON.parse(downloadText)
+          : null;
+    } catch (_error) {
+      downloadData = null;
+    }
+
+    if (downloadData) {
+      HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_ = downloadData;
+      cache.put(
+        HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_KEY_,
+        downloadText,
+        HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS_,
+      );
+
+      if (properties) {
+        properties.setProperty(
+          HOODLEFINANCE_PREFERRED_REIT_WHITELIST_PROPERTY_,
+          JSON.stringify({
+            fetchedAtMs: nowMs,
+            text: downloadText,
+          }),
+        );
+      }
+
+      return downloadData;
+    }
+
+    if (storedPayload && storedPayload.text) {
+      try {
+        const fallbackData = JSON.parse(storedPayload.text);
+        HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_ = fallbackData;
+        return fallbackData;
+      } catch (_error) {
+        // fall through
+      }
+    }
+
+    throw new Error(
+      "Failed to download the preferred REIT whitelist from GitHub.",
+    );
+  }
+
+  getPreferredReitTickerSet_() {
+    if (HOODLEFINANCE_PREFERRED_REIT_TICKER_SET_) {
+      return HOODLEFINANCE_PREFERRED_REIT_TICKER_SET_;
+    }
+
+    const payload = this.getPreferredReitWhitelist_();
+    const entries = Array.isArray(payload && payload.preferredTickers)
+      ? payload.preferredTickers
+      : [];
+    const normalizedSet = new Set();
+    let i;
+    let normalized;
+    let parts;
+
+    for (i = 0; i < entries.length; i += 1) {
+      normalized = String(entries[i] || "").trim().toUpperCase();
+      parts = normalized.split(/\s+/);
+
+      if (
+        parts.length === 2 &&
+        /^[A-Z0-9]+$/.test(parts[0]) &&
+        /^[A-Z]$/.test(parts[1])
+      ) {
+        normalizedSet.add(parts[0] + "-" + parts[1]);
+      }
+    }
+
+    HOODLEFINANCE_PREFERRED_REIT_TICKER_SET_ = normalizedSet;
+    return normalizedSet;
+  }
+
+  tryPreferredFallback_(jobs, response) {
+    if (
+      !response ||
+      !response.error ||
+      !response.request ||
+      !Array.isArray(jobs)
+    ) {
+      return null;
+    }
+
+    const job = jobs[response.request.index];
+
+    if (!job) {
+      return null;
+    }
+
+    const errorMessage = hf_errorMessage_(response.error);
+
+    if (errorMessage.indexOf("(404)") === -1) {
+      return null;
+    }
+
+    const normalizedKey = this.normalizePreferredTickerKey_(
+      job.routeState && job.routeState.yahooSymbol,
+    );
+
+    if (!normalizedKey) {
+      return null;
+    }
+
+    const preferredSet = this.getPreferredReitTickerSet_();
+
+    if (!preferredSet.has(normalizedKey)) {
+      return null;
+    }
+
+    const altSymbol = this.buildPreferredFallbackSymbol_(
+      job.routeState && job.routeState.yahooSymbol,
+    );
+
+    if (!altSymbol) {
+      return null;
+    }
+
+    const cacheKey = "hoodlefinance:" + altSymbol;
+    const cached = hf_getCachedJson_(cacheKey);
+
+    if (cached) {
+      return hf_createRouteResult_("success", {
+        quote: hf_decorateFxQuote_(cached, job.routeState.fxPair),
+      });
+    }
+
+    try {
+      const fallbackResponse = UrlFetchApp.fetch(
+        hf_buildYahooChartUrl_(altSymbol),
+        hf_buildFetchOptions_(),
+      );
+      const quote = hf_decorateFxQuote_(
+        hf_extractYahooQuoteMetaFromResponse_(fallbackResponse, altSymbol),
+        job.routeState.fxPair,
+      );
+      hf_putCachedJson_(cacheKey, hf_extractRawQuote_(quote), 60);
+      return hf_createRouteResult_("success", {
+        quote: quote,
+      });
+    } catch (_error) {
+      return null;
+    }
+  }
+
   executeBatch(jobs) {
     const results = jobs.map(function () {
       return null;
@@ -3692,7 +3957,10 @@ class YahooQuoteResolver extends AttemptResolver {
     let error;
 
     for (i = 0; i < jobs.length; i += 1) {
-      cacheKey = "hoodlefinance:" + jobs[i].routeState.yahooSymbol;
+      cacheKey =
+        "hoodlefinance:" +
+        (jobs[i].routeState.preferredYahooSymbol ||
+          jobs[i].routeState.yahooSymbol);
       cached = hf_getCachedJson_(cacheKey);
 
       if (cached) {
@@ -3705,7 +3973,10 @@ class YahooQuoteResolver extends AttemptResolver {
       requests.push({
         cacheKey: cacheKey,
         index: i,
-        url: hf_buildYahooChartUrl_(jobs[i].routeState.yahooSymbol),
+        url: hf_buildYahooChartUrl_(
+          jobs[i].routeState.preferredYahooSymbol ||
+            jobs[i].routeState.yahooSymbol,
+        ),
       });
     }
 
@@ -3746,6 +4017,15 @@ class YahooQuoteResolver extends AttemptResolver {
           hf_errorMessage_(error),
         )
       ) {
+        if (!jobs[responses[i].request.index].routeState.preferredYahooSymbol) {
+          const fallback = this.tryPreferredFallback_(jobs, responses[i]);
+
+          if (fallback) {
+            results[responses[i].request.index] = fallback;
+            continue;
+          }
+        }
+
         results[responses[i].request.index] = hf_createRouteResult_(
           "lookup_failure",
           {
@@ -6785,6 +7065,28 @@ function hf_resolveSymbolAttribute_(quote, context, style) {
 
   if (!resolvedSymbol) {
     throw new Error("No resolved symbol is available for this instrument.");
+  }
+
+  if (style === "google") {
+    const routeState = context && context.plan ? context.plan.routeState : null;
+    const preferredYahooSymbol =
+      routeState && routeState.preferredYahooSymbol
+        ? String(routeState.preferredYahooSymbol).trim().toUpperCase()
+        : "";
+    const originalTicker = String((context && context.tickerInput) || "").trim();
+    const preferredGoogleSymbol = String(
+      hf_stripTickerSourceOverride_(originalTicker) || "",
+    ).trim();
+
+    if (
+      preferredYahooSymbol &&
+      preferredGoogleSymbol &&
+      resolvedSymbol === preferredYahooSymbol
+    ) {
+      return preferredGoogleSymbol;
+    }
+
+    return hf_renderGoogleSymbol_(quote, context);
   }
 
   if (style === "yahoo") {

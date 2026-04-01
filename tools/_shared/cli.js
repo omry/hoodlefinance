@@ -27,6 +27,13 @@ function loadHoodlefinance() {
     "data",
     "pse-isin-map.properties",
   );
+  const localPreferredReitWhitelistPath = path.join(
+    __dirname,
+    "..",
+    "..",
+    "data",
+    "preferred-reit-whitelist.json",
+  );
 
   scriptPropertiesStore.set(
     "hoodlefinance.currencyCodes",
@@ -41,6 +48,13 @@ function loadHoodlefinance() {
     JSON.stringify({
       fetchedAtMs: Date.now(),
       text: fs.readFileSync(localPseIsinMapPath, "utf8"),
+    }),
+  );
+  scriptPropertiesStore.set(
+    "hoodlefinance.preferredReitWhitelist",
+    JSON.stringify({
+      fetchedAtMs: Date.now(),
+      text: fs.readFileSync(localPreferredReitWhitelistPath, "utf8"),
     }),
   );
 

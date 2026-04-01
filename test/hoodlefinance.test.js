@@ -294,6 +294,11 @@ const PSE_FRAME_INVALID_HTML = `
 
 const PSE_HTTP_520_TEXT = "error code: 520";
 
+const PREFERRED_REIT_WHITELIST_JSON = fs.readFileSync(
+  path.join(__dirname, "..", "data", "preferred-reit-whitelist.json"),
+  "utf8",
+);
+
 const PSE_ISIN_MAP_PROPERTIES = `
 # PSE ISIN to ticker map
 # updated_at=2026-03-13T18:34:56.295Z
@@ -1862,6 +1867,16 @@ function primePseIsinMapData(ctx, fetchedAtMs) {
     JSON.stringify({
       fetchedAtMs: fetchedAtMs == null ? new Date().getTime() : fetchedAtMs,
       text: PSE_ISIN_MAP_PROPERTIES,
+    }),
+  );
+}
+
+function primePreferredReitWhitelistData(ctx, fetchedAtMs) {
+  ctx.__scriptPropertiesStore.set(
+    "hoodlefinance.preferredReitWhitelist",
+    JSON.stringify({
+      fetchedAtMs: fetchedAtMs == null ? new Date().getTime() : fetchedAtMs,
+      text: PREFERRED_REIT_WHITELIST_JSON,
     }),
   );
 }
@@ -3743,6 +3758,30 @@ test("direct Philippine preferred-share ISIN input resolves symbol attributes th
   assert.equal(ctx.HOODLEFINANCE("PH0000056814", "symbol"), "PSE:ACPAR");
   assert.equal(ctx.HOODLEFINANCE("PH0000056814", "symbol:yahoo"), "ACPAR.PS");
   assert.equal(ctx.HOODLEFINANCE("PH0000056814", "exchange"), "PSE");
+});
+
+test("preferred REIT Yahoo fallbacks keep the original Google-style symbol", () => {
+  const ctx = loadHoodlefinance();
+  primePreferredReitWhitelistData(ctx);
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    if (
+      url === "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d"
+      || url === "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d"
+    ) {
+      return createYahooChartResponse(
+        url.indexOf("NLY-PI") >= 0 ? "NLY-PI" : "NLY-I",
+        {
+          exchangeName: "NYSE",
+          regularMarketPrice: 24.78,
+        },
+      );
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("NLY-I", "symbol:google"), "NLY-I");
 });
 
 test("range calls abort with the first failing job in traversal order", () => {
