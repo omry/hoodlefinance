@@ -50,6 +50,9 @@ const DEFAULT_MANIFEST = {
   runtimeVersion: "V8",
   timeZone: "Etc/UTC",
 };
+const DEMO_SHEET_OWNERSHIP_METADATA_KEY_ =
+  "hoodlefinance.demoSheetOwnership";
+const DEMO_SHEET_OWNERSHIP_METADATA_VALUE_ = "bound-script";
 const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/drive",
@@ -266,6 +269,7 @@ async function syncDemoSheet(accessToken, inputConfig, options, claspAuth) {
   let sheetMap;
 
   await ensureSpreadsheet(accessToken, config, options);
+  await ensureDemoSheetOwnershipMetadata(accessToken, config.spreadsheetId);
   await ensureTabs(accessToken, config);
   sheetMap = await fetchSpreadsheetSheetMap(accessToken, config.spreadsheetId);
   await resetTabFormatsBeforeWrite(accessToken, config, sheetMap);
@@ -284,6 +288,76 @@ async function syncDemoSheet(accessToken, inputConfig, options, claspAuth) {
 
   config.publicUrl = buildSpreadsheetUrl(config.spreadsheetId);
   return config;
+}
+
+function buildDemoSheetOwnershipMetadataRequest() {
+  return {
+    createDeveloperMetadata: {
+      developerMetadata: {
+        location: {
+          spreadsheet: true,
+        },
+        metadataKey: DEMO_SHEET_OWNERSHIP_METADATA_KEY_,
+        metadataValue: DEMO_SHEET_OWNERSHIP_METADATA_VALUE_,
+        visibility: "DOCUMENT",
+      },
+    },
+  };
+}
+
+function buildDemoSheetOwnershipMetadataLookupRequest() {
+  return {
+    developerMetadataLookup: {
+      metadataKey: DEMO_SHEET_OWNERSHIP_METADATA_KEY_,
+      visibility: "DOCUMENT",
+    },
+  };
+}
+
+async function fetchDemoSheetOwnershipMetadata(accessToken, spreadsheetId, deps) {
+  const normalizedDeps = deps || {};
+  const api = normalizedDeps.googleApiJson || googleApiJson;
+  const response = await api(
+    accessToken,
+    "POST",
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+      encodeURIComponent(spreadsheetId) +
+      "/developerMetadata:search",
+    {
+      dataFilters: [buildDemoSheetOwnershipMetadataLookupRequest()],
+    },
+  );
+
+  return Array.isArray(response.matchedDeveloperMetadata)
+    ? response.matchedDeveloperMetadata
+    : [];
+}
+
+async function ensureDemoSheetOwnershipMetadata(accessToken, spreadsheetId, deps) {
+  const normalizedDeps = deps || {};
+  const api = normalizedDeps.googleApiJson || googleApiJson;
+  const existingMetadata = await fetchDemoSheetOwnershipMetadata(
+    accessToken,
+    spreadsheetId,
+    normalizedDeps,
+  );
+
+  if (existingMetadata.length) {
+    return false;
+  }
+
+  await api(
+    accessToken,
+    "POST",
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+      encodeURIComponent(spreadsheetId) +
+      ":batchUpdate",
+    {
+      requests: [buildDemoSheetOwnershipMetadataRequest()],
+    },
+  );
+
+  return true;
 }
 
 async function resetTabFormatsBeforeWrite(accessToken, config, sheetMap) {
@@ -1593,6 +1667,7 @@ module.exports = {
   STAGING_CONFIG_PATH,
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
+  buildDemoSheetOwnershipMetadataRequest,
   buildEnsureTabsRequests,
   buildStyleApplicationRequests,
   buildStyleRepeatCellRequest,
@@ -1616,6 +1691,8 @@ module.exports = {
   getDemoClaspAuthPath,
   getDemoBundleFiles,
   getDemoClaspWorkDir,
+  ensureDemoSheetOwnershipMetadata,
+  fetchDemoSheetOwnershipMetadata,
   loadDemoSheetConfig,
   normalizeStyleRegistry,
   normalizeTabFormatting,

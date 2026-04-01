@@ -1491,6 +1491,7 @@ function loadHoodlefinance(extraGlobals) {
   const cacheStore = new Map();
   const scriptPropertiesStore = new Map();
   const userPropertiesStore = new Map();
+  const activeSpreadsheetMetadataStore = [];
   let installationSource = "NONE";
   const uiState = {
     addonMenus: [],
@@ -1540,6 +1541,45 @@ function loadHoodlefinance(extraGlobals) {
     },
     showModalDialog(output, title) {
       uiState.dialogs.push({ output, title });
+    },
+  };
+  function createDeveloperMetadata(entry) {
+    const normalizedEntry = entry || {};
+    const key =
+      normalizedEntry.key != null
+        ? normalizedEntry.key
+        : normalizedEntry.metadataKey != null
+          ? normalizedEntry.metadataKey
+          : "";
+    const value =
+      normalizedEntry.value != null
+        ? normalizedEntry.value
+        : normalizedEntry.metadataValue != null
+          ? normalizedEntry.metadataValue
+          : null;
+
+    return {
+      getKey() {
+        return String(key);
+      },
+      getValue() {
+        return value == null ? null : String(value);
+      },
+      getLocation() {
+        return {
+          getLocationType() {
+            return "SPREADSHEET";
+          },
+        };
+      },
+      getVisibility() {
+        return "DOCUMENT";
+      },
+    };
+  }
+  const activeSpreadsheet = {
+    getDeveloperMetadata() {
+      return activeSpreadsheetMetadataStore.map(createDeveloperMetadata);
     },
   };
   const urlFetchApp = {
@@ -1717,6 +1757,9 @@ function loadHoodlefinance(extraGlobals) {
       },
     },
     SpreadsheetApp: {
+      getActiveSpreadsheet() {
+        return activeSpreadsheet;
+      },
       getUi() {
         return ui;
       },
@@ -1748,6 +1791,17 @@ function loadHoodlefinance(extraGlobals) {
   vm.runInContext(source, sandbox, { filename: "hoodlefinance.js" });
   sandbox.__setInstallationSource = function (value) {
     installationSource = value;
+  };
+  sandbox.__setActiveSpreadsheetDeveloperMetadata = function (entries) {
+    activeSpreadsheetMetadataStore.length = 0;
+
+    if (!Array.isArray(entries)) {
+      return;
+    }
+
+    entries.forEach(function (entry) {
+      activeSpreadsheetMetadataStore.push(entry);
+    });
   };
   return sandbox;
 }
@@ -4149,6 +4203,46 @@ test("Editor add-on install builds the add-on menu without the bound-script upda
   ]);
 });
 
+test("reserved demo sheets block the add-on menu and show a conflict alert", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__setInstallationSource(
+    ctx.ScriptApp.InstallationSource.WEB_STORE_ADD_ON,
+  );
+  ctx.__setActiveSpreadsheetDeveloperMetadata([
+    { key: "hoodlefinance.demoSheetOwnership" },
+  ]);
+
+  ctx.onOpen({ authMode: ctx.ScriptApp.AuthMode.LIMITED });
+
+  assert.equal(ctx.__uiState.addonMenus.length, 0);
+  assert.equal(ctx.__uiState.alerts.length, 1);
+  assert.equal(
+    ctx.__uiState.alerts[0][0],
+    "Hoodlefinance add-on conflict in this spreadsheet",
+  );
+  assert.match(
+    ctx.__uiState.alerts[0][1],
+    /Disable or uninstall the HoodleFinance Marketplace add-on/,
+  );
+});
+
+test("AuthMode.NONE keeps the add-on open path harmless even when a reservation marker is present", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__setInstallationSource(
+    ctx.ScriptApp.InstallationSource.WEB_STORE_ADD_ON,
+  );
+  ctx.__setActiveSpreadsheetDeveloperMetadata([
+    { key: "hoodlefinance.demoSheetOwnership" },
+  ]);
+
+  ctx.onOpen({ authMode: ctx.ScriptApp.AuthMode.NONE });
+
+  assert.equal(ctx.__uiState.addonMenus.length, 1);
+  assert.equal(ctx.__uiState.alerts.length, 0);
+});
+
 test("staging add-on install labels the enable menu item clearly", () => {
   const ctx = loadHoodlefinance({
     HF_IS_ADDON_STAGING: true,
@@ -4166,6 +4260,25 @@ test("staging add-on install labels the enable menu item clearly", () => {
       type: "item",
     },
   ]);
+});
+
+test("reserved demo sheets show a conflict card on the add-on homepage", () => {
+  const ctx = loadHoodlefinance();
+
+  ctx.__setActiveSpreadsheetDeveloperMetadata([
+    { key: "hoodlefinance.demoSheetOwnership" },
+  ]);
+
+  const card = ctx.hoodlefinanceBuildSheetsAddOnHomepage({});
+
+  assert.equal(
+    card.header.title,
+    "Hoodlefinance add-on conflict in this spreadsheet",
+  );
+  assert.match(
+    card.sections[0].widgets[0].text,
+    /Disable or uninstall the HoodleFinance Marketplace add-on/,
+  );
 });
 
 test("Editor add-on onOpen in AuthMode.NONE avoids restricted update-check services", () => {

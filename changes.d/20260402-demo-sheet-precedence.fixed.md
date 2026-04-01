@@ -1,0 +1,1 @@
+- The Demo page now show a conflict warning if the Google Sheet add-on is enabled there.

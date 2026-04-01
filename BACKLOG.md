@@ -30,7 +30,7 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
 
 ## Add-on and release workflow
 
-- [ ] If Marketplace packaging succeeds and both install paths remain supported, implement document-level same-spreadsheet conflict detection for the add-on path.
+- [x] Implement document-level same-spreadsheet conflict detection for the tracked demo sheets so the Marketplace add-on yields to the bound-script demo install.
   - Source: `TODO.md`
 - [ ] Wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step.
   - Source: `TODO.md`

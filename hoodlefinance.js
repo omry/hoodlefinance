@@ -161,6 +161,13 @@ const HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS_ =
   6 * 60 * 60;
 let HOODLEFINANCE_PREFERRED_REIT_WHITELIST_CACHE_ = null;
 let HOODLEFINANCE_PREFERRED_REIT_TICKER_SET_ = null;
+const HOODLEFINANCE_DEMO_SHEET_OWNERSHIP_METADATA_KEY_ =
+  "hoodlefinance.demoSheetOwnership";
+const HOODLEFINANCE_DEMO_SHEET_CONFLICT_TITLE_ =
+  "Hoodlefinance add-on conflict in this spreadsheet";
+const HOODLEFINANCE_DEMO_SHEET_CONFLICT_MESSAGE_ =
+  "This demo sheet has its own copy of HoodleFinance and the add-on is conflicting.\n\n" +
+  "Disable or uninstall the HoodleFinance Marketplace add-on to avoid conflict with this demo.";
 
 function hf_getDeploymentUiConfig_() {
   const staging =
@@ -609,7 +616,7 @@ function HOODLEFINANCE_ROUTES(ticker) {
 
 function onOpen(e) {
   if (hf_inferAddOnContext_(e)) {
-    hf_onAddOnActivation_();
+    hf_onAddOnActivation_(e);
   } else {
     hf_onScriptActivation_(e);
   }
@@ -619,9 +626,17 @@ function onInstall(e) {
   onOpen(e);
 }
 
-function hf_onAddOnActivation_() {
+function hf_onAddOnActivation_(e) {
   const ui = hf_getUi_();
   const deploymentUi = hf_getDeploymentUiConfig_();
+  const authMode = e && e.authMode ? e.authMode : null;
+  const canInspectDocument =
+    !hf_matchesScriptEnum_(authMode, "AuthMode", "NONE");
+
+  if (canInspectDocument && hf_isReservedDemoSpreadsheet_()) {
+    hf_showDemoSpreadsheetAddOnConflict_();
+    return;
+  }
 
   if (!ui || !ui.createAddonMenu) {
     return;
@@ -646,6 +661,11 @@ function hf_onScriptActivation_(e) {
 function enable_() {
   const deploymentUi = hf_getDeploymentUiConfig_();
 
+  if (hf_isReservedDemoSpreadsheet_()) {
+    hf_showDemoSpreadsheetAddOnConflict_();
+    return;
+  }
+
   SpreadsheetApp.getActive().toast(
     deploymentUi.menuName +
       " " +
@@ -660,6 +680,10 @@ function hoodlefinanceBuildSheetsAddOnHomepage() {
 
   if (!cardService) {
     return null;
+  }
+
+  if (hf_isReservedDemoSpreadsheet_()) {
+    return hf_buildDemoSpreadsheetAddOnConflictCard_();
   }
 
   return cardService
@@ -891,6 +915,113 @@ function hf_getUi_() {
   }
 
   return SpreadsheetApp.getUi();
+}
+
+function hf_getActiveSpreadsheet_() {
+  if (
+    typeof SpreadsheetApp === "undefined" ||
+    !SpreadsheetApp ||
+    (!SpreadsheetApp.getActiveSpreadsheet && !SpreadsheetApp.getActive)
+  ) {
+    return null;
+  }
+
+  try {
+    if (SpreadsheetApp.getActiveSpreadsheet) {
+      return SpreadsheetApp.getActiveSpreadsheet();
+    }
+  } catch (error) {
+    // Fall through to getActive() below.
+  }
+
+  try {
+    return SpreadsheetApp.getActive ? SpreadsheetApp.getActive() : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function hf_hasReservedDemoSpreadsheetMetadata_() {
+  const spreadsheet = hf_getActiveSpreadsheet_();
+  let metadata = null;
+  let i;
+  let item;
+
+  try {
+    metadata =
+      spreadsheet && spreadsheet.getDeveloperMetadata
+        ? spreadsheet.getDeveloperMetadata()
+        : null;
+
+    if (!Array.isArray(metadata)) {
+      return false;
+    }
+
+    for (i = 0; i < metadata.length; i += 1) {
+      item = metadata[i];
+
+      if (
+        item &&
+        item.getKey &&
+        item.getKey() === HOODLEFINANCE_DEMO_SHEET_OWNERSHIP_METADATA_KEY_
+      ) {
+        return true;
+      }
+    }
+  } catch (error) {
+    return false;
+  }
+
+  return false;
+}
+
+function hf_isReservedDemoSpreadsheet_() {
+  return hf_hasReservedDemoSpreadsheetMetadata_();
+}
+
+function hf_showDemoSpreadsheetAddOnConflict_() {
+  const ui = hf_getUi_();
+
+  if (!ui || !ui.alert) {
+    return;
+  }
+
+  ui.alert(
+    HOODLEFINANCE_DEMO_SHEET_CONFLICT_TITLE_,
+    HOODLEFINANCE_DEMO_SHEET_CONFLICT_MESSAGE_,
+    ui.ButtonSet.OK,
+  );
+}
+
+function hf_buildDemoSpreadsheetAddOnConflictCard_() {
+  const cardService = hf_getCardService_();
+
+  if (!cardService) {
+    return null;
+  }
+
+  return cardService
+    .newCardBuilder()
+    .setHeader(
+      cardService
+        .newCardHeader()
+        .setTitle(HOODLEFINANCE_DEMO_SHEET_CONFLICT_TITLE_)
+        .setSubtitle(
+          "The demo sheet has its own copy of HoodleFinance",
+        ),
+    )
+    .addSection(
+      cardService
+        .newCardSection()
+        .addWidget(
+          cardService
+            .newTextParagraph()
+            .setText(
+              HOODLEFINANCE_DEMO_SHEET_CONFLICT_MESSAGE_,
+            ),
+        ),
+    )
+    .build();
 }
 
 function hf_getCardService_() {

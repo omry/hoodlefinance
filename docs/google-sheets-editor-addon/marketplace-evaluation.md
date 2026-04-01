@@ -234,7 +234,7 @@ That means the intended product policy should be:
 
 ### Recommended Conflict Handling
 
-If the add-on detects that the spreadsheet already appears to contain a manual `HOODLEFINANCE` install, it should show a clear user-facing conflict message rather than trying to proceed silently.
+The tracked demo sheets now carry a document-level reservation marker that tells the Marketplace add-on to back off there. In those reserved spreadsheets, the add-on shows a clear user-facing conflict message rather than trying to proceed silently.
 
 The preferred message shape is:
 
@@ -262,7 +262,7 @@ A spreadsheet-visible marker is more promising than script-local properties beca
 
 If conflict detection becomes important enough to implement, evaluate a document-scoped marker such as spreadsheet developer metadata or another document-visible flag that both the bound script and the add-on can read consistently.
 
-For now, the add-on intentionally does not implement that detection yet. The menu/auth hardening is small and locally testable; document-level conflict detection can wait until the production Marketplace path needs tighter migration tooling.
+The current implementation uses that pattern only for the tracked demo sheets. The menu/auth hardening stays small and locally testable, while blanket detection of arbitrary legacy manual installs remains out of scope.
 
 ## Version Checks And Migration Behavior
 

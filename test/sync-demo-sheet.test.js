@@ -13,7 +13,9 @@ const {
 const {
   buildAutoResizeColumnsRequest,
   buildBodyAlignmentRequest,
+  buildDemoSheetOwnershipMetadataRequest,
   buildEnsureTabsRequests,
+  ensureDemoSheetOwnershipMetadata,
   buildReorderTabsRequests,
   buildResolvedStyleApplications,
   buildStyleApplicationRequests,
@@ -255,6 +257,120 @@ test("buildReorderTabsRequests moves managed tabs into config order", function (
           sheetId: 4,
         },
       },
+    },
+  ]);
+});
+
+test("buildDemoSheetOwnershipMetadataRequest creates a spreadsheet marker", function () {
+  assert.deepEqual(buildDemoSheetOwnershipMetadataRequest(), {
+    createDeveloperMetadata: {
+      developerMetadata: {
+        location: {
+          spreadsheet: true,
+        },
+        metadataKey: "hoodlefinance.demoSheetOwnership",
+        metadataValue: "bound-script",
+        visibility: "DOCUMENT",
+      },
+    },
+  });
+});
+
+test("ensureDemoSheetOwnershipMetadata writes the demo marker when missing", async function () {
+  const seenRequests = [];
+
+  const created = await ensureDemoSheetOwnershipMetadata(
+    "token",
+    "sheet-123",
+    {
+      googleApiJson: async function (accessToken, method, url, body) {
+        seenRequests.push({ accessToken, body, method, url });
+
+        if (url.endsWith("/developerMetadata:search")) {
+          return { matchedDeveloperMetadata: [] };
+        }
+
+        if (url.endsWith(":batchUpdate")) {
+          return { replies: [] };
+        }
+
+        throw new Error("Unexpected URL: " + url);
+      },
+    },
+  );
+
+  assert.equal(created, true);
+  assert.deepEqual(seenRequests, [
+    {
+      accessToken: "token",
+      body: {
+        dataFilters: [
+          {
+            developerMetadataLookup: {
+              metadataKey: "hoodlefinance.demoSheetOwnership",
+              visibility: "DOCUMENT",
+            },
+          },
+        ],
+      },
+      method: "POST",
+      url: "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/developerMetadata:search",
+    },
+    {
+      accessToken: "token",
+      body: {
+        requests: [buildDemoSheetOwnershipMetadataRequest()],
+      },
+      method: "POST",
+      url: "https://sheets.googleapis.com/v4/spreadsheets/sheet-123:batchUpdate",
+    },
+  ]);
+});
+
+test("ensureDemoSheetOwnershipMetadata stays idempotent when the marker exists", async function () {
+  const seenRequests = [];
+
+  const created = await ensureDemoSheetOwnershipMetadata(
+    "token",
+    "sheet-123",
+    {
+      googleApiJson: async function (accessToken, method, url, body) {
+        seenRequests.push({ accessToken, body, method, url });
+
+        if (url.endsWith("/developerMetadata:search")) {
+          return {
+            matchedDeveloperMetadata: [
+              {
+                developerMetadata: {
+                  metadataKey: "hoodlefinance.demoSheetOwnership",
+                  metadataValue: "bound-script",
+                },
+              },
+            ],
+          };
+        }
+
+        throw new Error("Unexpected write attempt: " + url);
+      },
+    },
+  );
+
+  assert.equal(created, false);
+  assert.deepEqual(seenRequests, [
+    {
+      accessToken: "token",
+      body: {
+        dataFilters: [
+          {
+            developerMetadataLookup: {
+              metadataKey: "hoodlefinance.demoSheetOwnership",
+              visibility: "DOCUMENT",
+            },
+          },
+        ],
+      },
+      method: "POST",
+      url: "https://sheets.googleapis.com/v4/spreadsheets/sheet-123/developerMetadata:search",
     },
   ]);
 });
