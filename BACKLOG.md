@@ -21,6 +21,8 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
   - Source: `TODO.md`
 - [ ] Rework source identity, grouped-source semantics, and source introspection around the gaps captured in [`docs/design/routing-source-gaps.md`](./docs/design/routing-source-gaps.md).
   - Source: `TODO.md`
+- [ ] Implement the canonical identifier layer so preferred REIT symbols and other provider-specific identifiers render consistently across Google and Yahoo forms.
+  - Source: [`docs/design/canonical-identifier-layer.md`](./docs/design/canonical-identifier-layer.md)
 - [ ] Expose full runtime trace directly from `HOODLEFINANCE()` in Sheets, similar to the richer CLI trace output available today.
   - Sources:
     - [`hoodlefinance.js`](./hoodlefinance.js)
@@ -36,9 +38,4 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
 ## Codebase cleanup
 
 - [ ] Make another cleanup pass and ensure there is no logic about the specifics of plans outside of the plan definition and resolvers logic, for example `HOODLEFINANCE_PLAN_ROUTE_PATH_BY_REF_`.
-  - Source: `TODO.md`
-
-## Bugs
-
-- [ ] Fix preferred REIT tickers like `NLY-I`, `RC-E`, and `RITM-C`, which currently work in `GOOGLEFINANCE` but not in HoodleFinance.
   - Source: `TODO.md`
