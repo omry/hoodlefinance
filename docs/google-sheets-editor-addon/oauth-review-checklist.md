@@ -109,8 +109,8 @@ Repo-local refresh on March 28, 2026:
 ## Blocked Or Open Questions
 
 - [ ] Decide whether the current support, privacy, and terms wording is final enough for public review or needs one more pass
-- [ ] Decide how much to invest in the Marketplace path before broader product questions are settled:
-  - manual install vs Marketplace positioning
+- [ ] Decide how much contributor/demo manual-path guidance and conflict handling to keep alongside the Marketplace default:
+  - keep the script-copy path documented for contributors and the tracked demo sheet
   - same-spreadsheet conflict handling
   - source / policy / commercialization risk
 

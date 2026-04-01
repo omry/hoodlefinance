@@ -44,6 +44,22 @@ The repo separates those Google auth paths on purpose:
 
 That keeps staging and production isolated from each other, while still allowing different Google Cloud™ projects to keep separate auth files.
 
+## Legacy Bound-Script Workflow
+
+Use this only for contributor work or tracked demo-sheet maintenance.
+
+1. Open a Google Sheets™ spreadsheet.
+2. Go to **Extensions -> Apps Script™**.
+3. Replace the default script contents with [`hoodlefinance.js`](./hoodlefinance.js).
+4. Save the script project.
+5. Return to the spreadsheet and reload it.
+6. Confirm the `Hoodlefinance` menu appears.
+
+If you later need to refresh the bound-script copy, replace the pasted source with the current repo version of `hoodlefinance.js` and reload the spreadsheet again.
+
+Do not use this workflow for ordinary end-user installs. The public install path is the Google Workspace Marketplace™ add-on.
+This legacy workflow can conflict with the official add-on and should not be used in any spreadsheet where the Marketplace add-on is enabled.
+
 To confirm which `clasp` accounts the configured staging and production flows will use:
 
 ```sh

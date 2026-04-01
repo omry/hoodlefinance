@@ -23,7 +23,7 @@ When reporting a problem, include:
 - the exact formula you used
 - the exact result or error message
 - the ticker, ISIN, or currency pair involved
-- whether the issue happened in the manual script install or the add-on
+- The script version, if available via HOODLEFINANCE_VERSION()
 
 ## Known Limits
 

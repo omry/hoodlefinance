@@ -1,6 +1,6 @@
 # Marketplace Packaging Evaluation
 
-This note evaluates what it takes to move the experimental Google Sheets™ Editor add-on prototype from Apps Script™ test deployment into a real Google Workspace Marketplace™ package and toward public review.
+This note captures the packaging work that moved the Google Sheets™ Editor add-on from Apps Script™ test deployment into a Google Workspace Marketplace™ package.
 
 It focuses on three questions:
 
@@ -10,9 +10,9 @@ It focuses on three questions:
 
 ## Bottom Line
 
-The private internal Marketplace dry run validated the main technical question for this prototype: Marketplace packaging can expose `HOODLEFINANCE()` custom functions in Sheets.
+The private internal Marketplace dry run validated the main technical question for the add-on: Marketplace packaging can expose `HOODLEFINANCE()` custom functions in Sheets.
 
-The biggest remaining repo-local blockers are no longer the add-on open trigger or menu shape. Those lifecycle issues are now addressed in the prototype.
+The biggest remaining repo-local blockers are no longer the add-on open trigger or menu shape. Those lifecycle issues are now addressed in the packaged add-on.
 
 The most important remaining blockers are now:
 
@@ -75,7 +75,7 @@ That makes a private internal dry run the safest first packaging validation path
 
 ### Store Listing Assets
 
-The current prototype repo does not yet include the required Marketplace listing assets. Google currently requires:
+The current product repo includes the required Marketplace listing assets. Google requires:
 
 - app name, short description, detailed description, and category
 - icons at 128x128 and 32x32
@@ -95,7 +95,7 @@ Google's current Marketplace review criteria for Editor add-ons specifically cal
 - correct authorization-mode handling
 - V8 runtime
 
-The current prototype partially satisfies this already:
+The current add-on implementation partially satisfies this already:
 
 - V8 runtime is already declared in [`appsscript.json`](./appsscript.json)
 - `onInstall()` exists and calls `onOpen()`
@@ -108,7 +108,7 @@ But there are still important gaps.
 
 ### 1. `onOpen()` And Menu Bootstrap
 
-This was an earlier blocker and is now addressed in the prototype runtime.
+This was an earlier blocker and is now addressed in the packaged add-on runtime.
 
 The current implementation now:
 
@@ -116,7 +116,7 @@ The current implementation now:
 - avoids the bound-script automatic update-check flow during add-on `onOpen()`
 - keeps the manual bound-script menu and automatic raw-source update checks only for the pasted-script install path
 
-That means the prototype is in better shape for a published Editor add-on where `onOpen()` can run in `AuthMode.NONE`.
+That means the add-on is in better shape for a published Editor add-on where `onOpen()` can run in `AuthMode.NONE`.
 
 ### 2. Marketplace Assets And Policy Links Now Exist, But Still Need Final Review
 
@@ -132,7 +132,7 @@ The repo now includes:
 
 What is still missing is not the existence of these materials, but the final public-review pass on their wording, presentation, and consistency.
 
-The current manifest logo URL is also still a generic Google-hosted icon, which is acceptable as a prototype placeholder but not a good review-ready identity.
+The current manifest logo URL is also still a generic Google-hosted icon, which is acceptable as a packaging placeholder but not a good review-ready identity.
 
 ### 3. Cloud Project Wiring Needed Real Setup
 
@@ -147,7 +147,7 @@ This was previously missing, but the private dry run established a working packa
 
 The largest unresolved product question was whether Marketplace-installed packaging exposes the `HOODLEFINANCE` custom functions correctly in Sheets.
 
-The unpublished test deployment did not prove that. It still produced `Unknown function`, which matched the current public issue tracker behavior cited in the prototype README.
+The unpublished test deployment did not prove that. It still produced `Unknown function`, which matched the current public issue tracker behavior cited in the add-on README.
 
 The private Marketplace dry run did prove it. In a fresh spreadsheet with the Marketplace-installed add-on:
 
@@ -199,21 +199,21 @@ The existing caching and batched fetch work still helps, but packaging alone doe
 
 ## Coexistence With The Manual Install Path
 
-Running both install paths at the product level is viable.
+Running both install paths at the product level is still viable.
 
 In other words, `HOODLEFINANCE` can continue to support:
 
-- the current copy-paste bound-script install path
-- a future Marketplace Editor add-on install path
+- the Marketplace Editor add-on install path for ordinary users
+- the copy-paste bound-script install path for contributors, private experimentation, and the tracked demo sheet
 
-There is no need to force an all-at-once migration to Marketplace before the add-on path is offered.
+There is no need to force the manual path into user-facing docs now that the add-on is the public default.
 
 ### Product-Level Coexistence
 
 Supporting both install paths at the same time is reasonable because they solve different user needs:
 
 - Marketplace is the low-friction path for ordinary users
-- copy-paste remains useful for advanced users, private experimentation, and cases where Marketplace install is not available or not desired
+- copy-paste remains useful for contributors, private experimentation, and the tracked demo sheet
 
 This should be treated as two supported distribution options for the product, not as two modes that should coexist inside one spreadsheet.
 
@@ -262,7 +262,7 @@ A spreadsheet-visible marker is more promising than script-local properties beca
 
 If conflict detection becomes important enough to implement, evaluate a document-scoped marker such as spreadsheet developer metadata or another document-visible flag that both the bound script and the add-on can read consistently.
 
-For now, the prototype intentionally does not implement that detection yet. The menu/auth hardening is small and locally testable; document-level conflict detection can wait until the Marketplace dry run confirms the add-on path is viable enough to justify more code.
+For now, the add-on intentionally does not implement that detection yet. The menu/auth hardening is small and locally testable; document-level conflict detection can wait until the production Marketplace path needs tighter migration tooling.
 
 ## Version Checks And Migration Behavior
 
@@ -272,7 +272,7 @@ Supporting both install paths also means the project should not treat version ch
 
 The current bound-script implementation includes a menu-driven version check against the raw GitHub source.
 
-That behavior makes sense for the copy-paste install path, where users are responsible for replacing the pasted script manually. It is a poor default for a Marketplace-installed add-on, where distribution and updates should be handled by the add-on release path rather than by asking users to compare raw source versions.
+That behavior makes sense for the copy-paste install path, where contributors and demo-sheet maintainers are responsible for replacing the pasted script manually. It is a poor default for a Marketplace-installed add-on, where distribution and updates should be handled by the add-on release path rather than by asking ordinary users to compare raw source versions.
 
 For the Marketplace path, the better behavior is:
 
@@ -288,7 +288,7 @@ Publishing a Marketplace version should not automatically push existing copy-pas
 
 The default behavior should be:
 
-- manual-install users continue receiving manual-install guidance
+- contributor and demo-sheet users continue receiving manual-install guidance
 - their version check continues to compare the pasted script with the current published script source
 - they remain on the copy-paste path until they explicitly choose to migrate
 
@@ -318,16 +318,16 @@ In short:
 
 ## Recommended Next Step
 
-The next worthwhile step is not blind public review submission yet. It is a small publish-readiness hardening pass on top of the now-successful private Marketplace dry run.
+The add-on is now published, so the next worthwhile step is production maintenance rather than submission prep.
 
-For the practical step-by-step flow, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md).
+For the rollout history and pre-launch review record, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md).
 
 Recommended order:
 
-1. Finish the support/privacy/terms surface and other listing polish.
-2. Record the private dry-run outcome cleanly with exact formulas and observed behavior.
-3. Decide whether public Marketplace review is worth pursuing despite source and policy risk.
-4. If the add-on path remains attractive, design the coexistence and migration story with the manual install path.
+1. Keep the support/privacy/terms surface and other listing polish aligned with the live release.
+2. Record any production issues or support notes cleanly with exact formulas and observed behavior.
+3. Keep the contributor/demo manual-path documentation clearly separated from the Marketplace install flow.
+4. Revisit coexistence or migration tooling only if the manual path starts to create support friction.
 
 ## Sources
 

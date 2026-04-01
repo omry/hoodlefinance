@@ -49,14 +49,9 @@ For mixed-currency portfolios, `price@USD`-style formulas are often one of the b
 
 ## Installation
 
-HoodleFinance currently has one practical installation path for general use, plus a future Marketplace path:
+HoodleFinance is a Google Sheets™ add-on. Install it from the Google Workspace Marketplace™.
 
-- **Manual Apps Script™ install:** the current install path for general use.
-- **Google Workspace Marketplace™ add-on:** a future lower-friction install path.
-
-For full step-by-step setup, update, add-on, and troubleshooting guidance, see the [Installation](installation) guide.
-
-Today, the practical path is the manual Apps Script™ install. The Marketplace add-on is intended to become the lower-friction path later, but it is not publicly available yet.
+For full step-by-step setup and troubleshooting guidance, see the [Installation](installation) guide.
 
 ## Limits
 

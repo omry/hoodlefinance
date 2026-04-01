@@ -6,13 +6,14 @@ It is meant to answer one question:
 
 - how should users get the code into their spreadsheets over time?
 
-The current answer is "paste the script into a bound Apps Script™ project." This note evaluates whether that should remain the default, and what the most credible alternative is.
+The current answer for ordinary users is the Google Sheets™ add-on. Manual paste into a bound Apps Script™ project remains available for contributors and the tracked demo sheet, but it is no longer the public default.
 
 ## Current Baseline
 
 Today the repo has two different deployment stories:
 
-- public users manually paste [`hoodlefinance.js`](../../hoodlefinance.js) into a bound Apps Script™ project, as documented in [`README.md`](../../README.md) and [`website/docs/api/overview.md`](../../website/docs/api/overview.md)
+- public users install the Google Sheets™ add-on from the Google Workspace Marketplace
+- contributors and demo-sheet maintainers may still paste [`hoodlefinance.js`](../../hoodlefinance.js) into a bound Apps Script™ project, as documented in [`README.md`](../../README.md) and [`website/docs/installation.md`](../../website/docs/installation.md)
 - trusted maintainers use [`tools/demo/sync.js`](../../tools/demo/sync.js) plus `clasp` and OAuth credentials to update the managed public demo sheet
 
 That distinction matters:
@@ -31,9 +32,9 @@ The main criteria for this project are:
 - low operational and support burden for a small project
 - compatibility with the current repo and release workflow
 
-## Option 1: Keep Manual Bound-Script Install
+## Option 1: Keep Manual Bound-Script Install For Contributor And Demo Work
 
-This is the current public model.
+This is still useful for local development, the tracked demo sheet, and maintenance work that needs a visible bound Apps Script™ project.
 
 ### Pros
 
@@ -51,7 +52,7 @@ This is the current public model.
 
 ### Verdict
 
-Keep this as the current default until a better distribution path is worth the added product and operational complexity.
+Keep this as a maintenance path, not as the public default.
 
 ## Option 2: Expand `clasp` / Apps Script™ API Deployment
 
@@ -121,7 +122,7 @@ For this project, the relevant path is a Google Sheets™ Editor add-on. If the 
 
 ### Verdict
 
-This is the strongest long-term direction if installation and update friction become important enough to justify a larger product investment.
+This is now the strongest public distribution direction because it gives ordinary users the simplest install path.
 
 ## Paths Not Recommended
 
@@ -178,14 +179,14 @@ The first three are runtime scaling risks. The last one is a publishing/distribu
 
 The best current strategy is:
 
-- keep the public install path manual for now
+- make the Google Workspace™ Marketplace add-on the primary public install path
+- reserve the manual bound-script path for contributors and the tracked demo sheet
 - keep `clasp`-based deployment limited to maintainer-owned automation such as the demo sheet
-- treat a Google Sheets™ Editor add-on as the main long-term upgrade path
 
 In other words:
 
-- near term: do not replace the current manual install flow
-- medium term: if install/update friction becomes a priority, prototype a Sheets add-on
+- near term: keep the Marketplace add-on as the normal user-facing install flow
+- medium term: keep the manual script-copy flow documented only for contributor and demo-sheet maintenance
 - do not invest in self-updating bound-script machinery as an intermediate architecture
 
 ## Sources

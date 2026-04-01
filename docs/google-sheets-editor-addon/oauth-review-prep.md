@@ -1,6 +1,6 @@
 # OAuth Review Preparation
 
-This note captures the current OAuth-review surface for the Google Sheets™ Editor add-on prototype and the short justifications needed for public Marketplace review.
+This note captures the current OAuth-review surface for the Google Sheets™ Editor add-on and the short justifications needed for public Marketplace review.
 
 ## Current Scope Set
 

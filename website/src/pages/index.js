@@ -28,14 +28,17 @@ function HomepageHeader() {
             and built-in currency conversion for Google Sheets™.
           </p>
           <div className={styles.buttons}>
-            <Link className="button button--primary button--lg" to="/docs/">
-              Read the docs
+            <Link className="button button--secondary button--lg" to="/demo">
+              View demo
             </Link>
             <Link
-              className="button button--secondary button--lg"
-              to="/demo"
+              className="button button--primary button--lg"
+              href="https://workspace.google.com/marketplace/app/hoodlefinance/826310867331"
             >
-              View demo sheet
+              Install the add-on
+            </Link>
+            <Link className="button button--secondary button--lg" to="/docs/">
+              Read docs
             </Link>
           </div>
         </div>
@@ -49,7 +52,7 @@ export default function Home() {
   return (
     <Layout
       title={siteConfig.title}
-      description="HoodleFinance brings market data for U.S. and international listings, identifier lookups, and built-in currency conversion to Google Sheets™."
+      description="HoodleFinance is a Google Sheets™ add-on for market data, identifier lookups, and built-in currency conversion."
     >
       <HomepageHeader />
       <main>

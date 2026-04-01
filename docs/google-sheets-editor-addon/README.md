@@ -1,10 +1,10 @@
-# Google Sheets™ Editor Add-on Prototype
+# Google Sheets™ Editor Add-on
 
-This folder holds an experimental prototype for a Google Sheets™ Editor add-on version of `HOODLEFINANCE`.
+This folder holds the Google Sheets™ Editor add-on packaging, review notes, and deployment helpers for `HOODLEFINANCE`.
 
-It does not replace the current public install path yet. The current supported install flow is still the manual bound-script flow documented in [`README.md`](../../README.md) and [`website/docs/api/overview.md`](../../website/docs/api/overview.md).
+The public install path is the Google Workspace Marketplace™ add-on: [Install HoodleFinance](https://workspace.google.com/marketplace/app/hoodlefinance/826310867331). The manual bound-script flow is reserved for contributors and the tracked demo sheet.
 
-What this prototype includes:
+What this folder includes:
 
 - a Sheets add-on homepage function in [`hoodlefinance.js`](../../hoodlefinance.js)
 - an `onInstall()` hook that reuses the normal menu bootstrap
@@ -36,21 +36,21 @@ This answered the main product question that unpublished Apps Script™ test dep
 
 ## Current State
 
-- This is still a prototype scaffold, not a public Marketplace release.
+- The Google Workspace Marketplace™ release is the primary install path.
 - Apps Script™ test deployments were sufficient for menu-level validation, but did not verify custom-function exposure in Sheets™.
 - The private Marketplace dry run now validates that Marketplace packaging can expose the custom functions in Sheets.
 - Google's current Editor add-on docs say unpublished test deployments run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons run `onOpen()` in `AuthMode.NONE`. That means the unpublished manual test does not fully validate publish-time menu behavior.
-- The current prototype now uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
-- Listing assets, policy pages, and support links now exist, but public-review readiness is still follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) for the actual execution checklist.
+- The current add-on code uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
+- Listing assets, policy pages, and support links now exist, and the remaining notes in this folder focus on rollout history, maintenance, and add-on-specific follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) for the actual execution checklist.
 - The runtime behavior of the custom functions is still subject to the same Apps Script™ execution and fetch limits described in [`docs/design/google-sheets-deployment-strategy.md`](../design/google-sheets-deployment-strategy.md).
 
 ## Next Steps
 
-- prepare the OAuth verification and review material needed for a public Marketplace submission
-- capture or record the short demo video Google may request during OAuth review
-- submit for review when the OAuth package is ready
+- keep the Marketplace listing, support surface, and policy pages aligned with the live release
+- keep the maintainer deployment helper and demo-sheet sync notes in sync with the production add-on
+- record any post-launch migration or support follow-up notes in this folder
 
-For the step-by-step execution path, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md). For the final pre-submission gate, use [`oauth-review-checklist.md`](./oauth-review-checklist.md).
+For the rollout history and pre-launch review record, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md). For the OAuth-review notes, use [`oauth-review-checklist.md`](./oauth-review-checklist.md).
 
 ## Marketplace Listing Assets
 

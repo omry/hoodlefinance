@@ -1,0 +1,1 @@
+- Updated the docs to present the Google Sheets™ Marketplace add-on as the supported install path for users.
