@@ -18,6 +18,7 @@ See the [public demo sheet](https://hoodlefinance.com/demo) for live examples. T
 ## Repo Guide
 
 - Local development and contribution workflow: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- Planning backlog: [`BACKLOG.md`](./BACKLOG.md)
 - Individual Contributor License Agreement: [hoodlefinance.com/individual-cla](https://hoodlefinance.com/individual-cla)
 - Public demo-sheet source and sync flow: [`docs/demo-sheet/README.md`](./docs/demo-sheet/README.md)
 - Website source: [`website/`](./website/)
