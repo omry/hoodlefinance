@@ -79,8 +79,17 @@ jobs:
         run: |
           echo "Validating add-on JSON secret..."
           node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
-          addon_secret_md5="$(printf '%s' "${ADDON_DEPLOY_CLASP_RC_JSON}" | md5sum | awk '{print $1}')"
-          echo "Add-on clasp auth secret MD5: ${addon_secret_md5}"
+          addon_secret_canonical_sha256="$(
+            node -e '
+              const crypto = require("node:crypto");
+              const parsed = JSON.parse(process.env.ADDON_DEPLOY_CLASP_RC_JSON);
+              const canonical = JSON.stringify(parsed);
+              process.stdout.write(
+                crypto.createHash("sha256").update(canonical).digest("hex"),
+              );
+            '
+          )"
+          echo "Add-on clasp auth canonical JSON SHA-256: ${addon_secret_canonical_sha256}"
 
   publish:
     name: Publish release and deploy add-on
