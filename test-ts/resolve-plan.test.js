@@ -1,0 +1,195 @@
+const assert = require("node:assert/strict");
+const test = require("node:test");
+
+const {
+  RequestInput,
+  buildResolvePlan,
+  classifyTickerJob,
+} = require("../dist/ts/core/index.js");
+
+function createRequestInput({
+  attribute = "price",
+  attributeType = "quote",
+  classification = "equity",
+  identifier = "GOOG",
+  infoMode = "",
+  sourceOverride = "",
+  ticker = "GOOG",
+} = {}) {
+  return new RequestInput({
+    attribute,
+    attributeRequest: {
+      baseAttribute: attributeType === "isin" ? "isin" : "price",
+      outputCode: "",
+      rawAttribute: attribute,
+      wantsOutputCurrency: false,
+    },
+    attributeType,
+    classification,
+    fxPair:
+      classification === "fx"
+        ? {
+            baseCanonicalCode: "EUR",
+            quoteCanonicalCode: "USD",
+            yahooChartSymbol: "EURUSD=X",
+          }
+        : null,
+    identifier,
+    infoMode,
+    sourceOverride,
+    ticker,
+    upperTicker: ticker.toUpperCase(),
+  });
+}
+
+function createPlan(name, routePath = name) {
+  return {
+    buildRuntimePlan() {
+      return { nodes: [], routeClass: name, routePath, routeState: {} };
+    },
+    canHandle() {
+      return true;
+    },
+    code: name,
+    describe() {
+      return routePath;
+    },
+    getNodesForRequest() {
+      return [];
+    },
+    isRoutingNode: false,
+    name,
+    routingDescription: "",
+    routingLabel: name,
+    sourceName: name,
+  };
+}
+
+function createResolvedRequest() {
+  return {
+    input: {
+      attribute: "price",
+      identifier: "GOOG",
+    },
+    requestType: "equity",
+    symbol: "GOOG",
+    yahooSymbol: "GOOG",
+  };
+}
+
+function createDeps(overrides = {}) {
+  return {
+    buildForcedAttributePlanForResolvedRequest() {
+      return createPlan("FORCED-YAHOO", "YAHOO");
+    },
+    buildIdentifierResolutionPlan() {
+      return createPlan("IDENTIFIER", "IDENTIFIER:ISIN -> YAHOO-ISIN");
+    },
+    buildQuoteRoutePlanForResolvedRequest() {
+      return createPlan("QUOTE", "EQUITY -> TICKER -> YAHOO");
+    },
+    buildRepresentativeForcedAttributeRequest() {
+      return createResolvedRequest();
+    },
+    buildSourceOverrideUnavailableError(sourceOverride) {
+      return new Error(
+        `"@${sourceOverride}" is not available for this request.`,
+      );
+    },
+    createRequestInput(identifier, attribute) {
+      return createRequestInput({ attribute, identifier, ticker: identifier });
+    },
+    listSupportedSourcesForRequest() {
+      return "YAHOO, IBKR";
+    },
+    resolveIdentifierDirect() {
+      return createResolvedRequest();
+    },
+    validateNonQuoteSourceOverride() {},
+    ...overrides,
+  };
+}
+
+test("buildResolvePlan returns a direct attribute plan when the identifier resolves immediately", () => {
+  const input = createRequestInput();
+  const plan = buildResolvePlan(input, createDeps());
+
+  assert.equal(plan.debugValue, "");
+  assert.equal(plan.resolvedRequest.requestType, "equity");
+  assert.equal(plan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
+  assert.equal(
+    plan.attributePlan.describe(plan.resolvedRequest),
+    "EQUITY -> TICKER -> YAHOO",
+  );
+});
+
+test("buildResolvePlan returns source-list and source-name debug views", () => {
+  const deps = createDeps();
+
+  const sourceListPlan = buildResolvePlan(
+    createRequestInput({ infoMode: "source-list", ticker: "GOOG" }),
+    deps,
+  );
+  assert.equal(sourceListPlan.debugValue, "YAHOO, IBKR");
+  assert.equal(sourceListPlan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
+
+  const sourceNamePlan = buildResolvePlan(
+    createRequestInput({ infoMode: "source-name", ticker: "GOOG" }),
+    deps,
+  );
+  assert.equal(sourceNamePlan.debugValue, "EQUITY -> TICKER -> YAHOO");
+});
+
+test("buildResolvePlan falls back to the identifier plan when direct resolution misses", () => {
+  const deps = createDeps({
+    resolveIdentifierDirect() {
+      return null;
+    },
+  });
+  const input = createRequestInput({
+    identifier: "US02079K1079",
+    ticker: "US02079K1079",
+  });
+  const plan = buildResolvePlan(input, deps);
+
+  assert.equal(plan.resolvedRequest, null);
+  assert.equal(
+    plan.identifierPlan.describe(input),
+    "IDENTIFIER:ISIN -> YAHOO-ISIN",
+  );
+  assert.equal(
+    plan
+      .buildAttributePlan(createResolvedRequest())
+      .describe(createResolvedRequest()),
+    "EQUITY -> TICKER -> YAHOO",
+  );
+});
+
+test("classifyTickerJob returns either debug plans or runtime plans from the resolve plan", () => {
+  const deps = createDeps();
+
+  assert.deepEqual(classifyTickerJob("GOOG", "price", deps), {
+    nodes: [],
+    routeClass: "QUOTE",
+    routePath: "EQUITY -> TICKER -> YAHOO",
+    routeState: {},
+  });
+
+  assert.deepEqual(
+    classifyTickerJob(
+      "GOOG",
+      "price",
+      createDeps({
+        resolveIdentifierDirect() {
+          return null;
+        },
+      }),
+    ),
+    {
+      nodes: [],
+      routeClass: "IDENTIFIER",
+      routePath: "IDENTIFIER:ISIN -> YAHOO-ISIN",
+      routeState: {},
+    },
+  );
+});

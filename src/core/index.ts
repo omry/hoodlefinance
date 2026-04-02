@@ -4,6 +4,7 @@ export * from "./planner";
 export * from "./request";
 export * from "./request-building";
 export * from "./request-parsing";
+export * from "./resolve-plan";
 export * from "./route-jobs";
 export * from "./route-results";
 export * from "./route-state";
