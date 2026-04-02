@@ -60,125 +60,125 @@ test("routing table formatter emits a readable header and rows", function () {
     output,
     /equity\tTLV:KSMF59\tEQUITY -> TICKER -> YAHOO -> TRADINGVIEW/,
   );
-  assert.match(output, /equity\tPSE:BDO\tEQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE/);
+  assert.match(
+    output,
+    /equity\tPSE:BDO\tEQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE/,
+  );
 });
 
 test("routing plan tree renders the current plan hierarchy", function () {
-  assert.deepEqual(
-    JSON.parse(JSON.stringify(getRoutingPlanTree())),
-    {
-      label: "ROOT",
-      children: [
-        {
-          label: "DEFAULT ATTRIBUTE",
-          children: [
-            {
-              label: "EQUITY",
-              children: [
-                {
-                  label: "PSE",
-                  children: [
-                    {
-                      label: "PSE-FRAMES - PSE frames quote lookup",
-                      children: [],
-                    },
-                    {
-                      label: "PSE-EDGE - PSE edge quote lookup",
-                      children: [],
-                    },
-                  ],
-                },
-                {
-                  label: "TICKER",
-                  children: [
-                    {
-                      label: "YAHOO - Yahoo quote lookup",
-                      children: [],
-                    },
-                    {
-                      label: "TRADINGVIEW-FUND - TradingView fund quote lookup",
-                      children: [],
-                    },
-                  ],
-                },
-              ],
-            },
-            {
-              label: "FX",
-              children: [
-                {
-                  label: "FX-SAME",
-                  children: [
-                    {
-                      label: "LOCAL - Same-currency FX identity rate",
-                      children: [],
-                    },
-                  ],
-                },
-                {
-                  label: "FX",
-                  children: [
-                    {
-                      label: "GOOGLE - Google Finance FX quote lookup",
-                      children: [],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-        {
-          label: "IDENTIFIER",
-          children: [
-            {
-              label: "IDENTIFIER:ISIN",
-              children: [
-                {
-                  label: "PSE-MAP - PSE ISIN map lookup",
-                  children: [],
-                },
-                {
-                  label: "YAHOO-ISIN - Yahoo search by ISIN",
-                  children: [],
-                },
-              ],
-            },
-          ],
-        },
-        {
-          label: "ISIN ATTRIBUTE",
-          children: [
-            {
-              label: "ISIN-SOURCE",
-              children: [
-                {
-                  label: "ARIVA - ARIVA ISIN lookup",
-                  children: [],
-                },
-                {
-                  label: "IBKR - IBKR contract search ISIN lookup",
-                  children: [],
-                },
-                {
-                  label: "LON - LSE search ISIN lookup",
-                  children: [],
-                },
-                {
-                  label: "PSE - PSE quote ISIN lookup",
-                  children: [],
-                },
-                {
-                  label: "TRADINGVIEW - TradingView symbol page ISIN lookup",
-                  children: [],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  );
+  assert.deepEqual(JSON.parse(JSON.stringify(getRoutingPlanTree())), {
+    label: "ROOT",
+    children: [
+      {
+        label: "DEFAULT ATTRIBUTE",
+        children: [
+          {
+            label: "EQUITY",
+            children: [
+              {
+                label: "PSE",
+                children: [
+                  {
+                    label: "PSE-FRAMES - PSE frames quote lookup",
+                    children: [],
+                  },
+                  {
+                    label: "PSE-EDGE - PSE edge quote lookup",
+                    children: [],
+                  },
+                ],
+              },
+              {
+                label: "TICKER",
+                children: [
+                  {
+                    label: "YAHOO - Yahoo quote lookup",
+                    children: [],
+                  },
+                  {
+                    label: "TRADINGVIEW-FUND - TradingView fund quote lookup",
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            label: "FX",
+            children: [
+              {
+                label: "FX-SAME",
+                children: [
+                  {
+                    label: "LOCAL - Same-currency FX identity rate",
+                    children: [],
+                  },
+                ],
+              },
+              {
+                label: "FX",
+                children: [
+                  {
+                    label: "GOOGLE - Google Finance FX quote lookup",
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        label: "IDENTIFIER",
+        children: [
+          {
+            label: "IDENTIFIER:ISIN",
+            children: [
+              {
+                label: "PSE-MAP - PSE ISIN map lookup",
+                children: [],
+              },
+              {
+                label: "YAHOO-ISIN - Yahoo search by ISIN",
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        label: "ISIN ATTRIBUTE",
+        children: [
+          {
+            label: "ISIN-SOURCE",
+            children: [
+              {
+                label: "ARIVA - ARIVA ISIN lookup",
+                children: [],
+              },
+              {
+                label: "IBKR - IBKR contract search ISIN lookup",
+                children: [],
+              },
+              {
+                label: "LON - LSE search ISIN lookup",
+                children: [],
+              },
+              {
+                label: "PSE - PSE quote ISIN lookup",
+                children: [],
+              },
+              {
+                label: "TRADINGVIEW - TradingView symbol page ISIN lookup",
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 });
 
 test("routing plan tree formatter emits a tree-style plan rendering", function () {
@@ -193,7 +193,10 @@ test("routing plan tree formatter emits a tree-style plan rendering", function (
     /^│   │   │   ├── PSE-FRAMES - PSE frames quote lookup$/m,
   );
   assert.match(output, /^├── IDENTIFIER$/m);
-  assert.doesNotMatch(output, /^│       └── FX[\s\S]*YAHOO - Yahoo quote lookup/m);
+  assert.doesNotMatch(
+    output,
+    /^│       └── FX[\s\S]*YAHOO - Yahoo quote lookup/m,
+  );
   assert.doesNotMatch(output, /@YAHOO|@GOOGLE|@PSE/);
 });
 

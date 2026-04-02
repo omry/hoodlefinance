@@ -218,7 +218,9 @@ function traceRoutingForSymbol(symbol, ctx) {
       if (resolvePlan.debugValue) {
         return {
           ok: true,
-          plannedRoute: String(resolvePlan.plannedRoute || resolvePlan.debugValue || ""),
+          plannedRoute: String(
+            resolvePlan.plannedRoute || resolvePlan.debugValue || "",
+          ),
           totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
           runtimeTrace: [],
           value: null,
@@ -262,9 +264,11 @@ function traceRoutingForSymbol(symbol, ctx) {
       resultError = attributeJob.error || "";
       resultValue = attributeJob.quote || null;
       runtimeTrace = []
-        .concat(identifierJob && identifierJob.routeRuntimeTrace
-          ? identifierJob.routeRuntimeTrace
-          : [])
+        .concat(
+          identifierJob && identifierJob.routeRuntimeTrace
+            ? identifierJob.routeRuntimeTrace
+            : [],
+        )
         .concat(attributeJob.routeRuntimeTrace || []);
       plannedRoute = plannedRouteParts.filter(Boolean).join(" => ");
 
@@ -292,12 +296,16 @@ function traceRoutingForSymbol(symbol, ctx) {
         plannedRoute: plannedRouteParts.filter(Boolean).join(" => "),
         totalElapsedMs: Math.max(0, Date.now() - startedAtMs),
         runtimeTrace: []
-          .concat(identifierJob && identifierJob.routeRuntimeTrace
-            ? identifierJob.routeRuntimeTrace
-            : [])
-          .concat(attributeJob && attributeJob.routeRuntimeTrace
-            ? attributeJob.routeRuntimeTrace
-            : [])
+          .concat(
+            identifierJob && identifierJob.routeRuntimeTrace
+              ? identifierJob.routeRuntimeTrace
+              : [],
+          )
+          .concat(
+            attributeJob && attributeJob.routeRuntimeTrace
+              ? attributeJob.routeRuntimeTrace
+              : [],
+          )
           .map(function (entry) {
             return {
               elapsedMs:
@@ -368,9 +376,8 @@ function formatTraceResultSummary(trace) {
     trace && trace.totalElapsedMs != null && isFinite(trace.totalElapsedMs)
       ? Math.max(0, Number(trace.totalElapsedMs))
       : 0;
-  const runtimeTrace = trace && Array.isArray(trace.runtimeTrace)
-    ? trace.runtimeTrace
-    : [];
+  const runtimeTrace =
+    trace && Array.isArray(trace.runtimeTrace) ? trace.runtimeTrace : [];
   let accountedMs = 0;
   let slackMs;
   let slackRatio;
@@ -378,7 +385,11 @@ function formatTraceResultSummary(trace) {
   let i;
 
   for (i = 0; i < runtimeTrace.length; i += 1) {
-    if (runtimeTrace[i] && runtimeTrace[i].elapsedMs != null && isFinite(runtimeTrace[i].elapsedMs)) {
+    if (
+      runtimeTrace[i] &&
+      runtimeTrace[i].elapsedMs != null &&
+      isFinite(runtimeTrace[i].elapsedMs)
+    ) {
       accountedMs += Math.max(0, Number(runtimeTrace[i].elapsedMs));
     }
   }

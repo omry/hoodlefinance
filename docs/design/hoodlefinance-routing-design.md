@@ -296,10 +296,7 @@ Example:
 
 ```js
 class PSEQuotePlan extends AttributeResolutionPlan {
-  nodes = [
-    new PSEFramesResolver(),
-    new PSEEdgeResolver(),
-  ];
+  nodes = [new PSEFramesResolver(), new PSEEdgeResolver()];
 }
 ```
 

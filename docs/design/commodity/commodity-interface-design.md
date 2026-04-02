@@ -95,13 +95,13 @@ Their intended meanings are:
 
 The commodity design extends the existing attribute grammar rather than introducing a new function.
 
-| Form | Meaning |
-| --- | --- |
-| `price` | Canonical default currency and canonical default unit. |
-| `price@EUR` | Canonical default unit, converted output currency. |
-| `price:kg` | Canonical default currency, converted output unit. |
-| `price:kg@EUR` | Converted output unit and converted output currency. |
-| `native:price` | Raw source quote with no canonical normalization. |
+| Form           | Meaning                                                |
+| -------------- | ------------------------------------------------------ |
+| `price`        | Canonical default currency and canonical default unit. |
+| `price@EUR`    | Canonical default unit, converted output currency.     |
+| `price:kg`     | Canonical default currency, converted output unit.     |
+| `price:kg@EUR` | Converted output unit and converted output currency.   |
+| `native:price` | Raw source quote with no canonical normalization.      |
 
 Design rules:
 

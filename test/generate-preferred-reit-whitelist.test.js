@@ -71,7 +71,8 @@ test("generatePreferredReitDataset follows the SEC filing path and writes a data
   const submissionsUrl = buildSubmissionsUrl(source.cik);
   const targetAccessionNumber = "0001021408-24-006614";
   const targetIndexUrl = buildFilingIndexUrl(source.cik, targetAccessionNumber);
-  const targetXmlUrl = "https://www.sec.gov/Archives/edgar/data/1559109/000102140824006614/primary_doc.xml";
+  const targetXmlUrl =
+    "https://www.sec.gov/Archives/edgar/data/1559109/000102140824006614/primary_doc.xml";
   const skipAccessionNumber = "0000940400-26-012476";
   const skipIndexUrl = buildFilingIndexUrl(source.cik, skipAccessionNumber);
   const calls = [];
@@ -80,10 +81,7 @@ test("generatePreferredReitDataset follows the SEC filing path and writes a data
   const submissions = {
     filings: {
       recent: {
-        accessionNumber: [
-          skipAccessionNumber,
-          targetAccessionNumber,
-        ],
+        accessionNumber: [skipAccessionNumber, targetAccessionNumber],
         filingDate: ["2026-03-31", "2024-08-30"],
         form: ["NPORT-P", "NPORT-P"],
         primaryDocDescription: ["NPORT-P", "NPORT-P"],
@@ -165,10 +163,22 @@ test("generatePreferredReitDataset follows the SEC filing path and writes a data
   assert.deepEqual(dataset.preferredTickers, ["NLY.PI", "RITM.PC"]);
   assert.equal(Object.hasOwn(dataset, "generatedAt"), false);
   assert.equal(calls.length, 4);
-  assert.equal(calls[0].options.headers["User-Agent"], "hoodlefinance-test/1.0");
-  assert.equal(calls[1].options.headers["User-Agent"], "hoodlefinance-test/1.0");
-  assert.equal(calls[2].options.headers["User-Agent"], "hoodlefinance-test/1.0");
-  assert.equal(calls[3].options.headers["User-Agent"], "hoodlefinance-test/1.0");
+  assert.equal(
+    calls[0].options.headers["User-Agent"],
+    "hoodlefinance-test/1.0",
+  );
+  assert.equal(
+    calls[1].options.headers["User-Agent"],
+    "hoodlefinance-test/1.0",
+  );
+  assert.equal(
+    calls[2].options.headers["User-Agent"],
+    "hoodlefinance-test/1.0",
+  );
+  assert.equal(
+    calls[3].options.headers["User-Agent"],
+    "hoodlefinance-test/1.0",
+  );
 
   const firstWrite = writePreferredReitDataset(outputPath, dataset, {
     now: "2026-04-01T00:00:00.000Z",
@@ -184,5 +194,8 @@ test("generatePreferredReitDataset follows the SEC filing path and writes a data
     preferredTickers: ["NLY.PI", "RITM.PC"],
   });
   assert.deepEqual(secondWrite.dataset, firstWrite.dataset);
-  assert.deepEqual(JSON.parse(fs.readFileSync(outputPath, "utf8")), firstWrite.dataset);
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(outputPath, "utf8")),
+    firstWrite.dataset,
+  );
 });

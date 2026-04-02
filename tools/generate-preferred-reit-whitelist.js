@@ -33,9 +33,7 @@ function normalizeCik(cik) {
 }
 
 function buildSubmissionsUrl(cik) {
-  return (
-    "https://data.sec.gov/submissions/CIK" + normalizeCik(cik) + ".json"
-  );
+  return "https://data.sec.gov/submissions/CIK" + normalizeCik(cik) + ".json";
 }
 
 function buildFilingIndexUrl(cik, accessionNumber) {
@@ -85,7 +83,9 @@ function decodeXmlEntities(text) {
       }
 
       if (/^#/.test(normalizedEntity)) {
-        return String.fromCodePoint(Number.parseInt(normalizedEntity.slice(1), 10));
+        return String.fromCodePoint(
+          Number.parseInt(normalizedEntity.slice(1), 10),
+        );
       }
 
       return "&" + normalizedEntity + ";";
@@ -94,7 +94,9 @@ function decodeXmlEntities(text) {
 }
 
 function normalizeXmlValue(value) {
-  return decodeXmlEntities(String(value || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1"))
+  return decodeXmlEntities(
+    String(value || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1"),
+  )
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -114,10 +116,7 @@ function extractFirstTagValue(block, tagNames) {
     }
 
     match = String(block || "").match(
-      new RegExp(
-        "<" + tagName + "\\b[^>]*\\bvalue=\"([^\"]+)\"[^>]*\\/?>",
-        "i",
-      ),
+      new RegExp("<" + tagName + '\\b[^>]*\\bvalue="([^"]+)"[^>]*\\/?>', "i"),
     );
 
     if (match) {
@@ -125,7 +124,10 @@ function extractFirstTagValue(block, tagNames) {
     }
 
     match = String(block || "").match(
-      new RegExp("<" + tagName + "\\b[^>]*>([\\s\\S]*?)</" + tagName + ">", "i"),
+      new RegExp(
+        "<" + tagName + "\\b[^>]*>([\\s\\S]*?)</" + tagName + ">",
+        "i",
+      ),
     );
 
     if (match) {
@@ -139,10 +141,7 @@ function extractFirstTagValue(block, tagNames) {
 function extractXmlBlocks(xml, tagName) {
   return (
     String(xml || "").match(
-      new RegExp(
-        "<" + tagName + "\\b[\\s\\S]*?</" + tagName + ">",
-        "gi",
-      ),
+      new RegExp("<" + tagName + "\\b[\\s\\S]*?</" + tagName + ">", "gi"),
     ) || []
   );
 }
@@ -181,11 +180,7 @@ function parseNportHoldings(xml) {
     ticker = normalizeHoldingTicker(
       extractFirstTagValue(block, ["ticker", "tickerSymb", "tickerSymbol"]),
     );
-    issuerName = extractFirstTagValue(block, [
-      "issuerName",
-      "name",
-      "nm",
-    ]);
+    issuerName = extractFirstTagValue(block, ["issuerName", "name", "nm"]);
     issueTitle = extractFirstTagValue(block, [
       "issueTitle",
       "title",
@@ -209,12 +204,15 @@ function parseNportHoldings(xml) {
       "issuerCat",
     ]);
 
-    if (!ticker || !isPreferredHolding({
-      assetCategory: assetCategory,
-      issueTitle: issueTitle,
-      issuerName: issuerName,
-      securityName: securityName,
-    })) {
+    if (
+      !ticker ||
+      !isPreferredHolding({
+        assetCategory: assetCategory,
+        issueTitle: issueTitle,
+        issuerName: issuerName,
+        securityName: securityName,
+      })
+    ) {
       continue;
     }
 
@@ -258,7 +256,9 @@ function normalizePreferredTickers(tickers) {
   const seen = new Set();
 
   for (const entry of Array.isArray(tickers) ? tickers : []) {
-    const ticker = String(entry || "").toUpperCase().trim();
+    const ticker = String(entry || "")
+      .toUpperCase()
+      .trim();
 
     if (!ticker || seen.has(ticker)) {
       continue;
@@ -305,7 +305,9 @@ function extractXmlDocumentUrl(indexHtml, indexUrl) {
     matches[0];
 
   if (!chosen) {
-    throw new Error("Could not find a primary XML document link in the SEC filing index.");
+    throw new Error(
+      "Could not find a primary XML document link in the SEC filing index.",
+    );
   }
 
   return new URL(chosen.replace(/&amp;/g, "&"), indexUrl).toString();
@@ -313,14 +315,16 @@ function extractXmlDocumentUrl(indexHtml, indexUrl) {
 
 function buildFetchHeaders(userAgent) {
   return {
-    Accept: "application/json,text/html,application/xml,text/xml;q=0.9,*/*;q=0.8",
+    Accept:
+      "application/json,text/html,application/xml,text/xml;q=0.9,*/*;q=0.8",
     "Accept-Encoding": "gzip, deflate, br",
     "User-Agent": normalizeText(userAgent) || DEFAULT_USER_AGENT,
   };
 }
 
 async function fetchText(url, options, fetchFn) {
-  const request = fetchFn || (typeof fetch === "function" ? fetch.bind(globalThis) : null);
+  const request =
+    fetchFn || (typeof fetch === "function" ? fetch.bind(globalThis) : null);
 
   if (typeof request !== "function") {
     throw new Error("No fetch implementation is available.");
@@ -328,7 +332,11 @@ async function fetchText(url, options, fetchFn) {
 
   const response = await request(url, options || {});
 
-  if (!response || response.ok === false || (response.status && response.status !== 200)) {
+  if (
+    !response ||
+    response.ok === false ||
+    (response.status && response.status !== 200)
+  ) {
     throw new Error(
       "Fetch failed for " +
         url +
@@ -348,7 +356,8 @@ async function fetchJson(url, options, fetchFn) {
 async function loadPreferredReitSource(source, options) {
   const normalizedSource = source || DEFAULT_SOURCE;
   const fetchFn = options && options.fetchFn ? options.fetchFn : null;
-  const userAgent = options && options.userAgent ? options.userAgent : DEFAULT_USER_AGENT;
+  const userAgent =
+    options && options.userAgent ? options.userAgent : DEFAULT_USER_AGENT;
   const submissionsUrl = buildSubmissionsUrl(normalizedSource.cik);
   const submissions = await fetchJson(
     submissionsUrl,
@@ -390,7 +399,10 @@ async function loadPreferredReitSource(source, options) {
       ),
       reportDate: normalizeText(recent.reportDate && recent.reportDate[i]),
     };
-    indexUrl = buildFilingIndexUrl(normalizedSource.cik, filing.accessionNumber);
+    indexUrl = buildFilingIndexUrl(
+      normalizedSource.cik,
+      filing.accessionNumber,
+    );
     indexHtml = await fetchText(
       indexUrl,
       { headers: buildFetchHeaders(userAgent) },
@@ -428,7 +440,9 @@ async function loadPreferredReitSource(source, options) {
   return {
     source: {
       cik: normalizeCik(normalizedSource.cik),
-      label: normalizeText(normalizedSource.label) || normalizeText(normalizedSource.name),
+      label:
+        normalizeText(normalizedSource.label) ||
+        normalizeText(normalizedSource.name),
       name: normalizeText(normalizedSource.name),
       ticker: normalizeText(normalizedSource.ticker),
       submissionsUrl: submissionsUrl,
@@ -455,7 +469,10 @@ async function loadPreferredReitSource(source, options) {
 async function generatePreferredReitDataset(options) {
   const normalizedOptions = options || {};
   const source = normalizedOptions.source || DEFAULT_SOURCE;
-  const sourceDataset = await loadPreferredReitSource(source, normalizedOptions);
+  const sourceDataset = await loadPreferredReitSource(
+    source,
+    normalizedOptions,
+  );
   const tickers = normalizePreferredTickers(
     sourceDataset.holdings.map(function (holding) {
       return holding.ticker;
@@ -470,7 +487,10 @@ async function generatePreferredReitDataset(options) {
 function writePreferredReitDataset(outputPath, dataset, options) {
   const normalizedPath = normalizeText(outputPath) || DEFAULT_OUTPUT_PATH;
   const dryRun = Boolean(options && options.dryRun);
-  const now = options && options.now ? new Date(options.now).toISOString() : new Date().toISOString();
+  const now =
+    options && options.now
+      ? new Date(options.now).toISOString()
+      : new Date().toISOString();
   const preferredTickers = normalizePreferredTickers(
     dataset && dataset.preferredTickers,
   );
@@ -491,7 +511,8 @@ function writePreferredReitDataset(outputPath, dataset, options) {
 
   if (
     previousDataset &&
-    JSON.stringify(stripPreferredReitLastChange(previousDataset)) === nextComparable
+    JSON.stringify(stripPreferredReitLastChange(previousDataset)) ===
+      nextComparable
   ) {
     return {
       changed: false,
@@ -512,7 +533,11 @@ function writePreferredReitDataset(outputPath, dataset, options) {
   }
 
   fs.mkdirSync(path.dirname(normalizedPath), { recursive: true });
-  fs.writeFileSync(normalizedPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
+  fs.writeFileSync(
+    normalizedPath,
+    JSON.stringify(payload, null, 2) + "\n",
+    "utf8",
+  );
 
   return {
     changed: true,
@@ -645,7 +670,9 @@ async function main(argv, deps) {
 
 if (require.main === module) {
   main().catch(function (error) {
-    process.stderr.write(String(error && error.stack ? error.stack : error) + "\n");
+    process.stderr.write(
+      String(error && error.stack ? error.stack : error) + "\n",
+    );
     process.exitCode = 1;
   });
 }

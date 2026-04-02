@@ -116,13 +116,9 @@ test("shared staging version helpers stamp local timestamps into source", functi
     "0.9.6-dev-2026-03-29_18-11-12+0800",
   );
   assert.equal(
-    stampVersionInSource(
-      'const HOODLEFINANCE_VERSION_ = "0.9.6";\n',
-      now,
-      {
-        utcOffsetMinutes: utcOffsetMinutes,
-      },
-    ),
+    stampVersionInSource('const HOODLEFINANCE_VERSION_ = "0.9.6";\n', now, {
+      utcOffsetMinutes: utcOffsetMinutes,
+    }),
     'const HOODLEFINANCE_VERSION_ = "0.9.6-dev-2026-03-29_18-11-12+0800";\n',
   );
 });
@@ -279,25 +275,21 @@ test("buildDemoSheetOwnershipMetadataRequest creates a spreadsheet marker", func
 test("ensureDemoSheetOwnershipMetadata writes the demo marker when missing", async function () {
   const seenRequests = [];
 
-  const created = await ensureDemoSheetOwnershipMetadata(
-    "token",
-    "sheet-123",
-    {
-      googleApiJson: async function (accessToken, method, url, body) {
-        seenRequests.push({ accessToken, body, method, url });
+  const created = await ensureDemoSheetOwnershipMetadata("token", "sheet-123", {
+    googleApiJson: async function (accessToken, method, url, body) {
+      seenRequests.push({ accessToken, body, method, url });
 
-        if (url.endsWith("/developerMetadata:search")) {
-          return { matchedDeveloperMetadata: [] };
-        }
+      if (url.endsWith("/developerMetadata:search")) {
+        return { matchedDeveloperMetadata: [] };
+      }
 
-        if (url.endsWith(":batchUpdate")) {
-          return { replies: [] };
-        }
+      if (url.endsWith(":batchUpdate")) {
+        return { replies: [] };
+      }
 
-        throw new Error("Unexpected URL: " + url);
-      },
+      throw new Error("Unexpected URL: " + url);
     },
-  );
+  });
 
   assert.equal(created, true);
   assert.deepEqual(seenRequests, [
@@ -330,30 +322,26 @@ test("ensureDemoSheetOwnershipMetadata writes the demo marker when missing", asy
 test("ensureDemoSheetOwnershipMetadata stays idempotent when the marker exists", async function () {
   const seenRequests = [];
 
-  const created = await ensureDemoSheetOwnershipMetadata(
-    "token",
-    "sheet-123",
-    {
-      googleApiJson: async function (accessToken, method, url, body) {
-        seenRequests.push({ accessToken, body, method, url });
+  const created = await ensureDemoSheetOwnershipMetadata("token", "sheet-123", {
+    googleApiJson: async function (accessToken, method, url, body) {
+      seenRequests.push({ accessToken, body, method, url });
 
-        if (url.endsWith("/developerMetadata:search")) {
-          return {
-            matchedDeveloperMetadata: [
-              {
-                developerMetadata: {
-                  metadataKey: "hoodlefinance.demoSheetOwnership",
-                  metadataValue: "bound-script",
-                },
+      if (url.endsWith("/developerMetadata:search")) {
+        return {
+          matchedDeveloperMetadata: [
+            {
+              developerMetadata: {
+                metadataKey: "hoodlefinance.demoSheetOwnership",
+                metadataValue: "bound-script",
               },
-            ],
-          };
-        }
+            },
+          ],
+        };
+      }
 
-        throw new Error("Unexpected write attempt: " + url);
-      },
+      throw new Error("Unexpected write attempt: " + url);
     },
-  );
+  });
 
   assert.equal(created, false);
   assert.deepEqual(seenRequests, [

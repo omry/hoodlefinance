@@ -50,8 +50,7 @@ const DEFAULT_MANIFEST = {
   runtimeVersion: "V8",
   timeZone: "Etc/UTC",
 };
-const DEMO_SHEET_OWNERSHIP_METADATA_KEY_ =
-  "hoodlefinance.demoSheetOwnership";
+const DEMO_SHEET_OWNERSHIP_METADATA_KEY_ = "hoodlefinance.demoSheetOwnership";
 const DEMO_SHEET_OWNERSHIP_METADATA_VALUE_ = "bound-script";
 const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
@@ -314,7 +313,11 @@ function buildDemoSheetOwnershipMetadataLookupRequest() {
   };
 }
 
-async function fetchDemoSheetOwnershipMetadata(accessToken, spreadsheetId, deps) {
+async function fetchDemoSheetOwnershipMetadata(
+  accessToken,
+  spreadsheetId,
+  deps,
+) {
   const normalizedDeps = deps || {};
   const api = normalizedDeps.googleApiJson || googleApiJson;
   const response = await api(
@@ -333,7 +336,11 @@ async function fetchDemoSheetOwnershipMetadata(accessToken, spreadsheetId, deps)
     : [];
 }
 
-async function ensureDemoSheetOwnershipMetadata(accessToken, spreadsheetId, deps) {
+async function ensureDemoSheetOwnershipMetadata(
+  accessToken,
+  spreadsheetId,
+  deps,
+) {
   const normalizedDeps = deps || {};
   const api = normalizedDeps.googleApiJson || googleApiJson;
   const existingMetadata = await fetchDemoSheetOwnershipMetadata(

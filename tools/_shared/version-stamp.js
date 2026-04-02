@@ -3,8 +3,7 @@
 
 "use strict";
 
-const VERSION_SOURCE_PATTERN =
-  /const HOODLEFINANCE_VERSION_ = "([^"]+)";/;
+const VERSION_SOURCE_PATTERN = /const HOODLEFINANCE_VERSION_ = "([^"]+)";/;
 
 function resolveUtcOffsetMinutes(now, options) {
   const normalizedOptions = options || {};

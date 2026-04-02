@@ -2019,26 +2019,14 @@ test("source introspection suffixes return the planned route or the supported so
     ctx.HOODLEFINANCE("US02079K1079@?"),
     "IDENTIFIER:ISIN -> YAHOO-ISIN",
   );
-  assert.equal(
-    ctx.HOODLEFINANCE("BTCUSD@"),
-    "GOOGLE, YAHOO",
-  );
-  assert.equal(
-    ctx.HOODLEFINANCE("BTCUSD@MYSTERY"),
-    "GOOGLE, YAHOO",
-  );
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@"), "GOOGLE, YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@MYSTERY"), "GOOGLE, YAHOO");
   assert.equal(
     ctx.HOODLEFINANCE("PH0000056814@"),
     "identifier: PSE, YAHOO; attribute: PSE (PSE-FRAMES, PSE-EDGE), YAHOO",
   );
-  assert.equal(
-    ctx.HOODLEFINANCE("PSE:AAA@"),
-    "PSE (PSE-FRAMES, PSE-EDGE)",
-  );
-  assert.equal(
-    ctx.HOODLEFINANCE("TLV:KSMF59@"),
-    "YAHOO, TRADINGVIEW",
-  );
+  assert.equal(ctx.HOODLEFINANCE("PSE:AAA@"), "PSE (PSE-FRAMES, PSE-EDGE)");
+  assert.equal(ctx.HOODLEFINANCE("TLV:KSMF59@"), "YAHOO, TRADINGVIEW");
 });
 
 test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route", () => {
@@ -2050,25 +2038,14 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
     JSON.stringify([
       ["classification", "example", "planned route"],
       ["equity", "GOOG", "EQUITY -> TICKER -> YAHOO"],
-      [
-        "equity",
-        "TLV:KSMF59",
-        "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
-      ],
+      ["equity", "TLV:KSMF59", "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW"],
       ["fx", "EURUSD", "FX -> GOOGLE"],
       ["fx", "USDUSD", "FX -> LOCAL"],
       ["equity", "PSE:BDO", "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE"],
-      [
-        "isin",
-        "US02079K1079",
-        "IDENTIFIER:ISIN -> YAHOO-ISIN",
-      ],
+      ["isin", "US02079K1079", "IDENTIFIER:ISIN -> YAHOO-ISIN"],
     ]),
   );
-  assert.equal(
-    ctx.HOODLEFINANCE_ROUTES("GOOG"),
-    "EQUITY -> TICKER -> YAHOO",
-  );
+  assert.equal(ctx.HOODLEFINANCE_ROUTES("GOOG"), "EQUITY -> TICKER -> YAHOO");
   assert.equal(
     ctx.HOODLEFINANCE_ROUTES("TLV:KSMF59"),
     "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
@@ -2097,7 +2074,9 @@ test("forced PSE sub-sources use the requested individual provider", () => {
 
   edgeCtx.UrlFetchApp.fetch = (url) => {
     edgeFetchLog.push(url);
-    if (url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO") {
+    if (
+      url === "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO"
+    ) {
       return createHttpResponse(200, PSE_SEARCH_BDO_HTML);
     }
     if (url.indexOf("edge.pse.com.ph/companyPage/stockData.do") >= 0) {
@@ -2116,7 +2095,10 @@ test("forced PSE sub-sources use the requested individual provider", () => {
     edgeFetchLog[0],
     "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=BDO",
   );
-  assert.match(edgeFetchLog[1], /edge\.pse\.com\.ph\/companyPage\/stockData\.do/);
+  assert.match(
+    edgeFetchLog[1],
+    /edge\.pse\.com\.ph\/companyPage\/stockData\.do/,
+  );
 });
 
 test("forced PSE sub-sources are quote-only overrides", () => {
@@ -2169,7 +2151,9 @@ test("direct identifier resolution builds typed equity and fx requests", () => {
 test("default attribute plan selection uses request classification and errors on ambiguity", () => {
   const ctx = loadHoodlefinance();
   const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
-  const request = ctx.hf_resolveIdentifierDirect_(new RequestInput("GOOG", "price"));
+  const request = ctx.hf_resolveIdentifierDirect_(
+    new RequestInput("GOOG", "price"),
+  );
   const plans = ctx.hf_listDefaultAttributePlansForClassification_("equity");
   const attributePlanPrototype = Object.getPrototypeOf(plans[0]);
   const originalCanHandle = attributePlanPrototype.canHandle;
@@ -2226,7 +2210,9 @@ test("resolve plan is the single canonical planner output", () => {
   const ctx = loadHoodlefinance();
   const RequestInput = ctx.HOODLEFINANCE_ROUTING_TYPES_.RequestInput;
   primePseIsinMapData(ctx);
-  const directPlan = ctx.hf_buildResolvePlan_(new RequestInput("PSE:BDO", "price"));
+  const directPlan = ctx.hf_buildResolvePlan_(
+    new RequestInput("PSE:BDO", "price"),
+  );
   const identifierPlan = ctx.hf_buildResolvePlan_(
     new RequestInput("PHY077751022", "price"),
   );
@@ -2241,7 +2227,10 @@ test("resolve plan is the single canonical planner output", () => {
 
   assert.equal(directPlan.requestInput.constructor.name, "RequestInput");
   assert.equal(directPlan.resolvedRequest.constructor.name, "EquityRequest");
-  assert.equal(directPlan.attributePlan.constructor.name, "AttributeResolutionPlan");
+  assert.equal(
+    directPlan.attributePlan.constructor.name,
+    "AttributeResolutionPlan",
+  );
   assert.equal(directPlan.attributePlan.sourceName, "PSE");
   assert.equal(directPlan.identifierPlan, null);
   assert.equal(directPlan.buildAttributePlan, null);
@@ -2262,10 +2251,7 @@ test("resolve plan is the single canonical planner output", () => {
     identifierPlan.plannedRoute,
     "IDENTIFIER:ISIN -> PSE-MAP -> YAHOO-ISIN",
   );
-  assert.equal(
-    genericIsinPlan.plannedRoute,
-    "IDENTIFIER:ISIN -> YAHOO-ISIN",
-  );
+  assert.equal(genericIsinPlan.plannedRoute, "IDENTIFIER:ISIN -> YAHOO-ISIN");
   assert.equal(
     sourceListPlan.debugValue,
     "identifier: PSE, YAHOO; attribute: PSE (PSE-FRAMES, PSE-EDGE), YAHOO",
@@ -2282,7 +2268,9 @@ test("resolve plan is the single canonical planner output", () => {
       text: PSE_ISIN_MAP_PROPERTIES,
     }),
   );
-  resolvedRequest = identifierPlan.identifierPlan.resolve(identifierPlan.requestInput).value;
+  resolvedRequest = identifierPlan.identifierPlan.resolve(
+    identifierPlan.requestInput,
+  ).value;
   attributePlan = identifierPlan.buildAttributePlan(resolvedRequest);
   assert.equal(resolvedRequest.constructor.name, "EquityRequest");
   assert.equal(attributePlan.constructor.name, "AttributeResolutionPlan");
@@ -2300,9 +2288,7 @@ test("identifier-phase PSE ISIN resolution returns a typed request directly", ()
       text: PSE_ISIN_MAP_PROPERTIES,
     }),
   );
-  const results = [
-    ctx.hf_buildIdentifierResolutionPlan_(input).resolve(input),
-  ];
+  const results = [ctx.hf_buildIdentifierResolutionPlan_(input).resolve(input)];
 
   assert.equal(results.length, 1);
   assert.equal(results[0].status, "success");
@@ -3820,8 +3806,10 @@ test("preferred REIT Yahoo fallbacks keep the original Google-style symbol", () 
 
   ctx.UrlFetchApp.fetch = function (url) {
     if (
-      url === "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d"
-      || url === "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d"
+      url ===
+        "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d" ||
+      url ===
+        "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d"
     ) {
       return createYahooChartResponse(
         url.indexOf("NLY-PI") >= 0 ? "NLY-PI" : "NLY-I",

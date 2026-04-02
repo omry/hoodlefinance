@@ -88,7 +88,8 @@ function createFixtureRepo() {
     demoSheetConfigPath,
     JSON.stringify(
       {
-        publicUrl: "https://docs.google.com/spreadsheets/d/demo-prod/edit?usp=sharing",
+        publicUrl:
+          "https://docs.google.com/spreadsheets/d/demo-prod/edit?usp=sharing",
         spreadsheetId: "demo-prod",
       },
       null,
@@ -203,7 +204,8 @@ test("public demo link helpers require spreadsheetId and derive the share URL fr
     fixture.demoSheetConfigPath,
     JSON.stringify(
       {
-        publicUrl: "https://docs.google.com/spreadsheets/d/stale/edit?usp=sharing",
+        publicUrl:
+          "https://docs.google.com/spreadsheets/d/stale/edit?usp=sharing",
       },
       null,
       2,
