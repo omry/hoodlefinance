@@ -379,14 +379,16 @@ jobs:
 
           if ! versions_output="$(
             cd "${work_dir}" &&
-            CLASP_RC_PATH="${clasp_rc_path}" \
-            clasp --json list-versions 2>&1
+            clasp -A "${clasp_rc_path}" --json list-versions 2>&1
           )"; then
-            echo "::warning title=Apps Script version history::Could not inspect the add-on version history."
+            echo "::warning title=Apps Script version history::Failed to inspect the add-on version history."
+            printf '%s\n' "${versions_output}"
             {
               echo "### Apps Script version history"
               echo ""
-              echo "Could not inspect the add-on version history for the production add-on."
+              echo "Failed to inspect the add-on version history for the production add-on."
+              echo ""
+              echo "The underlying \`clasp list-versions\` error was written to the job log."
               echo "Open the Apps Script project history UI periodically to prune old versions."
             } >> "${GITHUB_STEP_SUMMARY}"
             exit 0
