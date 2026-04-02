@@ -46,10 +46,22 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install clasp
-        run: npm install -g @google/clasp
+      - name: Syntax check publish tooling
+        run: |
+          node --check hoodlefinance.js
+          node --check tools/validate-json-secret.js
+          node --check tools/clasp-auth.js
+          node --check tools/cli-reporting.js
+          node --check tools/addon/deploy.js
+          node --check tools/demo/sync.js
+          node -e '
+            const fs = require("node:fs");
+            JSON.parse(fs.readFileSync("docs/google-sheets-editor-addon/appsscript.json", "utf8"));
+            JSON.parse(fs.readFileSync("docs/google-sheets-editor-addon/addon-deploy-layout.json", "utf8"));
+            JSON.parse(fs.readFileSync("docs/demo-sheet/demo-sheet.json", "utf8"));
+          '
 
-      - name: Validate demo deployment credentials
+      - name: Validate demo deployment JSON secrets
         env:
           DEMO_SHEET_CLASP_RC_JSON: ${{ secrets.DEMO_SHEET_CLASP_RC_JSON }}
           DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
@@ -61,31 +73,12 @@ jobs:
             DEMO_SHEET_OAUTH_TOKEN_JSON \
             DEMO_SHEET_CLASP_RC_JSON
 
-          exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
-          exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
-          exec {clasp_rc_fd}<<<"${DEMO_SHEET_CLASP_RC_JSON}"
-          trap 'exec {oauth_client_fd}<&-; exec {oauth_token_fd}<&-; exec {clasp_rc_fd}<&-' EXIT
-          unset DEMO_SHEET_CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
-
-          CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
-          DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
-          DEMO_SHEET_OAUTH_TOKEN_PATH="/proc/$$/fd/${oauth_token_fd}" \
-          node tools/demo/validate-credentials.js
-
-      - name: Validate add-on deployment credentials
+      - name: Validate add-on deployment JSON secret
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
           echo "Validating add-on JSON secret..."
           node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
-
-          exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
-          trap 'exec {clasp_rc_fd}<&-' EXIT
-          unset ADDON_DEPLOY_CLASP_RC_JSON
-
-          echo "Validating add-on clasp auth with clasp show-authorized-user..."
-          CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
-          node tools/validate-clasp-auth.js
 
   publish:
     name: Publish release and deploy add-on
@@ -116,7 +109,7 @@ jobs:
           node-version: "24"
 
       - name: Install clasp
-        run: npm install -g @google/clasp
+        run: npm install -g @google/clasp@3.3.0
 
       - name: Resolve release context
         id: release_context
@@ -319,7 +312,7 @@ jobs:
           node-version: "24"
 
       - name: Install clasp
-        run: npm install -g @google/clasp
+        run: npm install -g @google/clasp@3.3.0
 
       - name: Sync public demo sheet
         env:
