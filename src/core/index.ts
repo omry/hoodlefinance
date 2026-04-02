@@ -8,6 +8,7 @@ export * from "./request-building";
 export * from "./request-parsing";
 export * from "./resolver-registry";
 export * from "./routing-introspection";
+export * from "./spec-data";
 export * from "./resolve-plan";
 export * from "./route-jobs";
 export * from "./route-execution";
