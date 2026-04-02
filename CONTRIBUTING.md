@@ -323,7 +323,11 @@ Demo-sync workflow secrets:
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON`
 - `DEMO_SHEET_OAUTH_TOKEN_JSON`
-- `CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.demo-sheet.local/production/.clasprc.json` locally
+- `DEMO_SHEET_CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.demo-sheet.local/production/.clasprc.json` locally
+
+Add-on deploy secret:
+
+- `ADDON_DEPLOY_CLASP_RC_JSON` from the maintainer `clasp` login JSON that matches `.addon-deploy.local/production/.clasprc.json` locally
 
 The demo-sync job keeps those secret values out of the checked-out workspace and off the runner filesystem by exposing them through shell-owned file descriptors for the duration of the sync step. The OAuth token is treated as read-only in CI, so refreshes must be handled by updating the stored secret. All three secret values must be valid JSON.
 

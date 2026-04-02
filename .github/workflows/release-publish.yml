@@ -54,9 +54,10 @@ jobs:
           DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
         run: |
-          test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
-          test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
-          test -n "${DEMO_SHEET_CLASP_RC_JSON}" || { echo "Missing DEMO_SHEET_CLASP_RC_JSON secret."; exit 1; }
+          node tools/validate-json-secret.js \
+            DEMO_SHEET_OAUTH_CLIENT_JSON \
+            DEMO_SHEET_OAUTH_TOKEN_JSON \
+            DEMO_SHEET_CLASP_RC_JSON
 
           exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
           exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
@@ -149,7 +150,7 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          test -n "${ADDON_DEPLOY_CLASP_RC_JSON}" || { echo "Missing ADDON_DEPLOY_CLASP_RC_JSON secret."; exit 1; }
+          node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
           test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
 
           exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
@@ -190,7 +191,7 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          test -n "${ADDON_DEPLOY_CLASP_RC_JSON}" || { echo "Missing ADDON_DEPLOY_CLASP_RC_JSON secret."; exit 1; }
+          node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
 
           exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
           trap 'exec {clasp_rc_fd}<&-' EXIT
@@ -308,9 +309,10 @@ jobs:
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
           HOODLEFINANCE_NON_INTERACTIVE: "1"
         run: |
-          test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
-          test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
-          test -n "${DEMO_SHEET_CLASP_RC_JSON}" || { echo "Missing DEMO_SHEET_CLASP_RC_JSON secret."; exit 1; }
+          node tools/validate-json-secret.js \
+            DEMO_SHEET_OAUTH_CLIENT_JSON \
+            DEMO_SHEET_OAUTH_TOKEN_JSON \
+            DEMO_SHEET_CLASP_RC_JSON
 
           exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
           exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
