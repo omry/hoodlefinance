@@ -26,12 +26,13 @@ That writes [`.act/secrets`](./secrets), which stays ignored by git. Start from 
 act -l
 act workflow_dispatch -e .act/release-prepare.event.json -n
 act workflow_dispatch -e .act/release-publish.event.json -n
-act workflow_dispatch -e .act/release-publish.dry-run.event.json --secret-file .act/secrets -j publish-addon
+act workflow_dispatch --input version=1.0.0 --input ref=main -n
+act workflow_dispatch --input version=1.0.0 --input ref=main --secret-file .act/secrets -j publish-addon
 ```
 
-The `workflow_dispatch` event files only cover workflow inputs. Add `--secret-file .act/secrets` when you want to exercise secret-backed jobs locally.
-
-The dry-run release event exercises the add-on publish path without creating a new Apps Script version, which is useful for checking the version-history inspection logic.
+The `workflow_dispatch` event files only cover workflow inputs and are handy when you want a repeatable fixture. Use `--input` for one-off runs when you want to override `version` or `ref` from the command line.
+Add `--secret-file .act/secrets` when you want to exercise secret-backed jobs locally.
+Replace `1.0.0` and `main` with the release version and ref you actually want to test.
 
 ## Notes
 
