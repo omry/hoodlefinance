@@ -115,13 +115,18 @@ jobs:
           trap 'rm -f "${clasp_rc_path}"' EXIT
           unset ADDON_DEPLOY_CLASP_RC_JSON
 
-          if ! clasp_identity="$(CLASP_RC_PATH="${clasp_rc_path}" clasp show-authorized-user 2>&1)"; then
+          if ! clasp_identity="$(clasp -A "${clasp_rc_path}" show-authorized-user 2>&1)"; then
             printf '%s\n' "${clasp_identity}"
             exit 1
           fi
 
-          clasp_identity="$(printf '%s\n' "${clasp_identity}" | sed '/^[[:space:]]*$/d' | tail -n 1)"
+          clasp_identity="$(printf '%s\n' "${clasp_identity}" | sed '/^[[:space:]]*$/d')"
           clasp_email="$(printf '%s\n' "${clasp_identity}" | grep -Eo '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' | tail -n 1 || true)"
+          if printf '%s\n' "${clasp_identity}" | grep -qi '^Not logged in\.$'; then
+            echo "Add-on clasp validation reported that the auth is not logged in."
+            printf '%s\n' "${clasp_identity}"
+            exit 1
+          fi
           if [ -z "${clasp_email}" ]; then
             echo "Add-on clasp validation did not return a usable email identity."
             printf '%s\n' "${clasp_identity}"
