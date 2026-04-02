@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate-demo-credentials:
+  validate-publish-credentials:
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
 
@@ -54,6 +54,7 @@ jobs:
           DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
         run: |
+          echo "Validating demo JSON secrets..."
           node tools/validate-json-secret.js \
             DEMO_SHEET_OAUTH_CLIENT_JSON \
             DEMO_SHEET_OAUTH_TOKEN_JSON \
@@ -70,9 +71,24 @@ jobs:
           DEMO_SHEET_OAUTH_TOKEN_PATH="/proc/$$/fd/${oauth_token_fd}" \
           node tools/demo/validate-credentials.js
 
+      - name: Validate add-on deployment credentials
+        env:
+          ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
+        run: |
+          echo "Validating add-on JSON secret..."
+          node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
+
+          exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
+          trap 'exec {clasp_rc_fd}<&-' EXIT
+          unset ADDON_DEPLOY_CLASP_RC_JSON
+
+          echo "Validating add-on clasp auth with clasp show-authorized-user..."
+          CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+          node tools/validate-clasp-auth.js
+
   publish:
     needs:
-      - validate-demo-credentials
+      - validate-publish-credentials
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
     outputs:
@@ -150,7 +166,6 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          node tools/validate-json-secret.js --clasp-auth ADDON_DEPLOY_CLASP_RC_JSON
           test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
 
           exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
@@ -191,8 +206,6 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          node tools/validate-json-secret.js --clasp-auth ADDON_DEPLOY_CLASP_RC_JSON
-
           exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
           trap 'exec {clasp_rc_fd}<&-' EXIT
           unset ADDON_DEPLOY_CLASP_RC_JSON
@@ -309,6 +322,7 @@ jobs:
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
           HOODLEFINANCE_NON_INTERACTIVE: "1"
         run: |
+          echo "Validating demo JSON secrets for public sync..."
           node tools/validate-json-secret.js \
             DEMO_SHEET_OAUTH_CLIENT_JSON \
             DEMO_SHEET_OAUTH_TOKEN_JSON \
