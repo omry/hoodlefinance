@@ -14,3 +14,4 @@ website/.cache-loader/
 !.clasp.local/.gitkeep
 tmp
 docs/demo-sheet/demo-sheet-staging.json
+.act/secrets
