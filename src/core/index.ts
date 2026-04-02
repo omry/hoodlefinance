@@ -8,5 +8,6 @@ export * from "./request-parsing";
 export * from "./routing-introspection";
 export * from "./resolve-plan";
 export * from "./route-jobs";
+export * from "./route-execution";
 export * from "./route-results";
 export * from "./route-state";
