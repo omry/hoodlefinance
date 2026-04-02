@@ -4,7 +4,9 @@ export type RequestClassification = "equity" | "fx" | "isin";
 
 export interface AttributeRequest {
   baseAttribute: string;
-  outputCurrency: string;
+  outputCode: string;
+  rawAttribute: string;
+  wantsOutputCurrency: boolean;
 }
 
 export interface FxPair {

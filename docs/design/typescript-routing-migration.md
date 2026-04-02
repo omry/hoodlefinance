@@ -29,6 +29,13 @@ The first source tree is intentionally model-first:
 
 This scaffold does not replace any runtime code yet. It exists to establish stable contracts before extraction.
 
+The first executable extraction is the request-parsing layer:
+
+- `src/core/request-parsing.ts`
+  Mirrors the current attribute and ticker parsing contract from `hoodlefinance.js`.
+- `test-ts/request-parsing.test.js`
+  Verifies the compiled TypeScript output against the current parser behavior.
+
 ## Current-to-Future Mapping
 
 - `hf_parseAttributeRequest_`, `hf_parseTickerRequest_`, `RequestInput`, `EquityRequest`, `FxRequest`
