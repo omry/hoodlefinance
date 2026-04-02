@@ -27,6 +27,8 @@ jobs:
   build:
     name: Build website
     runs-on: ubuntu-latest
+    env:
+      WEBSITE_GA_MEASUREMENT_ID: ${{ secrets.WEBSITE_GA_MEASUREMENT_ID }}
 
     defaults:
       run:
@@ -47,6 +49,13 @@ jobs:
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+
+      - name: Validate Google Analytics measurement ID
+        run: |
+          test -n "${WEBSITE_GA_MEASUREMENT_ID}" || {
+            echo "Missing WEBSITE_GA_MEASUREMENT_ID secret for the website deploy."
+            exit 1
+          }
 
       - name: Install website dependencies
         run: npm ci

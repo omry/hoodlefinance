@@ -9,6 +9,9 @@
 import { themes as prismThemes } from "prism-react-renderer";
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+const gaMeasurementId = String(
+  process.env.WEBSITE_GA_MEASUREMENT_ID || "",
+).trim();
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -68,6 +71,14 @@ const config = {
       "classic",
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
+        ...(gaMeasurementId
+          ? {
+              gtag: {
+                anonymizeIP: true,
+                trackingID: gaMeasurementId,
+              },
+            }
+          : {}),
         docs: {
           sidebarPath: "./sidebars.js",
           editUrl: "https://github.com/omry/hoodlefinance/tree/main/website/",
