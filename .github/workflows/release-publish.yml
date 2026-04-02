@@ -139,6 +139,7 @@ jobs:
     name: Publish release and deploy add-on
     needs:
       - validate-publish-credentials
+      - sync-demo
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
     outputs:
@@ -354,16 +355,17 @@ jobs:
 
   sync-demo:
     name: Sync public demo sheet
-    needs: publish
-    if: needs.publish.result == 'success'
+    needs:
+      - validate-publish-credentials
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out released tag
+      - name: Check out release ref
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ needs.publish.outputs.tag_name }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -401,22 +403,3 @@ jobs:
           DEMO_SHEET_OAUTH_TOKEN_PATH="${oauth_token_path}" \
           HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY="1" \
           node tools/demo/sync.js --production
-
-  rollback-release-on-demo-failure:
-    name: Roll back release after demo sync failure
-    needs:
-      - publish
-      - sync-demo
-    if: needs.publish.result == 'success' && needs.sync-demo.result == 'failure'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Delete partially published release and tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ needs.publish.outputs.tag_name }}
-        run: |
-          test -n "${TAG_NAME}" || { echo "Missing tag name for rollback."; exit 1; }
-          gh release delete "${TAG_NAME}" --cleanup-tag --yes
