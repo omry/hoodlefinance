@@ -1,4 +1,5 @@
 export * from "./plan-specs";
+export * from "./plan-runtime-refs";
 export * from "./plan-navigation";
 export * from "./plan-materialization";
 export * from "./plan-selection";
@@ -6,6 +7,9 @@ export * from "./planner";
 export * from "./request";
 export * from "./request-building";
 export * from "./request-parsing";
+export * from "./concrete-resolvers";
+export * from "./resolver-classes";
+export * from "./resolver-materialization";
 export * from "./resolver-registry";
 export * from "./routing-introspection";
 export * from "./spec-data";

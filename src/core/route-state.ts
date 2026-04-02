@@ -1,14 +1,19 @@
-import type { FxPair, ResolvedRequest } from "./request";
+import type { FxPair, RequestInput, ResolvedRequest } from "./request";
 
-export interface PseQuoteRouteState {
+export interface PseQuoteRouteState extends Record<string, unknown> {
   symbol: string;
 }
 
-export interface FxQuoteRouteState {
+export interface IsinIdentifierRouteState extends Record<string, unknown> {
+  input: RequestInput;
+  isin: string;
+}
+
+export interface FxQuoteRouteState extends Record<string, unknown> {
   fxPair: FxPair;
 }
 
-export interface EquityYahooQuoteRouteState {
+export interface EquityYahooQuoteRouteState extends Record<string, unknown> {
   fxPair: null;
   preferredYahooSymbol: string;
   yahooSymbol: string;
@@ -18,6 +23,16 @@ export function buildPseQuoteRouteState(
   request: Pick<Extract<ResolvedRequest, { requestType: "equity" }>, "symbol">,
 ): PseQuoteRouteState {
   return { symbol: request.symbol };
+}
+
+export function buildIsinIdentifierRouteState(
+  request: RequestInput,
+  extractIsinFromRequestInput: (input: RequestInput) => string,
+): IsinIdentifierRouteState {
+  return {
+    input: request,
+    isin: extractIsinFromRequestInput(request),
+  };
 }
 
 export function buildFxQuoteRouteState(

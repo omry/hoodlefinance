@@ -5,8 +5,6 @@ import {
   type AttributeRequest,
   type FxPair,
   type ParsedTickerRequest,
-  type RequestClassification,
-  type RequestInputInit,
   type ResolvedRequest,
 } from "./request";
 
@@ -40,46 +38,17 @@ export function extractIsinFromRequestInput(
   return upperTicker.startsWith("ISIN:") ? upperTicker.slice(5).trim() : "";
 }
 
-export function classifyRequestInput(
-  input: Pick<RequestInput, "fxPair" | "ticker" | "upperTicker">,
-  looksLikeIsin: (value: string) => boolean,
-): RequestClassification {
-  if (extractIsinFromRequestInput(input, looksLikeIsin)) {
-    return "isin";
-  }
-
-  if (input.fxPair) {
-    return "fx";
-  }
-
-  return "equity";
-}
-
 export function createRequestInput(
   identifier: unknown,
   attribute: unknown,
   deps: RequestBuildingDependencies,
 ): RequestInput {
-  const rawIdentifier = String(identifier == null ? "" : identifier).trim();
-  const normalizedAttribute = deps.normalizeAttribute(attribute);
-  const attributeRequest = deps.parseAttributeRequest(normalizedAttribute);
-  const parsedIdentifier = deps.parseTickerRequest(rawIdentifier);
-  const requestTicker = parsedIdentifier.ticker;
-  const draftInput: Omit<RequestInputInit, "classification"> = {
-    attribute: normalizedAttribute,
-    attributeRequest,
-    attributeType: attributeRequest.baseAttribute === "isin" ? "isin" : "quote",
-    fxPair: deps.parseFxTicker(requestTicker),
-    identifier: rawIdentifier,
-    infoMode: parsedIdentifier.infoMode,
-    sourceOverride: parsedIdentifier.sourceOverride,
-    ticker: requestTicker,
-    upperTicker: requestTicker.toUpperCase(),
-  };
-
-  return new RequestInput({
-    ...draftInput,
-    classification: classifyRequestInput(draftInput, deps.looksLikeIsin),
+  return new RequestInput(identifier, attribute, {
+    looksLikeIsin: deps.looksLikeIsin,
+    normalizeAttribute: deps.normalizeAttribute,
+    parseAttributeRequest: deps.parseAttributeRequest,
+    parseFxTicker: deps.parseFxTicker,
+    parseTickerRequest: deps.parseTickerRequest,
   });
 }
 

@@ -143,3 +143,26 @@ test("resolver node name matching and lookup search by both name and source name
   assert.equal(findNamedResolverNode(root, "YAHOO FINANCE", request), yahoo);
   assert.equal(findNamedResolverNode(root, "MISSING", request), null);
 });
+
+test("findNamedResolverNode searches raw searchable children, not only selector-filtered matches", () => {
+  const request = createRequest();
+  const yahoo = createResolverNode("YAHOO");
+  const ibkr = createResolverNode("IBKR");
+
+  const root = {
+    canHandle() {
+      return true;
+    },
+    getNodesForRequest() {
+      return [ibkr];
+    },
+    isRoutingNode: false,
+    name: "ROOT",
+    nodes: [yahoo, ibkr],
+    routingDescription: "",
+    routingLabel: "ROOT",
+    sourceName: "ROOT",
+  };
+
+  assert.equal(findNamedResolverNode(root, "YAHOO", request), yahoo);
+});

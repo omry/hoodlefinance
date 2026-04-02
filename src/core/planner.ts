@@ -30,6 +30,26 @@ export interface RuntimePlan<RouteState = Record<string, unknown>> {
   routeState: RouteState;
 }
 
+export type RouteClassResolver = (
+  request: RequestInput | ResolvedRequest,
+) => string;
+
+export type RoutePathResolver = (
+  request: RequestInput | ResolvedRequest,
+) => string;
+
+export type RouteStateBuilder = (
+  request: RequestInput | ResolvedRequest,
+) => Record<string, unknown>;
+
+export interface NodeSelector {
+  (nodes: ResolverNode[], request: RequestInput | ResolvedRequest | null):
+    | ResolverNode[]
+    | null
+    | undefined;
+  requestDependent?: boolean;
+}
+
 export interface RouteContext {
   outputCurrencyCache?: {
     conversionRateByPair: Record<string, number>;
@@ -67,23 +87,40 @@ export interface RouteTraceEntry {
 export interface ResolverLike {
   code: string;
   describe(request: RequestInput | ResolvedRequest): string;
+  describeRoutingNode?(): string;
+  getGroupedSourceNames?(request: RequestInput | ResolvedRequest): string[];
+  getGroupedSourceNamesForDisplay?(
+    source: string,
+    request: RequestInput | ResolvedRequest,
+  ): string[];
+  getRoutingNodes?(): ResolverNode[];
+  matchesSourceName?(source: string): boolean;
   name: string;
+  representativeTicker?: string;
   routingDescription: string;
   routingLabel: string;
   sourceName: string;
+  isSourceOverrideable?: boolean;
 }
 
 export interface ResolverNode extends ResolverLike {
+  buildRouteState?(request: RequestInput | ResolvedRequest): Record<string, unknown>;
   canHandle(request: RequestInput | ResolvedRequest): boolean;
   buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan;
   executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
+  resolve?(request: RequestInput | ResolvedRequest): ResolutionResult<unknown>;
   traceLabel?: string;
 }
 
 export interface ResolverPlanNode extends ResolverNode {
   getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[];
   isRoutingNode: boolean;
+  getRoutingNodes?(): ResolverNode[];
   nodes?: ResolverNode[];
+  nodeSelector?: NodeSelector | null;
+  routeClass?: string | RouteClassResolver;
+  routePath?: string | RoutePathResolver;
+  routeStateBuilder?: RouteStateBuilder | null;
 }
 
 export interface ResolvePlan {

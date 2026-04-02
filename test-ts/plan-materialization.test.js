@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
   extractIsinCountryCode,
+  createDefaultPlanMaterializationDependencies,
   listSourceOverridePlanCodes,
   materializePlanFromSpec,
   materializePlanNodeByCode,
@@ -119,4 +120,55 @@ test("plan materialization returns resolvers, builds plans, and validates bad in
       }),
     /collides with a resolver plan spec/,
   );
+});
+
+test("default plan materialization builds typed resolver plans from runtime refs", () => {
+  const yahoo = createResolver("YAHOO");
+  const tradingview = createResolver("TRADINGVIEW-FUND");
+  const deps = createDefaultPlanMaterializationDependencies({
+    extractIsinCountryCode(request) {
+      return extractIsinCountryCode(request || {}, (value) =>
+        /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value)),
+      );
+    },
+    looksLikeIsin(value) {
+      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
+    },
+    planSpecsByCode: {
+      "QUOTE:TICKER": {
+        nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
+        resolverClass: "AttributeResolutionPlan",
+        options: {
+          routeClassRef: "EQUITY_TICKER_CLASS",
+          routePathRef: "EQUITY_TICKER_PATH",
+          routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
+        },
+      },
+    },
+    resolvePreferredYahooSymbol(symbol) {
+      return `${symbol}:ALT`;
+    },
+    resolversByCode: {
+      "TRADINGVIEW-FUND": tradingview,
+      YAHOO: yahoo,
+    },
+  });
+
+  const plan = materializePlanFromSpec("QUOTE:TICKER", null, deps);
+  const runtimePlan = plan.buildRuntimePlan({
+    allowTradingviewFallback: true,
+    classification: "equity",
+    input: { attribute: "price", identifier: "GOOG" },
+    requestType: "equity",
+    symbol: "GOOG",
+    yahooSymbol: "GOOG",
+  });
+
+  assert.equal(runtimePlan.routeClass, "EQUITY -> TICKER");
+  assert.equal(runtimePlan.routePath, "YAHOO -> TRADINGVIEW");
+  assert.deepEqual(runtimePlan.routeState, {
+    fxPair: null,
+    preferredYahooSymbol: "GOOG:ALT",
+    yahooSymbol: "GOOG",
+  });
 });

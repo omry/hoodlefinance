@@ -1,5 +1,7 @@
 import type { PlanSpec } from "./plan-specs";
 import type { ResolverNode } from "./planner";
+import { createPlanRuntimeRefs, type PlanRuntimeRefDependencies } from "./plan-runtime-refs";
+import { buildPlanNodeFromSpec } from "./resolver-classes";
 
 export interface PlanMaterializationDependencies {
   buildPlanNode(
@@ -92,4 +94,47 @@ export function listSourceOverridePlanCodes(
   return Object.keys(planSpecsByCode).filter(
     (code) => !!(planSpecsByCode[code]?.options || {}).isSourceOverrideable,
   );
+}
+
+export interface DefaultPlanMaterializationDependencies
+  extends Omit<PlanMaterializationDependencies, "buildPlanNode">,
+    PlanRuntimeRefDependencies {
+  extractIsinCountryCode(request: { ticker?: string; upperTicker?: string }): string;
+}
+
+export function createDefaultPlanMaterializationDependencies(
+  deps: DefaultPlanMaterializationDependencies,
+): PlanMaterializationDependencies {
+  return {
+    buildPlanNode(code, spec, resolveNode, overrides) {
+      return buildPlanNodeFromSpec(code, spec, resolveNode, overrides, {
+        extractIsinCountryCode(request) {
+          if (request && ("ticker" in request || "upperTicker" in request)) {
+            const requestWithTicker = request as {
+              ticker?: unknown;
+              upperTicker?: unknown;
+            };
+
+            return deps.extractIsinCountryCode({
+              ticker: String(requestWithTicker.ticker ?? "").trim(),
+              upperTicker: String(requestWithTicker.upperTicker ?? "").trim(),
+            });
+          }
+
+          if (request && "input" in request) {
+            const identifier = String(request.input?.identifier || "").trim();
+            return deps.extractIsinCountryCode({
+              ticker: identifier,
+              upperTicker: identifier.toUpperCase(),
+            });
+          }
+
+          return deps.extractIsinCountryCode({});
+        },
+        refs: createPlanRuntimeRefs(deps),
+      });
+    },
+    planSpecsByCode: deps.planSpecsByCode,
+    resolversByCode: deps.resolversByCode,
+  };
 }

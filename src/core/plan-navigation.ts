@@ -119,6 +119,23 @@ export function matchesResolverNodeName(
   );
 }
 
+export function listSearchablePlanNodes(
+  node: ResolverPlanNode | null | undefined,
+  request: RequestInput | ResolvedRequest | null,
+): ResolverNode[] {
+  if (!node) {
+    return [];
+  }
+
+  return (node.nodes || []).filter((childNode) => {
+    if (!childNode?.canHandle || !request) {
+      return true;
+    }
+
+    return childNode.canHandle(request);
+  });
+}
+
 export function findNamedResolverNode(
   node: ResolverNode | null | undefined,
   name: string,
@@ -151,7 +168,7 @@ export function findNamedResolverNode(
 
   nodes =
     requireCanHandle && request
-      ? node.getNodesForRequest(request)
+      ? listSearchablePlanNodes(node, request)
       : ((node.nodes || []) as ResolverNode[]);
 
   for (const childNode of nodes) {

@@ -7,6 +7,7 @@ const {
   classifyRequestInput,
   createRequestInput,
   extractIsinFromRequestInput,
+  RequestInput,
 } = require("../dist/ts/core/index.js");
 
 function createDeps() {
@@ -118,6 +119,42 @@ test("createRequestInput classifies equity, fx, and isin inputs", () => {
     createRequestInput("US02079K1079", "price", deps).classification,
     "isin",
   );
+});
+
+test("RequestInput can derive the same request shape through its runtime-style constructor", () => {
+  const deps = createDeps();
+  const input = new RequestInput("GOOG@YAHOO", "price", {
+    looksLikeIsin: deps.looksLikeIsin,
+    normalizeAttribute: deps.normalizeAttribute,
+    parseAttributeRequest: deps.parseAttributeRequest,
+    parseFxTicker: deps.parseFxTicker,
+    parseTickerRequest: deps.parseTickerRequest,
+  });
+
+  assert.equal(input.attribute, "price");
+  assert.equal(input.sourceOverride, "YAHOO");
+  assert.equal(input.ticker, "GOOG");
+  assert.equal(input.classification, "equity");
+});
+
+test("RequestInput can use configured runtime dependencies with the original constructor shape", () => {
+  const deps = createDeps();
+
+  RequestInput.configureRuntime({
+    looksLikeIsin: deps.looksLikeIsin,
+    normalizeAttribute: deps.normalizeAttribute,
+    parseAttributeRequest: deps.parseAttributeRequest,
+    parseFxTicker: deps.parseFxTicker,
+    parseTickerRequest: deps.parseTickerRequest,
+  });
+
+  try {
+    const input = new RequestInput("EURUSD", "price");
+    assert.equal(input.classification, "fx");
+    assert.equal(input.fxPair.baseCanonicalCode, "EUR");
+  } finally {
+    RequestInput._resetForTests();
+  }
 });
 
 test("isin extraction and classification stay simple and explicit", () => {

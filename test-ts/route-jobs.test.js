@@ -6,13 +6,14 @@ const {
   RequestInput,
   buildTickerJobKey,
   createAttributeRouteJob,
-  createQuoteRouteJob,
-  createResolvePlan,
-  createResolverRouteJob,
-  createRouteJob,
-  getCurrentRouteNode,
-  mergeRouteState,
-} = require("../dist/ts/core/index.js");
+    createQuoteRouteJob,
+    createResolvePlan,
+    createResolverRouteJob,
+    createRouteJob,
+    getCurrentRouteNode,
+    mergeRouteState,
+    prepareRouteJob,
+  } = require("../dist/ts/core/index.js");
 
 function createRequestInput(init = {}) {
   return new RequestInput({
@@ -125,4 +126,32 @@ test("getCurrentRouteNode and mergeRouteState keep runtime job state synchronize
     yahooSymbol: "GOOG",
   });
   assert.equal(plan.routeState, job.routeState);
+});
+
+test("prepareRouteJob resets runtime routing state from the supplied plan", () => {
+  const node = { name: "YAHOO" };
+  const plan = {
+    nodes: [node],
+    routeClass: "EQUITY",
+    routePath: "YAHOO",
+    routeState: { yahooSymbol: "GOOG" },
+  };
+  const job = createRouteJob({
+    routeLastLookupFailure: "old",
+    routeNodes: [],
+    routeState: { stale: true },
+  });
+
+  job.routeRuntimeTrace.push({ elapsedMs: 1, label: "OLD", status: "failure" });
+  job.routeLastLookupFailure = "old";
+  job.routePreferredLookupFailure = "preferred";
+
+  prepareRouteJob(job, plan);
+
+  assert.deepEqual(job.routeNodes, [node]);
+  assert.deepEqual(job.routeState, { yahooSymbol: "GOOG" });
+  assert.notEqual(job.routeState, plan.routeState);
+  assert.deepEqual(job.routeRuntimeTrace, []);
+  assert.equal(job.routeLastLookupFailure, "");
+  assert.equal(job.routePreferredLookupFailure, "");
 });

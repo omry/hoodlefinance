@@ -34,7 +34,42 @@ export interface RequestInputInit {
   upperTicker: string;
 }
 
+export interface RequestInputRuntimeDependencies {
+  looksLikeIsin(value: string): boolean;
+  normalizeAttribute(attribute: unknown): string;
+  parseAttributeRequest(attribute: string): AttributeRequest;
+  parseFxTicker(ticker: string): FxPair | null;
+  parseTickerRequest(ticker: string): ParsedTickerRequest;
+}
+
+function isRequestInputInit(value: unknown): value is RequestInputInit {
+  return !!value && typeof value === "object" && "attributeRequest" in value;
+}
+
+function classifyRequestInputFromDerivedState(
+  ticker: string,
+  upperTicker: string,
+  fxPair: FxPair | null,
+  looksLikeIsin: (value: string) => boolean,
+): RequestClassification {
+  if (looksLikeIsin(ticker)) {
+    return "isin";
+  }
+
+  if (upperTicker.startsWith("ISIN:")) {
+    return "isin";
+  }
+
+  if (fxPair) {
+    return "fx";
+  }
+
+  return "equity";
+}
+
 export class RequestInput {
+  private static runtimeDependencies: RequestInputRuntimeDependencies | null = null;
+
   readonly attribute: string;
   readonly attributeRequest: AttributeRequest;
   readonly attributeType: AttributeType;
@@ -46,18 +81,94 @@ export class RequestInput {
   readonly ticker: string;
   readonly upperTicker: string;
 
-  constructor(init: RequestInputInit) {
-    this.attribute = init.attribute;
-    this.attributeRequest = init.attributeRequest;
-    this.attributeType = init.attributeType;
-    this.classification = init.classification;
-    this.fxPair = init.fxPair;
-    this.identifier = init.identifier;
-    this.infoMode = init.infoMode;
-    this.sourceOverride = init.sourceOverride;
-    this.ticker = init.ticker;
-    this.upperTicker = init.upperTicker;
+  constructor(init: RequestInputInit);
+  constructor(identifier: unknown, attribute?: unknown);
+  constructor(
+    identifier: unknown,
+    attribute: unknown,
+    deps: RequestInputRuntimeDependencies,
+  );
+  constructor(
+    initOrIdentifier: RequestInputInit | unknown,
+    attribute?: unknown,
+    deps?: RequestInputRuntimeDependencies,
+  ) {
+    if (isRequestInputInit(initOrIdentifier)) {
+      const init = initOrIdentifier;
+
+      this.attribute = init.attribute;
+      this.attributeRequest = init.attributeRequest;
+      this.attributeType = init.attributeType;
+      this.classification = init.classification;
+      this.fxPair = init.fxPair;
+      this.identifier = init.identifier;
+      this.infoMode = init.infoMode;
+      this.sourceOverride = init.sourceOverride;
+      this.ticker = init.ticker;
+      this.upperTicker = init.upperTicker;
+      return;
+    }
+
+    const runtimeDeps = deps || RequestInput.runtimeDependencies;
+    if (!runtimeDeps) {
+      throw new Error(
+        "RequestInput runtime dependencies are not configured.",
+      );
+    }
+
+    const rawIdentifier = String(
+      initOrIdentifier == null ? "" : initOrIdentifier,
+    ).trim();
+    const normalizedAttribute = runtimeDeps.normalizeAttribute(attribute);
+    const attributeRequest =
+      runtimeDeps.parseAttributeRequest(normalizedAttribute);
+    const parsedIdentifier = runtimeDeps.parseTickerRequest(rawIdentifier);
+    const requestTicker = parsedIdentifier.ticker;
+    const fxPair = runtimeDeps.parseFxTicker(requestTicker);
+
+    this.attribute = normalizedAttribute;
+    this.attributeRequest = attributeRequest;
+    this.attributeType =
+      attributeRequest.baseAttribute === "isin" ? "isin" : "quote";
+    this.fxPair = fxPair;
+    this.identifier = rawIdentifier;
+    this.infoMode = parsedIdentifier.infoMode;
+    this.sourceOverride = parsedIdentifier.sourceOverride;
+    this.ticker = requestTicker;
+    this.upperTicker = requestTicker.toUpperCase();
+    this.classification = classifyRequestInputFromDerivedState(
+      this.ticker,
+      this.upperTicker,
+      this.fxPair,
+      runtimeDeps.looksLikeIsin,
+    );
   }
+
+  static configureRuntime(
+    deps: RequestInputRuntimeDependencies | null,
+  ): void {
+    RequestInput.runtimeDependencies = deps;
+  }
+
+  static getRuntimeDependencies(): RequestInputRuntimeDependencies | null {
+    return RequestInput.runtimeDependencies;
+  }
+
+  static _resetForTests(): void {
+    RequestInput.runtimeDependencies = null;
+  }
+}
+
+export function classifyRequestInput(
+  input: Pick<RequestInput, "fxPair" | "ticker" | "upperTicker">,
+  looksLikeIsin: (value: string) => boolean,
+): RequestClassification {
+  return classifyRequestInputFromDerivedState(
+    String(input.ticker || "").trim(),
+    String(input.upperTicker || "").trim(),
+    input.fxPair,
+    looksLikeIsin,
+  );
 }
 
 export interface BaseRequestInputSnapshot {
@@ -66,21 +177,27 @@ export interface BaseRequestInputSnapshot {
 }
 
 export class BaseRequest {
-  readonly identifierResolutionMs: number;
+  identifierResolutionMs: number;
   readonly input: BaseRequestInputSnapshot;
 
   constructor(input: BaseRequestInputSnapshot, identifierResolutionMs = 0) {
-    this.identifierResolutionMs = identifierResolutionMs;
-    this.input = input;
+    this.identifierResolutionMs =
+      identifierResolutionMs != null && isFinite(identifierResolutionMs)
+        ? Math.max(0, Number(identifierResolutionMs))
+        : 0;
+    this.input = {
+      attribute: input.attribute,
+      identifier: input.identifier,
+    };
   }
 }
 
 export interface EquityRequestInit extends BaseRequestInputSnapshot {
-  allowTradingviewFallback: boolean;
-  exchange: string;
+  allowTradingviewFallback?: boolean;
+  exchange?: string;
   identifierResolutionMs?: number;
-  symbol: string;
-  yahooSymbol: string;
+  symbol?: string;
+  yahooSymbol?: string;
 }
 
 export class EquityRequest extends BaseRequest {
@@ -92,11 +209,11 @@ export class EquityRequest extends BaseRequest {
   readonly yahooSymbol: string;
 
   constructor(init: EquityRequestInit) {
-    super(init, init.identifierResolutionMs ?? 0);
-    this.allowTradingviewFallback = init.allowTradingviewFallback;
-    this.exchange = init.exchange;
-    this.symbol = init.symbol;
-    this.yahooSymbol = init.yahooSymbol;
+    super(init, init.identifierResolutionMs);
+    this.allowTradingviewFallback = init.allowTradingviewFallback === true;
+    this.exchange = init.exchange || "";
+    this.symbol = init.symbol || "";
+    this.yahooSymbol = init.yahooSymbol || "";
   }
 }
 
@@ -113,7 +230,7 @@ export class FxRequest extends BaseRequest {
   readonly requestType = "fx";
 
   constructor(init: FxRequestInit) {
-    super(init, init.identifierResolutionMs ?? 0);
+    super(init, init.identifierResolutionMs);
     this.baseCurrency = init.fxPair.baseCanonicalCode;
     this.fxPair = init.fxPair;
     this.quoteCurrency = init.fxPair.quoteCanonicalCode;

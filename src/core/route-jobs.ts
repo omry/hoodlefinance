@@ -1,4 +1,10 @@
-import type { ResolvePlan, RouteContext, RouteJob, RouteKind } from "./planner";
+import type {
+  ResolvePlan,
+  RouteContext,
+  RouteJob,
+  RouteKind,
+  RuntimePlan,
+} from "./planner";
 import { RequestInput, type ResolvedRequest } from "./request";
 
 export interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
@@ -128,9 +134,40 @@ export function mergeRouteState<RouteState extends Record<string, unknown>>(
   }
 }
 
+export function prepareRouteJob<RouteState extends Record<string, unknown>>(
+  job: RouteJob<RouteState>,
+  plan: RuntimePlan<RouteState> | null | undefined,
+): void {
+  const routePlan =
+    plan ||
+    job.plan ||
+    ({
+      nodes: [],
+      routeClass: "",
+      routePath: "",
+      routeState: {} as RouteState,
+    } satisfies RuntimePlan<RouteState>);
+
+  job.plan = routePlan;
+  job.routeNodes = (routePlan.nodes || []).slice();
+  job.routeState = cloneRouteState(routePlan.routeState || ({} as RouteState));
+  job.routeRuntimeTrace = [];
+  job.routeLastLookupFailure = "";
+  job.routePreferredLookupFailure = "";
+}
+
+export interface CreateResolvePlanOptions
+  extends Partial<Omit<ResolvePlan, "requestInput">> {
+  requestInput: ResolvePlan["requestInput"];
+}
+
 export function createResolvePlan(
-  options: Partial<ResolvePlan>,
+  options: CreateResolvePlanOptions,
 ): Readonly<ResolvePlan> {
+  if (!options.requestInput) {
+    throw new Error("createResolvePlan requires requestInput.");
+  }
+
   return Object.freeze({
     attributePlan: options.attributePlan || null,
     buildAttributePlan:
@@ -141,7 +178,7 @@ export function createResolvePlan(
     identifierPlan: options.identifierPlan || null,
     plannedRoute:
       options.plannedRoute != null ? String(options.plannedRoute) : "",
-    requestInput: options.requestInput || null,
+    requestInput: options.requestInput,
     resolvedRequest: options.resolvedRequest || null,
   }) as Readonly<ResolvePlan>;
 }
