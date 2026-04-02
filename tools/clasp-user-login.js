@@ -139,8 +139,8 @@ async function main() {
   args.push("--creds", context.credsPath);
 
   process.stdout.write("Logging into [" + context.label + "]\n");
-  process.stdout.write("Auth file: " + context.authPath + "\n");
-  process.stdout.write("OAuth client: " + context.credsPath + "\n");
+  process.stdout.write("Will update: " + context.authPath + "\n");
+  process.stdout.write("Will read: " + context.credsPath + "\n");
   await runCommand(claspCommand, args);
 }
 
