@@ -121,11 +121,14 @@ jobs:
           fi
 
           clasp_identity="$(printf '%s\n' "${clasp_identity}" | sed '/^[[:space:]]*$/d' | tail -n 1)"
-          if [ -z "${clasp_identity}" ]; then
-            echo "Add-on clasp validation succeeded, but no user details were returned."
-          else
-            echo "Add-on clasp identity: ${clasp_identity}"
+          clasp_email="$(printf '%s\n' "${clasp_identity}" | grep -Eo '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' | tail -n 1 || true)"
+          if [ -z "${clasp_email}" ]; then
+            echo "Add-on clasp validation did not return a usable email identity."
+            printf '%s\n' "${clasp_identity}"
+            exit 1
           fi
+
+          echo "Add-on clasp identity: ${clasp_email}"
 
   publish:
     name: Publish release and deploy add-on
