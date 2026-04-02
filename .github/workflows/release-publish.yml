@@ -29,17 +29,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate-publish-credentials:
-    name: Validate publish credentials
+  resolve-release:
+    name: Resolve release
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
+    outputs:
+      release_sha: ${{ steps.release_context.outputs.release_sha }}
+      tag_name: ${{ steps.release_context.outputs.tag_name }}
+      version: ${{ steps.release_context.outputs.version }}
 
     steps:
-      - name: Check out release ref
+      - name: Check out requested release ref
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
+
+      - name: Resolve release context
+        id: release_context
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          VERSION="$(sed -n 's/^version=//p' version.properties | head -n 1)"
+          RELEASE_SHA="$(git rev-parse HEAD)"
+          test -n "${VERSION}" || { echo "version.properties is missing version."; exit 1; }
+          test -n "${RELEASE_SHA}" || { echo "Failed to resolve release SHA."; exit 1; }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            test "${INPUT_VERSION}" = "${VERSION}" || {
+              echo "version.properties must point to ${INPUT_VERSION}, found ${VERSION}."
+              exit 1
+            }
+          else
+            test "${RELEASE_BRANCH}" = "release/v${VERSION}" || {
+              echo "Merged branch ${RELEASE_BRANCH} does not match release/v${VERSION}."
+              exit 1
+            }
+          fi
+
+          echo "release_sha=${RELEASE_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag_name=v${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate release state
+        env:
+          RELEASE_SHA: ${{ steps.release_context.outputs.release_sha }}
+          TAG_NAME: ${{ steps.release_context.outputs.tag_name }}
+          VERSION: ${{ steps.release_context.outputs.version }}
+        run: |
+          TAG_REF="refs/tags/${TAG_NAME}"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          test "${HEAD_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Checked out commit ${HEAD_COMMIT} does not match resolved release SHA ${RELEASE_SHA}."
+            exit 1
+          }
+
+          git fetch --force --tags origin
+
+          grep -q "^version=${VERSION}$" version.properties
+          grep -q "const HOODLEFINANCE_VERSION_ = \"${VERSION}\"" hoodlefinance.js
+          test -f "docs/release-notes/${TAG_NAME}.md"
+          grep -q "^## ${TAG_NAME} - " docs/release-notes/RELEASE_NOTES.md
+
+          if git rev-parse "${TAG_REF}" >/dev/null 2>&1; then
+            TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+            if [ "${TAG_COMMIT}" != "${RELEASE_SHA}" ]; then
+              echo "Tag ${TAG_NAME} already exists on a different commit (${TAG_COMMIT})."
+              exit 1
+            fi
+            echo "Tag ${TAG_NAME} already points at ${RELEASE_SHA}. Safe to proceed."
+          fi
+
+  validate-publish-credentials:
+    name: Validate publish credentials
+    needs:
+      - resolve-release
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out resolved release SHA
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve-release.outputs.release_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -135,29 +209,103 @@ jobs:
 
           echo "Add-on clasp identity: ${clasp_email}"
 
-  publish:
-    name: Publish release and deploy add-on
+  create-release-tag:
+    name: Create release tag
     needs:
+      - resolve-release
       - validate-publish-credentials
-      - sync-demo
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
-    outputs:
-      addon_version_number: ${{ steps.deploy_addon.outputs.version_number }}
-      tag_name: ${{ steps.release_context.outputs.tag_name }}
-      version: ${{ steps.release_context.outputs.version }}
 
     steps:
-      - name: Check out release ref
+      - name: Check out resolved release SHA
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.resolve-release.outputs.release_sha }}
 
       - name: Configure git author
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create or confirm release tag
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.release_sha }}
+          TAG_NAME: ${{ needs.resolve-release.outputs.tag_name }}
+        run: |
+          TAG_REF="refs/tags/${TAG_NAME}"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          test "${HEAD_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Checked out commit ${HEAD_COMMIT} does not match resolved release SHA ${RELEASE_SHA}."
+            exit 1
+          }
+
+          git fetch --force --tags origin
+
+          if git rev-parse "${TAG_REF}" >/dev/null 2>&1; then
+            TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+            if [ "${TAG_COMMIT}" != "${RELEASE_SHA}" ]; then
+              echo "Tag ${TAG_NAME} already exists on a different commit (${TAG_COMMIT})."
+              exit 1
+            fi
+            echo "Tag ${TAG_NAME} already points at ${RELEASE_SHA}. Skipping creation."
+            exit 0
+          fi
+
+          git tag -a "${TAG_NAME}" "${RELEASE_SHA}" -m "Release ${TAG_NAME}"
+          if ! git push origin "refs/tags/${TAG_NAME}:refs/tags/${TAG_NAME}"; then
+            git fetch --force --tags origin
+            if git rev-parse "${TAG_REF}" >/dev/null 2>&1; then
+              TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+              if [ "${TAG_COMMIT}" = "${RELEASE_SHA}" ]; then
+                echo "Tag ${TAG_NAME} was created concurrently on the expected commit."
+                exit 0
+              fi
+            fi
+            echo "Failed to push tag ${TAG_NAME}."
+            exit 1
+          fi
+
+          git fetch --force --tags origin
+          TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+          test "${TAG_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Tag ${TAG_NAME} resolved to ${TAG_COMMIT} after push, expected ${RELEASE_SHA}."
+            exit 1
+          }
+
+  publish-addon:
+    name: Publish add-on
+    needs:
+      - resolve-release
+      - create-release-tag
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.resolve-release.outputs.tag_name }}
+
+      - name: Verify checked out release tag
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.release_sha }}
+          TAG_NAME: ${{ needs.resolve-release.outputs.tag_name }}
+        run: |
+          TAG_REF="refs/tags/${TAG_NAME}"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+
+          test "${HEAD_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Checked out commit ${HEAD_COMMIT} does not match resolved release SHA ${RELEASE_SHA}."
+            exit 1
+          }
+          test "${TAG_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Tag ${TAG_NAME} points at ${TAG_COMMIT}, expected ${RELEASE_SHA}."
+            exit 1
+          }
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -166,51 +314,6 @@ jobs:
 
       - name: Install clasp
         run: npm install -g @google/clasp@3.3.0
-
-      - name: Resolve release context
-        id: release_context
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
-        run: |
-          VERSION="$(sed -n 's/^version=//p' version.properties | head -n 1)"
-          test -n "${VERSION}" || { echo "version.properties is missing version."; exit 1; }
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            test "${INPUT_VERSION}" = "${VERSION}" || {
-              echo "version.properties must point to ${INPUT_VERSION}, found ${VERSION}."
-              exit 1
-            }
-          else
-            test "${RELEASE_BRANCH}" = "release/v${VERSION}" || {
-              echo "Merged branch ${RELEASE_BRANCH} does not match release/v${VERSION}."
-              exit 1
-            }
-          fi
-
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "tag_name=v${VERSION}" >> "${GITHUB_OUTPUT}"
-
-      - name: Validate release state
-        id: validate_release_state
-        env:
-          VERSION: ${{ steps.release_context.outputs.version }}
-        run: |
-          grep -q "^version=${VERSION}$" version.properties
-          grep -q "const HOODLEFINANCE_VERSION_ = \"${VERSION}\"" hoodlefinance.js
-          test -f "docs/release-notes/v${VERSION}.md"
-          grep -q "^## v${VERSION} - " docs/release-notes/RELEASE_NOTES.md
-
-          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-            TAG_COMMIT=$(git rev-parse "v${VERSION}^{commit}")
-            HEAD_COMMIT=$(git rev-parse HEAD)
-            if [ "${TAG_COMMIT}" != "${HEAD_COMMIT}" ]; then
-              echo "Tag v${VERSION} already exists on a different commit (${TAG_COMMIT})."
-              exit 1
-            fi
-            echo "Tag v${VERSION} exactly matches HEAD. Safe to proceed."
-            echo "skip_tag=true" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Deploy production add-on version
         id: deploy_addon
@@ -337,35 +440,39 @@ jobs:
             } >> "${GITHUB_STEP_SUMMARY}"
           fi
 
-      - name: Create and push release tag
-        if: steps.validate_release_state.outputs.skip_tag != 'true'
-        env:
-          TAG_NAME: ${{ steps.release_context.outputs.tag_name }}
-        run: |
-          git tag -a "${TAG_NAME}" -m "Release ${TAG_NAME}"
-          git push origin "${TAG_NAME}"
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          body_path: docs/release-notes/v${{ steps.release_context.outputs.version }}.md
-          generate_release_notes: false
-          name: ${{ steps.release_context.outputs.tag_name }}
-          tag_name: ${{ steps.release_context.outputs.tag_name }}
-
   sync-demo:
     name: Sync public demo sheet
     needs:
-      - validate-publish-credentials
+      - resolve-release
+      - create-release-tag
+      - publish-addon
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out release ref
+      - name: Check out release tag
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
+          ref: refs/tags/${{ needs.resolve-release.outputs.tag_name }}
+
+      - name: Verify checked out release tag
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.release_sha }}
+          TAG_NAME: ${{ needs.resolve-release.outputs.tag_name }}
+        run: |
+          TAG_REF="refs/tags/${TAG_NAME}"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+
+          test "${HEAD_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Checked out commit ${HEAD_COMMIT} does not match resolved release SHA ${RELEASE_SHA}."
+            exit 1
+          }
+          test "${TAG_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Tag ${TAG_NAME} points at ${TAG_COMMIT}, expected ${RELEASE_SHA}."
+            exit 1
+          }
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -403,3 +510,46 @@ jobs:
           DEMO_SHEET_OAUTH_TOKEN_PATH="${oauth_token_path}" \
           HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY="1" \
           node tools/demo/sync.js --production
+
+  create-github-release:
+    name: Create GitHub release
+    needs:
+      - resolve-release
+      - create-release-tag
+      - publish-addon
+      - sync-demo
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.resolve-release.outputs.tag_name }}
+
+      - name: Verify checked out release tag
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.release_sha }}
+          TAG_NAME: ${{ needs.resolve-release.outputs.tag_name }}
+        run: |
+          TAG_REF="refs/tags/${TAG_NAME}"
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          TAG_COMMIT="$(git rev-parse "${TAG_REF}^{commit}")"
+
+          test "${HEAD_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Checked out commit ${HEAD_COMMIT} does not match resolved release SHA ${RELEASE_SHA}."
+            exit 1
+          }
+          test "${TAG_COMMIT}" = "${RELEASE_SHA}" || {
+            echo "Tag ${TAG_NAME} points at ${TAG_COMMIT}, expected ${RELEASE_SHA}."
+            exit 1
+          }
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: docs/release-notes/v${{ needs.resolve-release.outputs.version }}.md
+          generate_release_notes: false
+          name: ${{ needs.resolve-release.outputs.tag_name }}
+          tag_name: ${{ needs.resolve-release.outputs.tag_name }}
