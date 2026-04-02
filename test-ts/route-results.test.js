@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  applyRouteResult,
   collectFailedRouteLabels,
   createDebugRoutePlan,
   createResolutionFailure,
@@ -11,6 +12,7 @@ const {
   describePlanSource,
   formatRouteFailureMessage,
   isDebugRoutePlan,
+  shouldPreferLookupFailureMessage,
 } = require("../dist/ts/core/index.js");
 
 test("debug-route helpers preserve the current debug plan contract", () => {
@@ -80,4 +82,73 @@ test("createRouteResult preserves the open-ended route adapter payload shape", (
     quote: { price: 10 },
     status: "success",
   });
+});
+
+test("applyRouteResult updates job state for success, lookup failure, and terminal failure", () => {
+  const makeJob = () => ({
+    error: null,
+    plan: { nodes: [], routeClass: "", routePath: "", routeState: {} },
+    quote: null,
+    routeKind: "quote",
+    routeLastLookupFailure: "",
+    routeNodes: [{ name: "YAHOO", traceLabel: "YAHOO" }, { name: "IBKR" }],
+    routePreferredLookupFailure: "",
+    routeRuntimeTrace: [],
+    routeState: {},
+    value: null,
+    valueResolved: false,
+  });
+
+  const successJob = makeJob();
+  applyRouteResult(
+    successJob,
+    successJob.routeNodes[0],
+    { quote: { price: 10 }, status: "success" },
+    7,
+    (error) => String(error),
+  );
+  assert.deepEqual(successJob.quote, { price: 10 });
+  assert.equal(successJob.routeRuntimeTrace[0].label, "YAHOO");
+
+  const lookupFailureJob = makeJob();
+  applyRouteResult(
+    lookupFailureJob,
+    lookupFailureJob.routeNodes[0],
+    { error: "Service currently unavailable", status: "lookup_failure" },
+    2,
+    (error) => String(error),
+  );
+  assert.equal(lookupFailureJob.routeNodes.length, 1);
+  assert.equal(
+    lookupFailureJob.routePreferredLookupFailure,
+    "Service currently unavailable",
+  );
+  assert.equal(lookupFailureJob.error, null);
+
+  applyRouteResult(
+    lookupFailureJob,
+    lookupFailureJob.routeNodes[0],
+    { error: "Second lookup failed", status: "lookup_failure" },
+    3,
+    (error) => String(error),
+  );
+  assert.match(lookupFailureJob.error, /Failed nodes:/);
+
+  const terminalJob = makeJob();
+  applyRouteResult(
+    terminalJob,
+    terminalJob.routeNodes[0],
+    { error: "Boom", status: "terminal_error" },
+    1,
+    (error) => String(error),
+  );
+  assert.equal(terminalJob.error, "Boom Failed nodes: YAHOO.");
+});
+
+test("shouldPreferLookupFailureMessage keeps the current availability heuristic", () => {
+  assert.equal(
+    shouldPreferLookupFailureMessage("Service currently unavailable"),
+    true,
+  );
+  assert.equal(shouldPreferLookupFailureMessage("Bad ticker"), false);
 });

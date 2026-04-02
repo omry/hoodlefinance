@@ -98,6 +98,36 @@ export function createResolverRouteJob(
   });
 }
 
+export function getCurrentRouteNode(
+  job: Pick<RouteJob, "routeNodes"> | null | undefined,
+) {
+  if (!job || !job.routeNodes || !job.routeNodes.length) {
+    return null;
+  }
+
+  return job.routeNodes[0] ?? null;
+}
+
+export function mergeRouteState<RouteState extends Record<string, unknown>>(
+  job: Pick<RouteJob<RouteState>, "plan" | "routeState">,
+  stateChanges: Partial<RouteState> | null | undefined,
+): void {
+  const changes = stateChanges || {};
+
+  if (!job.routeState) {
+    job.routeState = {} as RouteState;
+  }
+
+  for (const [key, value] of Object.entries(changes)) {
+    job.routeState[key as keyof RouteState] =
+      value as RouteState[keyof RouteState];
+  }
+
+  if (job.plan) {
+    job.plan.routeState = job.routeState;
+  }
+}
+
 export function createResolvePlan(
   options: Partial<ResolvePlan>,
 ): Readonly<ResolvePlan> {

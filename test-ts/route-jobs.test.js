@@ -10,6 +10,8 @@ const {
   createResolvePlan,
   createResolverRouteJob,
   createRouteJob,
+  getCurrentRouteNode,
+  mergeRouteState,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput(init = {}) {
@@ -104,4 +106,23 @@ test("createResolvePlan freezes the planner result shape", () => {
   assert.equal(plan.attributePlan, null);
   assert.equal(plan.identifierPlan, null);
   assert.equal(plan.requestInput, requestInput);
+});
+
+test("getCurrentRouteNode and mergeRouteState keep runtime job state synchronized", () => {
+  const node = { name: "YAHOO" };
+  const plan = { nodes: [], routeClass: "", routePath: "", routeState: {} };
+  const job = createRouteJob({
+    plan,
+    routeNodes: [node],
+    routeState: { yahooSymbol: "GOOG" },
+  });
+
+  assert.equal(getCurrentRouteNode(job), node);
+
+  mergeRouteState(job, { preferredYahooSymbol: "GOOG:ALT" });
+  assert.deepEqual(job.routeState, {
+    preferredYahooSymbol: "GOOG:ALT",
+    yahooSymbol: "GOOG",
+  });
+  assert.equal(plan.routeState, job.routeState);
 });

@@ -76,6 +76,8 @@ export interface ResolverLike {
 export interface ResolverNode extends ResolverLike {
   canHandle(request: RequestInput | ResolvedRequest): boolean;
   buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan;
+  executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
+  traceLabel?: string;
 }
 
 export interface ResolverPlanNode extends ResolverNode {
