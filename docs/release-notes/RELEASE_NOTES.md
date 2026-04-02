@@ -1,5 +1,21 @@
 # Release Notes
 
+## v1.0.0 - 2026-04-02
+
+### Fixed
+
+- PSE quotes now use the symbol-native Frames provider first and automatically fall back to the Edge provider when needed, improving reliability for preferred shares and suspended symbols.
+- Fixed lowercase ticker lookups such as `vstm` so they no longer fail on an internal cache-key validation error before quote resolution starts.
+- TradingView ISIN errors now report the original input symbol instead of the normalized exchange-prefixed symbol.
+- Preferred REIT symbol lookups now work correctly for whitelisted tickers.
+- The Demo page now show a conflict warning if the Google Sheet add-on is enabled there.
+
+### Documentation
+
+- Added a stable `/demo` website link for the public demo sheet and wired the docs site to use it consistently.
+- Updated the docs to present the Google Sheets™ Marketplace add-on as the supported install path for users.
+- Removed the script-copy install path from the public website docs and kept it in contributor-only repo docs.
+
 ## v0.9.7 - 2026-03-29
 
 ### Changed
