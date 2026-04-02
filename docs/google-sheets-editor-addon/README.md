@@ -115,6 +115,8 @@ Keep the add-on project and demo-sync OAuth project separate. The public-review 
 
 The release workflow now deploys the production add-on version automatically and writes the created Apps Script version number to the GitHub Actions summary so it is easy to copy into the Marketplace SDK version field. It also warns when the Apps Script version history grows past 100 entries.
 
+In GitHub Actions, the add-on deploy now uses its own `ADDON_DEPLOY_CLASP_RC_JSON` secret so it stays separate from the demo-sheet `clasp` auth.
+
 Apps Script™ version cleanup is still a manual maintenance task in the Apps Script project history UI.
 
 You can confirm which `clasp` account the add-on deploy flows will use, alongside the staging and production demo auth slots, with:

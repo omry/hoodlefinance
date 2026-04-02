@@ -98,11 +98,11 @@ That demo-sync job uses the same credential shapes as the local flow, but keeps 
 
 - `DEMO_SHEET_OAUTH_CLIENT_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
 - `DEMO_SHEET_OAUTH_TOKEN_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
-- `CLASP_RC_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
+- `DEMO_SHEET_CLASP_RC_JSON` -> a `/proc/.../fd/...` path backed by the workflow shell
 
 Important distinction:
 
-- `CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local `--production` flow keeps in `.demo-sheet.local/production/.clasprc.json`
+- `DEMO_SHEET_CLASP_RC_JSON` should contain the same maintainer `clasp` auth JSON that the local `--production` flow keeps in `.demo-sheet.local/production/.clasprc.json`
 - It should not contain the generated project file at `.demo-sheet.local/production/clasp-work/.clasp.json`, which only points `clasp` at the bound script project
 - The workflow treats the OAuth token as read-only in CI, so a token refresh should be handled by replacing the GitHub secret rather than by writing back through the file-descriptor path.
 - All three secret values should be valid JSON. If `clasp` or the OAuth loader reports a JSON parse error in CI, re-copy the secret from the local source file.

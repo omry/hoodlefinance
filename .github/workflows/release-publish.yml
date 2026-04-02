@@ -50,19 +50,19 @@ jobs:
 
       - name: Validate demo deployment credentials
         env:
-          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          DEMO_SHEET_CLASP_RC_JSON: ${{ secrets.DEMO_SHEET_CLASP_RC_JSON }}
           DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
         run: |
           test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
           test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
-          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+          test -n "${DEMO_SHEET_CLASP_RC_JSON}" || { echo "Missing DEMO_SHEET_CLASP_RC_JSON secret."; exit 1; }
 
           exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
           exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
-          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          exec {clasp_rc_fd}<<<"${DEMO_SHEET_CLASP_RC_JSON}"
           trap 'exec {oauth_client_fd}<&-; exec {oauth_token_fd}<&-; exec {clasp_rc_fd}<&-' EXIT
-          unset CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
+          unset DEMO_SHEET_CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
 
           CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
           DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
@@ -147,14 +147,14 @@ jobs:
       - name: Deploy production add-on version
         id: deploy_addon
         env:
-          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+          test -n "${ADDON_DEPLOY_CLASP_RC_JSON}" || { echo "Missing ADDON_DEPLOY_CLASP_RC_JSON secret."; exit 1; }
           test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
 
-          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
           trap 'exec {clasp_rc_fd}<&-' EXIT
-          unset CLASP_RC_JSON
+          unset ADDON_DEPLOY_CLASP_RC_JSON
 
           target_config_path="${RUNNER_TEMP}/addon-deploy-target.json"
           cat > "${target_config_path}" <<EOF
@@ -188,13 +188,13 @@ jobs:
       - name: Warn about add-on version history
         if: steps.deploy_addon.outputs.version_number != ''
         env:
-          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+          test -n "${ADDON_DEPLOY_CLASP_RC_JSON}" || { echo "Missing ADDON_DEPLOY_CLASP_RC_JSON secret."; exit 1; }
 
-          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
           trap 'exec {clasp_rc_fd}<&-' EXIT
-          unset CLASP_RC_JSON
+          unset ADDON_DEPLOY_CLASP_RC_JSON
 
           work_dir="${GITHUB_WORKSPACE}/.addon-deploy.local/production/work"
           test -f "${work_dir}/.clasp.json" || {
@@ -303,20 +303,20 @@ jobs:
 
       - name: Sync public demo sheet
         env:
-          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+          DEMO_SHEET_CLASP_RC_JSON: ${{ secrets.DEMO_SHEET_CLASP_RC_JSON }}
           DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
           DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
           HOODLEFINANCE_NON_INTERACTIVE: "1"
         run: |
           test -n "${DEMO_SHEET_OAUTH_CLIENT_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_CLIENT_JSON secret."; exit 1; }
           test -n "${DEMO_SHEET_OAUTH_TOKEN_JSON}" || { echo "Missing DEMO_SHEET_OAUTH_TOKEN_JSON secret."; exit 1; }
-          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+          test -n "${DEMO_SHEET_CLASP_RC_JSON}" || { echo "Missing DEMO_SHEET_CLASP_RC_JSON secret."; exit 1; }
 
           exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
           exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
-          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          exec {clasp_rc_fd}<<<"${DEMO_SHEET_CLASP_RC_JSON}"
           trap 'exec {oauth_client_fd}<&-; exec {oauth_token_fd}<&-; exec {clasp_rc_fd}<&-' EXIT
-          unset CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
+          unset DEMO_SHEET_CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
 
           CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
           DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
