@@ -18,6 +18,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  ADDON_DEPLOY_SCRIPT_ID: "1zB8ohVlbARtuJeNJhdLX0_xnIm9MNlslfdh0z0-OjcNcC3yKrmBNLPrW"
 
 permissions:
   contents: write
@@ -74,6 +75,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
     outputs:
+      addon_version_number: ${{ steps.deploy_addon.outputs.version_number }}
       tag_name: ${{ steps.release_context.outputs.tag_name }}
       version: ${{ steps.release_context.outputs.version }}
 
@@ -88,6 +90,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
 
       - name: Resolve release context
         id: release_context
@@ -132,6 +142,127 @@ jobs:
             fi
             echo "Tag v${VERSION} exactly matches HEAD. Safe to proceed."
             echo "skip_tag=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy production add-on version
+        id: deploy_addon
+        env:
+          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+        run: |
+          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+          test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
+
+          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          trap 'exec {clasp_rc_fd}<&-' EXIT
+          unset CLASP_RC_JSON
+
+          target_config_path="${RUNNER_TEMP}/addon-deploy-target.json"
+          cat > "${target_config_path}" <<EOF
+          {
+            "scriptId": "${ADDON_DEPLOY_SCRIPT_ID}"
+          }
+          EOF
+
+          addon_output="$(
+            CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+            node tools/addon/deploy.js --production --target-config "${target_config_path}" 2>&1
+          )"
+          printf '%s\n' "${addon_output}"
+
+          addon_version_number="$(printf '%s\n' "${addon_output}" | sed -n 's/^Created Apps Script version \([0-9][0-9]*\).*/\1/p' | tail -n 1)"
+          test -n "${addon_version_number}" || {
+            echo "Failed to parse the deployed add-on version number."
+            exit 1
+          }
+
+          echo "version_number=${addon_version_number}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "### Production add-on deployment"
+            echo ""
+            echo "- Apps Script version: \`${addon_version_number}\`"
+            echo "- Script ID: \`${ADDON_DEPLOY_SCRIPT_ID}\`"
+            echo ""
+            echo "Use this version number when updating the Marketplace SDK."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Warn about add-on version history
+        if: steps.deploy_addon.outputs.version_number != ''
+        env:
+          CLASP_RC_JSON: ${{ secrets.CLASP_RC_JSON }}
+        run: |
+          test -n "${CLASP_RC_JSON}" || { echo "Missing CLASP_RC_JSON secret."; exit 1; }
+
+          exec {clasp_rc_fd}<<<"${CLASP_RC_JSON}"
+          trap 'exec {clasp_rc_fd}<&-' EXIT
+          unset CLASP_RC_JSON
+
+          work_dir="${GITHUB_WORKSPACE}/.addon-deploy.local/production/work"
+          test -f "${work_dir}/.clasp.json" || {
+            echo "Missing add-on worktree config at ${work_dir}/.clasp.json."
+            exit 1
+          }
+
+          if ! versions_output="$(
+            cd "${work_dir}" &&
+            CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+            clasp --json list-versions 2>&1
+          )"; then
+            echo "::warning title=Apps Script version history::Could not inspect the add-on version history."
+            {
+              echo "### Apps Script version history"
+              echo ""
+              echo "Could not inspect the add-on version history for the production add-on."
+              echo "Open the Apps Script project history UI periodically to prune old versions."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          version_count="$(
+            printf '%s\n' "${versions_output}" | node -e '
+              const fs = require("node:fs");
+              const raw = fs.readFileSync(0, "utf8").trim();
+              let parsed = null;
+              let versions = [];
+
+              try {
+                parsed = JSON.parse(raw);
+              } catch (error) {
+                parsed = null;
+              }
+
+              if (Array.isArray(parsed)) {
+                versions = parsed;
+              } else if (parsed && Array.isArray(parsed.versions)) {
+                versions = parsed.versions;
+              } else if (parsed && Array.isArray(parsed.result)) {
+                versions = parsed.result;
+              } else if (parsed && Array.isArray(parsed.items)) {
+                versions = parsed.items;
+              } else if (raw) {
+                versions = raw.split(/\r?\n/).filter(function (line) {
+                  return /^\s*(?:v)?\d+/.test(line);
+                });
+              }
+
+              process.stdout.write(String(versions.length));
+            '
+          )"
+
+          {
+            echo "### Apps Script version history"
+            echo ""
+            echo "- Current version count: \`${version_count}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "${version_count}" -gt 100 ]; then
+            warning_message="Add-on version history is at ${version_count} entries. Trim older Apps Script versions in the Apps Script project history UI."
+            echo "::warning title=Apps Script version history::${warning_message}"
+            {
+              echo ""
+              echo "- Warning: ${warning_message}"
+              echo ""
+              echo "Open the Apps Script project history UI to prune older versions."
+            } >> "${GITHUB_STEP_SUMMARY}"
           fi
 
       - name: Create and push release tag

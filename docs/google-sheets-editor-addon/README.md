@@ -113,6 +113,10 @@ npm run addon:deploy -- --staging --dry-run
 
 Keep the add-on project and demo-sync OAuth project separate. The public-review Marketplace setup belongs in `HoodleFinance Add-on Public`, while the desktop OAuth client for `tools/demo/sync.js` should live in `HoodleFinance Demo Sheets`.
 
+The release workflow now deploys the production add-on version automatically and writes the created Apps Script version number to the GitHub Actions summary so it is easy to copy into the Marketplace SDK version field. It also warns when the Apps Script version history grows past 100 entries.
+
+Apps Script™ version cleanup is still a manual maintenance task in the Apps Script project history UI.
+
 You can confirm which `clasp` account the add-on deploy flows will use, alongside the staging and production demo auth slots, with:
 
 ```sh

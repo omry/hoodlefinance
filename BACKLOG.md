@@ -35,6 +35,11 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
 - [ ] Wire the release workflow into updating the Google Sheets add-on automatically instead of treating add-on rollout as a separate manual step.
   - Source: `TODO.md`
 
+## Maintenance tooling
+
+- [ ] Automate the Google Apps Script refresh for the preferred REIT whitelist.
+  - Source: [`tools/generate-preferred-reit-whitelist.js`](./tools/generate-preferred-reit-whitelist.js)
+
 ## Codebase cleanup
 
 - [ ] Make another cleanup pass and ensure there is no logic about the specifics of plans outside of the plan definition and resolvers logic, for example `HOODLEFINANCE_PLAN_ROUTE_PATH_BY_REF_`.
