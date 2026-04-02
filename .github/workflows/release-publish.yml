@@ -30,6 +30,7 @@ concurrency:
 
 jobs:
   validate-publish-credentials:
+    name: Validate publish credentials
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
     runs-on: ubuntu-latest
 
@@ -87,6 +88,7 @@ jobs:
           node tools/validate-clasp-auth.js
 
   publish:
+    name: Publish release and deploy add-on
     needs:
       - validate-publish-credentials
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v'))
@@ -179,10 +181,13 @@ jobs:
           }
           EOF
 
-          addon_output="$(
+          if ! addon_output="$(
             CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
             node tools/addon/deploy.js --production --target-config "${target_config_path}" 2>&1
-          )"
+          )"; then
+            printf '%s\n' "${addon_output}"
+            exit 1
+          fi
           printf '%s\n' "${addon_output}"
 
           addon_version_number="$(printf '%s\n' "${addon_output}" | sed -n 's/^Created Apps Script version \([0-9][0-9]*\).*/\1/p' | tail -n 1)"
@@ -296,6 +301,7 @@ jobs:
           tag_name: ${{ steps.release_context.outputs.tag_name }}
 
   sync-demo:
+    name: Sync public demo sheet
     needs: publish
     if: needs.publish.result == 'success'
     runs-on: ubuntu-latest
@@ -341,6 +347,7 @@ jobs:
           node tools/demo/sync.js --production
 
   rollback-release-on-demo-failure:
+    name: Roll back release after demo sync failure
     needs:
       - publish
       - sync-demo
