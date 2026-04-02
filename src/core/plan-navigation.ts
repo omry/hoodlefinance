@@ -66,7 +66,7 @@ export function selectSinglePlanNode<TNode extends ResolverNode>(
 }
 
 export function resolveRoutingNode<TNode extends ResolverNode>(
-  node: ResolverNode | ResolverPlanNode | null | undefined,
+  node: ResolverNode | null | undefined,
   request: RequestInput | ResolvedRequest,
   options: ResolveRoutingNodeOptions<TNode> = {},
 ): TNode | ResolverNode | null {
@@ -120,7 +120,7 @@ export function matchesResolverNodeName(
 }
 
 export function findNamedResolverNode(
-  node: ResolverNode | ResolverPlanNode | null | undefined,
+  node: ResolverNode | null | undefined,
   name: string,
   request: RequestInput | ResolvedRequest | null,
   options: FindNamedResolverNodeOptions = {},

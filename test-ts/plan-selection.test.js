@@ -1,0 +1,206 @@
+const assert = require("node:assert/strict");
+const test = require("node:test");
+
+const {
+  RequestInput,
+  buildAmbiguousDefaultAttributeRouteError,
+  buildDefaultAttributePlanForResolvedRequest,
+  buildForcedAttributePlanForResolvedRequest,
+  buildIdentifierResolutionPlan,
+  buildQuoteRoutePlanForResolvedRequest,
+  buildSourceOverrideUnavailableError,
+} = require("../dist/ts/core/index.js");
+
+function createRequestInput(overrides = {}) {
+  return new RequestInput({
+    attribute: overrides.attribute || "price",
+    attributeRequest: {
+      baseAttribute: overrides.attributeType === "isin" ? "isin" : "price",
+      outputCode: "",
+      rawAttribute: overrides.attribute || "price",
+      wantsOutputCurrency: false,
+    },
+    attributeType: overrides.attributeType || "quote",
+    classification: overrides.classification || "equity",
+    fxPair: null,
+    identifier: overrides.identifier || "GOOG",
+    infoMode: "",
+    sourceOverride: overrides.sourceOverride || "",
+    ticker: overrides.ticker || overrides.identifier || "GOOG",
+    upperTicker: (
+      overrides.ticker ||
+      overrides.identifier ||
+      "GOOG"
+    ).toUpperCase(),
+  });
+}
+
+function createResolvedRequest(overrides = {}) {
+  return {
+    classification: overrides.classification || "equity",
+    input: {
+      attribute: overrides.attribute || "price",
+      identifier: overrides.identifier || "GOOG",
+    },
+    requestType: overrides.requestType || "equity",
+    symbol: overrides.symbol || "GOOG",
+    yahooSymbol: overrides.yahooSymbol || "GOOG",
+  };
+}
+
+function createNode(name, extra = {}) {
+  return {
+    buildRuntimePlan() {
+      return { nodes: [], routeClass: name, routePath: name, routeState: {} };
+    },
+    canHandle() {
+      return true;
+    },
+    code: name,
+    describe() {
+      return name;
+    },
+    getNodesForRequest() {
+      return this.nodes || [];
+    },
+    isRoutingNode: extra.isRoutingNode === true,
+    name,
+    nodes: extra.nodes || [],
+    routingDescription: "",
+    routingLabel: extra.routingLabel || name,
+    sourceName: extra.sourceName || name,
+  };
+}
+
+function createDeps() {
+  const yahoo = createNode("YAHOO");
+  const ibkr = createNode("IBKR");
+  const identifierLeaf = createNode("IDENTIFIER-LEAF", {
+    nodes: [yahoo, ibkr],
+  });
+  const identifierRoot = createNode("IDENTIFIER-ROOT", {
+    isRoutingNode: true,
+    nodes: [identifierLeaf],
+  });
+  const defaultLeaf = createNode("QUOTE-DEFAULT", { nodes: [yahoo] });
+  const defaultRoot = createNode("DEFAULT-ATTRIBUTE", {
+    isRoutingNode: true,
+    nodes: [defaultLeaf],
+  });
+
+  return {
+    buildForcedSelectedAttributePlan(resolverOrPlan) {
+      return createNode(`FORCED:${resolverOrPlan.name}`);
+    },
+    buildSelectedIdentifierPlan(resolverOrPlan) {
+      return createNode(`IDENTIFIER:${resolverOrPlan.name}`);
+    },
+    extractIsinFromRequestInput(input) {
+      return String(input.ticker).startsWith("US") ? input.upperTicker : "";
+    },
+    listAllDefaultAttributePlans() {
+      return [defaultLeaf];
+    },
+    materializePlanFromSpec(code) {
+      if (code === "IDENTIFIER-ROOT") {
+        return identifierRoot;
+      }
+
+      if (code === "DEFAULT-ATTRIBUTE") {
+        return defaultRoot;
+      }
+
+      throw new Error(`Unexpected spec ${code}`);
+    },
+  };
+}
+
+test("plan-selection error helpers keep the current user-facing wording", () => {
+  assert.equal(
+    buildSourceOverrideUnavailableError("YAHOO").message,
+    '"@YAHOO" is not available for this request.',
+  );
+  assert.equal(
+    buildSourceOverrideUnavailableError("YAHOO", "ISIN lookups").message,
+    '"@YAHOO" is not available for ISIN lookups.',
+  );
+  assert.equal(
+    buildAmbiguousDefaultAttributeRouteError(
+      createResolvedRequest({ classification: "equity" }),
+      [
+        { name: "PSE", routingLabel: "PSE" },
+        { name: "TICKER", routingLabel: "TICKER" },
+      ],
+    ).message,
+    'Ambiguous default attribute route for classification "equity": PSE, TICKER.',
+  );
+});
+
+test("buildIdentifierResolutionPlan handles absent, selected, and invalid source overrides", () => {
+  const deps = createDeps();
+
+  assert.equal(
+    buildIdentifierResolutionPlan(createRequestInput({ ticker: "GOOG" }), deps),
+    null,
+  );
+
+  assert.equal(
+    buildIdentifierResolutionPlan(
+      createRequestInput({
+        identifier: "US02079K1079",
+        ticker: "US02079K1079",
+      }),
+      deps,
+    ).name,
+    "IDENTIFIER-LEAF",
+  );
+
+  assert.equal(
+    buildIdentifierResolutionPlan(
+      createRequestInput({
+        identifier: "US02079K1079",
+        sourceOverride: "YAHOO",
+        ticker: "US02079K1079",
+      }),
+      deps,
+    ).name,
+    "IDENTIFIER:YAHOO",
+  );
+
+  assert.throws(
+    () =>
+      buildIdentifierResolutionPlan(
+        createRequestInput({
+          identifier: "US02079K1079",
+          sourceOverride: "MISSING",
+          ticker: "US02079K1079",
+        }),
+        deps,
+      ),
+    /"@MISSING" is not available for this request\./,
+  );
+});
+
+test("buildDefault and forced attribute plan helpers keep the planner selection behavior", () => {
+  const deps = createDeps();
+  const requestInput = createRequestInput({ sourceOverride: "YAHOO" });
+  const resolvedRequest = createResolvedRequest();
+
+  assert.equal(
+    buildDefaultAttributePlanForResolvedRequest(resolvedRequest, deps).name,
+    "QUOTE-DEFAULT",
+  );
+  assert.equal(
+    buildForcedAttributePlanForResolvedRequest(
+      requestInput,
+      resolvedRequest,
+      deps,
+    ).name,
+    "FORCED:YAHOO",
+  );
+  assert.equal(
+    buildQuoteRoutePlanForResolvedRequest(requestInput, resolvedRequest, deps)
+      .name,
+    "FORCED:YAHOO",
+  );
+});
