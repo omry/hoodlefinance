@@ -46,6 +46,9 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Install clasp
+        run: npm install -g @google/clasp@3.3.0
+
       - name: Syntax check publish tooling
         run: |
           node --check hoodlefinance.js
@@ -54,6 +57,7 @@ jobs:
           node --check tools/cli-reporting.js
           node --check tools/addon/deploy.js
           node --check tools/demo/sync.js
+          node --check tools/demo/validate-credentials.js
           node -e '
             const fs = require("node:fs");
             JSON.parse(fs.readFileSync("docs/google-sheets-editor-addon/appsscript.json", "utf8"));
@@ -73,12 +77,55 @@ jobs:
             DEMO_SHEET_OAUTH_TOKEN_JSON \
             DEMO_SHEET_CLASP_RC_JSON
 
+      - name: Validate demo deployment credentials
+        env:
+          DEMO_SHEET_CLASP_RC_JSON: ${{ secrets.DEMO_SHEET_CLASP_RC_JSON }}
+          DEMO_SHEET_OAUTH_CLIENT_JSON: ${{ secrets.DEMO_SHEET_OAUTH_CLIENT_JSON }}
+          DEMO_SHEET_OAUTH_TOKEN_JSON: ${{ secrets.DEMO_SHEET_OAUTH_TOKEN_JSON }}
+        run: |
+          oauth_client_path="$(mktemp "${RUNNER_TEMP}/demo-oauth-client.XXXXXX.json")"
+          oauth_token_path="$(mktemp "${RUNNER_TEMP}/demo-oauth-token.XXXXXX.json")"
+          clasp_rc_path="$(mktemp "${RUNNER_TEMP}/demo-clasprc.XXXXXX.json")"
+          chmod 600 "${oauth_client_path}" "${oauth_token_path}" "${clasp_rc_path}"
+          printf '%s' "${DEMO_SHEET_OAUTH_CLIENT_JSON}" > "${oauth_client_path}"
+          printf '%s' "${DEMO_SHEET_OAUTH_TOKEN_JSON}" > "${oauth_token_path}"
+          printf '%s' "${DEMO_SHEET_CLASP_RC_JSON}" > "${clasp_rc_path}"
+          trap 'rm -f "${oauth_client_path}" "${oauth_token_path}" "${clasp_rc_path}"' EXIT
+          unset DEMO_SHEET_CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
+
+          CLASP_RC_PATH="${clasp_rc_path}" \
+          DEMO_SHEET_OAUTH_CLIENT_PATH="${oauth_client_path}" \
+          DEMO_SHEET_OAUTH_TOKEN_PATH="${oauth_token_path}" \
+          node tools/demo/validate-credentials.js
+
       - name: Validate add-on deployment JSON secret
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
           echo "Validating add-on JSON secret..."
           node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
+
+      - name: Validate add-on deployment credentials
+        env:
+          ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
+        run: |
+          clasp_rc_path="$(mktemp "${RUNNER_TEMP}/addon-clasprc.XXXXXX.json")"
+          chmod 600 "${clasp_rc_path}"
+          printf '%s' "${ADDON_DEPLOY_CLASP_RC_JSON}" > "${clasp_rc_path}"
+          trap 'rm -f "${clasp_rc_path}"' EXIT
+          unset ADDON_DEPLOY_CLASP_RC_JSON
+
+          if ! clasp_identity="$(CLASP_RC_PATH="${clasp_rc_path}" clasp show-authorized-user 2>&1)"; then
+            printf '%s\n' "${clasp_identity}"
+            exit 1
+          fi
+
+          clasp_identity="$(printf '%s\n' "${clasp_identity}" | sed '/^[[:space:]]*$/d' | tail -n 1)"
+          if [ -z "${clasp_identity}" ]; then
+            echo "Add-on clasp validation succeeded, but no user details were returned."
+          else
+            echo "Add-on clasp identity: ${clasp_identity}"
+          fi
 
   publish:
     name: Publish release and deploy add-on
@@ -163,8 +210,10 @@ jobs:
         run: |
           test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
 
-          exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
-          trap 'exec {clasp_rc_fd}<&-' EXIT
+          clasp_rc_path="$(mktemp "${RUNNER_TEMP}/addon-clasprc.XXXXXX.json")"
+          chmod 600 "${clasp_rc_path}"
+          printf '%s' "${ADDON_DEPLOY_CLASP_RC_JSON}" > "${clasp_rc_path}"
+          trap 'rm -f "${clasp_rc_path}"' EXIT
           unset ADDON_DEPLOY_CLASP_RC_JSON
 
           target_config_path="${RUNNER_TEMP}/addon-deploy-target.json"
@@ -175,7 +224,7 @@ jobs:
           EOF
 
           if ! addon_output="$(
-            CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+            CLASP_RC_PATH="${clasp_rc_path}" \
             node tools/addon/deploy.js --production --target-config "${target_config_path}" 2>&1
           )"; then
             printf '%s\n' "${addon_output}"
@@ -204,8 +253,10 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
-          trap 'exec {clasp_rc_fd}<&-' EXIT
+          clasp_rc_path="$(mktemp "${RUNNER_TEMP}/addon-clasprc.XXXXXX.json")"
+          chmod 600 "${clasp_rc_path}"
+          printf '%s' "${ADDON_DEPLOY_CLASP_RC_JSON}" > "${clasp_rc_path}"
+          trap 'rm -f "${clasp_rc_path}"' EXIT
           unset ADDON_DEPLOY_CLASP_RC_JSON
 
           work_dir="${GITHUB_WORKSPACE}/.addon-deploy.local/production/work"
@@ -216,7 +267,7 @@ jobs:
 
           if ! versions_output="$(
             cd "${work_dir}" &&
-            CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
+            CLASP_RC_PATH="${clasp_rc_path}" \
             clasp --json list-versions 2>&1
           )"; then
             echo "::warning title=Apps Script version history::Could not inspect the add-on version history."
@@ -327,15 +378,19 @@ jobs:
             DEMO_SHEET_OAUTH_TOKEN_JSON \
             DEMO_SHEET_CLASP_RC_JSON
 
-          exec {oauth_client_fd}<<<"${DEMO_SHEET_OAUTH_CLIENT_JSON}"
-          exec {oauth_token_fd}<<<"${DEMO_SHEET_OAUTH_TOKEN_JSON}"
-          exec {clasp_rc_fd}<<<"${DEMO_SHEET_CLASP_RC_JSON}"
-          trap 'exec {oauth_client_fd}<&-; exec {oauth_token_fd}<&-; exec {clasp_rc_fd}<&-' EXIT
+          oauth_client_path="$(mktemp "${RUNNER_TEMP}/demo-oauth-client.XXXXXX.json")"
+          oauth_token_path="$(mktemp "${RUNNER_TEMP}/demo-oauth-token.XXXXXX.json")"
+          clasp_rc_path="$(mktemp "${RUNNER_TEMP}/demo-clasprc.XXXXXX.json")"
+          chmod 600 "${oauth_client_path}" "${oauth_token_path}" "${clasp_rc_path}"
+          printf '%s' "${DEMO_SHEET_OAUTH_CLIENT_JSON}" > "${oauth_client_path}"
+          printf '%s' "${DEMO_SHEET_OAUTH_TOKEN_JSON}" > "${oauth_token_path}"
+          printf '%s' "${DEMO_SHEET_CLASP_RC_JSON}" > "${clasp_rc_path}"
+          trap 'rm -f "${oauth_client_path}" "${oauth_token_path}" "${clasp_rc_path}"' EXIT
           unset DEMO_SHEET_CLASP_RC_JSON DEMO_SHEET_OAUTH_CLIENT_JSON DEMO_SHEET_OAUTH_TOKEN_JSON
 
-          CLASP_RC_PATH="/proc/$$/fd/${clasp_rc_fd}" \
-          DEMO_SHEET_OAUTH_CLIENT_PATH="/proc/$$/fd/${oauth_client_fd}" \
-          DEMO_SHEET_OAUTH_TOKEN_PATH="/proc/$$/fd/${oauth_token_fd}" \
+          CLASP_RC_PATH="${clasp_rc_path}" \
+          DEMO_SHEET_OAUTH_CLIENT_PATH="${oauth_client_path}" \
+          DEMO_SHEET_OAUTH_TOKEN_PATH="${oauth_token_path}" \
           HOODLEFINANCE_DEMO_OAUTH_TOKEN_READ_ONLY="1" \
           node tools/demo/sync.js --production
 
