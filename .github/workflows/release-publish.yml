@@ -12,6 +12,11 @@ on:
         required: false
         default: main
         type: string
+      dry_run:
+        description: Run the add-on publish path without creating a new Apps Script version
+        required: false
+        default: false
+        type: boolean
   pull_request_target:
     types:
       - closed
@@ -319,6 +324,7 @@ jobs:
         id: deploy_addon
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
 
@@ -335,30 +341,51 @@ jobs:
           }
           EOF
 
+          deploy_args=(--production)
+          if [ "${DRY_RUN}" = "true" ]; then
+            deploy_args+=(--dry-run)
+          fi
+
           if ! addon_output="$(
             CLASP_RC_PATH="${clasp_rc_path}" \
-            node tools/addon/deploy.js --production --target-config "${target_config_path}" 2>&1
+            node tools/addon/deploy.js "${deploy_args[@]}" --target-config "${target_config_path}" 2>&1
           )"; then
             printf '%s\n' "${addon_output}"
             exit 1
           fi
           printf '%s\n' "${addon_output}"
 
-          addon_version_number="$(printf '%s\n' "${addon_output}" | sed -n 's/^Created Apps Script version \([0-9][0-9]*\).*/\1/p' | tail -n 1)"
-          test -n "${addon_version_number}" || {
-            echo "Failed to parse the deployed add-on version number."
-            exit 1
-          }
+          if [ "${DRY_RUN}" = "true" ]; then
+            addon_version_number="dry-run"
+          else
+            addon_version_number="$(printf '%s\n' "${addon_output}" | sed -n 's/^Created Apps Script version \([0-9][0-9]*\).*/\1/p' | tail -n 1)"
+            test -n "${addon_version_number}" || {
+              echo "Failed to parse the deployed add-on version number."
+              exit 1
+            }
+          fi
 
           echo "version_number=${addon_version_number}" >> "${GITHUB_OUTPUT}"
-          {
-            echo "### Production add-on deployment"
-            echo ""
-            echo "- Apps Script version: \`${addon_version_number}\`"
-            echo "- Script ID: \`${ADDON_DEPLOY_SCRIPT_ID}\`"
-            echo ""
-            echo "Use this version number when updating the Marketplace SDK."
-          } >> "${GITHUB_STEP_SUMMARY}"
+          if [ "${DRY_RUN}" = "true" ]; then
+            {
+              echo "### Production add-on deployment"
+              echo ""
+              echo "- Dry run: \`true\`"
+              echo "- Apps Script version: \`${addon_version_number}\`"
+              echo "- Script ID: \`${ADDON_DEPLOY_SCRIPT_ID}\`"
+              echo ""
+              echo "This run exercised the add-on publish path without creating a new Apps Script version."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          else
+            {
+              echo "### Production add-on deployment"
+              echo ""
+              echo "- Apps Script version: \`${addon_version_number}\`"
+              echo "- Script ID: \`${ADDON_DEPLOY_SCRIPT_ID}\`"
+              echo ""
+              echo "Use this version number when updating the Marketplace SDK."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
       - name: Warn about add-on version history
         if: steps.deploy_addon.outputs.version_number != ''
