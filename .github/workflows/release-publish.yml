@@ -150,7 +150,7 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
+          node tools/validate-json-secret.js --clasp-auth ADDON_DEPLOY_CLASP_RC_JSON
           test -n "${ADDON_DEPLOY_SCRIPT_ID}" || { echo "Missing ADDON_DEPLOY_SCRIPT_ID env."; exit 1; }
 
           exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
@@ -191,7 +191,7 @@ jobs:
         env:
           ADDON_DEPLOY_CLASP_RC_JSON: ${{ secrets.ADDON_DEPLOY_CLASP_RC_JSON }}
         run: |
-          node tools/validate-json-secret.js ADDON_DEPLOY_CLASP_RC_JSON
+          node tools/validate-json-secret.js --clasp-auth ADDON_DEPLOY_CLASP_RC_JSON
 
           exec {clasp_rc_fd}<<<"${ADDON_DEPLOY_CLASP_RC_JSON}"
           trap 'exec {clasp_rc_fd}<&-' EXIT
