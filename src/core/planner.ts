@@ -59,9 +59,8 @@ export interface RouteJob<RouteState = Record<string, unknown>> {
 }
 
 export interface RouteTraceEntry {
-  elapsedMs: number;
-  error?: string;
-  nodeName: string;
+  elapsedMs: number | null;
+  label: string;
   status: string;
 }
 
@@ -82,6 +81,7 @@ export interface ResolverNode extends ResolverLike {
 export interface ResolverPlanNode extends ResolverNode {
   getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[];
   isRoutingNode: boolean;
+  nodes?: ResolverNode[];
 }
 
 export interface ResolvePlan {
@@ -94,6 +94,10 @@ export interface ResolvePlan {
   plannedRoute: string;
   requestInput: RequestInput;
   resolvedRequest: ResolvedRequest | null;
+}
+
+export interface DebugRoutePlan {
+  debugValue: string;
 }
 
 export interface RouteStateBuilderInput {
