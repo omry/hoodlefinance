@@ -1,1 +1,0 @@
-- Added a stable `/demo` website link for the public demo sheet and wired the docs site to use it consistently.

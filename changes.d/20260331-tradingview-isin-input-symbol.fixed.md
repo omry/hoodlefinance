@@ -1,1 +1,0 @@
-- TradingView ISIN errors now report the original input symbol instead of the normalized exchange-prefixed symbol.

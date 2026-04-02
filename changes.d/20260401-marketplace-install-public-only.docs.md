@@ -1,1 +1,0 @@
-- Removed the script-copy install path from the public website docs and kept it in contributor-only repo docs.

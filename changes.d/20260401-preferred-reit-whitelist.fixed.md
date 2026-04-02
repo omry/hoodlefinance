@@ -1,1 +1,0 @@
-- Preferred REIT symbol lookups now work correctly for whitelisted tickers.
