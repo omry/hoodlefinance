@@ -20,8 +20,9 @@
     "test:validate-demo-credentials": "node --test test/validate-demo-credentials.test.js",
     "test:spdx-headers": "node --test test/spdx-headers.test.js",
     "test:preferred-reit-whitelist": "node --test test/generate-preferred-reit-whitelist.test.js",
-    "check": "npm run check:syntax && npm run format:check",
+    "check": "npm run check:syntax && npm run typecheck && npm run format:check",
     "check:syntax": "node --check hoodlefinance.js && node --check test/hoodlefinance.test.js && node --check tools/release/release.js && node --check test/release.test.js && node --check tools/cli-reporting.js && node --check tools/clasp-user-slots.js && node --check tools/clasp-user-login.js && node --check test/clasp-user-login.test.js && node --check tools/demo/sync.js && node --check tools/demo/validate-credentials.js && node --check test/sync-demo-sheet.test.js && node --check test/validate-demo-credentials.test.js && node --check tools/addon/deploy.js && node --check tools/show-clasp-user.js && node --check test/deploy-addon.test.js && node --check tools/license/spdx-headers.js && node --check test/spdx-headers.test.js && node --check tools/generate-preferred-reit-whitelist.js && node --check test/generate-preferred-reit-whitelist.test.js && node --check tools/act/create-secrets.js",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
     "license:headers": "node tools/license/spdx-headers.js",
@@ -54,6 +55,9 @@
   },
   "devDependencies": {
     "@google/clasp": "3.3.0",
-    "prettier": "^3.8.1"
+    "@types/google-apps-script": "^2.0.8",
+    "esbuild": "^0.27.7",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
   }
 }

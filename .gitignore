@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 *.py[cod]
 node_modules/
+dist/
+*.tsbuildinfo
 website/node_modules/
 website/build/
 website/.docusaurus/
