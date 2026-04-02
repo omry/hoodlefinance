@@ -36,6 +36,8 @@ On a fresh Ubuntu or WSL install, the most likely missing pieces for ordinary de
 
 Normal feature work does not require Google OAuth credentials or `clasp` authentication. Those are only needed if you want to sync a demo sheet target, or for maintainer deployment flows.
 
+For local GitHub Actions debugging with `act`, see [`.act/README.md`](./.act/README.md). It covers the local runner setup, secret fixture generation, and the workflow-dispatch commands that exercise the release jobs safely.
+
 The repo separates those Google auth paths on purpose:
 
 - local staging demo syncs use `.demo-sheet.local/staging/`
