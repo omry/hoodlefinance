@@ -750,6 +750,10 @@ function getClaspAuthPath(claspAuth) {
   return String(claspAuth.authArgs[authFlagIndex + 1] || "").trim();
 }
 
+function isProcFdPath(filePath) {
+  return /^\/proc\/\d+\/fd\/\d+$/.test(String(filePath || "").trim());
+}
+
 function describeCredentialFile(filePath, label) {
   if (!filePath) {
     return label + ": <unknown>";
@@ -817,6 +821,12 @@ async function getClaspAuthIdentity(claspCommand, claspAuth, runner) {
     return "(Not logged in or auth file missing)";
   }
 
+  // Stream-backed auth paths are single-pass. Probing them with
+  // `show-authorized-user` can consume the auth payload before deploy.
+  if (isProcFdPath(authPath)) {
+    return "(Skipped for stream-backed auth)";
+  }
+
   try {
     output = await runner(
       claspCommand,
@@ -867,10 +877,13 @@ async function printCredentialContext(options, overrides) {
   rows.push(
     buildStatusRow({
       label: "Clasp Auth Identity",
-      level:
+      level: (
         context.claspAuthIdentity === "(Not logged in or auth file missing)"
           ? "ERROR"
-          : "OK",
+          : context.claspAuthIdentity === "(Skipped for stream-backed auth)"
+            ? "ATTENTION"
+            : "OK"
+      ),
       value: context.claspAuthIdentity,
     }),
   );
