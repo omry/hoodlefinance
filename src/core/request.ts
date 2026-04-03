@@ -42,6 +42,10 @@ export interface RequestInputRuntimeDependencies {
   parseTickerRequest(ticker: string): ParsedTickerRequest;
 }
 
+export function looksLikeIsin(value: string): boolean {
+  return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value || "").trim());
+}
+
 function isRequestInputInit(value: unknown): value is RequestInputInit {
   return !!value && typeof value === "object" && "attributeRequest" in value;
 }
