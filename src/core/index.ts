@@ -13,6 +13,7 @@ export * from "./fx-quotes";
 export * from "./google-fx";
 export * from "./pse-isin-map";
 export * from "./isin-lookup";
+export * from "./isin-sources";
 export * from "./ticker-normalization";
 export * from "./yahoo-isin-search";
 export * from "./yahoo-quote";
