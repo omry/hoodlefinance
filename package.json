@@ -32,6 +32,8 @@
     "license:headers:list": "node tools/license/spdx-headers.js --list",
     "hoodlefinance": "node tools/_shared/cli.js",
     "smoke": "node tools/_shared/cli.js",
+    "hoodlefinance.ts": "npm run build:ts && node tools/_shared/cli-ts.js",
+    "smoke.ts": "npm run build:ts && node tools/_shared/cli-ts.js",
     "pse:refresh": "node tools/generate-pse-isin-map.js",
     "reit:refresh": "node tools/generate-preferred-reit-whitelist.js",
     "release:check-fragments": "sh tools/release/check-release-fragments.sh",
