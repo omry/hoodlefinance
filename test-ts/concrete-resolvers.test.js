@@ -6,6 +6,7 @@ const {
   FunctionValueResolver,
   LocalFxResolver,
   PseIsinMapResolver,
+  YahooIsinSearchResolver,
   RequestInput,
   FxRequest,
 } = require("../dist/ts/core/index.js");
@@ -162,4 +163,77 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
     }),
   );
   assert.equal(failure.status, "failure");
+});
+
+test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", () => {
+  const cachedResolver = new YahooIsinSearchResolver({
+    fetchAllInChunks(_source, requests) {
+      assert.deepEqual(requests, []);
+      return [];
+    },
+    getCachedString(cacheKey) {
+      return cacheKey === "hoodlefinance:isin:US02079K1079" ? "GOOG" : "";
+    },
+    putCachedString(value) {
+      return value;
+    },
+  });
+  const cachedRequest = createRequestInput({
+    attribute: "price",
+    attributeType: "quote",
+    classification: "isin",
+    identifier: "ISIN:US02079K1079",
+    ticker: "ISIN:US02079K1079",
+  });
+
+  assert.equal(cachedResolver.canHandle(cachedRequest), true);
+  assert.deepEqual(cachedResolver.getAttributeOverrideSources(cachedRequest), [
+    "YAHOO",
+  ]);
+
+  const cachedResult = cachedResolver.resolve(cachedRequest);
+  assert.equal(cachedResult.status, "success");
+  assert.equal(cachedResult.value.yahooSymbol, "GOOG");
+
+  let cachedWrite = null;
+  const fetchedResolver = new YahooIsinSearchResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return JSON.stringify({
+              quotes: [
+                {
+                  exchange: "NYSE",
+                  quoteType: "EQUITY",
+                  score: 10,
+                  symbol: "IBM",
+                },
+              ],
+            });
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedString() {
+      return "";
+    },
+    putCachedString(cacheKey, value, ttlSeconds) {
+      cachedWrite = { cacheKey, ttlSeconds, value };
+      return value;
+    },
+  });
+
+  const fetchedResult = fetchedResolver.resolve(cachedRequest);
+  assert.equal(fetchedResult.status, "success");
+  assert.equal(fetchedResult.value.yahooSymbol, "IBM");
+  assert.deepEqual(cachedWrite, {
+    cacheKey: "hoodlefinance:isin:US02079K1079",
+    ttlSeconds: 21600,
+    value: "IBM",
+  });
 });

@@ -85,6 +85,10 @@ transition can preserve runtime behavior first.
   layer.
 - Revisit `FunctionValueResolver` as an implementation detail rather than a
   first-class routing concept.
+- Collapse temporary constructor dependency bundles in concrete resolvers once
+  the runtime wiring is clearer.
+  - Example: `YahooIsinSearchResolverDependencies` is acceptable migration
+    scaffolding, but should not be assumed to be the final design shape.
 - Replace legacy empty-string "not found / not applicable" helper returns with
   clearer nullable results where appropriate.
   - Example: PSE ISIN map lookup should likely return `null` instead of `""`

@@ -6,6 +6,7 @@ const {
   FunctionValueResolver,
   LocalFxResolver,
   PseIsinMapResolver,
+  YahooIsinSearchResolver,
   RequestInput,
   createConcreteResolverMaterializationDependencies,
   getMaterializedResolverByCode,
@@ -101,6 +102,9 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       "PSE-MAP": {
         resolverClass: "PseIsinMapResolver",
       },
+      "YAHOO-ISIN": {
+        resolverClass: "YahooIsinSearchResolver",
+      },
     },
     createConcreteResolverMaterializationDependencies({
       resolveFunctionsByRef: {
@@ -110,6 +114,29 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       },
       resolvePseTickerFromIsinMap(isin) {
         return isin === "PHY077751022" ? "PSE:BDO" : "";
+      },
+      yahooIsinSearch: {
+        fetchAllInChunks(_source, requests) {
+          return requests.map((request) => ({
+            request,
+            response: {
+              getContentText() {
+                return JSON.stringify({
+                  quotes: [{ symbol: "IBM", quoteType: "EQUITY", score: 1 }],
+                });
+              },
+              getResponseCode() {
+                return 200;
+              },
+            },
+          }));
+        },
+        getCachedString() {
+          return "";
+        },
+        putCachedString(_cacheKey, value) {
+          return value;
+        },
       },
     }),
   );
@@ -121,6 +148,10 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   );
   assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
   assert.equal(registry.byCode["PSE-MAP"] instanceof PseIsinMapResolver, true);
+  assert.equal(
+    registry.byCode["YAHOO-ISIN"] instanceof YahooIsinSearchResolver,
+    true,
+  );
   assert.equal(
     registry.byCode.DIRECT.executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
     "GOOG",
@@ -171,4 +202,26 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
 
   assert.equal(pseResolved.status, "success");
   assert.equal(pseResolved.value.exchange, "PSE");
+
+  const yahooResolved = registry.byCode["YAHOO-ISIN"].resolve(
+    new RequestInput({
+      attribute: "price",
+      attributeRequest: {
+        baseAttribute: "price",
+        outputCode: "",
+        rawAttribute: "price",
+        wantsOutputCurrency: false,
+      },
+      attributeType: "quote",
+      classification: "isin",
+      fxPair: null,
+      identifier: "ISIN:US4592001014",
+      infoMode: "",
+      sourceOverride: "",
+      ticker: "ISIN:US4592001014",
+    }),
+  );
+
+  assert.equal(yahooResolved.status, "success");
+  assert.equal(yahooResolved.value.yahooSymbol, "IBM");
 });

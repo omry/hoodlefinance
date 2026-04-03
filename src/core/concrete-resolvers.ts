@@ -12,7 +12,17 @@ import {
   extractIsinFromRequestInput,
 } from "./request-building";
 import { buildSameCurrencyQuote, isSameCurrencyFxPair } from "./fx-quotes";
-import { createResolutionFailure, createResolutionSuccess, createRouteResult } from "./route-results";
+import {
+  buildYahooIsinSearchUrl,
+  extractYahooSymbolFromSearchResponse,
+  type YahooSearchResponseLike,
+} from "./yahoo-isin-search";
+import {
+  createResolutionFailure,
+  createResolutionSuccess,
+  createRouteResult,
+  type RouteResult,
+} from "./route-results";
 import type { RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
 
@@ -79,6 +89,27 @@ export interface FunctionValueResolverDependencies {
 }
 
 export type ResolvePseTickerFromIsinMap = (isin: string) => string;
+export interface YahooIsinSearchRequest {
+  cacheKey: string;
+  index: number;
+  isin: string;
+  url: string;
+}
+
+export interface YahooIsinSearchBatchResponse {
+  error?: unknown;
+  request: YahooIsinSearchRequest;
+  response?: YahooSearchResponseLike;
+}
+
+export interface YahooIsinSearchResolverDependencies {
+  fetchAllInChunks(
+    source: string,
+    requests: YahooIsinSearchRequest[],
+  ): YahooIsinSearchBatchResponse[];
+  getCachedString(cacheKey: string): string;
+  putCachedString(cacheKey: string, value: string, ttlSeconds: number): string;
+}
 
 export class PseIsinMapResolver extends IdentifierResolver {
   readonly traceLabel: string;
@@ -167,6 +198,150 @@ export class PseIsinMapResolver extends IdentifierResolver {
     }
 
     return new this(resolvePseTickerFromIsinMap);
+  }
+}
+
+export class YahooIsinSearchResolver extends IdentifierResolver {
+  readonly traceLabel: string;
+  readonly fetchAllInChunks: YahooIsinSearchResolverDependencies["fetchAllInChunks"];
+  readonly getCachedString: YahooIsinSearchResolverDependencies["getCachedString"];
+  readonly putCachedString: YahooIsinSearchResolverDependencies["putCachedString"];
+
+  constructor(deps: YahooIsinSearchResolverDependencies) {
+    super("YAHOO-ISIN", "YAHOO", {
+      routingDescription: "Yahoo search by ISIN",
+    });
+    this.traceLabel = "YAHOO-ISIN";
+    this.fetchAllInChunks = deps.fetchAllInChunks;
+    this.getCachedString = deps.getCachedString;
+    this.putCachedString = deps.putCachedString;
+  }
+
+  canHandle(input: RequestInput | ResolvedRequest): boolean {
+    return (
+      input instanceof RequestInput &&
+      !!extractIsinFromRequestInput(input)
+    );
+  }
+
+  getAttributeOverrideSources(input: RequestInput | ResolvedRequest): string[] {
+    return input instanceof RequestInput &&
+      this.canHandle(input) &&
+      input.attributeType === "quote"
+      ? ["YAHOO"]
+      : [];
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof RequestInput)) {
+      return {};
+    }
+
+    return buildIsinIdentifierRouteState(request, extractIsinFromRequestInput);
+  }
+
+  buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan {
+    return {
+      nodes: [this],
+      routeClass: this.name,
+      routePath: this.traceLabel,
+      routeState: this.buildRouteState(request),
+    };
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results: Array<RouteResult | null> = jobs.map(() => null);
+    const requests: YahooIsinSearchRequest[] = [];
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const job = jobs[i];
+      if (!job) {
+        continue;
+      }
+
+      const cacheKey = `hoodlefinance:isin:${job.routeState.isin}`;
+      const cached = this.getCachedString(cacheKey);
+
+      if (cached) {
+        results[i] = createRouteResult("success", {
+          value: buildTypedRequestFromResolvedTicker(
+            job.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+            cached,
+            0,
+          ),
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey,
+        index: i,
+        isin: String(job.routeState.isin || "").trim(),
+        url: buildYahooIsinSearchUrl(String(job.routeState.isin || "").trim()),
+      });
+    }
+
+    const responses = this.fetchAllInChunks("yahoo-isin-search", requests);
+
+    for (const responseItem of responses) {
+      if (responseItem.error) {
+        results[responseItem.request.index] = createRouteResult("lookup_failure", {
+          error: responseItem.error,
+        });
+        continue;
+      }
+
+      try {
+        const job = jobs[responseItem.request.index];
+        if (!job) {
+          results[responseItem.request.index] = createRouteResult(
+            "terminal_error",
+            {
+              error: "Route job is missing for Yahoo ISIN search response.",
+            },
+          );
+          continue;
+        }
+
+        const resolvedTicker = extractYahooSymbolFromSearchResponse(
+          responseItem.response as YahooSearchResponseLike,
+          responseItem.request.isin,
+        );
+        this.putCachedString(responseItem.request.cacheKey, resolvedTicker, 21600);
+        results[responseItem.request.index] = createRouteResult("success", {
+          value: buildTypedRequestFromResolvedTicker(
+            job.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+            resolvedTicker,
+            0,
+          ),
+        });
+      } catch (error) {
+        results[responseItem.request.index] = createRouteResult("lookup_failure", {
+          error,
+        });
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    deps?: YahooIsinSearchResolverDependencies,
+  ): YahooIsinSearchResolver {
+    if (
+      !deps ||
+      typeof deps.fetchAllInChunks !== "function" ||
+      typeof deps.getCachedString !== "function" ||
+      typeof deps.putCachedString !== "function"
+    ) {
+      throw new Error(
+        "YahooIsinSearchResolver requires fetchAllInChunks, getCachedString, and putCachedString.",
+      );
+    }
+
+    return new this(deps);
   }
 }
 
@@ -343,11 +518,13 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   FunctionValueResolver,
   LocalFxResolver,
   PseIsinMapResolver,
+  YahooIsinSearchResolver,
 } as const;
 
 export interface ConcreteResolverMaterializationDependencies
   extends FunctionValueResolverDependencies {
   resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
+  yahooIsinSearch?: YahooIsinSearchResolverDependencies;
 }
 
 export function createConcreteResolverMaterializationDependencies(
@@ -362,6 +539,7 @@ export function createConcreteResolverMaterializationDependencies(
         resolveFunctionsByRef: deps.resolveFunctionsByRef,
       },
       PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
+      YahooIsinSearchResolver: deps.yahooIsinSearch,
     },
     resolverClassesByName: {
       ...CONCRETE_RESOLVER_CLASSES_BY_NAME,

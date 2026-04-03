@@ -11,6 +11,7 @@ export * from "./fx-normalization";
 export * from "./fx-quotes";
 export * from "./pse-isin-map";
 export * from "./ticker-normalization";
+export * from "./yahoo-isin-search";
 export * from "./request-building";
 export * from "./request-parsing";
 export * from "./concrete-resolvers";
