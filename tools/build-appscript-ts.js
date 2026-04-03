@@ -44,6 +44,42 @@ const resolveRepoDataPlugin = {
   },
 };
 
+function formatByteCount(byteCount) {
+  const units = ["B", "KB", "MB", "GB"];
+  let value = Math.max(0, Number(byteCount) || 0);
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatPercentChange(beforeBytes, afterBytes) {
+  if (!beforeBytes) {
+    return "n/a";
+  }
+
+  const percentChange = ((afterBytes - beforeBytes) / beforeBytes) * 100;
+  const sign = percentChange > 0 ? "+" : "";
+  return `${sign}${percentChange.toFixed(1)}%`;
+}
+
+async function readFileSize(filePath) {
+  try {
+    const stats = await fs.stat(filePath);
+    return stats.size;
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return 0;
+    }
+
+    throw error;
+  }
+}
+
 function parseArgs(argv) {
   const options = {
     minify: false,
@@ -73,6 +109,7 @@ async function main() {
   );
   const outfile = path.join(outDir, "hoodlefinance-ts.js");
   const manifestPath = path.join(outDir, "appsscript.json");
+  const beforeBytes = await readFileSize(outfile);
 
   await fs.mkdir(outDir, { recursive: true });
   await esbuild.build({
@@ -92,11 +129,15 @@ async function main() {
     minify: options.minify,
     target: ["es2020"],
   });
+  const afterBytes = await readFileSize(outfile);
   await fs.writeFile(
     manifestPath,
     JSON.stringify(trackedManifest, null, 2) + "\n",
   );
   process.stdout.write(`Built ${path.relative(ROOT_DIR, outfile)}\n`);
+  process.stdout.write(
+    `Bundle size: ${formatByteCount(beforeBytes)} -> ${formatByteCount(afterBytes)} (${formatPercentChange(beforeBytes, afterBytes)})\n`,
+  );
   process.stdout.write(`Wrote ${path.relative(ROOT_DIR, manifestPath)}\n`);
 }
 
