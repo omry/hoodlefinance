@@ -144,7 +144,7 @@ export class IdentifierResolver extends Resolver {}
 
 export class AttributeResolver extends Resolver {}
 
-export class RouteExecutionResolver extends Resolver {
+export class RouteExecutionResolver extends AttributeResolver {
   readonly traceLabel: string;
 
   constructor(

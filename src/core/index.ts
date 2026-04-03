@@ -8,6 +8,7 @@ export * from "./request";
 export * from "./source-overrides";
 export * from "./exchange-symbols";
 export * from "./fx-normalization";
+export * from "./fx-quotes";
 export * from "./ticker-normalization";
 export * from "./request-building";
 export * from "./request-parsing";

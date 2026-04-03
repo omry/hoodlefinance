@@ -4,7 +4,9 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   FunctionValueResolver,
+  LocalFxResolver,
   RequestInput,
+  FxRequest,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput(overrides = {}) {
@@ -97,4 +99,34 @@ test("FunctionValueResolver executes resolved job callbacks and materializes fro
       ),
     /Unknown resolver function ref "MISSING" for "DIRECT"\./,
   );
+});
+
+test("LocalFxResolver returns a same-currency synthetic quote", () => {
+  const resolver = new LocalFxResolver();
+  const request = new FxRequest({
+    attribute: "price",
+    fxPair: {
+      baseCanonicalCode: "USD",
+      canonicalPair: "USDUSD",
+      displayQuoteCode: "USD",
+      googleSymbol: "CURRENCY:USDUSD",
+      isSameCurrency: true,
+      pairDisplay: "USDUSD",
+      quoteCanonicalCode: "USD",
+      scale: 1,
+      yahooChartSymbol: "USDUSD=X",
+    },
+    identifier: "USDUSD",
+    identifierResolutionMs: 0,
+  });
+
+  assert.equal(resolver.canHandle(request), true);
+  assert.deepEqual(resolver.buildRouteState(request), {
+    fxPair: request.fxPair,
+  });
+
+  const results = resolver.executeBatch([{ routeState: { fxPair: request.fxPair } }]);
+  assert.equal(results[0].status, "success");
+  assert.equal(results[0].quote.regularMarketPrice, 1);
+  assert.equal(results[0].quote.symbol, "USDUSD");
 });

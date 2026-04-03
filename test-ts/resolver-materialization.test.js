@@ -4,6 +4,7 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   FunctionValueResolver,
+  LocalFxResolver,
   RequestInput,
   createConcreteResolverMaterializationDependencies,
   getMaterializedResolverByCode,
@@ -93,6 +94,9 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       "DIRECT-IDENTIFIER": {
         resolverClass: "DirectIdentifierResolver",
       },
+      LOCAL: {
+        resolverClass: "LocalFxResolver",
+      },
     },
     createConcreteResolverMaterializationDependencies({
       resolveFunctionsByRef: {
@@ -108,6 +112,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     registry.byCode["DIRECT-IDENTIFIER"] instanceof DirectIdentifierResolver,
     true,
   );
+  assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
   assert.equal(
     registry.byCode.DIRECT.executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
     "GOOG",

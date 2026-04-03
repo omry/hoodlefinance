@@ -117,13 +117,29 @@ function buildFxPair(baseCode: string, quoteCode: string): FxPair {
     );
   }
 
+  const hasCrypto =
+    baseUnit.assetClass === "crypto" || quoteUnit.assetClass === "crypto";
+  const canonicalPair = baseUnit.canonicalCode + quoteUnit.canonicalCode;
+
   return {
     baseCanonicalCode: baseUnit.canonicalCode,
+    baseDisplayCode: baseUnit.displayCode,
+    canonicalPair,
+    displayQuoteCode: quoteUnit.displayCode,
+    googlePairSlug: `${baseUnit.canonicalCode}-${quoteUnit.canonicalCode}`,
+    googleSymbol:
+      baseUnit.displayCode.length === 3 && quoteUnit.displayCode.length === 3
+        ? `CURRENCY:${baseUnit.displayCode}${quoteUnit.displayCode}`
+        : `CURRENCY:${baseUnit.displayCode}.${quoteUnit.displayCode}`,
+    isSameCurrency: baseUnit.canonicalCode === quoteUnit.canonicalCode,
+    pairDisplay: `${baseUnit.displayCode}${quoteUnit.displayCode}`,
     quoteCanonicalCode: quoteUnit.canonicalCode,
-    yahooChartSymbol:
-      baseUnit.assetClass === "crypto" || quoteUnit.assetClass === "crypto"
-        ? `${baseUnit.canonicalCode}-${quoteUnit.canonicalCode}`
-        : `${baseUnit.canonicalCode}${quoteUnit.canonicalCode}=X`,
+    quoteDisplayCode: quoteUnit.displayCode,
+    scale: baseUnit.factor / quoteUnit.factor,
+    yahooChartSymbol: hasCrypto
+      ? `${baseUnit.canonicalCode}-${quoteUnit.canonicalCode}`
+      : `${canonicalPair}=X`,
+    yahooSymbol: `${canonicalPair}=X`,
   };
 }
 

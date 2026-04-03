@@ -11,8 +11,18 @@ export interface AttributeRequest {
 
 export interface FxPair {
   baseCanonicalCode: string;
+  baseDisplayCode?: string;
+  canonicalPair?: string;
+  displayQuoteCode?: string;
+  googlePairSlug?: string;
+  googleSymbol?: string;
+  isSameCurrency?: boolean;
+  pairDisplay?: string;
   quoteCanonicalCode: string;
+  quoteDisplayCode?: string;
+  scale?: number;
   yahooChartSymbol: string;
+  yahooSymbol?: string;
 }
 
 export interface ParsedTickerRequest {

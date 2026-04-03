@@ -3,11 +3,13 @@ import { RequestInput, type ResolvedRequest } from "./request";
 import {
   AttributeResolver,
   IdentifierResolver,
+  RouteExecutionResolver,
 } from "./resolver-classes";
 import {
   buildTypedRequestFromParsedInput,
   extractIsinFromRequestInput,
 } from "./request-building";
+import { buildSameCurrencyQuote, isSameCurrencyFxPair } from "./fx-quotes";
 import { createResolutionFailure, createResolutionSuccess, createRouteResult } from "./route-results";
 import type { RouteJob } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
@@ -187,9 +189,65 @@ export class FunctionValueResolver extends AttributeResolver {
   }
 }
 
+export class LocalFxResolver extends RouteExecutionResolver {
+  constructor() {
+    super("LOCAL", "LOCAL", {
+      routingDescription: "Same-currency FX identity rate",
+    });
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return (
+      !!request &&
+      "requestType" in request &&
+      request.requestType === "fx" &&
+      !!request.fxPair &&
+      isSameCurrencyFxPair(request.fxPair)
+    );
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!this.canHandle(request)) {
+      return {};
+    }
+
+    const fxRequest = request as Extract<ResolvedRequest, { requestType: "fx" }>;
+
+    return {
+      fxPair: fxRequest.fxPair,
+    };
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results = [];
+
+    for (const job of jobs) {
+      try {
+        results.push(
+          createRouteResult("success", {
+            quote: buildSameCurrencyQuote(job.routeState.fxPair as import("./request").FxPair),
+          }),
+        );
+      } catch (error) {
+        results.push(createRouteResult("terminal_error", { error }));
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+  ): LocalFxResolver {
+    return new this();
+  }
+}
+
 export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   DirectIdentifierResolver,
   FunctionValueResolver,
+  LocalFxResolver,
 } as const;
 
 export interface ConcreteResolverMaterializationDependencies

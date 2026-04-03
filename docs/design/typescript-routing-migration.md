@@ -68,3 +68,35 @@ For now, TypeScript is configured for type-checking only.
 - no Apps Script deploy behavior changes yet
 
 That keeps the migration reversible while the module boundaries are still being proven out.
+
+## Deferred Cleanup List
+
+These are known naming and boundary issues that should be revisited after more of
+the routing subsystem is migrated. They are intentionally deferred so the
+transition can preserve runtime behavior first.
+
+- Rename vague resolver/spec codes that mirror the current runtime but do not
+  communicate intent clearly.
+  - `LOCAL` should become an FX-specific name such as `FX-SAME` or
+    `FX-IDENTITY`.
+  - `DIRECT` should become a more explicit attribute-side name.
+- Re-evaluate whether same-currency FX resolution deserves a dedicated resolver
+  at all, or should collapse into a smaller shortcut in the planner or request
+  layer.
+- Revisit `FunctionValueResolver` as an implementation detail rather than a
+  first-class routing concept.
+- Tighten the request boundary.
+  - Separate core request modeling from debug-only source override parsing.
+  - Reduce how much parser-derived and runtime-wiring behavior lives in
+    `src/core/request.ts`.
+- Reduce public leakage from `src/core/index.ts` so low-level normalization and
+  helper modules are not exported as if they are design-level API.
+- Revisit the explicit `PSE` fast path in `src/core/request-building.ts` and
+  decide whether it belongs in a more explicit exchange/equity normalization
+  layer.
+- Revisit runtime execution concepts such as `RouteJob` once the migrated core
+  is more complete, to see whether the mutable execution record can become
+  smaller and easier to reason about.
+- Do a naming pass against `docs/design/hoodlefinance-routing-design.md` so the
+  code reads more like the routing design and less like the legacy runtime table
+  names.
