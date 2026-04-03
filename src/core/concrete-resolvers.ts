@@ -1,6 +1,6 @@
 import type { ResolverSpec, ResolverSpecOptions } from "./plan-specs";
 import { EquityRequest, FxRequest, RequestInput, type ResolvedRequest } from "./request";
-import { buildIsinIdentifierRouteState } from "./route-state";
+import { buildIsinIdentifierRouteState, buildPseQuoteRouteState } from "./route-state";
 import {
   AttributeResolver,
   IdentifierResolver,
@@ -21,6 +21,20 @@ import {
   buildGoogleFinanceQuoteUrl,
   extractGoogleFinanceFxPairQuote,
 } from "./google-fx";
+import {
+  buildPseListingCacheKey,
+  buildPseSearchUrl,
+  buildPseSecurityFrameUrl,
+  buildPseStockDataUrl,
+  buildPseUnavailableError,
+  extractPseFrameQuoteFromResponse,
+  extractPseQuoteFromResponse,
+  isPseListingNotFoundError,
+  isPseUnavailableError,
+  tryResolvePseListingFromHtml,
+  type PseListing,
+  type PseQuoteResponseLike,
+} from "./pse-quotes";
 import {
   buildYahooIsinSearchUrl,
   extractYahooSymbolFromSearchResponse,
@@ -133,6 +147,31 @@ export interface YahooIsinSearchResolverDependencies {
 
 export interface GoogleFxResolverDependencies {
   fetchText(url: string): string;
+  getCachedJson(cacheKey: string): unknown;
+  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
+}
+
+export interface PseQuoteResolverDependencies {
+  fetchAllInChunks(
+    source: string,
+    requests: Array<{
+      cacheKey: string;
+      index: number;
+      listing?: PseListing | null;
+      symbol: string;
+      url: string;
+    }>,
+  ): Array<{
+    error?: unknown;
+    request: {
+      cacheKey: string;
+      index: number;
+      listing?: PseListing | null;
+      symbol: string;
+      url: string;
+    };
+    response?: PseQuoteResponseLike;
+  }>;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
@@ -682,6 +721,421 @@ export class GoogleFxResolver extends RouteExecutionResolver {
   }
 }
 
+const PSE_QUOTE_CACHE_TTL_SECONDS = 300;
+const PSE_LISTING_CACHE_TTL_SECONDS = 6 * 60 * 60;
+
+function normalizePseListing(value: unknown): PseListing | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const listing = value as PseListing;
+  const companyId = String(listing.companyId || "").trim();
+  const securityId = String(listing.securityId || "").trim();
+  const symbol = String(listing.symbol || "").trim().toUpperCase();
+  const name = String(listing.name || "").trim();
+
+  if (!companyId || !securityId || !symbol) {
+    return null;
+  }
+
+  return {
+    companyId,
+    name,
+    securityId,
+    symbol,
+  };
+}
+
+function buildPseQuoteCacheKey(symbol: string): string {
+  return `hoodlefinance:pse:${String(symbol || "").trim().toUpperCase()}`;
+}
+
+export class PseFramesResolver extends RouteExecutionResolver {
+  readonly fetchAllInChunks: PseQuoteResolverDependencies["fetchAllInChunks"];
+  readonly getCachedJson: PseQuoteResolverDependencies["getCachedJson"];
+  readonly putCachedJson: PseQuoteResolverDependencies["putCachedJson"];
+
+  constructor(deps: PseQuoteResolverDependencies) {
+    super("PSE-FRAMES", {
+      isSourceOverrideable: true,
+      representativeTicker: "PSE:BDO",
+      routingDescription: "PSE frames quote lookup",
+    });
+    this.fetchAllInChunks = deps.fetchAllInChunks;
+    this.getCachedJson = deps.getCachedJson;
+    this.putCachedJson = deps.putCachedJson;
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return request instanceof EquityRequest && request.exchange === "PSE";
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof EquityRequest)) {
+      return {};
+    }
+
+    return buildPseQuoteRouteState(request);
+  }
+
+  getRouteClass(_request: RequestInput | ResolvedRequest): string {
+    return "EQUITY -> PSE";
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results: Array<RouteResult | null> = jobs.map(() => null);
+    const requests: Array<{
+      cacheKey: string;
+      index: number;
+      symbol: string;
+      url: string;
+    }> = [];
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const job = jobs[i];
+      if (!job) {
+        continue;
+      }
+
+      const symbol = String(job.routeState.symbol || "").trim().toUpperCase();
+      const cacheKey = buildPseQuoteCacheKey(symbol);
+      const cached = this.getCachedJson(cacheKey);
+
+      if (cached) {
+        results[i] = createRouteResult("success", {
+          quote: cached,
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey,
+        index: i,
+        symbol,
+        url: buildPseSecurityFrameUrl(symbol),
+      });
+    }
+
+    if (!requests.length) {
+      return results as unknown as Array<Record<string, unknown> | null>;
+    }
+
+    const responses = this.fetchAllInChunks("pse", requests);
+
+    for (const responseItem of responses) {
+      if (responseItem.error) {
+        results[responseItem.request.index] = createRouteResult(
+          "lookup_failure",
+          {
+            error: buildPseUnavailableError(
+              responseItem.error instanceof Error &&
+                responseItem.error.message
+                ? responseItem.error.message
+                : responseItem.error,
+            ),
+          },
+        );
+        continue;
+      }
+
+      try {
+        const quote = extractPseFrameQuoteFromResponse(
+          responseItem.response as PseQuoteResponseLike,
+          responseItem.request.symbol,
+        );
+        this.putCachedJson(
+          responseItem.request.cacheKey,
+          quote,
+          PSE_QUOTE_CACHE_TTL_SECONDS,
+        );
+        results[responseItem.request.index] = createRouteResult("success", {
+          quote,
+        });
+      } catch (error) {
+        if (isPseListingNotFoundError(error) || isPseUnavailableError(error)) {
+          results[responseItem.request.index] = createRouteResult(
+            "lookup_failure",
+            {
+              error,
+            },
+          );
+          continue;
+        }
+
+        results[responseItem.request.index] = createRouteResult(
+          "terminal_error",
+          {
+            error,
+          },
+        );
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    deps?: PseQuoteResolverDependencies,
+  ): PseFramesResolver {
+    if (
+      !deps ||
+      typeof deps.fetchAllInChunks !== "function" ||
+      typeof deps.getCachedJson !== "function" ||
+      typeof deps.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "PseFramesResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    return new this(deps);
+  }
+}
+
+export class PseEdgeResolver extends RouteExecutionResolver {
+  readonly fetchAllInChunks: PseQuoteResolverDependencies["fetchAllInChunks"];
+  readonly getCachedJson: PseQuoteResolverDependencies["getCachedJson"];
+  readonly putCachedJson: PseQuoteResolverDependencies["putCachedJson"];
+
+  constructor(deps: PseQuoteResolverDependencies) {
+    super("PSE-EDGE", {
+      isSourceOverrideable: true,
+      representativeTicker: "PSE:BDO",
+      routingDescription: "PSE edge quote lookup",
+    });
+    this.fetchAllInChunks = deps.fetchAllInChunks;
+    this.getCachedJson = deps.getCachedJson;
+    this.putCachedJson = deps.putCachedJson;
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return request instanceof EquityRequest && request.exchange === "PSE";
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof EquityRequest)) {
+      return {};
+    }
+
+    return buildPseQuoteRouteState(request);
+  }
+
+  getRouteClass(_request: RequestInput | ResolvedRequest): string {
+    return "EQUITY -> PSE";
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results: Array<RouteResult | null> = jobs.map(() => null);
+    const searchRequests: Array<{
+      cacheKey: string;
+      index: number;
+      symbol: string;
+      url: string;
+    }> = [];
+    const stockRequests: Array<{
+      cacheKey: string;
+      index: number;
+      listing: PseListing;
+      symbol: string;
+      url: string;
+    }> = [];
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const job = jobs[i];
+      if (!job) {
+        continue;
+      }
+
+      const symbol = String(job.routeState.symbol || "").trim().toUpperCase();
+      const cacheKey = buildPseQuoteCacheKey(symbol);
+      const cached = this.getCachedJson(cacheKey);
+
+      if (cached) {
+        results[i] = createRouteResult("success", {
+          quote: cached,
+        });
+        continue;
+      }
+
+      const cachedListing = normalizePseListing(
+        this.getCachedJson(buildPseListingCacheKey(symbol)),
+      );
+
+      if (cachedListing) {
+        job.routeState.listing = cachedListing;
+        stockRequests.push({
+          cacheKey,
+          index: i,
+          listing: cachedListing,
+          symbol,
+          url: buildPseStockDataUrl(cachedListing),
+        });
+        continue;
+      }
+
+      searchRequests.push({
+        cacheKey: buildPseListingCacheKey(symbol),
+        index: i,
+        symbol,
+        url: buildPseSearchUrl(symbol),
+      });
+    }
+
+    if (!searchRequests.length && !stockRequests.length) {
+      return results as unknown as Array<Record<string, unknown> | null>;
+    }
+
+    const searchResponses = this.fetchAllInChunks("pse", searchRequests);
+
+    for (const responseItem of searchResponses) {
+      if (responseItem.error) {
+        results[responseItem.request.index] = createRouteResult(
+          "lookup_failure",
+          {
+            error: buildPseUnavailableError(
+              responseItem.error instanceof Error &&
+                responseItem.error.message
+                ? responseItem.error.message
+                : responseItem.error,
+            ),
+          },
+        );
+        continue;
+      }
+
+      try {
+        const listing = tryResolvePseListingFromHtml(
+          responseItem.response ? responseItem.response.getContentText() : "",
+          responseItem.request.symbol,
+        );
+
+        if (!listing) {
+          results[responseItem.request.index] = createRouteResult(
+            "lookup_failure",
+            {
+              error: new Error(
+                `No PSE listing was found for "${responseItem.request.symbol}".`,
+              ),
+            },
+          );
+          continue;
+        }
+
+        this.putCachedJson(
+          responseItem.request.cacheKey,
+          listing,
+          PSE_LISTING_CACHE_TTL_SECONDS,
+        );
+        const searchJob = jobs[responseItem.request.index];
+        if (!searchJob) {
+          throw new Error("Route job is missing for PSE listing response.");
+        }
+
+        searchJob.routeState.listing = listing;
+        stockRequests.push({
+          cacheKey: buildPseQuoteCacheKey(responseItem.request.symbol),
+          index: responseItem.request.index,
+          listing,
+          symbol: responseItem.request.symbol,
+          url: buildPseStockDataUrl(listing),
+        });
+      } catch (error) {
+        results[responseItem.request.index] = createRouteResult(
+          "terminal_error",
+          {
+            error,
+          },
+        );
+      }
+    }
+
+    const stockResponses = this.fetchAllInChunks("pse", stockRequests);
+
+    for (const responseItem of stockResponses) {
+      if (responseItem.error) {
+        results[responseItem.request.index] = createRouteResult(
+          "lookup_failure",
+          {
+            error: buildPseUnavailableError(
+              responseItem.error instanceof Error &&
+                responseItem.error.message
+                ? responseItem.error.message
+                : responseItem.error,
+            ),
+          },
+        );
+        continue;
+      }
+
+      try {
+        const listing = normalizePseListing(responseItem.request.listing);
+        const quote = extractPseQuoteFromResponse(
+          responseItem.response as PseQuoteResponseLike,
+          listing,
+        );
+        const stockJob = jobs[responseItem.request.index];
+
+        if (!quote || !quote.symbol) {
+          const tickerInput = stockJob ? stockJob.tickerInput : "";
+          throw new Error(
+            `No PSE quote data was found for ${tickerInput}.`,
+          );
+        }
+
+        this.putCachedJson(
+          responseItem.request.cacheKey,
+          quote,
+          PSE_QUOTE_CACHE_TTL_SECONDS,
+        );
+        results[responseItem.request.index] = createRouteResult("success", {
+          quote,
+        });
+      } catch (error) {
+        if (isPseListingNotFoundError(error) || isPseUnavailableError(error)) {
+          results[responseItem.request.index] = createRouteResult(
+            "lookup_failure",
+            {
+              error,
+            },
+          );
+          continue;
+        }
+
+        results[responseItem.request.index] = createRouteResult(
+          "terminal_error",
+          {
+            error,
+          },
+        );
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    deps?: PseQuoteResolverDependencies,
+  ): PseEdgeResolver {
+    if (
+      !deps ||
+      typeof deps.fetchAllInChunks !== "function" ||
+      typeof deps.getCachedJson !== "function" ||
+      typeof deps.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "PseEdgeResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    return new this(deps);
+  }
+}
+
 export class YahooQuoteResolver extends RouteExecutionResolver {
   readonly fetchAllInChunks: YahooQuoteResolverDependencies["fetchAllInChunks"];
   readonly getCachedJson: YahooQuoteResolverDependencies["getCachedJson"];
@@ -965,6 +1419,8 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   FunctionValueResolver,
   LocalFxResolver,
   GoogleFxResolver,
+  PseFramesResolver,
+  PseEdgeResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
@@ -974,6 +1430,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
 export interface ConcreteResolverMaterializationDependencies
   extends FunctionValueResolverDependencies {
   googleFx?: GoogleFxResolverDependencies;
+  pseQuotes?: PseQuoteResolverDependencies;
   resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
   yahooIsinSearch?: YahooIsinSearchResolverDependencies;
   yahooQuote?: YahooQuoteResolverDependencies;
@@ -992,6 +1449,8 @@ export function createConcreteResolverMaterializationDependencies(
         resolveFunctionsByRef: deps.resolveFunctionsByRef,
       },
       GoogleFxResolver: deps.googleFx,
+      PseFramesResolver: deps.pseQuotes,
+      PseEdgeResolver: deps.pseQuotes,
       PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
       YahooIsinSearchResolver: deps.yahooIsinSearch,
       YahooQuoteResolver: deps.yahooQuote,

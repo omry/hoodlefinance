@@ -6,6 +6,8 @@ const {
   GoogleFxResolver,
   FunctionValueResolver,
   LocalFxResolver,
+  PseEdgeResolver,
+  PseFramesResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
@@ -119,6 +121,12 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       GOOGLE: {
         resolverClass: "GoogleFxResolver",
       },
+      "PSE-FRAMES": {
+        resolverClass: "PseFramesResolver",
+      },
+      "PSE-EDGE": {
+        resolverClass: "PseEdgeResolver",
+      },
     },
     createConcreteResolverMaterializationDependencies({
       resolveFunctionsByRef: {
@@ -229,6 +237,112 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
           return value;
         },
       },
+      pseQuotes: {
+        fetchAllInChunks(_source, requests) {
+          return requests.map((request) => {
+            if (String(request.url).indexOf("companyDirectory/search.ax") >= 0) {
+              return {
+                request,
+                response: {
+                  getContentText() {
+                    return `
+                      <html>
+                        <table>
+                          <tr>
+                            <td>
+                              <a href="#" onclick="cmDetail('1234','5678');return false;">BDO Unibank, Inc.</a>
+                            </td>
+                            <td class="alignC"><a href="#">BDO</a></td>
+                          </tr>
+                        </table>
+                      </html>
+                    `;
+                  },
+                  getResponseCode() {
+                    return 200;
+                  },
+                },
+              };
+            }
+
+            if (String(request.url).indexOf("frames.pse.com.ph/security/") >= 0) {
+              return {
+                request,
+                response: {
+                  getContentText() {
+                    return `
+                      <html>
+                        <input
+                          id="stock-json"
+                          value="${JSON.stringify({
+                            full_name: "BDO Unibank, Inc.",
+                            name: "BDO",
+                          }).replace(/"/g, "&quot;")}"
+                        />
+                        <input id="symbol-json" value="BDO" />
+                        <h3>BDO</h3>
+                        <div>BDO Unibank, Inc.</div>
+                        <div>
+                          <a href="companyDisclosures/form.do?cmpy_id=1234">company</a>
+                        </div>
+                        <table>
+                          <tr><td>ISIN</td><td>PHY077751022</td></tr>
+                          <tr><td>Prev Close</td><td>9.75</td></tr>
+                          <tr><td>High</td><td>10.10</td></tr>
+                          <tr><td>Low</td><td>9.60</td></tr>
+                          <tr><td>Open</td><td>9.80</td></tr>
+                          <tr><td>Volume</td><td>12345</td></tr>
+                        </table>
+                        <h3 class="last-price">9.87</h3>
+                        As of Jan 2, 2024 3:00 PM
+                      </html>
+                    `;
+                  },
+                  getResponseCode() {
+                    return 200;
+                  },
+                },
+              };
+            }
+
+            return {
+              request,
+              response: {
+                getContentText() {
+                  return `
+                    <html>
+                      <div class="compInfo"><p>BDO Unibank, Inc.</p></div>
+                      <select>
+                        <option value="BDO" selected>BDO</option>
+                      </select>
+                      <table>
+                        <tr><th>Previous Close and Date</th><td>9.75</td></tr>
+                        <tr><th>Last Traded Price</th><td>9.87</td></tr>
+                        <tr><th>Change(% Change)</th><td>up 0.12 (1.23%)</td></tr>
+                        <tr><th>ISIN</th><td>PHY077751022</td></tr>
+                        <tr><th>High</th><td>10.10</td></tr>
+                        <tr><th>Low</th><td>9.60</td></tr>
+                        <tr><th>Open</th><td>9.80</td></tr>
+                        <tr><th>Volume</th><td>12345</td></tr>
+                      </table>
+                      As of Jan 2, 2024 3:00 PM
+                    </html>
+                  `;
+                },
+                getResponseCode() {
+                  return 200;
+                },
+              },
+            };
+          });
+        },
+        getCachedJson() {
+          return null;
+        },
+        putCachedJson(_cacheKey, value) {
+          return value;
+        },
+      },
     }),
   );
 
@@ -239,6 +353,8 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   );
   assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
   assert.equal(registry.byCode.GOOGLE instanceof GoogleFxResolver, true);
+  assert.equal(registry.byCode["PSE-FRAMES"] instanceof PseFramesResolver, true);
+  assert.equal(registry.byCode["PSE-EDGE"] instanceof PseEdgeResolver, true);
   assert.equal(registry.byCode.YAHOO instanceof YahooQuoteResolver, true);
   assert.equal(
     registry.byCode["TRADINGVIEW-FUND"] instanceof TradingviewFundResolver,
@@ -253,6 +369,36 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     registry.byCode.DIRECT.executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
     "GOOG",
   );
+
+  const pseFramesResolved = registry.byCode["PSE-FRAMES"].resolve(
+    new EquityRequest({
+      attribute: "price",
+      allowTradingviewFallback: false,
+      exchange: "PSE",
+      identifier: "PSE:BDO",
+      identifierResolutionMs: 0,
+      symbol: "BDO",
+      yahooSymbol: "BDO.PS",
+    }),
+  );
+
+  assert.equal(pseFramesResolved.status, "success");
+  assert.equal(pseFramesResolved.value.symbol, "BDO");
+
+  const pseEdgeResolved = registry.byCode["PSE-EDGE"].resolve(
+    new EquityRequest({
+      attribute: "price",
+      allowTradingviewFallback: false,
+      exchange: "PSE",
+      identifier: "PSE:BDO",
+      identifierResolutionMs: 0,
+      symbol: "BDO",
+      yahooSymbol: "BDO.PS",
+    }),
+  );
+
+  assert.equal(pseEdgeResolved.status, "success");
+  assert.equal(pseEdgeResolved.value.symbol, "BDO");
 
   const resolved = registry.byCode["DIRECT-IDENTIFIER"].resolve(
     new RequestInput({
