@@ -1,5 +1,5 @@
 import type { ResolverSpec, ResolverSpecOptions } from "./plan-specs";
-import { FxRequest, RequestInput, type ResolvedRequest } from "./request";
+import { EquityRequest, FxRequest, RequestInput, type ResolvedRequest } from "./request";
 import { buildIsinIdentifierRouteState } from "./route-state";
 import {
   AttributeResolver,
@@ -11,7 +11,12 @@ import {
   buildTypedRequestFromResolvedTicker,
   extractIsinFromRequestInput,
 } from "./request-building";
-import { buildSameCurrencyQuote, decorateFxQuote, isSameCurrencyFxPair } from "./fx-quotes";
+import {
+  buildSameCurrencyQuote,
+  decorateFxQuote,
+  extractRawQuote,
+  isSameCurrencyFxPair,
+} from "./fx-quotes";
 import {
   buildGoogleFinanceQuoteUrl,
   extractGoogleFinanceFxPairQuote,
@@ -21,6 +26,11 @@ import {
   extractYahooSymbolFromSearchResponse,
   type YahooSearchResponseLike,
 } from "./yahoo-isin-search";
+import {
+  buildYahooChartUrl,
+  extractYahooQuoteMetaFromResponse,
+  type YahooQuoteResponseLike,
+} from "./yahoo-quote";
 import {
   createResolutionFailure,
   createResolutionSuccess,
@@ -118,6 +128,29 @@ export interface YahooIsinSearchResolverDependencies {
 
 export interface GoogleFxResolverDependencies {
   fetchText(url: string): string;
+  getCachedJson(cacheKey: string): unknown;
+  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
+}
+
+export interface YahooQuoteResolverDependencies {
+  fetchAllInChunks(
+    source: string,
+    requests: Array<{
+      cacheKey: string;
+      index: number;
+      url: string;
+      yahooSymbol: string;
+    }>,
+  ): Array<{
+    error?: unknown;
+    request: {
+      cacheKey: string;
+      index: number;
+      url: string;
+      yahooSymbol: string;
+    };
+    response?: YahooQuoteResponseLike;
+  }>;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
@@ -617,6 +650,161 @@ export class GoogleFxResolver extends RouteExecutionResolver {
   }
 }
 
+export class YahooQuoteResolver extends RouteExecutionResolver {
+  readonly fetchAllInChunks: YahooQuoteResolverDependencies["fetchAllInChunks"];
+  readonly getCachedJson: YahooQuoteResolverDependencies["getCachedJson"];
+  readonly putCachedJson: YahooQuoteResolverDependencies["putCachedJson"];
+
+  constructor(deps: YahooQuoteResolverDependencies) {
+    super("YAHOO", "YAHOO", {
+      isSourceOverrideable: true,
+      representativeTicker: "GOOG",
+      routingDescription: "Yahoo quote lookup",
+    });
+    this.fetchAllInChunks = deps.fetchAllInChunks;
+    this.getCachedJson = deps.getCachedJson;
+    this.putCachedJson = deps.putCachedJson;
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return (
+      (request instanceof EquityRequest &&
+        request.exchange !== "PSE" &&
+        !!request.yahooSymbol) ||
+      (request instanceof FxRequest &&
+        !!request.fxPair &&
+        !!request.fxPair.yahooChartSymbol)
+    );
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (request instanceof FxRequest) {
+      return {
+        fxPair: request.fxPair,
+        yahooSymbol: request.fxPair.yahooChartSymbol,
+      };
+    }
+
+    if (request instanceof EquityRequest) {
+      return {
+        fxPair: null,
+        yahooSymbol: request.yahooSymbol,
+      };
+    }
+
+    return {};
+  }
+
+  getRouteClass(request: RequestInput | ResolvedRequest): string {
+    return request instanceof FxRequest ? "FORCED:YAHOO" : "TICKER";
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results: Array<RouteResult | null> = jobs.map(() => null);
+    const requests: Array<{
+      cacheKey: string;
+      index: number;
+      url: string;
+      yahooSymbol: string;
+    }> = [];
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const job = jobs[i];
+      if (!job) {
+        continue;
+      }
+
+      const yahooSymbol = String(job.routeState.yahooSymbol || "").trim();
+      const cacheKey = `hoodlefinance:${yahooSymbol}`;
+      const cached = this.getCachedJson(cacheKey);
+
+      if (cached) {
+        results[i] = createRouteResult("success", {
+          quote: decorateFxQuote(
+            cached as Record<string, unknown>,
+            (job.routeState.fxPair as FxRequest["fxPair"] | null) || null,
+          ),
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey,
+        index: i,
+        url: buildYahooChartUrl(yahooSymbol),
+        yahooSymbol,
+      });
+    }
+
+    const responses = this.fetchAllInChunks("yahoo-chart", requests);
+
+    for (const responseItem of responses) {
+      let error: unknown = responseItem.error || null;
+
+      if (!error) {
+        try {
+          const job = jobs[responseItem.request.index];
+          if (!job) {
+            throw new Error("Route job is missing for Yahoo quote response.");
+          }
+
+          const quote = decorateFxQuote(
+            extractYahooQuoteMetaFromResponse(
+              responseItem.response as YahooQuoteResponseLike,
+              job.tickerInput || responseItem.request.yahooSymbol,
+            ),
+            (job.routeState.fxPair as FxRequest["fxPair"] | null) || null,
+          );
+          this.putCachedJson(
+            responseItem.request.cacheKey,
+            extractRawQuote(quote),
+            60,
+          );
+          results[responseItem.request.index] = createRouteResult("success", {
+            quote,
+          });
+          continue;
+        } catch (extractError) {
+          error = extractError;
+        }
+      }
+
+      const errorMessage = String(
+        error instanceof Error ? error.message : error ?? "",
+      );
+      results[responseItem.request.index] = createRouteResult(
+        /No quote data was found|Quote lookup failed/i.test(errorMessage)
+          ? "lookup_failure"
+          : "terminal_error",
+        {
+          error,
+        },
+      );
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    deps?: YahooQuoteResolverDependencies,
+  ): YahooQuoteResolver {
+    if (
+      !deps ||
+      typeof deps.fetchAllInChunks !== "function" ||
+      typeof deps.getCachedJson !== "function" ||
+      typeof deps.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "YahooQuoteResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    return new this(deps);
+  }
+}
+
 export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   DirectIdentifierResolver,
   FunctionValueResolver,
@@ -624,6 +812,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   GoogleFxResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
+  YahooQuoteResolver,
 } as const;
 
 export interface ConcreteResolverMaterializationDependencies
@@ -631,6 +820,7 @@ export interface ConcreteResolverMaterializationDependencies
   googleFx?: GoogleFxResolverDependencies;
   resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
   yahooIsinSearch?: YahooIsinSearchResolverDependencies;
+  yahooQuote?: YahooQuoteResolverDependencies;
 }
 
 export function createConcreteResolverMaterializationDependencies(
@@ -647,6 +837,7 @@ export function createConcreteResolverMaterializationDependencies(
       GoogleFxResolver: deps.googleFx,
       PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
       YahooIsinSearchResolver: deps.yahooIsinSearch,
+      YahooQuoteResolver: deps.yahooQuote,
     },
     resolverClassesByName: {
       ...CONCRETE_RESOLVER_CLASSES_BY_NAME,

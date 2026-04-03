@@ -8,8 +8,10 @@ const {
   LocalFxResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
+  YahooQuoteResolver,
   RequestInput,
   FxRequest,
+  EquityRequest,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput(overrides = {}) {
@@ -242,6 +244,88 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     cachedResults[0].quote.hoodlefinanceFxGoogleSymbol,
     "CURRENCY:EURUSD",
   );
+});
+
+test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
+  const cachedResolver = new YahooQuoteResolver({
+    fetchAllInChunks(_source, requests) {
+      assert.deepEqual(requests, []);
+      return [];
+    },
+    getCachedJson(cacheKey) {
+      return cacheKey === "hoodlefinance:GOOG"
+        ? {
+            regularMarketPrice: 123.45,
+            symbol: "GOOG",
+          }
+        : null;
+    },
+    putCachedJson(_cacheKey, value) {
+      return value;
+    },
+  });
+  const cachedRequest = new EquityRequest({
+    attribute: "price",
+    identifier: "GOOG",
+    yahooSymbol: "GOOG",
+  });
+
+  assert.equal(cachedResolver.canHandle(cachedRequest), true);
+  assert.deepEqual(cachedResolver.buildRouteState(cachedRequest), {
+    fxPair: null,
+    yahooSymbol: "GOOG",
+  });
+
+  const cachedResult = cachedResolver.resolve(cachedRequest);
+  assert.equal(cachedResult.status, "success");
+  assert.equal(cachedResult.value.regularMarketPrice, 123.45);
+
+  let cachedWrite = null;
+  const fetchedResolver = new YahooQuoteResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return JSON.stringify({
+              chart: {
+                result: [
+                  {
+                    meta: {
+                      regularMarketPrice: 99.5,
+                      symbol: "GOOG",
+                    },
+                  },
+                ],
+              },
+            });
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedJson() {
+      return null;
+    },
+    putCachedJson(cacheKey, value, ttlSeconds) {
+      cachedWrite = { cacheKey, ttlSeconds, value };
+      return value;
+    },
+  });
+
+  const fetchedResult = fetchedResolver.resolve(cachedRequest);
+  assert.equal(fetchedResult.status, "success");
+  assert.equal(fetchedResult.value.regularMarketPrice, 99.5);
+  assert.deepEqual(cachedWrite, {
+    cacheKey: "hoodlefinance:GOOG",
+    ttlSeconds: 60,
+    value: {
+      regularMarketPrice: 99.5,
+      symbol: "GOOG",
+    },
+  });
 });
 
 test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup", () => {

@@ -3,15 +3,17 @@ const test = require("node:test");
 
 const {
   formatLookupResult,
+  formatTraceOutput,
   formatRoutingTable,
   formatRoutingTree,
   lookupWithEnvironment,
   runSmokeSuite,
-} = require("../dist/ts/hoodlefinance.js");
+} = require("../tools/_shared/cli-ts.js");
 
 function createFakeEnvironment() {
   return {
     directIdentifierResolver: {
+      name: "DIRECT-IDENTIFIER",
       resolve(request) {
         return {
           elapsedMs: 0,
@@ -26,6 +28,7 @@ function createFakeEnvironment() {
       },
     },
     googleFxResolver: {
+      name: "GOOGLE",
       resolve() {
         return {
           elapsedMs: 0,
@@ -39,6 +42,7 @@ function createFakeEnvironment() {
       },
     },
     localFxResolver: {
+      name: "LOCAL",
       resolve() {
         return {
           elapsedMs: 0,
@@ -52,6 +56,7 @@ function createFakeEnvironment() {
       },
     },
     pseIsinMapResolver: {
+      name: "PSE-MAP",
       resolve(request) {
         return request.ticker === "PHY077751022" ||
           request.ticker === "ISIN:PHY077751022"
@@ -72,6 +77,7 @@ function createFakeEnvironment() {
       },
     },
     yahooIsinSearchResolver: {
+      name: "YAHOO-ISIN",
       resolve(request) {
         return request.ticker === "US02079K1079" ||
           request.ticker === "ISIN:US02079K1079"
@@ -91,6 +97,26 @@ function createFakeEnvironment() {
             };
       },
     },
+    yahooQuoteResolver: {
+      name: "YAHOO",
+      canHandle(request) {
+        return !!request && request.requestType === "equity";
+      },
+      getRouteClass() {
+        return "TICKER";
+      },
+      resolve() {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: {
+            currency: "USD",
+            regularMarketPrice: 123.45,
+            symbol: "GOOG",
+          },
+        };
+      },
+    },
   };
 }
 
@@ -101,9 +127,9 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
     attribute: "price",
     ticker: "GOOG",
   });
-  assert.equal(direct.route, "DIRECT-IDENTIFIER");
+  assert.equal(direct.route, "TICKER -> YAHOO");
   assert.equal(direct.status, "success");
-  assert.equal(direct.value.yahooSymbol, "GOOG");
+  assert.equal(direct.value, 123.45);
 
   const fx = lookupWithEnvironment(env, {
     attribute: "price",
@@ -111,7 +137,7 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   });
   assert.equal(fx.route, "FX -> GOOGLE");
   assert.equal(fx.status, "success");
-  assert.equal(fx.value.regularMarketPrice, 1.25);
+  assert.equal(fx.value, 1.25);
 
   const sameCurrencyFx = lookupWithEnvironment(env, {
     attribute: "price",
@@ -119,30 +145,44 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   });
   assert.equal(sameCurrencyFx.route, "FX -> LOCAL");
   assert.equal(sameCurrencyFx.status, "success");
-  assert.equal(sameCurrencyFx.value.regularMarketPrice, 1);
+  assert.equal(sameCurrencyFx.value, 1);
 
   const isin = lookupWithEnvironment(env, {
     attribute: "price",
     ticker: "US02079K1079",
   });
-  assert.equal(isin.route, "IDENTIFIER:ISIN -> YAHOO-ISIN");
+  assert.equal(isin.route, "TICKER -> YAHOO");
   assert.equal(isin.status, "success");
-  assert.equal(isin.value.yahooSymbol, "GOOG");
+  assert.equal(isin.value, 123.45);
 });
 
 test("lookup formatting and routing views stay readable", () => {
   const env = createFakeEnvironment();
+  const result = lookupWithEnvironment(env, {
+    attribute: "price",
+    ticker: "GOOG",
+  });
+  const output = formatLookupResult(result);
+  const traceOutput = formatTraceOutput("GOOG", result);
+
+  assert.equal(output, 123.45);
+  assert.match(traceOutput, /^symbol: GOOG$/m);
+  assert.match(traceOutput, /^planned route: TICKER -> YAHOO$/m);
+  assert.match(traceOutput, /^result: success$/m);
+  assert.match(formatRoutingTable(), /classification\texample\troute/);
+  assert.match(formatRoutingTree(), /^ROOT$/m);
+});
+
+test("lookup formatting returns null for failures", () => {
+  const env = createFakeEnvironment();
   const output = formatLookupResult(
     lookupWithEnvironment(env, {
       attribute: "price",
-      ticker: "GOOG",
+      ticker: "ISIN:NOPE",
     }),
   );
 
-  assert.match(output, /"route": "DIRECT-IDENTIFIER"/);
-  assert.match(output, /"yahooSymbol": "GOOG"/);
-  assert.match(formatRoutingTable(), /classification\texample\troute/);
-  assert.match(formatRoutingTree(), /^ROOT$/m);
+  assert.equal(output, null);
 });
 
 test("runSmokeSuite validates the supported CLI smoke paths", () => {

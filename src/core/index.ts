@@ -1,4 +1,5 @@
 export * from "./plan-specs";
+export * from "./attribute-extraction";
 export * from "./plan-runtime-refs";
 export * from "./plan-navigation";
 export * from "./plan-materialization";
@@ -13,6 +14,7 @@ export * from "./google-fx";
 export * from "./pse-isin-map";
 export * from "./ticker-normalization";
 export * from "./yahoo-isin-search";
+export * from "./yahoo-quote";
 export * from "./request-building";
 export * from "./request-parsing";
 export * from "./concrete-resolvers";
