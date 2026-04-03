@@ -8,6 +8,7 @@ const {
 
 function createServices(fetchByUrl = {}) {
   const cache = new Map();
+  const properties = new Map();
   const scriptCache = {
     get(key) {
       return cache.has(key) ? cache.get(key) : null;
@@ -45,6 +46,19 @@ function createServices(fetchByUrl = {}) {
       },
     },
     cacheState: cache,
+    propertiesService: {
+      getScriptProperties() {
+        return {
+          getProperty(key) {
+            return properties.has(key) ? properties.get(key) : null;
+          },
+          setProperty(key, value) {
+            properties.set(key, String(value));
+          },
+        };
+      },
+    },
+    propertiesState: properties,
     urlFetchApp,
   };
 }
@@ -135,6 +149,209 @@ test("HOODLEFINANCE_TS falls back to the original Yahoo symbol when the preferre
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.11);
+});
+
+test("HOODLEFINANCE_TS reuses the stored preferred REIT whitelist when the cache is cold", () => {
+  const services = createServices({
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  services.propertiesState.set(
+    "hoodlefinance.preferredReitWhitelist",
+    JSON.stringify({
+      fetchedAtMs: Date.now(),
+      text: JSON.stringify({
+        preferredTickers: ["NLY I"],
+      }),
+    }),
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+});
+
+test("HOODLEFINANCE_TS stores the preferred REIT whitelist in script properties after downloading it", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
+      {
+        preferredTickers: ["NLY I"],
+      },
+    ),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+
+  const storedPayload = JSON.parse(
+    services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
+  );
+
+  assert.equal(
+    storedPayload.text,
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  );
+  assert.equal(typeof storedPayload.fetchedAtMs, "number");
+});
+
+test("HOODLEFINANCE_TS ignores malformed cached preferred REIT whitelist data and refreshes it", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
+      {
+        preferredTickers: ["NLY I"],
+      },
+    ),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  services.cacheState.set(
+    "hoodlefinance:ts:preferredReitWhitelist",
+    "{not valid json",
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(
+    services.cacheState.get("hoodlefinance:ts:preferredReitWhitelist"),
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  );
+});
+
+test("HOODLEFINANCE_TS ignores malformed stored preferred REIT whitelist data and refreshes it", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
+      {
+        preferredTickers: ["NLY I"],
+      },
+    ),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  services.propertiesState.set(
+    "hoodlefinance.preferredReitWhitelist",
+    JSON.stringify({
+      fetchedAtMs: Date.now(),
+      text: "{not valid json",
+    }),
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+
+  const storedPayload = JSON.parse(
+    services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
+  );
+
+  assert.equal(
+    storedPayload.text,
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  );
+});
+
+test("HOODLEFINANCE_TS skips persisting malformed downloaded preferred REIT whitelist data and falls back to stored data", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": "{not valid json",
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  const storedPayloadText = JSON.stringify({
+    fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
+    text: JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  });
+  services.propertiesState.set(
+    "hoodlefinance.preferredReitWhitelist",
+    storedPayloadText,
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(
+    services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
+    storedPayloadText,
+  );
+  assert.equal(
+    services.cacheState.has("hoodlefinance:ts:preferredReitWhitelist"),
+    false,
+  );
 });
 
 test("HOODLEFINANCE_TS keeps the original Google-style symbol for preferred REITs", () => {

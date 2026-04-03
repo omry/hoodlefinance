@@ -12,6 +12,8 @@ const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
 const PREFERRED_REIT_WHITELIST_CACHE_KEY = "hoodlefinance:ts:preferredReitWhitelist";
 const PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const PREFERRED_REIT_WHITELIST_PROPERTY = "hoodlefinance.preferredReitWhitelist";
+const PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PREFERRED_REIT_WHITELIST_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json";
 
@@ -39,8 +41,18 @@ interface AppsScriptCacheServiceLike {
   getScriptCache(): AppsScriptCacheLike;
 }
 
+interface AppsScriptPropertiesLike {
+  getProperty(key: string): string | null;
+  setProperty(key: string, value: string): void;
+}
+
+interface AppsScriptPropertiesServiceLike {
+  getScriptProperties(): AppsScriptPropertiesLike;
+}
+
 interface HoodlefinanceAppScriptServices {
   cacheService: AppsScriptCacheServiceLike;
+  propertiesService?: AppsScriptPropertiesServiceLike;
   urlFetchApp: AppsScriptUrlFetchLike;
 }
 
@@ -64,6 +76,7 @@ interface HoodlefinanceAppScriptGlobals {
       setText(text: string): unknown;
     };
   };
+  PropertiesService?: AppsScriptPropertiesServiceLike;
   UrlFetchApp: AppsScriptUrlFetchLike;
 }
 
@@ -154,6 +167,22 @@ function createFetchAllInChunks(urlFetchApp: AppsScriptUrlFetchLike) {
   };
 }
 
+function parsePreferredReitTickerSetIfValid(text: string | null | undefined) {
+  const rawText = String(text || "");
+
+  if (!rawText) {
+    return null;
+  }
+
+  try {
+    JSON.parse(rawText);
+  } catch {
+    return null;
+  }
+
+  return parsePreferredReitTickerSet(rawText);
+}
+
 function assertScalarIdentifier(identifier: unknown): void {
   if (Array.isArray(identifier)) {
     throw new Error(
@@ -167,6 +196,8 @@ function requireServices(
 ): HoodlefinanceAppScriptServices {
   const globalScope = globalThis as Partial<HoodlefinanceAppScriptGlobals>;
   const cacheService = overrides?.cacheService || globalScope.CacheService;
+  const propertiesService =
+    overrides?.propertiesService || globalScope.PropertiesService;
   const urlFetchApp = overrides?.urlFetchApp || globalScope.UrlFetchApp;
 
   if (!cacheService || !urlFetchApp) {
@@ -177,6 +208,7 @@ function requireServices(
 
   return {
     cacheService,
+    ...(propertiesService ? { propertiesService } : {}),
     urlFetchApp,
   };
 }
@@ -211,6 +243,9 @@ export function createHoodlefinanceAppScriptBindings(
   const scriptCache = services.cacheService.getScriptCache();
   const stringCache = createStringCache(scriptCache);
   const jsonCache = createJsonCache(scriptCache);
+  const scriptProperties = services.propertiesService
+    ? services.propertiesService.getScriptProperties()
+    : null;
   let pseIsinMap: Record<string, string> | null = null;
   let preferredReitTickerSet: Set<string> | null = null;
   const runtime = createHoodlefinanceRuntime({
@@ -225,22 +260,100 @@ export function createHoodlefinanceAppScriptBindings(
     resolvePreferredYahooSymbol(ticker) {
       try {
         if (!preferredReitTickerSet) {
-          let rawWhitelist = stringCache.getCachedString(
+          const cachedWhitelistText = stringCache.getCachedString(
             PREFERRED_REIT_WHITELIST_CACHE_KEY,
           );
+          const nowMs = Date.now();
+          const storedPayloadText = scriptProperties
+            ? scriptProperties.getProperty(PREFERRED_REIT_WHITELIST_PROPERTY)
+            : null;
+          let storedPayload: {
+            fetchedAtMs?: number;
+            text?: string;
+          } | null = null;
+          const cachedTickerSet =
+            parsePreferredReitTickerSetIfValid(cachedWhitelistText);
+          let resolvedTickerSet = cachedTickerSet;
 
-          if (!rawWhitelist) {
-            rawWhitelist = services.urlFetchApp
-              .fetch(PREFERRED_REIT_WHITELIST_URL)
-              .getContentText();
-            stringCache.putCachedString(
-              PREFERRED_REIT_WHITELIST_CACHE_KEY,
-              rawWhitelist,
-              PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-            );
+          if (storedPayloadText) {
+            try {
+              storedPayload = JSON.parse(storedPayloadText) as {
+                fetchedAtMs?: number;
+                text?: string;
+              };
+            } catch {
+              storedPayload = null;
+            }
           }
 
-          preferredReitTickerSet = parsePreferredReitTickerSet(rawWhitelist);
+          if (!resolvedTickerSet) {
+            const storedText = String(
+              (storedPayload && storedPayload.text) || "",
+            );
+            const fetchedAtMs = Number(
+              storedPayload && storedPayload.fetchedAtMs,
+            );
+            const storedTickerSet = parsePreferredReitTickerSetIfValid(storedText);
+
+            if (
+              storedTickerSet &&
+              Number.isFinite(fetchedAtMs) &&
+              nowMs - fetchedAtMs <= PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS
+            ) {
+              resolvedTickerSet = storedTickerSet;
+              stringCache.putCachedString(
+                PREFERRED_REIT_WHITELIST_CACHE_KEY,
+                storedText,
+                PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+              );
+            }
+          }
+
+          if (!resolvedTickerSet) {
+            try {
+              const downloadedText = services.urlFetchApp
+                .fetch(PREFERRED_REIT_WHITELIST_URL)
+                .getContentText();
+              const downloadedTickerSet =
+                parsePreferredReitTickerSetIfValid(downloadedText);
+
+              if (!downloadedTickerSet) {
+                throw new Error("Invalid preferred REIT whitelist payload.");
+              }
+
+              resolvedTickerSet = downloadedTickerSet;
+              stringCache.putCachedString(
+                PREFERRED_REIT_WHITELIST_CACHE_KEY,
+                downloadedText,
+                PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+              );
+
+              if (scriptProperties) {
+                scriptProperties.setProperty(
+                  PREFERRED_REIT_WHITELIST_PROPERTY,
+                  JSON.stringify({
+                    fetchedAtMs: nowMs,
+                    text: downloadedText,
+                  }),
+                );
+              }
+            } catch {
+              const fallbackTickerSet =
+                parsePreferredReitTickerSetIfValid(
+                  String((storedPayload && storedPayload.text) || ""),
+                );
+
+              if (!fallbackTickerSet) {
+                throw new Error(
+                  "Failed to load the preferred REIT whitelist.",
+                );
+              }
+
+              resolvedTickerSet = fallbackTickerSet;
+            }
+          }
+
+          preferredReitTickerSet = resolvedTickerSet;
         }
       } catch {
         return "";
