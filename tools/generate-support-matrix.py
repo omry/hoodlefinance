@@ -14,8 +14,11 @@ from pathlib import Path
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-CLI_PATH = ROOT_DIR / "tools" / "_shared" / "cli.js"
+LEGACY_CLI_PATH = ROOT_DIR / "tools" / "_shared" / "cli.js"
+TS_CLI_PATH = ROOT_DIR / "tools" / "_shared" / "cli-ts.js"
 SUPPORT_MATRIX_PATH = ROOT_DIR / "website" / "docs" / "support-matrix.md"
+SUPPORTED_CLI_CHOICES = ("legacy", "ts")
+SUPPORTED_OUTPUT_FORMATS = ("html", "text")
 
 EXCHANGES = [
     {
@@ -221,12 +224,24 @@ SAMPLES_CELL_STYLE = "text-align:center;vertical-align:top;"
 DEFAULT_MAX_WORKERS = min(32, max(4, (os.cpu_count() or 4) * 4))
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="generate-support-matrix.py",
         description="Generate the support-matrix page from live CLI probes.",
     )
     parser.add_argument("--details", action="store_true", help="include failing probe details")
+    parser.add_argument(
+        "--cli",
+        choices=SUPPORTED_CLI_CHOICES,
+        default="legacy",
+        help="choose which local CLI implementation to probe",
+    )
+    parser.add_argument(
+        "--format",
+        choices=SUPPORTED_OUTPUT_FORMATS,
+        default="html",
+        help="choose the output format for printed results",
+    )
     parser.add_argument(
         "--update-page",
         action="store_true",
@@ -238,7 +253,27 @@ def parse_args() -> argparse.Namespace:
         dest="update_page",
         help=argparse.SUPPRESS,
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def build_probe_command(cli: str, ticker: str, attribute: str) -> list[str]:
+    if cli == "ts":
+        return ["node", str(TS_CLI_PATH), ticker, attribute]
+
+    return ["node", str(LEGACY_CLI_PATH), ticker, attribute]
+
+
+def prepare_cli(cli: str) -> None:
+    if cli != "ts":
+        return
+
+    subprocess.run(
+        ["npm", "run", "build:ts"],
+        cwd=ROOT_DIR,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def sample_ticker(sample: str | dict[str, str]) -> str:
@@ -324,12 +359,31 @@ def summarize_failures(failures: list[dict[str, str]]) -> str:
     return "; ".join(parts)
 
 
-def run_probe_once(ticker: str, attribute: str) -> dict[str, str | bool]:
+def format_text_table(headers: list[str], rows: list[list[str]]) -> str:
+    widths = [len(header) for header in headers]
+
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], len(value))
+
+    def format_row(columns: list[str]) -> str:
+        return " | ".join(
+            value.ljust(widths[index]) for index, value in enumerate(columns)
+        )
+
+    separator = "-+-".join("-" * width for width in widths)
+    lines = [format_row(headers), separator]
+    lines.extend(format_row(row) for row in rows)
+    return "\n".join(lines)
+
+
+def run_probe_once(cli: str, ticker: str, attribute: str) -> dict[str, str | bool]:
     result = subprocess.run(
-        ["node", str(CLI_PATH), ticker, attribute],
+        build_probe_command(cli, ticker, attribute),
         capture_output=True,
         text=True,
         check=False,
+        cwd=ROOT_DIR,
     )
     stdout = result.stdout.strip()
     stderr = result.stderr.strip()
@@ -348,12 +402,12 @@ def run_probe_once(ticker: str, attribute: str) -> dict[str, str | bool]:
     }
 
 
-def run_probe(ticker: str, attribute: str) -> dict[str, str | bool]:
-    result = run_probe_once(ticker, attribute)
+def run_probe(cli: str, ticker: str, attribute: str) -> dict[str, str | bool]:
+    result = run_probe_once(cli, ticker, attribute)
     if result["ok"]:
         return result
 
-    retry_result = run_probe_once(ticker, attribute)
+    retry_result = run_probe_once(cli, ticker, attribute)
     if retry_result["ok"]:
         return retry_result
 
@@ -375,13 +429,14 @@ def build_probe_plan() -> list[tuple[str, str, str, str]]:
 
 
 def execute_probe_plan(
+    cli: str,
     plan: list[tuple[str, str, str, str]],
 ) -> dict[tuple[str, str, str, str], dict[str, str | bool]]:
     results: dict[tuple[str, str, str, str], dict[str, str | bool]] = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=DEFAULT_MAX_WORKERS) as executor:
         future_map = {
-            executor.submit(run_probe, sample, attribute): (exchange_code, feature_key, sample, attribute)
+            executor.submit(run_probe, cli, sample, attribute): (exchange_code, feature_key, sample, attribute)
             for exchange_code, feature_key, sample, attribute in plan
         }
 
@@ -398,7 +453,7 @@ def evaluate_column(
     details: list[str],
     reliability_notes: list[str],
     probe_results: dict[tuple[str, str, str, str], dict[str, str | bool]],
-) -> str:
+) -> dict[str, str]:
     samples = column_samples(exchange, column)
     attributes = list(column["attributes"])
     exchange_code = str(exchange["code"])
@@ -459,11 +514,60 @@ def evaluate_column(
 
     tooltip += f" Samples: {format_samples(samples)}"
 
-    return format_status_cell(ICONS[status], tooltip)
+    return {
+        "icon": ICONS[status],
+        "status": status,
+        "tooltip": tooltip,
+    }
 
 
-def generate_matrix_body(show_details: bool) -> tuple[str, str]:
-    probe_results = execute_probe_plan(build_probe_plan())
+def build_matrix_data(
+    show_details: bool,
+    cli: str,
+) -> tuple[list[dict[str, object]], str, list[str]]:
+    probe_results = execute_probe_plan(cli, build_probe_plan())
+    rows: list[dict[str, object]] = []
+    detail_lines: list[str] = []
+    reliability_notes: list[str] = []
+
+    for exchange in EXCHANGES:
+        row = {
+            "exchange": exchange,
+            "features": [],
+            "queries": [],
+            "samples": format_samples(list(exchange["samples"])),
+        }
+
+        for column in QUERY_COLUMNS:
+            row["queries"].append(
+                evaluate_column(
+                    exchange,
+                    column,
+                    detail_lines if show_details else [],
+                    reliability_notes,
+                    probe_results,
+                )
+            )
+
+        for feature in FEATURES:
+            row["features"].append(
+                evaluate_column(
+                    exchange,
+                    feature,
+                    detail_lines if show_details else [],
+                    reliability_notes,
+                    probe_results,
+                )
+            )
+
+        rows.append(row)
+
+    details_block = "\n".join(detail_lines).strip()
+    return rows, details_block, reliability_notes
+
+
+def generate_html_matrix_body(show_details: bool, cli: str) -> tuple[str, str]:
+    rows, details_block, reliability_notes = build_matrix_data(show_details, cli)
     lines = [
         "<table>",
         "  <thead>",
@@ -491,38 +595,20 @@ def generate_matrix_body(show_details: bool) -> tuple[str, str]:
         "  </thead>",
         "  <tbody>",
     ]
-    detail_lines: list[str] = []
-    reliability_notes: list[str] = []
-
-    for exchange in EXCHANGES:
+    for row in rows:
+        exchange = row["exchange"]
         row_lines = [
             "    <tr>",
             "      <td>{}</td>".format(format_exchange_cell(exchange)),
             "      <td>{}</td>".format(format_samples_cell(list(exchange["samples"]))),
         ]
-        for column in QUERY_COLUMNS:
+        for result in row["queries"]:
             row_lines.append(
-                "      <td>{}</td>".format(
-                    evaluate_column(
-                        exchange,
-                        column,
-                        detail_lines if show_details else [],
-                        reliability_notes,
-                        probe_results,
-                    ),
-                )
+                "      <td>{}</td>".format(format_status_cell(result["icon"], result["tooltip"]))
             )
-        for index, feature in enumerate(FEATURES):
+        for result in row["features"]:
             row_lines.append(
-                "      <td>{}</td>".format(
-                    evaluate_column(
-                        exchange,
-                        feature,
-                        detail_lines if show_details else [],
-                        reliability_notes,
-                        probe_results,
-                    ),
-                )
+                "      <td>{}</td>".format(format_status_cell(result["icon"], result["tooltip"]))
             )
         row_lines.append("    </tr>")
         lines.extend(row_lines)
@@ -537,12 +623,50 @@ def generate_matrix_body(show_details: bool) -> tuple[str, str]:
         lines.append("Reliability overrides:")
         lines.extend(f"- {note}" for note in reliability_notes)
 
-    details_block = "\n".join(detail_lines).strip()
     return "\n".join(lines), details_block
 
 
-def generate_output(show_details: bool) -> str:
-    matrix_body, details_block = generate_matrix_body(show_details)
+def generate_text_matrix_body(show_details: bool, cli: str) -> tuple[str, str]:
+    rows, details_block, reliability_notes = build_matrix_data(show_details, cli)
+    headers = [
+        "Exchange",
+        "Samples",
+        *[str(column["label"]) for column in QUERY_COLUMNS],
+        *[str(feature["label"]) for feature in FEATURES],
+    ]
+    body_rows = []
+
+    for row in rows:
+        exchange = row["exchange"]
+        body_rows.append(
+            [
+                str(exchange["code"]),
+                str(row["samples"]),
+                *[result["icon"] for result in row["queries"]],
+                *[result["icon"] for result in row["features"]],
+            ]
+        )
+
+    lines = [
+        format_text_table(headers, body_rows),
+        "",
+        "Legend: ✅ all probes passed, ⚠️ mixed results, ❌ no probes passed or no implementation is configured.",
+    ]
+
+    if reliability_notes:
+        lines.append("")
+        lines.append("Reliability overrides:")
+        lines.extend(f"- {note}" for note in reliability_notes)
+
+    return "\n".join(lines), details_block
+
+
+def generate_output(show_details: bool, cli: str, output_format: str) -> str:
+    if output_format == "text":
+        matrix_body, details_block = generate_text_matrix_body(show_details, cli)
+    else:
+        matrix_body, details_block = generate_html_matrix_body(show_details, cli)
+
     output = matrix_body
     if show_details and details_block:
         output += "\n\n" + details_block
@@ -573,7 +697,10 @@ def update_support_matrix_page(generated_block: str) -> None:
 
 def main() -> int:
     args = parse_args()
-    output = generate_output(args.details)
+    if args.update_page and args.format != "html":
+        raise SystemExit("--update-page only supports --format html")
+    prepare_cli(args.cli)
+    output = generate_output(args.details, args.cli, args.format)
 
     if args.update_page:
         update_support_matrix_page(output)
