@@ -1,4 +1,4 @@
-import type { ResolverNode, ResolverPlanNode } from "./planner";
+import type { ResolverNode, ResolverPlanNode, RoutingNodeKind } from "./planner";
 import type { RequestClassification, RequestInput } from "./request";
 
 export interface RoutingTableExample {
@@ -17,7 +17,7 @@ export interface RoutingPlanTreeNode {
   label: string;
 }
 
-export type RoutingPlanNodeKind = "leaf" | "switch" | "try each";
+export type RoutingPlanNodeKind = RoutingNodeKind;
 
 export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
   { example: "GOOG" },
@@ -39,7 +39,7 @@ export interface RoutingIntrospectionDependencies {
 
 interface RoutingPlanNodeLike {
   getRoutingNodes(): ResolverNode[];
-  isRoutingNode?: boolean;
+  getRoutingNodeKind(): RoutingNodeKind;
   name: string;
   routingLabel: string;
 }
@@ -107,11 +107,6 @@ export function buildRoutingPlanTreeNode(
   node: ResolverNode | RoutingPlanNodeLike,
 ): RoutingPlanTreeNode {
   const isPlanNode = isRoutingPlanNode(node);
-  const kind: RoutingPlanNodeKind = isPlanNode
-    ? node.isRoutingNode === true
-      ? "switch"
-      : "try each"
-    : "leaf";
 
   return {
     children: isPlanNode
@@ -119,7 +114,7 @@ export function buildRoutingPlanTreeNode(
           .getRoutingNodes()
           .map((childNode) => buildRoutingPlanTreeNode(childNode))
       : [],
-    kind,
+    kind: node.getRoutingNodeKind(),
     label: isPlanNode
       ? formatRoutingPlanTreeLabel(node.routingLabel || node.name || "")
       : String(

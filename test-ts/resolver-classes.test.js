@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
   AttributeResolutionPlan,
+  IdentifierResolutionPlan,
   RequestInput,
   ResolverPlan,
   RouteExecutionResolver,
@@ -166,4 +167,55 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
 
   assert.equal(plan.nodes.length, 1);
   assert.equal(plan.nodes[0], null);
+});
+
+test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
+  const pseMap = createLeafResolver("PSE-MAP");
+  const yahooIsin = createLeafResolver("YAHOO-ISIN");
+  const refs = createPlanRuntimeRefs({
+    looksLikeIsin(value) {
+      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
+    },
+    resolvePreferredYahooSymbol(symbol) {
+      return symbol;
+    },
+  });
+
+  const plan = buildPlanNodeFromSpec(
+    "IDENTIFIER:ISIN",
+    {
+      defaultNodeCodes: ["YAHOO-ISIN"],
+      nodeCodeByIsinCountry: {
+        PH: "PSE-MAP",
+      },
+      resolverClass: "IdentifierResolutionPlan",
+    },
+    (nodeCode) =>
+      ({
+        "PSE-MAP": pseMap,
+        "YAHOO-ISIN": yahooIsin,
+      })[nodeCode],
+    null,
+    {
+      extractIsinCountryCode(request) {
+        const ticker = String(request?.ticker || "").trim().toUpperCase();
+        return ticker.startsWith("ISIN:") ? ticker.slice(5, 7) : ticker.slice(0, 2);
+      },
+      refs,
+    },
+  );
+
+  assert.equal(plan instanceof IdentifierResolutionPlan, true);
+  assert.deepEqual(
+    plan.nodes.map((node) => node && node.name),
+    ["PSE-MAP", "YAHOO-ISIN"],
+  );
+  assert.equal(typeof plan.nodeSelector, "function");
+  assert.equal(plan.nodeSelector.requestDependent, true);
+  assert.deepEqual(
+    plan.getNodesForRequest(createRequestInput({ ticker: "PHY077751022" })).map(
+      (node) => node.name,
+    ),
+    ["PSE-MAP", "YAHOO-ISIN"],
+  );
 });

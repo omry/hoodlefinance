@@ -74,13 +74,18 @@ test("routing tree helpers format labels and recurse plan children", () => {
     describeRoutingNode() {
       return "YAHOO - Yahoo quote lookup";
     },
+    getRoutingNodeKind() {
+      return "leaf";
+    },
     name: "YAHOO",
   };
   const rootNode = {
     getRoutingNodes() {
       return [yahooNode];
     },
-    isRoutingNode: true,
+    getRoutingNodeKind() {
+      return "switch";
+    },
     name: "ROOT",
     routingLabel: "root",
   };
@@ -99,6 +104,25 @@ test("routing tree helpers format labels and recurse plan children", () => {
     ],
     kind: "switch",
     label: "ROOT",
+  });
+});
+
+test("routing tree uses explicit node kinds from the resolver", () => {
+  const selectorNode = {
+    getRoutingNodes() {
+      return [];
+    },
+    getRoutingNodeKind() {
+      return "switch";
+    },
+    name: "IDENTIFIER:ISIN",
+    routingLabel: "",
+  };
+
+  assert.deepEqual(buildRoutingPlanTreeNode(selectorNode), {
+    children: [],
+    kind: "switch",
+    label: "IDENTIFIER:ISIN",
   });
 });
 

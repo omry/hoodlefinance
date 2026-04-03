@@ -6,6 +6,7 @@ import type {
   ResolverPlanNode,
   RouteClassResolver,
   RouteJob,
+  RoutingNodeKind,
   RoutePathResolver,
   RouteStateBuilder,
   RuntimePlan,
@@ -80,6 +81,10 @@ export class Resolver {
 
   describe(request: RequestInput | ResolvedRequest): string {
     return describePlanSource(this.buildRuntimePlan(request));
+  }
+
+  getRoutingNodeKind(): RoutingNodeKind {
+    return "leaf";
   }
 
   describeRoutingNode(): string {
@@ -290,6 +295,10 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
     return this.getHandleableNodesForRequest(request).length > 0;
   }
 
+  getRoutingNodeKind(): RoutingNodeKind {
+    return this.isRoutingNode ? "switch" : "try each";
+  }
+
   buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
@@ -382,51 +391,16 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       }
     }
 
-    Object.keys(spec.nodeCodeByIsinCountry || {}).forEach(
-      (countryCode) => addNodeCode((spec.nodeCodeByIsinCountry || {})[countryCode] || ""),
-    );
     (spec.defaultNodeCodes || []).forEach(addNodeCode);
     (spec.nodeCodes || []).forEach(addNodeCode);
 
     return nodeCodes;
   }
 
-  static buildNodeSelector(spec: PlanSpec, extractIsinCountryCode: (request: RequestInput | ResolvedRequest | null) => string): NodeSelector | null {
-    const nodeCodeByIsinCountry = spec.nodeCodeByIsinCountry || null;
-    const defaultNodeCodes = (spec.defaultNodeCodes || []).map(normalizeNodeCode);
-
-    if (!nodeCodeByIsinCountry) {
-      return null;
-    }
-
-    const selector: NodeSelector = (nodes, request) => {
-      const nodeByCode: Record<string, ResolverNode> = {};
-      const selectedNodes: ResolverNode[] = [];
-      const countryCode = extractIsinCountryCode(request);
-      const countryNodeCode = normalizeNodeCode(nodeCodeByIsinCountry[countryCode] || "");
-
-      nodes.forEach((node) => {
-        nodeByCode[normalizeNodeCode(node?.name || "")] = node;
-      });
-
-      [countryNodeCode].concat(defaultNodeCodes).forEach((nodeCode) => {
-        if (nodeByCode[nodeCode] && !selectedNodes.includes(nodeByCode[nodeCode])) {
-          selectedNodes.push(nodeByCode[nodeCode]);
-        }
-      });
-
-      return selectedNodes;
-    };
-
-    selector.requestDependent = true;
-    return selector;
-  }
-
   static materializeOptions(
     spec: PlanSpec,
     overrides: Record<string, unknown> | null | undefined,
     refs: PlanRuntimeRefs,
-    extractIsinCountryCode: (request: RequestInput | ResolvedRequest | null) => string,
   ): ResolverPlanOptions {
     const sourceOptions = Object.assign({}, spec.options || {}, overrides || {});
     const materializedOptions = Object.assign({}, sourceOptions) as ResolverPlanOptions & {
@@ -436,7 +410,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       routePathRef?: string;
       routeStateBuilderRef?: string;
     };
-    const nodeSelector = this.buildNodeSelector(spec, extractIsinCountryCode);
 
     if (sourceOptions.routeClassRef) {
       materializedOptions.routeClass =
@@ -468,10 +441,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       delete materializedOptions.canHandleRef;
     }
 
-    if (nodeSelector) {
-      materializedOptions.nodeSelector = nodeSelector;
-    }
-
     return materializedOptions;
   }
 
@@ -483,8 +452,126 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       | ((nodeCode: string) => ResolverNode | null),
     overrides: Record<string, unknown> | null | undefined,
     refs: PlanRuntimeRefs,
-    extractIsinCountryCode: (request: RequestInput | ResolvedRequest | null) => string,
   ): ResolverPlan {
+    const resolveNodeByCode =
+      typeof resolverMap === "function"
+        ? resolverMap
+        : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
+
+    return new this(
+      code,
+      this.getSpecNodeCodes(spec).map((nodeCode) =>
+        resolveNodeByCode(nodeCode),
+      ) as ResolverNode[],
+      this.materializeOptions(spec, overrides, refs),
+    );
+  }
+}
+
+export class IdentifierResolutionPlan extends ResolverPlan {
+  static getSpecNodeCodes(spec: PlanSpec): string[] {
+    const nodeCodes = super.getSpecNodeCodes(spec);
+
+    Object.keys(spec.nodeCodeByIsinCountry || {}).forEach((countryCode) => {
+      const normalizedCode = normalizeNodeCode(
+        (spec.nodeCodeByIsinCountry || {})[countryCode] || "",
+      );
+
+      if (normalizedCode && !nodeCodes.includes(normalizedCode)) {
+        nodeCodes.unshift(normalizedCode);
+      }
+    });
+
+    return nodeCodes;
+  }
+
+  static buildCountryNodeSelector(
+    spec: PlanSpec,
+    extractIsinCountryCode: (
+      request: RequestInput | ResolvedRequest | null,
+    ) => string,
+  ): NodeSelector | null {
+    const nodeCodeByIsinCountry = spec.nodeCodeByIsinCountry || null;
+    const defaultNodeCodes = (spec.defaultNodeCodes || []).map(normalizeNodeCode);
+
+    if (!nodeCodeByIsinCountry) {
+      return null;
+    }
+
+    const selector: NodeSelector = (nodes, request) => {
+      const nodeByCode: Record<string, ResolverNode> = {};
+      const selectedNodes: ResolverNode[] = [];
+      const countryCode = extractIsinCountryCode(request);
+      const countryNodeCode = normalizeNodeCode(
+        nodeCodeByIsinCountry[countryCode] || "",
+      );
+
+      nodes.forEach((node) => {
+        nodeByCode[normalizeNodeCode(node?.name || "")] = node;
+      });
+
+      [countryNodeCode].concat(defaultNodeCodes).forEach((nodeCode) => {
+        if (nodeByCode[nodeCode] && !selectedNodes.includes(nodeByCode[nodeCode])) {
+          selectedNodes.push(nodeByCode[nodeCode]);
+        }
+      });
+
+      return selectedNodes;
+    };
+
+    selector.requestDependent = true;
+    return selector;
+  }
+
+  static materializeOptions(
+    spec: PlanSpec,
+    overrides: Record<string, unknown> | null | undefined,
+    refs: PlanRuntimeRefs,
+    extractIsinCountryCode?: (
+      request: RequestInput | ResolvedRequest | null,
+    ) => string,
+  ): ResolverPlanOptions {
+    if (typeof extractIsinCountryCode !== "function") {
+      throw new Error("IdentifierResolutionPlan requires extractIsinCountryCode().");
+    }
+
+    const materializedOptions = super.materializeOptions(
+      spec,
+      overrides,
+      refs,
+    );
+    const nodeSelector = this.buildCountryNodeSelector(
+      spec,
+      extractIsinCountryCode,
+    );
+
+    if (nodeSelector) {
+      materializedOptions.nodeSelector = nodeSelector;
+    }
+
+    return materializedOptions;
+  }
+
+  getRoutingNodeKind(): RoutingNodeKind {
+    return "switch";
+  }
+
+  static fromSpec(
+    code: string,
+    spec: PlanSpec,
+    resolverMap:
+      | Record<string, ResolverNode>
+      | ((nodeCode: string) => ResolverNode | null),
+    overrides: Record<string, unknown> | null | undefined,
+    refs: PlanRuntimeRefs,
+    extractIsinCountryCode?: (
+      request: RequestInput | ResolvedRequest | null,
+    ) => string,
+  ): IdentifierResolutionPlan {
+    if (typeof extractIsinCountryCode !== "function") {
+      throw new Error("IdentifierResolutionPlan requires extractIsinCountryCode().");
+    }
+
     const resolveNodeByCode =
       typeof resolverMap === "function"
         ? resolverMap
@@ -500,8 +587,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   }
 }
 
-export class IdentifierResolutionPlan extends ResolverPlan {}
-
 export class AttributeResolutionPlan extends ResolverPlan {}
 
 export const PLAN_RESOLVER_CLASSES_BY_NAME = {
@@ -513,7 +598,7 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
 export type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
 
 export interface PlanNodeBuilderDependencies {
-  extractIsinCountryCode: (
+  extractIsinCountryCode?: (
     request: RequestInput | ResolvedRequest | null,
   ) => string;
   refs: PlanRuntimeRefs;
@@ -536,12 +621,22 @@ export function buildPlanNodeFromSpec(
     );
   }
 
-  return PlanClass.fromSpec(
-    code,
-    spec,
-    resolveNode,
-    overrides,
-    deps.refs,
-    deps.extractIsinCountryCode,
-  );
+  if (PlanClass === IdentifierResolutionPlan) {
+    if (typeof deps.extractIsinCountryCode !== "function") {
+      throw new Error(
+        `IdentifierResolutionPlan "${code}" requires extractIsinCountryCode().`,
+      );
+    }
+
+    return IdentifierResolutionPlan.fromSpec(
+      code,
+      spec,
+      resolveNode,
+      overrides,
+      deps.refs,
+      deps.extractIsinCountryCode,
+    );
+  }
+
+  return PlanClass.fromSpec(code, spec, resolveNode, overrides, deps.refs);
 }

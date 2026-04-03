@@ -341,7 +341,8 @@ function formatRoutingTable(env = createCliEnvironment()) {
 function formatRoutingTreeNode(node, prefix = "", isLast = true, isRoot = false) {
   const connector = isRoot ? "" : isLast ? "└── " : "├── ";
   const nextPrefix = isRoot ? "" : `${prefix}${isLast ? "    " : "│   "}`;
-  const lines = [`${prefix}${connector}${node.label} [${node.kind}]`];
+  const kindSuffix = node.kind === "leaf" ? "" : ` [${node.kind}]`;
+  const lines = [`${prefix}${connector}${node.label}${kindSuffix}`];
 
   node.children.forEach((child, index) => {
     lines.push(
@@ -366,8 +367,10 @@ function formatRoutingTree(env = createCliEnvironment()) {
         env.materializePlanFromSpec("DEFAULT-ATTRIBUTE"),
       ];
     },
+    getRoutingNodeKind() {
+      return "switch";
+    },
     name: "ROOT",
-    isRoutingNode: true,
     routingLabel: "ROOT",
   });
   return formatRoutingTreeNode(rootNode, "", true, true);

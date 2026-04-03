@@ -6,6 +6,7 @@ import type {
 } from "./request";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
+export type RoutingNodeKind = "leaf" | "switch" | "try each";
 
 export type ResolutionStatus = "success" | "failure";
 
@@ -88,6 +89,7 @@ export interface ResolverLike {
   code: string;
   describe(request: RequestInput | ResolvedRequest): string;
   describeRoutingNode?(): string;
+  getRoutingNodeKind(): RoutingNodeKind;
   getGroupedSourceNames?(request: RequestInput | ResolvedRequest): string[];
   getGroupedSourceNamesForDisplay?(
     source: string,
