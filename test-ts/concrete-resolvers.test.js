@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
   DirectIdentifierResolver,
+  GoogleFxResolver,
   FunctionValueResolver,
   LocalFxResolver,
   PseIsinMapResolver,
@@ -131,6 +132,116 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
   assert.equal(results[0].status, "success");
   assert.equal(results[0].quote.regularMarketPrice, 1);
   assert.equal(results[0].quote.symbol, "USDUSD");
+});
+
+test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", () => {
+  const fxPair = {
+    baseCanonicalCode: "EUR",
+    baseDisplayCode: "EUR",
+    canonicalPair: "EURUSD",
+    displayQuoteCode: "USD",
+    googlePairSlug: "EUR-USD",
+    googleSymbol: "CURRENCY:EURUSD",
+    isSameCurrency: false,
+    pairDisplay: "EURUSD",
+    quoteCanonicalCode: "USD",
+    quoteDisplayCode: "USD",
+    scale: 1,
+    yahooChartSymbol: "EURUSD=X",
+  };
+  const html = `AF_initDataCallback({data:${JSON.stringify([
+    [
+      fxPair.googlePairSlug,
+      null,
+      null,
+      null,
+      null,
+      [1.25, 0.01],
+      null,
+      1.24,
+      null,
+      null,
+      null,
+      [1700000000],
+      null,
+      null,
+      null,
+      ["EUR", "USD", "Euro"],
+    ],
+  ])},sideChannel:{}});</script>`;
+  let cachedWrite = null;
+  const resolver = new GoogleFxResolver({
+    fetchText(url) {
+      assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
+      return html;
+    },
+    getCachedJson() {
+      return null;
+    },
+    putCachedJson(cacheKey, value, ttlSeconds) {
+      cachedWrite = { cacheKey, ttlSeconds, value };
+      return value;
+    },
+  });
+  const request = new FxRequest({
+    attribute: "price",
+    fxPair,
+    identifier: "EURUSD",
+    identifierResolutionMs: 0,
+  });
+
+  assert.equal(resolver.canHandle(request), true);
+  assert.deepEqual(resolver.buildRouteState(request), { fxPair });
+
+  const fetchedResults = resolver.executeBatch([
+    { routeState: { fxPair } },
+  ]);
+  assert.equal(fetchedResults[0].status, "success");
+  assert.equal(fetchedResults[0].quote.regularMarketPrice, 1.25);
+  assert.equal(fetchedResults[0].quote.symbol, "EURUSD");
+  assert.equal(fetchedResults[0].quote.shortName, "EURUSD");
+  assert.equal(
+    fetchedResults[0].quote.hoodlefinanceFxGoogleSymbol,
+    "CURRENCY:EURUSD",
+  );
+  assert.deepEqual(cachedWrite, {
+    cacheKey: "hoodlefinance:google-finance:EUR-USD",
+    ttlSeconds: 60,
+    value: {
+      currency: "USD",
+      exchangeDataDelayedBy: 0,
+      financialCurrency: "USD",
+      previousClose: 1.24,
+      regularMarketPreviousClose: 1.24,
+      regularMarketPrice: 1.25,
+      regularMarketTime: 1700000000,
+      shortName: "Euro (EUR / USD)",
+      symbol: "EURUSD",
+    },
+  });
+
+  const cachedResolver = new GoogleFxResolver({
+    fetchText() {
+      throw new Error("cache hit should not fetch Google Finance");
+    },
+    getCachedJson() {
+      return cachedWrite.value;
+    },
+    putCachedJson() {
+      throw new Error("cache hit should not write Google Finance cache");
+    },
+  });
+
+  const cachedResults = cachedResolver.executeBatch([
+    { routeState: { fxPair } },
+  ]);
+  assert.equal(cachedResults[0].status, "success");
+  assert.equal(cachedResults[0].quote.regularMarketPrice, 1.25);
+  assert.equal(cachedResults[0].quote.shortName, "EURUSD");
+  assert.equal(
+    cachedResults[0].quote.hoodlefinanceFxGoogleSymbol,
+    "CURRENCY:EURUSD",
+  );
 });
 
 test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup", () => {

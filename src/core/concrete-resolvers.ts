@@ -1,5 +1,5 @@
 import type { ResolverSpec, ResolverSpecOptions } from "./plan-specs";
-import { RequestInput, type ResolvedRequest } from "./request";
+import { FxRequest, RequestInput, type ResolvedRequest } from "./request";
 import { buildIsinIdentifierRouteState } from "./route-state";
 import {
   AttributeResolver,
@@ -11,7 +11,11 @@ import {
   buildTypedRequestFromResolvedTicker,
   extractIsinFromRequestInput,
 } from "./request-building";
-import { buildSameCurrencyQuote, isSameCurrencyFxPair } from "./fx-quotes";
+import { buildSameCurrencyQuote, decorateFxQuote, isSameCurrencyFxPair } from "./fx-quotes";
+import {
+  buildGoogleFinanceQuoteUrl,
+  extractGoogleFinanceFxPairQuote,
+} from "./google-fx";
 import {
   buildYahooIsinSearchUrl,
   extractYahooSymbolFromSearchResponse,
@@ -25,6 +29,7 @@ import {
 } from "./route-results";
 import type { RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
+import { buildFxQuoteRouteState } from "./route-state";
 
 export class DirectIdentifierResolver extends IdentifierResolver {
   constructor() {
@@ -109,6 +114,12 @@ export interface YahooIsinSearchResolverDependencies {
   ): YahooIsinSearchBatchResponse[];
   getCachedString(cacheKey: string): string;
   putCachedString(cacheKey: string, value: string, ttlSeconds: number): string;
+}
+
+export interface GoogleFxResolverDependencies {
+  fetchText(url: string): string;
+  getCachedJson(cacheKey: string): unknown;
+  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
 
 export class PseIsinMapResolver extends IdentifierResolver {
@@ -513,16 +524,111 @@ export class LocalFxResolver extends RouteExecutionResolver {
   }
 }
 
+export class GoogleFxResolver extends RouteExecutionResolver {
+  readonly fetchText: GoogleFxResolverDependencies["fetchText"];
+  readonly getCachedJson: GoogleFxResolverDependencies["getCachedJson"];
+  readonly putCachedJson: GoogleFxResolverDependencies["putCachedJson"];
+
+  constructor(deps: GoogleFxResolverDependencies) {
+    super("GOOGLE", "GOOGLE", {
+      isSourceOverrideable: true,
+      representativeTicker: "EURUSD",
+      routingDescription: "Google Finance FX quote lookup",
+    });
+    this.fetchText = deps.fetchText;
+    this.getCachedJson = deps.getCachedJson;
+    this.putCachedJson = deps.putCachedJson;
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return (
+      request instanceof FxRequest &&
+      !!request.fxPair &&
+      !isSameCurrencyFxPair(request.fxPair)
+    );
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof FxRequest)) {
+      return {};
+    }
+
+    return buildFxQuoteRouteState(request);
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results: Array<RouteResult | null> = jobs.map(() => null);
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const job = jobs[i];
+      if (!job) {
+        continue;
+      }
+
+      try {
+        const fxPair = job.routeState.fxPair as FxRequest["fxPair"];
+        const pairSlug = String(fxPair.googlePairSlug || "").trim();
+        const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
+        const cached = this.getCachedJson(cacheKey);
+
+        if (cached) {
+          results[i] = createRouteResult("success", {
+            quote: decorateFxQuote(
+              cached as Record<string, unknown>,
+              fxPair,
+            ),
+          });
+          continue;
+        }
+
+        const quote = extractGoogleFinanceFxPairQuote(
+          this.fetchText(buildGoogleFinanceQuoteUrl(pairSlug)),
+          fxPair,
+        );
+        this.putCachedJson(cacheKey, quote, 60);
+        results[i] = createRouteResult("success", {
+          quote: decorateFxQuote(quote, fxPair),
+        });
+      } catch (error) {
+        results[i] = createRouteResult("terminal_error", { error });
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    deps?: GoogleFxResolverDependencies,
+  ): GoogleFxResolver {
+    if (
+      !deps ||
+      typeof deps.fetchText !== "function" ||
+      typeof deps.getCachedJson !== "function" ||
+      typeof deps.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "GoogleFxResolver requires fetchText, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    return new this(deps);
+  }
+}
+
 export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   DirectIdentifierResolver,
   FunctionValueResolver,
   LocalFxResolver,
+  GoogleFxResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
 } as const;
 
 export interface ConcreteResolverMaterializationDependencies
   extends FunctionValueResolverDependencies {
+  googleFx?: GoogleFxResolverDependencies;
   resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
   yahooIsinSearch?: YahooIsinSearchResolverDependencies;
 }
@@ -538,6 +644,7 @@ export function createConcreteResolverMaterializationDependencies(
       FunctionValueResolver: {
         resolveFunctionsByRef: deps.resolveFunctionsByRef,
       },
+      GoogleFxResolver: deps.googleFx,
       PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
       YahooIsinSearchResolver: deps.yahooIsinSearch,
     },
