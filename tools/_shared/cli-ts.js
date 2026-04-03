@@ -281,6 +281,21 @@ function resolveQuoteForResolvedRequest(env, resolvedRequest, attemptedRoutes) {
   };
 }
 
+function lookupEnvelopeWithEnvironment(env, args) {
+  const attribute = String(args.attribute || "price").trim();
+  const requestInput = createRequestInput(args.ticker, attribute);
+
+  if (requestInput.classification === "fx" && requestInput.fxPair) {
+    return resolveFxRequest(env, requestInput);
+  }
+
+  if (extractIsinFromRequestInput(requestInput)) {
+    return resolveIsinRequest(env, requestInput);
+  }
+
+  return resolveDirectRequest(env, requestInput);
+}
+
 function resolveFxRequest(env, requestInput) {
   const resolvedRequest = buildTypedRequestFromParsedInput(
     requestInput,
@@ -351,20 +366,7 @@ function resolveDirectRequest(env, requestInput) {
 
 function lookupWithEnvironment(env, args) {
   const attribute = String(args.attribute || "price").trim();
-  const requestInput = createRequestInput(args.ticker, attribute);
-
-  if (requestInput.classification === "fx" && requestInput.fxPair) {
-    return applyRequestedAttribute(resolveFxRequest(env, requestInput), attribute);
-  }
-
-  if (extractIsinFromRequestInput(requestInput)) {
-    return applyRequestedAttribute(
-      resolveIsinRequest(env, requestInput),
-      attribute,
-    );
-  }
-
-  return applyRequestedAttribute(resolveDirectRequest(env, requestInput), attribute);
+  return applyRequestedAttribute(lookupEnvelopeWithEnvironment(env, args), attribute);
 }
 
 function formatLookupResult(result) {
@@ -381,6 +383,24 @@ function formatLookupResult(result) {
   }
 
   return result.value;
+}
+
+function formatEnvelopeResult(result) {
+  return JSON.stringify(
+    result,
+    (_key, value) => {
+      if (value instanceof Error) {
+        return {
+          message: value.message,
+          name: value.name,
+          stack: value.stack,
+        };
+      }
+
+      return value;
+    },
+    2,
+  );
 }
 
 function formatRoutingTable() {
@@ -518,6 +538,7 @@ function runSmokeSuite(env = createCliEnvironment()) {
 
 function printUsage() {
   console.error("Usage: npm run hoodlefinance.ts -- <ticker> [attribute]");
+  console.error("       npm run hoodlefinance.ts -- --envelope <ticker> [attribute]");
   console.error("       npm run hoodlefinance.ts -- --routing");
   console.error("       npm run hoodlefinance.ts -- --routing-table");
   console.error("       npm run hoodlefinance.ts -- --trace <symbol>");
@@ -568,6 +589,20 @@ function main(argv = process.argv.slice(2)) {
     firstArg === "routing-tree"
   ) {
     console.log(formatRoutingTree());
+    return;
+  }
+
+  if (firstArg === "--envelope" || firstArg === "envelope") {
+    if (!secondArg) {
+      printUsage();
+      process.exit(1);
+    }
+
+    const result = lookupEnvelopeWithEnvironment(env, {
+      attribute: thirdArg || "price",
+      ticker: secondArg,
+    });
+    console.log(formatEnvelopeResult(result));
     return;
   }
 
@@ -627,10 +662,12 @@ if (require.main === module) {
 module.exports = {
   createCliEnvironment,
   formatLookupResult,
+  formatEnvelopeResult,
   formatTraceOutput,
   formatRoutingTrace,
   formatRoutingTable,
   formatRoutingTree,
+  lookupEnvelopeWithEnvironment,
   lookupWithEnvironment,
   main,
   runSmokeSuite,

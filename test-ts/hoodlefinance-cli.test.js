@@ -3,9 +3,11 @@ const test = require("node:test");
 
 const {
   formatLookupResult,
+  formatEnvelopeResult,
   formatTraceOutput,
   formatRoutingTable,
   formatRoutingTree,
+  lookupEnvelopeWithEnvironment,
   lookupWithEnvironment,
   runSmokeSuite,
 } = require("../tools/_shared/cli-ts.js");
@@ -224,6 +226,23 @@ test("lookup formatting and routing views stay readable", () => {
   assert.match(traceOutput, /^result: success$/m);
   assert.match(formatRoutingTable(), /classification\texample\troute/);
   assert.match(formatRoutingTree(), /^ROOT$/m);
+});
+
+test("lookupEnvelopeWithEnvironment preserves the raw quote envelope", () => {
+  const env = createFakeEnvironment();
+  const envelope = lookupEnvelopeWithEnvironment(env, {
+    attribute: "price",
+    ticker: "TLV:KSMF59",
+  });
+
+  assert.equal(envelope.status, "success");
+  assert.equal(envelope.kind, "quote");
+  assert.equal(envelope.route, "TICKER -> TRADINGVIEW-FUND");
+  assert.equal(envelope.value.regularMarketPrice, 17.25);
+
+  const output = formatEnvelopeResult(envelope);
+  assert.match(output, /"value": \{/m);
+  assert.match(output, /"regularMarketPrice": 17\.25/m);
 });
 
 test("lookup formatting returns null for failures", () => {
