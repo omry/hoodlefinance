@@ -3,6 +3,10 @@ import {
   extractYahooExchangeFromSymbol,
   normalizeIsraeliFundCode,
 } from "./exchange-symbols";
+import {
+  buildPseSecurityFrameUrl,
+  extractPseFrameQuote,
+} from "./pse-quotes";
 
 const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
 
@@ -129,6 +133,11 @@ export interface ResolveIsinAttributeDependencies {
 export interface ResolveIsinAttributeContext {
   sourceOverride?: string;
   tickerInput?: string;
+}
+
+export interface DirectIsinAttributeResolution {
+  route: string;
+  value: string;
 }
 
 function extractQuoteSymbol(quote: Record<string, unknown>): string {
@@ -378,4 +387,105 @@ export function resolveIsinAttributeValue(
   throw new Error(
     `${source} ISIN lookup is not yet supported in the TypeScript CLI.`,
   );
+}
+
+function extractLonCode(tickerInput: string): string {
+  const normalized = String(tickerInput || "").trim().toUpperCase();
+
+  if (normalized.startsWith("LON:")) {
+    return normalized.slice(4).trim().toUpperCase();
+  }
+
+  if (normalized.endsWith(".L")) {
+    return normalized.slice(0, -2).trim().toUpperCase();
+  }
+
+  return normalized;
+}
+
+function extractLonIsinFromHtml(html: string, code: string): string {
+  const normalizedCode = String(code || "").trim().toUpperCase();
+  const pattern =
+    /UpdateOpener\(\s*'[^']*'\s*,\s*'([^']+)'\s*\)/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(String(html || "")))) {
+    const payload = String(match[1] || "").trim().split("|");
+    const isin = payload[0] ? String(payload[0]).trim().toUpperCase() : "";
+    const rowCode = payload[5] ? String(payload[5]).trim().toUpperCase() : "";
+
+    if (isin && rowCode === normalizedCode) {
+      return isin;
+    }
+  }
+
+  return "";
+}
+
+export function resolveDirectIsinAttributeValue(
+  context: ResolveIsinAttributeContext,
+  deps: ResolveIsinAttributeDependencies,
+): DirectIsinAttributeResolution | null {
+  const tickerInput = String(context.tickerInput || "").trim();
+  const directIsinInput = extractDirectIsinInput(tickerInput, deps.looksLikeIsin);
+
+  if (directIsinInput) {
+    return {
+      route: "DIRECT",
+      value: directIsinInput,
+    };
+  }
+
+  const normalizedTicker = tickerInput.toUpperCase();
+
+  if (normalizedTicker.startsWith("PSE:")) {
+    const symbol = normalizedTicker.slice(4).trim().toUpperCase();
+
+    if (!symbol) {
+      throw new Error(
+        "Could not determine the ticker code needed for PSE ISIN lookup.",
+      );
+    }
+
+    const quote = extractPseFrameQuote(
+      deps.fetchText(buildPseSecurityFrameUrl(symbol)),
+      symbol,
+    );
+    const isin = String(quote.isin || "").trim().toUpperCase();
+
+    if (!isin) {
+      throw new Error("No PSE ISIN is available for this ticker.");
+    }
+
+    return {
+      route: "PSE",
+      value: isin,
+    };
+  }
+
+  if (normalizedTicker.startsWith("LON:") || normalizedTicker.endsWith(".L")) {
+    const code = extractLonCode(tickerInput);
+
+    if (!code) {
+      throw new Error(
+        "Could not determine the ticker code needed for LON ISIN lookup.",
+      );
+    }
+
+    const html = deps.fetchText(
+      `https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=${encodeURIComponent(code)}`,
+    );
+    const isin = extractLonIsinFromHtml(html, code);
+
+    if (!isin) {
+      throw new Error(`No LON ISIN is available for "${code}".`);
+    }
+
+    return {
+      route: "LON",
+      value: isin,
+    };
+  }
+
+  return null;
 }

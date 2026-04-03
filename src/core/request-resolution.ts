@@ -4,8 +4,10 @@ import type {
   ResolverPlanNode,
 } from "./planner";
 import type { RequestInput, ResolvedRequest } from "./request";
-import { extractIsinFromRequestInput } from "./request-building";
-import { resolveIsinAttributeValue } from "./isin-lookup";
+import {
+  resolveDirectIsinAttributeValue,
+  resolveIsinAttributeValue,
+} from "./isin-lookup";
 import { extractAttributeValue } from "./attribute-extraction";
 import { buildSourceOverrideUnavailableError } from "./plan-selection";
 
@@ -265,16 +267,34 @@ export function resolveRequestValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
 ): LookupEnvelopeResult {
-  const directIsin = extractIsinFromRequestInput(requestInput);
+  if (requestInput.attributeType === "isin") {
+    try {
+      validateDeferredLookupModes(requestInput);
 
-  if (requestInput.attributeType === "isin" && directIsin) {
-    return {
-      attemptedRoutes: ["DIRECT"],
-      kind: "quote",
-      route: "DIRECT",
-      status: "success",
-      value: directIsin,
-    };
+      const directResolution = resolveDirectIsinAttributeValue(
+        {
+          tickerInput: requestInput.ticker,
+        },
+        {
+          fetchText: env.fetchText,
+          getCachedString: env.getCachedString,
+          looksLikeIsin: env.looksLikeIsin,
+          putCachedString: env.putCachedString,
+        },
+      );
+
+      if (directResolution) {
+        return {
+          attemptedRoutes: [directResolution.route],
+          kind: "quote",
+          route: directResolution.route,
+          status: "success",
+          value: directResolution.value,
+        };
+      }
+    } catch (error) {
+      return failureResult("(none)", [], error);
+    }
   }
 
   return projectLookupValue(
