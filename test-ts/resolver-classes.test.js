@@ -186,13 +186,7 @@ test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
         "YAHOO-ISIN": yahooIsin,
       })[nodeCode],
     null,
-    {
-      extractIsinCountryCode(request) {
-        const ticker = String(request?.ticker || "").trim().toUpperCase();
-        return ticker.startsWith("ISIN:") ? ticker.slice(5, 7) : ticker.slice(0, 2);
-      },
-      refs,
-    },
+    { refs },
   );
 
   assert.equal(plan instanceof IdentifierResolutionPlan, true);

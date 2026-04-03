@@ -98,9 +98,7 @@ export function listSourceOverridePlanCodes(
 
 export interface DefaultPlanMaterializationDependencies
   extends Omit<PlanMaterializationDependencies, "buildPlanNode">,
-    PlanRuntimeRefDependencies {
-  extractIsinCountryCode(request: { ticker?: string }): string;
-}
+    PlanRuntimeRefDependencies {}
 
 export function createDefaultPlanMaterializationDependencies(
   deps: DefaultPlanMaterializationDependencies,
@@ -108,28 +106,6 @@ export function createDefaultPlanMaterializationDependencies(
   return {
     buildPlanNode(code, spec, resolveNode, overrides) {
       return buildPlanNodeFromSpec(code, spec, resolveNode, overrides, {
-        extractIsinCountryCode(
-          request: { input?: { identifier?: unknown }; ticker?: unknown } | null,
-        ) {
-          if (request && "ticker" in request) {
-            const requestWithTicker = request as {
-              ticker?: unknown;
-            };
-
-            return deps.extractIsinCountryCode({
-              ticker: String(requestWithTicker.ticker ?? "").trim(),
-            });
-          }
-
-          if (request && "input" in request) {
-            const identifier = String(request.input?.identifier || "").trim();
-            return deps.extractIsinCountryCode({
-              ticker: identifier,
-            });
-          }
-
-          return deps.extractIsinCountryCode({});
-        },
         refs: createPlanRuntimeRefs(deps),
       });
     },

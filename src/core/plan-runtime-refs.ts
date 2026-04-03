@@ -94,6 +94,7 @@ export function createPlanRuntimeRefs(
 ): PlanRuntimeRefs {
   return {
     canHandleByRef: PLAN_CAN_HANDLE_BY_REF,
+    looksLikeIsin: deps.looksLikeIsin,
     nodeSelectorByRef: PLAN_NODE_SELECTOR_BY_REF,
     routeClassByRef: PLAN_ROUTE_CLASS_BY_REF,
     routePathByRef: PLAN_ROUTE_PATH_BY_REF,
@@ -106,6 +107,7 @@ export interface PlanRuntimeRefs {
     string,
     (request: RequestInput | ResolvedRequest) => boolean
   >;
+  looksLikeIsin(value: string): boolean;
   nodeSelectorByRef: Record<string, NodeSelector>;
   routeClassByRef: Record<string, RouteClassResolver>;
   routePathByRef: Record<string, RoutePathResolver>;

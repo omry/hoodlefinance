@@ -1,5 +1,9 @@
 import type { PlanSpec, ResolverSpec } from "./plan-specs";
 
+function definePlanSpec<T extends PlanSpec>(spec: T): T {
+  return spec;
+}
+
 export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
   "DIRECT-IDENTIFIER": {
     resolverClass: "DirectIdentifierResolver",
@@ -75,7 +79,7 @@ export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
 };
 
 export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
-  "IDENTIFIER:ISIN": {
+  "IDENTIFIER:ISIN": definePlanSpec({
     resolverClass: "IdentifierResolutionPlan",
     nodeCodeByIsinCountry: {
       PH: "PSE-MAP",
@@ -84,7 +88,7 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     options: {
       routeStateBuilderRef: "ISIN_IDENTIFIER",
     },
-  },
+  }),
   "QUOTE:FX-SAME": {
     nodeCodes: ["LOCAL"],
     resolverClass: "AttributeResolutionPlan",

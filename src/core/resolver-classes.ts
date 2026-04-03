@@ -48,6 +48,30 @@ function normalizeNodeCode(nodeCode: string): string {
     .toUpperCase();
 }
 
+function extractIsinCountryCodeFromPlanRequest(
+  request: RequestInput | ResolvedRequest | null,
+  looksLikeIsin: (value: string) => boolean,
+): string {
+  const ticker =
+    request && "ticker" in request
+      ? String(request.ticker ?? "").trim()
+      : request && "input" in request
+        ? String(request.input?.identifier ?? "").trim()
+        : "";
+  const upperTicker = ticker.toUpperCase();
+  const isin = looksLikeIsin(ticker)
+    ? upperTicker
+    : upperTicker.startsWith("ISIN:")
+      ? upperTicker.slice(5).trim()
+      : "";
+
+  return isin ? isin.slice(0, 2).toUpperCase() : "";
+}
+
+interface IdentifierResolutionPlanSpec extends PlanSpec {
+  nodeCodeByIsinCountry?: Record<string, string>;
+}
+
 export class Resolver {
   readonly code: string;
   readonly isSourceOverrideable: boolean;
@@ -472,10 +496,13 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 export class IdentifierResolutionPlan extends ResolverPlan {
   static getSpecNodeCodes(spec: PlanSpec): string[] {
     const nodeCodes = super.getSpecNodeCodes(spec);
+    const nodeCodeByIsinCountry = (
+      spec as IdentifierResolutionPlanSpec
+    ).nodeCodeByIsinCountry || null;
 
-    Object.keys(spec.nodeCodeByIsinCountry || {}).forEach((countryCode) => {
+    Object.keys(nodeCodeByIsinCountry || {}).forEach((countryCode) => {
       const normalizedCode = normalizeNodeCode(
-        (spec.nodeCodeByIsinCountry || {})[countryCode] || "",
+        (nodeCodeByIsinCountry || {})[countryCode] || "",
       );
 
       if (normalizedCode && !nodeCodes.includes(normalizedCode)) {
@@ -488,11 +515,11 @@ export class IdentifierResolutionPlan extends ResolverPlan {
 
   static buildCountryNodeSelector(
     spec: PlanSpec,
-    extractIsinCountryCode: (
-      request: RequestInput | ResolvedRequest | null,
-    ) => string,
+    refs: PlanRuntimeRefs,
   ): NodeSelector | null {
-    const nodeCodeByIsinCountry = spec.nodeCodeByIsinCountry || null;
+    const nodeCodeByIsinCountry = (
+      spec as IdentifierResolutionPlanSpec
+    ).nodeCodeByIsinCountry || null;
     const defaultNodeCodes = (spec.defaultNodeCodes || []).map(normalizeNodeCode);
 
     if (!nodeCodeByIsinCountry) {
@@ -502,7 +529,10 @@ export class IdentifierResolutionPlan extends ResolverPlan {
     const selector: NodeSelector = (nodes, request) => {
       const nodeByCode: Record<string, ResolverNode> = {};
       const selectedNodes: ResolverNode[] = [];
-      const countryCode = extractIsinCountryCode(request);
+      const countryCode = extractIsinCountryCodeFromPlanRequest(
+        request,
+        refs.looksLikeIsin,
+      );
       const countryNodeCode = normalizeNodeCode(
         nodeCodeByIsinCountry[countryCode] || "",
       );
@@ -530,12 +560,6 @@ export class IdentifierResolutionPlan extends ResolverPlan {
     refs: PlanRuntimeRefs,
     deps?: PlanNodeBuilderDependencies,
   ): ResolverPlanOptions {
-    const extractIsinCountryCode = deps?.extractIsinCountryCode;
-
-    if (typeof extractIsinCountryCode !== "function") {
-      throw new Error("IdentifierResolutionPlan requires extractIsinCountryCode().");
-    }
-
     const materializedOptions = super.materializeOptions(
       spec,
       overrides,
@@ -544,7 +568,7 @@ export class IdentifierResolutionPlan extends ResolverPlan {
     );
     const nodeSelector = this.buildCountryNodeSelector(
       spec,
-      extractIsinCountryCode,
+      refs,
     );
 
     if (nodeSelector) {
@@ -593,9 +617,6 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
 export type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
 
 export interface PlanNodeBuilderDependencies {
-  extractIsinCountryCode?: (
-    request: RequestInput | ResolvedRequest | null,
-  ) => string;
   refs: PlanRuntimeRefs;
 }
 

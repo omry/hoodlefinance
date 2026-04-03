@@ -40,7 +40,6 @@ export interface PlanSpecOptions extends ResolverSpecOptions {
 
 export interface PlanSpec {
   defaultNodeCodes?: string[];
-  nodeCodeByIsinCountry?: Record<string, string>;
   nodeCodes?: string[];
   options?: PlanSpecOptions;
   resolverClass: ResolverClassName;

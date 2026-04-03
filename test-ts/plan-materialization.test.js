@@ -126,11 +126,6 @@ test("default plan materialization builds typed resolver plans from runtime refs
   const yahoo = createResolver("YAHOO");
   const tradingview = createResolver("TRADINGVIEW-FUND");
   const deps = createDefaultPlanMaterializationDependencies({
-    extractIsinCountryCode(request) {
-      return extractIsinCountryCode(request || {}, (value) =>
-        /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value)),
-      );
-    },
     looksLikeIsin(value) {
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
     },
