@@ -9,6 +9,7 @@ const {
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
+  TradingviewFundResolver,
   RequestInput,
   FxRequest,
   EquityRequest,
@@ -326,6 +327,141 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
       symbol: "GOOG",
     },
   });
+});
+
+test("TradingviewFundResolver resolves cached and fetched TradingView fund quotes", () => {
+  const html = `
+    <html>
+      <script>
+        window.initData.symbolInfo = {
+          "resolved_symbol":"TASE:KSMF59",
+          "currency":"ILS",
+          "description":"KSM KSMF59",
+          "short_name":"KSMF59",
+          "isin_displayed":"IL0000000001"
+        };
+      </script>
+      trades at 17.25 ILS today
+    </html>
+  `;
+
+  const cachedWrites = [];
+  const cachedResolver = new TradingviewFundResolver({
+    fetchAllInChunks(_source, requests) {
+      assert.deepEqual(requests, []);
+      return [];
+    },
+    getCachedJson(cacheKey) {
+      return cacheKey === "hoodlefinance:tradingview:quote:KSMF59.TA"
+        ? {
+            currency: "ILS",
+            exchangeName: "TASE",
+            financialCurrency: "ILS",
+            longName: "KSM KSMF59",
+            regularMarketPrice: 17.25,
+            shortName: "KSMF59",
+            symbol: "KSMF59.TA",
+          }
+        : null;
+    },
+    putCachedJson(cacheKey, value, ttlSeconds) {
+      cachedWrites.push({ cacheKey, ttlSeconds, value });
+      return value;
+    },
+  });
+  const cachedRequest = new EquityRequest({
+    attribute: "price",
+    allowTradingviewFallback: true,
+    exchange: "TLV",
+    identifier: "TLV:KSMF59",
+    identifierResolutionMs: 0,
+    symbol: "KSM.F59",
+    yahooSymbol: "KSMF59.TA",
+  });
+
+  assert.equal(cachedResolver.canHandle(cachedRequest), true);
+  assert.deepEqual(cachedResolver.buildRouteState(cachedRequest), {
+    yahooSymbol: "KSMF59.TA",
+  });
+
+  const cachedResult = cachedResolver.resolve(cachedRequest);
+  assert.equal(cachedResult.status, "success");
+  assert.equal(cachedResult.value.regularMarketPrice, 17.25);
+  assert.equal(cachedResult.value.symbol, "KSMF59.TA");
+  assert.deepEqual(cachedWrites, [
+    {
+      cacheKey: "hoodlefinance:KSMF59.TA",
+      ttlSeconds: 60,
+      value: {
+        currency: "ILS",
+        exchangeName: "TASE",
+        financialCurrency: "ILS",
+        longName: "KSM KSMF59",
+        regularMarketPrice: 17.25,
+        shortName: "KSMF59",
+        symbol: "KSMF59.TA",
+      },
+    },
+  ]);
+
+  const fetchedWrites = [];
+  const fetchedResolver = new TradingviewFundResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return html;
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedJson() {
+      return null;
+    },
+    putCachedJson(cacheKey, value, ttlSeconds) {
+      fetchedWrites.push({ cacheKey, ttlSeconds, value });
+      return value;
+    },
+  });
+
+  const fetchedResult = fetchedResolver.resolve(cachedRequest);
+  assert.equal(fetchedResult.status, "success");
+  assert.equal(fetchedResult.value.regularMarketPrice, 17.25);
+  assert.equal(fetchedResult.value.longName, "KSM KSMF59");
+  assert.deepEqual(fetchedWrites, [
+    {
+      cacheKey: "hoodlefinance:tradingview:quote:KSMF59.TA",
+      ttlSeconds: 60,
+      value: {
+        currency: "ILS",
+        exchangeName: "TASE",
+        financialCurrency: "ILS",
+        isin: "IL0000000001",
+        longName: "KSM KSMF59",
+        regularMarketPrice: 17.25,
+        shortName: "KSMF59",
+        symbol: "KSMF59.TA",
+      },
+    },
+    {
+      cacheKey: "hoodlefinance:KSMF59.TA",
+      ttlSeconds: 60,
+      value: {
+        currency: "ILS",
+        exchangeName: "TASE",
+        financialCurrency: "ILS",
+        isin: "IL0000000001",
+        longName: "KSM KSMF59",
+        regularMarketPrice: 17.25,
+        shortName: "KSMF59",
+        symbol: "KSMF59.TA",
+      },
+    },
+  ]);
 });
 
 test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup", () => {

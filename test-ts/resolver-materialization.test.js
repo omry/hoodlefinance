@@ -9,7 +9,9 @@ const {
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
+  TradingviewFundResolver,
   FxRequest,
+  EquityRequest,
   RequestInput,
   createConcreteResolverMaterializationDependencies,
   getMaterializedResolverByCode,
@@ -111,6 +113,9 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       YAHOO: {
         resolverClass: "YahooQuoteResolver",
       },
+      "TRADINGVIEW-FUND": {
+        resolverClass: "TradingviewFundResolver",
+      },
       GOOGLE: {
         resolverClass: "GoogleFxResolver",
       },
@@ -172,6 +177,27 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
           return value;
         },
       },
+      tradingviewFund: {
+        fetchAllInChunks(_source, requests) {
+          return requests.map((request) => ({
+            request,
+            response: {
+              getContentText() {
+                return `\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `;
+              },
+              getResponseCode() {
+                return 200;
+              },
+            },
+          }));
+        },
+        getCachedJson() {
+          return null;
+        },
+        putCachedJson(_cacheKey, value) {
+          return value;
+        },
+      },
       googleFx: {
         fetchText(url) {
           assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
@@ -214,6 +240,10 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
   assert.equal(registry.byCode.GOOGLE instanceof GoogleFxResolver, true);
   assert.equal(registry.byCode.YAHOO instanceof YahooQuoteResolver, true);
+  assert.equal(
+    registry.byCode["TRADINGVIEW-FUND"] instanceof TradingviewFundResolver,
+    true,
+  );
   assert.equal(registry.byCode["PSE-MAP"] instanceof PseIsinMapResolver, true);
   assert.equal(
     registry.byCode["YAHOO-ISIN"] instanceof YahooIsinSearchResolver,
@@ -320,4 +350,20 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     googleResolved.value.hoodlefinanceFxGoogleSymbol,
     "CURRENCY:EURUSD",
   );
+
+  const tradingviewResolved = registry.byCode["TRADINGVIEW-FUND"].resolve(
+    new EquityRequest({
+      attribute: "price",
+      allowTradingviewFallback: true,
+      exchange: "TLV",
+      identifier: "TLV:KSMF59",
+      identifierResolutionMs: 0,
+      symbol: "KSM.F59",
+      yahooSymbol: "KSMF59.TA",
+    }),
+  );
+
+  assert.equal(tradingviewResolved.status, "success");
+  assert.equal(tradingviewResolved.value.regularMarketPrice, 17.25);
+  assert.equal(tradingviewResolved.value.symbol, "KSMF59.TA");
 });

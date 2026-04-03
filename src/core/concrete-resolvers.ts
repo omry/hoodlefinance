@@ -32,6 +32,11 @@ import {
   type YahooQuoteResponseLike,
 } from "./yahoo-quote";
 import {
+  buildIsraeliFundTradingviewFallbackInfo,
+  extractTradingviewFundQuoteFromResponse,
+  type TradingviewQuoteResponseLike,
+} from "./tradingview-fund";
+import {
   createResolutionFailure,
   createResolutionSuccess,
   createRouteResult,
@@ -150,6 +155,33 @@ export interface YahooQuoteResolverDependencies {
       yahooSymbol: string;
     };
     response?: YahooQuoteResponseLike;
+  }>;
+  getCachedJson(cacheKey: string): unknown;
+  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
+}
+
+export interface TradingviewFundResolverDependencies {
+  fetchAllInChunks(
+    source: string,
+    requests: Array<{
+      cacheKey: string;
+      expectedSymbol: string;
+      index: number;
+      primaryCacheKey: string;
+      url: string;
+      yahooSymbol: string;
+    }>,
+  ): Array<{
+    error?: unknown;
+    request: {
+      cacheKey: string;
+      expectedSymbol: string;
+      index: number;
+      primaryCacheKey: string;
+      url: string;
+      yahooSymbol: string;
+    };
+    response?: TradingviewQuoteResponseLike;
   }>;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
@@ -805,6 +837,129 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
   }
 }
 
+export class TradingviewFundResolver extends RouteExecutionResolver {
+  readonly fetchAllInChunks:
+    | TradingviewFundResolverDependencies["fetchAllInChunks"];
+  readonly getCachedJson: TradingviewFundResolverDependencies["getCachedJson"];
+  readonly putCachedJson: TradingviewFundResolverDependencies["putCachedJson"];
+
+  constructor(deps: TradingviewFundResolverDependencies) {
+    super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW", {
+      representativeTicker: "TLV:KSMF59",
+      routingDescription: "TradingView fund quote lookup",
+    });
+    this.fetchAllInChunks = deps.fetchAllInChunks;
+    this.getCachedJson = deps.getCachedJson;
+    this.putCachedJson = deps.putCachedJson;
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return request instanceof EquityRequest && request.allowTradingviewFallback;
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof EquityRequest)) {
+      return {};
+    }
+
+    return {
+      yahooSymbol: request.yahooSymbol,
+    };
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results: Array<RouteResult | null> = jobs.map(() => null);
+    const requests: Array<{
+      cacheKey: string;
+      expectedSymbol: string;
+      index: number;
+      primaryCacheKey: string;
+      url: string;
+      yahooSymbol: string;
+    }> = [];
+
+    for (let i = 0; i < jobs.length; i += 1) {
+      const job = jobs[i];
+      if (!job) {
+        continue;
+      }
+
+      const fallbackInfo = buildIsraeliFundTradingviewFallbackInfo(
+        String(job.routeState.yahooSymbol || ""),
+      );
+      const cacheKey = `hoodlefinance:tradingview:quote:${fallbackInfo.yahooSymbol}`;
+      const primaryCacheKey = `hoodlefinance:${fallbackInfo.yahooSymbol}`;
+      const cached = this.getCachedJson(cacheKey);
+
+      if (cached) {
+        this.putCachedJson(primaryCacheKey, cached, 60);
+        results[i] = createRouteResult("success", {
+          quote: cached,
+        });
+        continue;
+      }
+
+      requests.push({
+        cacheKey,
+        expectedSymbol: fallbackInfo.expectedSymbol,
+        index: i,
+        primaryCacheKey,
+        url: fallbackInfo.url,
+        yahooSymbol: fallbackInfo.yahooSymbol,
+      });
+    }
+
+    const responses = this.fetchAllInChunks("tradingview-quote", requests);
+
+    for (const responseItem of responses) {
+      if (responseItem.error) {
+        results[responseItem.request.index] = createRouteResult("terminal_error", {
+          error: responseItem.error,
+        });
+        continue;
+      }
+
+      try {
+        const quote = extractTradingviewFundQuoteFromResponse(
+          responseItem.response as TradingviewQuoteResponseLike,
+          responseItem.request.yahooSymbol,
+          responseItem.request.expectedSymbol,
+        );
+        this.putCachedJson(responseItem.request.cacheKey, quote, 60);
+        this.putCachedJson(responseItem.request.primaryCacheKey, quote, 60);
+        results[responseItem.request.index] = createRouteResult("success", {
+          quote,
+        });
+      } catch (error) {
+        results[responseItem.request.index] = createRouteResult("terminal_error", {
+          error,
+        });
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    deps?: TradingviewFundResolverDependencies,
+  ): TradingviewFundResolver {
+    if (
+      !deps ||
+      typeof deps.fetchAllInChunks !== "function" ||
+      typeof deps.getCachedJson !== "function" ||
+      typeof deps.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "TradingviewFundResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    return new this(deps);
+  }
+}
+
 export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   DirectIdentifierResolver,
   FunctionValueResolver,
@@ -813,6 +968,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
+  TradingviewFundResolver,
 } as const;
 
 export interface ConcreteResolverMaterializationDependencies
@@ -821,6 +977,7 @@ export interface ConcreteResolverMaterializationDependencies
   resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
   yahooIsinSearch?: YahooIsinSearchResolverDependencies;
   yahooQuote?: YahooQuoteResolverDependencies;
+  tradingviewFund?: TradingviewFundResolverDependencies;
 }
 
 export function createConcreteResolverMaterializationDependencies(
@@ -838,6 +995,7 @@ export function createConcreteResolverMaterializationDependencies(
       PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
       YahooIsinSearchResolver: deps.yahooIsinSearch,
       YahooQuoteResolver: deps.yahooQuote,
+      TradingviewFundResolver: deps.tradingviewFund,
     },
     resolverClassesByName: {
       ...CONCRETE_RESOLVER_CLASSES_BY_NAME,

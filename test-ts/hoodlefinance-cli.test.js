@@ -15,6 +15,21 @@ function createFakeEnvironment() {
     directIdentifierResolver: {
       name: "DIRECT-IDENTIFIER",
       resolve(request) {
+        if (request && request.ticker === "TLV:KSMF59") {
+          return {
+            elapsedMs: 0,
+            status: "success",
+            value: {
+              attribute: request.attribute,
+              identifier: request.identifier,
+              requestType: "equity",
+              symbol: "KSMF59",
+              yahooSymbol: "KSM.F59.TA",
+              allowTradingviewFallback: true,
+            },
+          };
+        }
+
         return {
           elapsedMs: 0,
           status: "success",
@@ -105,7 +120,15 @@ function createFakeEnvironment() {
       getRouteClass() {
         return "TICKER";
       },
-      resolve() {
+      resolve(request) {
+        if (request && request.yahooSymbol === "KSM.F59.TA") {
+          return {
+            elapsedMs: 0,
+            error: "not found",
+            status: "failure",
+          };
+        }
+
         return {
           elapsedMs: 0,
           status: "success",
@@ -113,6 +136,28 @@ function createFakeEnvironment() {
             currency: "USD",
             regularMarketPrice: 123.45,
             symbol: "GOOG",
+          },
+        };
+      },
+    },
+    tradingviewFundResolver: {
+      name: "TRADINGVIEW-FUND",
+      traceLabel: "TRADINGVIEW",
+      canHandle(request) {
+        return !!request && request.requestType === "equity";
+      },
+      resolve() {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: {
+            currency: "ILS",
+            exchangeName: "TASE",
+            financialCurrency: "ILS",
+            longName: "KSM KSMF59",
+            regularMarketPrice: 17.25,
+            shortName: "KSMF59",
+            symbol: "KSMF59.TA",
           },
         };
       },
@@ -154,6 +199,14 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   assert.equal(isin.route, "TICKER -> YAHOO");
   assert.equal(isin.status, "success");
   assert.equal(isin.value, 123.45);
+
+  const tradingview = lookupWithEnvironment(env, {
+    attribute: "price",
+    ticker: "TLV:KSMF59",
+  });
+  assert.equal(tradingview.route, "TICKER -> TRADINGVIEW-FUND");
+  assert.equal(tradingview.status, "success");
+  assert.equal(tradingview.value, 17.25);
 });
 
 test("lookup formatting and routing views stay readable", () => {

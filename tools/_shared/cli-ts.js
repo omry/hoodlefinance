@@ -8,6 +8,7 @@ const {
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
+  TradingviewFundResolver,
 } = require("../../dist/ts/core/concrete-resolvers.js");
 const {
   buildTypedRequestFromParsedInput,
@@ -136,6 +137,23 @@ function createCliEnvironment() {
       getCachedJson: jsonCache.getCachedJson,
       putCachedJson: jsonCache.putCachedJson,
     }),
+    tradingviewFundResolver: new TradingviewFundResolver({
+      fetchAllInChunks(_source, requests) {
+        return requests.map((request) => ({
+          request,
+          response: {
+            getContentText() {
+              return syncFetchText(request.url);
+            },
+            getResponseCode() {
+              return 200;
+            },
+          },
+        }));
+      },
+      getCachedJson: jsonCache.getCachedJson,
+      putCachedJson: jsonCache.putCachedJson,
+    }),
     yahooIsinSearchResolver: new YahooIsinSearchResolver({
       fetchAllInChunks(_source, requests) {
         return requests.map((request) => ({
@@ -216,6 +234,35 @@ function resolveQuoteForResolvedRequest(env, resolvedRequest, attemptedRoutes) {
       env.yahooQuoteResolver.name,
     );
     const outcome = env.yahooQuoteResolver.resolve(resolvedRequest);
+
+    if (outcome.status === "success") {
+      return {
+        ...outcome,
+        attemptedRoutes: attemptedRoutes.concat([routeLabel]),
+        kind: "quote",
+        route: routeLabel,
+      };
+    }
+
+    if (
+      resolvedRequest.allowTradingviewFallback &&
+      env.tradingviewFundResolver.canHandle(resolvedRequest)
+    ) {
+      const fallbackLabel = routeLabelFromPlan(
+        env.yahooQuoteResolver.getRouteClass(resolvedRequest),
+        env.tradingviewFundResolver.name,
+      );
+      const fallbackOutcome = env.tradingviewFundResolver.resolve(
+        resolvedRequest,
+      );
+
+      return {
+        ...fallbackOutcome,
+        attemptedRoutes: attemptedRoutes.concat([routeLabel, fallbackLabel]),
+        kind: "quote",
+        route: fallbackLabel,
+      };
+    }
 
     return {
       ...outcome,
@@ -428,6 +475,19 @@ function runSmokeSuite(env = createCliEnvironment()) {
         }
       },
       ticker: "US02079K1079",
+    },
+    {
+      attribute: "price",
+      expected(result) {
+        if (result.status !== "success") {
+          throw new Error(`expected success, got ${result.status}`);
+        }
+
+        if (!Number.isFinite(result.value)) {
+          throw new Error("expected TradingView fallback to return a live quote");
+        }
+      },
+      ticker: "TLV:KSMF59",
     },
   ];
   const failures = [];
