@@ -2,30 +2,16 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 
 const {
-  DirectIdentifierResolver,
-  GoogleFxResolver,
-  LocalFxResolver,
-  PseEdgeResolver,
-  PseFramesResolver,
-  PseIsinMapResolver,
-  YahooIsinSearchResolver,
-  YahooQuoteResolver,
-  TradingviewFundResolver,
-} = require("../../dist/ts/core/concrete-resolvers.js");
-const { createDefaultResolvePlanBuilder } = require("../../dist/ts/core/resolve-plan.js");
+  createHoodlefinanceRuntime,
+  parsePropertiesMap,
+} = require("../../dist/ts/runtime/host-adapter.js");
 const { createRequestInput } = require("../../dist/ts/core/request-building.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
-const { describePlanSource } = require("../../dist/ts/core/route-results.js");
-const {
-  createDefaultPlanMaterializationDependencies,
-  extractIsinCountryCode,
-  materializePlanFromSpec,
-} = require("../../dist/ts/core/plan-materialization.js");
-const { PLAN_SPECS_BY_CODE } = require("../../dist/ts/core/spec-data.js");
 const {
   resolveRequestEnvelope,
   resolveRequestValue,
 } = require("../../dist/ts/core/request-resolution.js");
+const { describePlanSource } = require("../../dist/ts/core/route-results.js");
 const {
   buildRoutingPlanTreeNode,
   buildRoutingTableGrid,
@@ -35,32 +21,6 @@ const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
 
 function loadTextFile(path) {
   return fs.readFileSync(path, "utf8");
-}
-
-function parsePropertiesMap(text) {
-  const output = {};
-
-  for (const line of String(text || "").split(/\r?\n/)) {
-    const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = trimmed.indexOf("=");
-    if (separatorIndex < 0) {
-      continue;
-    }
-
-    const key = trimmed.slice(0, separatorIndex).trim().toUpperCase();
-    const value = trimmed.slice(separatorIndex + 1).trim();
-
-    if (key) {
-      output[key] = value;
-    }
-  }
-
-  return output;
 }
 
 function loadPseIsinMap() {
@@ -115,156 +75,25 @@ function createJsonCache() {
 
 function createCliEnvironment() {
   const syncFetchText = createSyncFetcher();
+  const pseIsinMap = loadPseIsinMap();
   const stringCache = createStringCache();
   const jsonCache = createJsonCache();
-  const pseIsinMap = loadPseIsinMap();
-  const directIdentifierResolver = new DirectIdentifierResolver();
-  const googleFxResolver = new GoogleFxResolver({
+  const runtime = createHoodlefinanceRuntime({
     fetchText: syncFetchText,
     getCachedJson: jsonCache.getCachedJson,
-    putCachedJson: jsonCache.putCachedJson,
-  });
-  const localFxResolver = new LocalFxResolver();
-  const pseFramesResolver = new PseFramesResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return syncFetchText(request.url);
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
-    },
-    getCachedJson: jsonCache.getCachedJson,
-    putCachedJson: jsonCache.putCachedJson,
-  });
-  const pseEdgeResolver = new PseEdgeResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return syncFetchText(request.url);
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
-    },
-    getCachedJson: jsonCache.getCachedJson,
-    putCachedJson: jsonCache.putCachedJson,
-  });
-  const pseIsinMapResolver = new PseIsinMapResolver((isin) =>
-    pseIsinMap[String(isin || "").trim().toUpperCase()] || "",
-  );
-  const yahooQuoteResolver = new YahooQuoteResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return syncFetchText(request.url);
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
-    },
-    getCachedJson: jsonCache.getCachedJson,
-    putCachedJson: jsonCache.putCachedJson,
-  });
-  const tradingviewFundResolver = new TradingviewFundResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return syncFetchText(request.url);
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
-    },
-    getCachedJson: jsonCache.getCachedJson,
-    putCachedJson: jsonCache.putCachedJson,
-  });
-  const yahooIsinSearchResolver = new YahooIsinSearchResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return syncFetchText(request.url);
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
-    },
     getCachedString: stringCache.getCachedString,
+    putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
-  });
-  const resolversByCode = {
-    "DIRECT-IDENTIFIER": directIdentifierResolver,
-    GOOGLE: googleFxResolver,
-    LOCAL: localFxResolver,
-    "PSE-EDGE": pseEdgeResolver,
-    "PSE-FRAMES": pseFramesResolver,
-    "PSE-MAP": pseIsinMapResolver,
-    "TRADINGVIEW-FUND": tradingviewFundResolver,
-    YAHOO: yahooQuoteResolver,
-    "YAHOO-ISIN": yahooIsinSearchResolver,
-  };
-  const planMaterializationDeps = createDefaultPlanMaterializationDependencies({
-    extractIsinCountryCode(request) {
-      return extractIsinCountryCode(
-        request || {},
-        (value) => looksLikeIsin(value),
-      );
-    },
-    looksLikeIsin(value) {
-      return looksLikeIsin(value);
-    },
-    planSpecsByCode: PLAN_SPECS_BY_CODE,
-    resolvePreferredYahooSymbol() {
-      return "";
-    },
-    resolversByCode,
-  });
-  const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver,
-    materializePlanFromSpec(code) {
-      return materializePlanFromSpec(code, null, planMaterializationDeps);
+    resolvePseTickerFromIsinMap(isin) {
+      return pseIsinMap[String(isin || "").trim().toUpperCase()] || "";
     },
   });
 
   return {
-    buildResolvePlan,
-    directIdentifierResolver,
-    fetchText: syncFetchText,
+    ...runtime,
     getCachedString: stringCache.getCachedString,
-    googleFxResolver,
     looksLikeIsin,
-    localFxResolver,
-    pseEdgeResolver,
-    pseFramesResolver,
-    pseIsinMapResolver,
     putCachedString: stringCache.putCachedString,
-    tradingviewFundResolver,
-    yahooIsinSearchResolver,
-    yahooQuoteResolver,
-    materializePlanFromSpec(code) {
-      return materializePlanFromSpec(code, null, planMaterializationDeps);
-    },
   };
 }
 
