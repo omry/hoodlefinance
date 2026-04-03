@@ -13,8 +13,11 @@ export interface RoutingTableRow {
 
 export interface RoutingPlanTreeNode {
   children: RoutingPlanTreeNode[];
+  kind: RoutingPlanNodeKind;
   label: string;
 }
+
+export type RoutingPlanNodeKind = "leaf" | "switch" | "try each";
 
 export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
   { example: "GOOG" },
@@ -23,6 +26,7 @@ export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
   { example: "USDUSD" },
   { example: "PSE:BDO" },
   { example: "US02079K1079" },
+  { example: "PHY077751022" },
 ];
 
 export interface RoutingIntrospectionDependencies {
@@ -35,6 +39,7 @@ export interface RoutingIntrospectionDependencies {
 
 interface RoutingPlanNodeLike {
   getRoutingNodes(): ResolverNode[];
+  isRoutingNode?: boolean;
   name: string;
   routingLabel: string;
 }
@@ -102,6 +107,11 @@ export function buildRoutingPlanTreeNode(
   node: ResolverNode | RoutingPlanNodeLike,
 ): RoutingPlanTreeNode {
   const isPlanNode = isRoutingPlanNode(node);
+  const kind: RoutingPlanNodeKind = isPlanNode
+    ? node.isRoutingNode === true
+      ? "switch"
+      : "try each"
+    : "leaf";
 
   return {
     children: isPlanNode
@@ -109,6 +119,7 @@ export function buildRoutingPlanTreeNode(
           .getRoutingNodes()
           .map((childNode) => buildRoutingPlanTreeNode(childNode))
       : [],
+    kind,
     label: isPlanNode
       ? formatRoutingPlanTreeLabel(node.routingLabel || node.name || "")
       : String(

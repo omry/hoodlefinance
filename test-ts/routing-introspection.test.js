@@ -25,7 +25,7 @@ function createRequestInput(identifier, attribute) {
     classification:
       identifier === "EURUSD" || identifier === "USDUSD"
         ? "fx"
-        : identifier === "US02079K1079"
+        : identifier === "US02079K1079" || identifier === "PHY077751022"
           ? "isin"
           : "equity",
     fxPair: null,
@@ -53,7 +53,7 @@ test("routing table helpers preserve the example-driven introspection shape", ()
   const deps = createDeps();
 
   assert.equal(Array.isArray(ROUTING_TABLE_EXAMPLES), true);
-  assert.equal(ROUTING_TABLE_EXAMPLES.length, 6);
+  assert.equal(ROUTING_TABLE_EXAMPLES.length, 7);
 
   assert.deepEqual(buildRoutingTableRow({ example: "GOOG" }, deps), {
     classification: "equity",
@@ -80,6 +80,7 @@ test("routing tree helpers format labels and recurse plan children", () => {
     getRoutingNodes() {
       return [yahooNode];
     },
+    isRoutingNode: true,
     name: "ROOT",
     routingLabel: "root",
   };
@@ -92,9 +93,11 @@ test("routing tree helpers format labels and recurse plan children", () => {
     children: [
       {
         children: [],
+        kind: "leaf",
         label: "YAHOO - Yahoo quote lookup",
       },
     ],
+    kind: "switch",
     label: "ROOT",
   });
 });

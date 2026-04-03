@@ -26,6 +26,10 @@ const {
   resolveRequestEnvelope,
   resolveRequestValue,
 } = require("../../dist/ts/core/request-resolution.js");
+const {
+  buildRoutingPlanTreeNode,
+  buildRoutingTableGrid,
+} = require("../../dist/ts/core/routing-introspection.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
 
@@ -258,6 +262,9 @@ function createCliEnvironment() {
     tradingviewFundResolver,
     yahooIsinSearchResolver,
     yahooQuoteResolver,
+    materializePlanFromSpec(code) {
+      return materializePlanFromSpec(code, null, planMaterializationDeps);
+    },
   };
 }
 
@@ -320,51 +327,50 @@ function formatEnvelopeResult(result) {
   );
 }
 
-function formatRoutingTable() {
-  return [
-    ["classification", "example", "route"],
-    ["equity", "GOOG", routeLabelFromPlan("DIRECT-IDENTIFIER", "")],
-    ["equity", "PSE:BDO", routeLabelFromPlan("EQUITY -> PSE", "PSE-FRAMES")],
-    ["fx", "USDUSD", routeLabelFromPlan("FX", "LOCAL")],
-    ["fx", "EURUSD", routeLabelFromPlan("FX", "GOOGLE")],
-    [
-      "isin",
-      "US02079K1079",
-      routeLabelFromPlan("IDENTIFIER:ISIN", "YAHOO-ISIN"),
-    ],
-    [
-      "isin",
-      "PHY077751022",
-      routeLabelFromPlan("IDENTIFIER:ISIN", "PSE-MAP"),
-    ],
-  ]
-    .map((columns) => columns.join("\t"))
-    .join("\n");
+function formatRoutingTable(env = createCliEnvironment()) {
+  const grid = buildRoutingTableGrid({
+    buildResolvePlan: env.buildResolvePlan,
+    createRequestInput,
+  }).map((row, index) =>
+    index === 0 ? ["classification", "example", "route"] : row,
+  );
+
+  return grid.map((columns) => columns.join("\t")).join("\n");
 }
 
-function formatRoutingTree() {
-  const lines = [
-    "ROOT",
-    "├── DIRECT-IDENTIFIER",
-    "├── IDENTIFIER",
-    "│   └── IDENTIFIER:ISIN",
-    "│       ├── PSE-MAP",
-    "│       └── YAHOO-ISIN",
-    "├── EQUITY",
-    "│   ├── PSE",
-    "│   │   ├── PSE-FRAMES",
-    "│   │   └── PSE-EDGE",
-    "│   └── TICKER",
-    "│       ├── YAHOO",
-    "│       └── TRADINGVIEW-FUND",
-    "└── FX",
-    "    ├── FX-SAME",
-    "    │   └── LOCAL",
-    "    └── FX",
-    "        └── GOOGLE",
-  ];
+function formatRoutingTreeNode(node, prefix = "", isLast = true, isRoot = false) {
+  const connector = isRoot ? "" : isLast ? "└── " : "├── ";
+  const nextPrefix = isRoot ? "" : `${prefix}${isLast ? "    " : "│   "}`;
+  const lines = [`${prefix}${connector}${node.label} [${node.kind}]`];
+
+  node.children.forEach((child, index) => {
+    lines.push(
+      formatRoutingTreeNode(
+        child,
+        nextPrefix,
+        index === node.children.length - 1,
+        false,
+      ),
+    );
+  });
 
   return lines.join("\n");
+}
+
+function formatRoutingTree(env = createCliEnvironment()) {
+  const rootNode = buildRoutingPlanTreeNode({
+    getRoutingNodes() {
+      return [
+        env.directIdentifierResolver,
+        env.materializePlanFromSpec("IDENTIFIER-ROOT"),
+        env.materializePlanFromSpec("DEFAULT-ATTRIBUTE"),
+      ];
+    },
+    name: "ROOT",
+    isRoutingNode: true,
+    routingLabel: "ROOT",
+  });
+  return formatRoutingTreeNode(rootNode, "", true, true);
 }
 
 function runSmokeSuite(env = createCliEnvironment()) {
