@@ -1,5 +1,6 @@
+import type { RequestInput, ResolvedRequest } from "./request";
 import type { ResolverNode, RouteJob } from "./planner";
-import { getCurrentRouteNode } from "./route-jobs";
+import { createResolverRouteJob, getCurrentRouteNode, prepareRouteJob } from "./route-jobs";
 import {
   applyRouteResult,
   defaultRouteFailureMessage,
@@ -107,4 +108,19 @@ export function executeRouteJobs(
       }
     }
   }
+}
+
+export function executeRouteNode(
+  node: ResolverNode,
+  request: RequestInput | ResolvedRequest,
+  errorMessage: (error: unknown) => string,
+): RouteJob<Record<string, unknown>> {
+  const job = createResolverRouteJob(request);
+  const plan = node.buildRuntimePlan(request);
+
+  job.plan = plan;
+  prepareRouteJob(job, plan);
+  executeRouteJobs([job], errorMessage);
+
+  return job;
 }

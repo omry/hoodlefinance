@@ -238,7 +238,9 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   }
 
   getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[] {
-    const selected = this.nodeSelector ? this.nodeSelector(this.nodes, request) : this.nodes;
+    const selected = this.nodeSelector
+      ? this.nodeSelector(this.nodes, request)
+      : this.nodes;
 
     return (selected || []).filter(
       (node) => !node.canHandle || node.canHandle(request),
@@ -326,11 +328,23 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       routeClass = routeClass(request);
     }
 
+    const routeState = this.buildRouteState(request);
+    const flattenedNodes: ResolverNode[] = [];
+
+    for (const node of nodes) {
+      const runtimePlan = node.buildRuntimePlan(request);
+      flattenedNodes.push(...(runtimePlan.nodes || []));
+
+      if (runtimePlan.routeState) {
+        Object.assign(routeState, runtimePlan.routeState);
+      }
+    }
+
     return {
-      nodes,
+      nodes: flattenedNodes,
       routeClass,
       routePath: this.buildRoutePath(request),
-      routeState: this.buildRouteState(request),
+      routeState,
     };
   }
 

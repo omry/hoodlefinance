@@ -17,6 +17,38 @@ function createFakeEnvironment() {
     directIdentifierResolver: {
       name: "DIRECT-IDENTIFIER",
       resolve(request) {
+        if (request && request.ticker === "PSE:EDGE") {
+          return {
+            elapsedMs: 0,
+            status: "success",
+            value: {
+              allowTradingviewFallback: false,
+              attribute: request.attribute,
+              exchange: "PSE",
+              identifier: request.identifier,
+              requestType: "equity",
+              symbol: "EDGE",
+              yahooSymbol: "EDGE.PS",
+            },
+          };
+        }
+
+        if (request && request.ticker === "PSE:BDO") {
+          return {
+            elapsedMs: 0,
+            status: "success",
+            value: {
+              allowTradingviewFallback: false,
+              attribute: request.attribute,
+              exchange: "PSE",
+              identifier: request.identifier,
+              requestType: "equity",
+              symbol: "BDO",
+              yahooSymbol: "BDO.PS",
+            },
+          };
+        }
+
         if (request && request.ticker === "TLV:KSMF59") {
           return {
             elapsedMs: 0,
@@ -69,6 +101,52 @@ function createFakeEnvironment() {
             shortName: "USDUSD",
             symbol: "USDUSD",
           },
+        };
+      },
+    },
+    pseFramesResolver: {
+      name: "PSE-FRAMES",
+      resolve(request) {
+        if (request && request.symbol === "EDGE") {
+          return {
+            elapsedMs: 0,
+            error: "not found",
+            status: "failure",
+          };
+        }
+
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: {
+            currency: "PHP",
+            regularMarketPrice: 9.87,
+            shortName: "BDO Unibank, Inc.",
+            symbol: "BDO",
+          },
+        };
+      },
+    },
+    pseEdgeResolver: {
+      name: "PSE-EDGE",
+      resolve(request) {
+        if (request && request.symbol === "EDGE") {
+          return {
+            elapsedMs: 0,
+            status: "success",
+            value: {
+              currency: "PHP",
+              regularMarketPrice: 8.88,
+              shortName: "Edge Corp",
+              symbol: "EDGE",
+            },
+          };
+        }
+
+        return {
+          elapsedMs: 0,
+          error: "not found",
+          status: "failure",
         };
       },
     },
@@ -209,6 +287,22 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   assert.equal(tradingview.route, "TICKER -> TRADINGVIEW-FUND");
   assert.equal(tradingview.status, "success");
   assert.equal(tradingview.value, 17.25);
+
+  const pse = lookupWithEnvironment(env, {
+    attribute: "price",
+    ticker: "PSE:BDO",
+  });
+  assert.equal(pse.route, "EQUITY -> PSE -> PSE-FRAMES");
+  assert.equal(pse.status, "success");
+  assert.equal(pse.value, 9.87);
+
+  const pseEdge = lookupWithEnvironment(env, {
+    attribute: "price",
+    ticker: "PSE:EDGE",
+  });
+  assert.equal(pseEdge.route, "EQUITY -> PSE -> PSE-EDGE");
+  assert.equal(pseEdge.status, "success");
+  assert.equal(pseEdge.value, 8.88);
 });
 
 test("lookup formatting and routing views stay readable", () => {
@@ -225,7 +319,9 @@ test("lookup formatting and routing views stay readable", () => {
   assert.match(traceOutput, /^planned route: TICKER -> YAHOO$/m);
   assert.match(traceOutput, /^result: success$/m);
   assert.match(formatRoutingTable(), /classification\texample\troute/);
+  assert.match(formatRoutingTable(), /PSE:BDO/);
   assert.match(formatRoutingTree(), /^ROOT$/m);
+  assert.match(formatRoutingTree(), /PSE-FRAMES/);
 });
 
 test("lookupEnvelopeWithEnvironment preserves the raw quote envelope", () => {

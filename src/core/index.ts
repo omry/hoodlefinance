@@ -28,4 +28,5 @@ export * from "./resolve-plan";
 export * from "./route-jobs";
 export * from "./route-execution";
 export * from "./route-results";
+export * from "./quote-routing";
 export * from "./route-state";

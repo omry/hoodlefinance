@@ -5,6 +5,8 @@ const {
   DirectIdentifierResolver,
   GoogleFxResolver,
   LocalFxResolver,
+  PseEdgeResolver,
+  PseFramesResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
@@ -15,11 +17,18 @@ const {
   createRequestInput,
   extractIsinFromRequestInput,
 } = require("../../dist/ts/core/request-building.js");
+const { looksLikeIsin } = require("../../dist/ts/core/request.js");
 const {
   extractAttributeValue,
 } = require("../../dist/ts/core/attribute-extraction.js");
-const { isSameCurrencyFxPair } = require("../../dist/ts/core/fx-quotes.js");
 const { describePlanSource } = require("../../dist/ts/core/route-results.js");
+const {
+  createDefaultPlanMaterializationDependencies,
+  extractIsinCountryCode,
+  materializePlanFromSpec,
+} = require("../../dist/ts/core/plan-materialization.js");
+const { PLAN_SPECS_BY_CODE } = require("../../dist/ts/core/spec-data.js");
+const { resolveQuoteForResolvedRequest } = require("../../dist/ts/core/quote-routing.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
 
@@ -108,69 +117,157 @@ function createCliEnvironment() {
   const stringCache = createStringCache();
   const jsonCache = createJsonCache();
   const pseIsinMap = loadPseIsinMap();
+  const directIdentifierResolver = new DirectIdentifierResolver();
+  const googleFxResolver = new GoogleFxResolver({
+    fetchText: syncFetchText,
+    getCachedJson: jsonCache.getCachedJson,
+    putCachedJson: jsonCache.putCachedJson,
+  });
+  const localFxResolver = new LocalFxResolver();
+  const pseFramesResolver = new PseFramesResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return syncFetchText(request.url);
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedJson: jsonCache.getCachedJson,
+    putCachedJson: jsonCache.putCachedJson,
+  });
+  const pseEdgeResolver = new PseEdgeResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return syncFetchText(request.url);
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedJson: jsonCache.getCachedJson,
+    putCachedJson: jsonCache.putCachedJson,
+  });
+  const pseIsinMapResolver = new PseIsinMapResolver((isin) =>
+    pseIsinMap[String(isin || "").trim().toUpperCase()] || "",
+  );
+  const yahooQuoteResolver = new YahooQuoteResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return syncFetchText(request.url);
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedJson: jsonCache.getCachedJson,
+    putCachedJson: jsonCache.putCachedJson,
+  });
+  const tradingviewFundResolver = new TradingviewFundResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return syncFetchText(request.url);
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedJson: jsonCache.getCachedJson,
+    putCachedJson: jsonCache.putCachedJson,
+  });
+  const yahooIsinSearchResolver = new YahooIsinSearchResolver({
+    fetchAllInChunks(_source, requests) {
+      return requests.map((request) => ({
+        request,
+        response: {
+          getContentText() {
+            return syncFetchText(request.url);
+          },
+          getResponseCode() {
+            return 200;
+          },
+        },
+      }));
+    },
+    getCachedString: stringCache.getCachedString,
+    putCachedString: stringCache.putCachedString,
+  });
+  const resolversByCode = {
+    "DIRECT-IDENTIFIER": directIdentifierResolver,
+    GOOGLE: googleFxResolver,
+    LOCAL: localFxResolver,
+    "PSE-EDGE": pseEdgeResolver,
+    "PSE-FRAMES": pseFramesResolver,
+    "PSE-MAP": pseIsinMapResolver,
+    "TRADINGVIEW-FUND": tradingviewFundResolver,
+    YAHOO: yahooQuoteResolver,
+    "YAHOO-ISIN": yahooIsinSearchResolver,
+  };
+  const planMaterializationDeps = createDefaultPlanMaterializationDependencies({
+    extractIsinCountryCode(request) {
+      return extractIsinCountryCode(
+        request || {},
+        (value) => looksLikeIsin(value),
+      );
+    },
+    looksLikeIsin(value) {
+      return looksLikeIsin(value);
+    },
+    planSpecsByCode: PLAN_SPECS_BY_CODE,
+    resolvePreferredYahooSymbol() {
+      return "";
+    },
+    resolversByCode,
+  });
+  const identifierIsinPlan = materializePlanFromSpec(
+    "IDENTIFIER-ROOT",
+    null,
+    planMaterializationDeps,
+  );
+  const quoteEquityPlan = materializePlanFromSpec(
+    "DEFAULT-ATTRIBUTE:EQUITY",
+    null,
+    planMaterializationDeps,
+  );
+  const quoteFxPlan = materializePlanFromSpec(
+    "DEFAULT-ATTRIBUTE:FX",
+    null,
+    planMaterializationDeps,
+  );
 
   return {
-    directIdentifierResolver: new DirectIdentifierResolver(),
-    googleFxResolver: new GoogleFxResolver({
-      fetchText: syncFetchText,
-      getCachedJson: jsonCache.getCachedJson,
-      putCachedJson: jsonCache.putCachedJson,
-    }),
-    localFxResolver: new LocalFxResolver(),
-    pseIsinMapResolver: new PseIsinMapResolver((isin) =>
-      pseIsinMap[String(isin || "").trim().toUpperCase()] || "",
-    ),
-    yahooQuoteResolver: new YahooQuoteResolver({
-      fetchAllInChunks(_source, requests) {
-        return requests.map((request) => ({
-          request,
-          response: {
-            getContentText() {
-              return syncFetchText(request.url);
-            },
-            getResponseCode() {
-              return 200;
-            },
-          },
-        }));
-      },
-      getCachedJson: jsonCache.getCachedJson,
-      putCachedJson: jsonCache.putCachedJson,
-    }),
-    tradingviewFundResolver: new TradingviewFundResolver({
-      fetchAllInChunks(_source, requests) {
-        return requests.map((request) => ({
-          request,
-          response: {
-            getContentText() {
-              return syncFetchText(request.url);
-            },
-            getResponseCode() {
-              return 200;
-            },
-          },
-        }));
-      },
-      getCachedJson: jsonCache.getCachedJson,
-      putCachedJson: jsonCache.putCachedJson,
-    }),
-    yahooIsinSearchResolver: new YahooIsinSearchResolver({
-      fetchAllInChunks(_source, requests) {
-        return requests.map((request) => ({
-          request,
-          response: {
-            getContentText() {
-              return syncFetchText(request.url);
-            },
-            getResponseCode() {
-              return 200;
-            },
-          },
-        }));
-      },
-      getCachedString: stringCache.getCachedString,
-      putCachedString: stringCache.putCachedString,
-    }),
+    directIdentifierResolver,
+    identifierIsinPlan,
+    googleFxResolver,
+    localFxResolver,
+    pseEdgeResolver,
+    pseFramesResolver,
+    pseIsinMapResolver,
+    quoteEquityPlan,
+    quoteFxPlan,
+    tradingviewFundResolver,
+    yahooIsinSearchResolver,
+    yahooQuoteResolver,
   };
 }
 
@@ -210,77 +307,6 @@ function applyRequestedAttribute(result, attribute) {
   }
 }
 
-function resolveQuoteForResolvedRequest(env, resolvedRequest, attemptedRoutes) {
-  if (resolvedRequest && resolvedRequest.requestType === "fx") {
-    const routePath = isSameCurrencyFxPair(resolvedRequest.fxPair)
-      ? env.localFxResolver.name
-      : env.googleFxResolver.name;
-    const routeLabel = routeLabelFromPlan("FX", routePath);
-    const outcome = isSameCurrencyFxPair(resolvedRequest.fxPair)
-      ? env.localFxResolver.resolve(resolvedRequest)
-      : env.googleFxResolver.resolve(resolvedRequest);
-
-    return {
-      ...outcome,
-      attemptedRoutes: attemptedRoutes.concat([routeLabel]),
-      kind: "quote",
-      route: routeLabel,
-    };
-  }
-
-  if (env.yahooQuoteResolver.canHandle(resolvedRequest)) {
-    const routeLabel = routeLabelFromPlan(
-      env.yahooQuoteResolver.getRouteClass(resolvedRequest),
-      env.yahooQuoteResolver.name,
-    );
-    const outcome = env.yahooQuoteResolver.resolve(resolvedRequest);
-
-    if (outcome.status === "success") {
-      return {
-        ...outcome,
-        attemptedRoutes: attemptedRoutes.concat([routeLabel]),
-        kind: "quote",
-        route: routeLabel,
-      };
-    }
-
-    if (
-      resolvedRequest.allowTradingviewFallback &&
-      env.tradingviewFundResolver.canHandle(resolvedRequest)
-    ) {
-      const fallbackLabel = routeLabelFromPlan(
-        env.yahooQuoteResolver.getRouteClass(resolvedRequest),
-        env.tradingviewFundResolver.name,
-      );
-      const fallbackOutcome = env.tradingviewFundResolver.resolve(
-        resolvedRequest,
-      );
-
-      return {
-        ...fallbackOutcome,
-        attemptedRoutes: attemptedRoutes.concat([routeLabel, fallbackLabel]),
-        kind: "quote",
-        route: fallbackLabel,
-      };
-    }
-
-    return {
-      ...outcome,
-      attemptedRoutes: attemptedRoutes.concat([routeLabel]),
-      kind: "quote",
-      route: routeLabel,
-    };
-  }
-
-  return {
-    attemptedRoutes,
-    error: "Quote lookup is not yet available for this request in the TypeScript CLI.",
-    kind: "quote",
-    route: attemptedRoutes[attemptedRoutes.length - 1] || "(none)",
-    status: "failure",
-  };
-}
-
 function lookupEnvelopeWithEnvironment(env, args) {
   const attribute = String(args.attribute || "price").trim();
   const requestInput = createRequestInput(args.ticker, attribute);
@@ -308,10 +334,37 @@ function resolveFxRequest(env, requestInput) {
 function resolveIsinRequest(env, requestInput) {
   const isin = extractIsinFromRequestInput(requestInput);
   const attemptedRoutes = [];
+  if (env.identifierIsinPlan) {
+    const plan = env.identifierIsinPlan;
+    const routeLabel = plan.describe(requestInput);
+    attemptedRoutes.push(routeLabel);
+    const identifierOutcome = plan.resolve(requestInput);
+
+    if (identifierOutcome.status !== "success") {
+      return {
+        ...identifierOutcome,
+        attemptedRoutes,
+        kind: "quote",
+        route: routeLabel,
+      };
+    }
+
+    return {
+      ...resolveQuoteForResolvedRequest(
+        env,
+        identifierOutcome.value,
+        attemptedRoutes,
+      ),
+    };
+  }
+
   const routeClass = "IDENTIFIER:ISIN";
 
   if (isin.startsWith("PH")) {
-    const routeLabel = routeLabelFromPlan(routeClass, env.pseIsinMapResolver.name);
+    const routeLabel = routeLabelFromPlan(
+      routeClass,
+      env.pseIsinMapResolver.name,
+    );
     attemptedRoutes.push(routeLabel);
     const pseOutcome = env.pseIsinMapResolver.resolve(requestInput);
 
@@ -345,10 +398,7 @@ function resolveIsinRequest(env, requestInput) {
 
 function resolveDirectRequest(env, requestInput) {
   const outcome = env.directIdentifierResolver.resolve(requestInput);
-  const routeLabel = routeLabelFromPlan(
-    env.directIdentifierResolver.name,
-    "",
-  );
+  const routeLabel = routeLabelFromPlan(env.directIdentifierResolver.name, "");
 
   if (outcome.status !== "success") {
     return {
@@ -407,6 +457,7 @@ function formatRoutingTable() {
   return [
     ["classification", "example", "route"],
     ["equity", "GOOG", routeLabelFromPlan("DIRECT-IDENTIFIER", "")],
+    ["equity", "PSE:BDO", routeLabelFromPlan("EQUITY -> PSE", "PSE-FRAMES")],
     ["fx", "USDUSD", routeLabelFromPlan("FX", "LOCAL")],
     ["fx", "EURUSD", routeLabelFromPlan("FX", "GOOGLE")],
     [
@@ -432,6 +483,13 @@ function formatRoutingTree() {
     "│   └── IDENTIFIER:ISIN",
     "│       ├── PSE-MAP",
     "│       └── YAHOO-ISIN",
+    "├── EQUITY",
+    "│   ├── PSE",
+    "│   │   ├── PSE-FRAMES",
+    "│   │   └── PSE-EDGE",
+    "│   └── TICKER",
+    "│       ├── YAHOO",
+    "│       └── TRADINGVIEW-FUND",
     "└── FX",
     "    ├── FX-SAME",
     "    │   └── LOCAL",
@@ -508,6 +566,19 @@ function runSmokeSuite(env = createCliEnvironment()) {
         }
       },
       ticker: "TLV:KSMF59",
+    },
+    {
+      attribute: "price",
+      expected(result) {
+        if (result.status !== "success") {
+          throw new Error(`expected success, got ${result.status}`);
+        }
+
+        if (!Number.isFinite(result.value)) {
+          throw new Error("expected PSE lookup to return a live quote");
+        }
+      },
+      ticker: "PSE:BDO",
     },
   ];
   const failures = [];
