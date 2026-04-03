@@ -53,13 +53,13 @@ const DEFAULT_REQUEST_BUILDING_DEPENDENCIES: RequestBuildingDependencies = {
 };
 
 export function extractIsinFromRequestInput(
-  input: Pick<RequestInput, "ticker" | "upperTicker">,
+  input: Pick<RequestInput, "ticker">,
   looksLikeIsin?: (value: string) => boolean,
 ): string {
   const resolvedLooksLikeIsin =
     looksLikeIsin || DEFAULT_REQUEST_BUILDING_DEPENDENCIES.looksLikeIsin;
   const ticker = String(input.ticker || "").trim();
-  const upperTicker = String(input.upperTicker || "").trim();
+  const upperTicker = ticker.toUpperCase();
 
   if (resolvedLooksLikeIsin(ticker)) {
     return upperTicker;

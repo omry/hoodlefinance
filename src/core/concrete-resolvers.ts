@@ -1,5 +1,6 @@
 import type { ResolverSpec, ResolverSpecOptions } from "./plan-specs";
 import { RequestInput, type ResolvedRequest } from "./request";
+import { buildIsinIdentifierRouteState } from "./route-state";
 import {
   AttributeResolver,
   IdentifierResolver,
@@ -7,11 +8,12 @@ import {
 } from "./resolver-classes";
 import {
   buildTypedRequestFromParsedInput,
+  buildTypedRequestFromResolvedTicker,
   extractIsinFromRequestInput,
 } from "./request-building";
 import { buildSameCurrencyQuote, isSameCurrencyFxPair } from "./fx-quotes";
 import { createResolutionFailure, createResolutionSuccess, createRouteResult } from "./route-results";
-import type { RouteJob } from "./planner";
+import type { RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
 
 export class DirectIdentifierResolver extends IdentifierResolver {
@@ -74,6 +76,98 @@ export type ResolveValueFunction = (
 
 export interface FunctionValueResolverDependencies {
   resolveFunctionsByRef: Record<string, ResolveValueFunction | undefined>;
+}
+
+export type ResolvePseTickerFromIsinMap = (isin: string) => string;
+
+export class PseIsinMapResolver extends IdentifierResolver {
+  readonly traceLabel: string;
+  readonly resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap;
+
+  constructor(resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap) {
+    super("PSE-MAP", "PSE", {
+      routingDescription: "PSE ISIN map lookup",
+    });
+    this.traceLabel = "pse-isin-map";
+    this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
+  }
+
+  canHandle(input: RequestInput | ResolvedRequest): boolean {
+    const isin = extractIsinFromRequestInput(
+      input as Pick<RequestInput, "ticker">,
+    );
+
+    return input instanceof RequestInput && isin.startsWith("PH");
+  }
+
+  getAttributeOverrideSources(input: RequestInput | ResolvedRequest): string[] {
+    return input instanceof RequestInput &&
+      this.canHandle(input) &&
+      input.attributeType === "quote"
+      ? ["PSE"]
+      : [];
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof RequestInput)) {
+      return {};
+    }
+
+    return buildIsinIdentifierRouteState(request, extractIsinFromRequestInput);
+  }
+
+  buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan {
+    return {
+      nodes: [this],
+      routeClass: this.name,
+      routePath: this.traceLabel,
+      routeState: this.buildRouteState(request),
+    };
+  }
+
+  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
+    const results = [];
+
+    for (const job of jobs) {
+      try {
+        const isin = String(job.routeState.isin || "").trim();
+        const pseTicker = this.resolvePseTickerFromIsinMap(isin);
+
+        if (!pseTicker) {
+          results.push(createRouteResult("lookup_failure"));
+          continue;
+        }
+
+        results.push(
+          createRouteResult("success", {
+            value: buildTypedRequestFromResolvedTicker(
+              job.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+              pseTicker,
+              0,
+            ),
+          }),
+        );
+      } catch (error) {
+        results.push(createRouteResult("terminal_error", { error }));
+      }
+    }
+
+    return results as unknown as Array<Record<string, unknown> | null>;
+  }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+    resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap,
+  ): PseIsinMapResolver {
+    if (typeof resolvePseTickerFromIsinMap !== "function") {
+      throw new Error(
+        "PseIsinMapResolver requires resolvePseTickerFromIsinMap.",
+      );
+    }
+
+    return new this(resolvePseTickerFromIsinMap);
+  }
 }
 
 export class FunctionValueResolver extends AttributeResolver {
@@ -248,10 +342,13 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   DirectIdentifierResolver,
   FunctionValueResolver,
   LocalFxResolver,
+  PseIsinMapResolver,
 } as const;
 
 export interface ConcreteResolverMaterializationDependencies
-  extends FunctionValueResolverDependencies {}
+  extends FunctionValueResolverDependencies {
+  resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
+}
 
 export function createConcreteResolverMaterializationDependencies(
   deps: ConcreteResolverMaterializationDependencies,
@@ -264,6 +361,7 @@ export function createConcreteResolverMaterializationDependencies(
       FunctionValueResolver: {
         resolveFunctionsByRef: deps.resolveFunctionsByRef,
       },
+      PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
     },
     resolverClassesByName: {
       ...CONCRETE_RESOLVER_CLASSES_BY_NAME,

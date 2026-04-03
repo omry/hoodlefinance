@@ -21,11 +21,11 @@ function normalizeCode(code: string): string {
 }
 
 export function extractIsinCountryCode(
-  request: { upperTicker?: string; ticker?: string },
+  request: { ticker?: string },
   looksLikeIsin: (value: string) => boolean,
 ): string {
   const ticker = String(request.ticker || "").trim();
-  const upperTicker = String(request.upperTicker || "").trim();
+  const upperTicker = ticker.toUpperCase();
   const isin = looksLikeIsin(ticker)
     ? upperTicker
     : upperTicker.startsWith("ISIN:")
@@ -99,7 +99,7 @@ export function listSourceOverridePlanCodes(
 export interface DefaultPlanMaterializationDependencies
   extends Omit<PlanMaterializationDependencies, "buildPlanNode">,
     PlanRuntimeRefDependencies {
-  extractIsinCountryCode(request: { ticker?: string; upperTicker?: string }): string;
+  extractIsinCountryCode(request: { ticker?: string }): string;
 }
 
 export function createDefaultPlanMaterializationDependencies(
@@ -109,15 +109,13 @@ export function createDefaultPlanMaterializationDependencies(
     buildPlanNode(code, spec, resolveNode, overrides) {
       return buildPlanNodeFromSpec(code, spec, resolveNode, overrides, {
         extractIsinCountryCode(request) {
-          if (request && ("ticker" in request || "upperTicker" in request)) {
+          if (request && "ticker" in request) {
             const requestWithTicker = request as {
               ticker?: unknown;
-              upperTicker?: unknown;
             };
 
             return deps.extractIsinCountryCode({
               ticker: String(requestWithTicker.ticker ?? "").trim(),
-              upperTicker: String(requestWithTicker.upperTicker ?? "").trim(),
             });
           }
 
@@ -125,7 +123,6 @@ export function createDefaultPlanMaterializationDependencies(
             const identifier = String(request.input?.identifier || "").trim();
             return deps.extractIsinCountryCode({
               ticker: identifier,
-              upperTicker: identifier.toUpperCase(),
             });
           }
 

@@ -27,11 +27,6 @@ function createRequestInput(overrides = {}) {
     infoMode: "",
     sourceOverride: overrides.sourceOverride || "",
     ticker: overrides.ticker || overrides.identifier || "GOOG",
-    upperTicker: (
-      overrides.ticker ||
-      overrides.identifier ||
-      "GOOG"
-    ).toUpperCase(),
   });
 }
 
@@ -96,7 +91,8 @@ function createDeps() {
       return createNode(`IDENTIFIER:${resolverOrPlan.name}`);
     },
     extractIsinFromRequestInput(input) {
-      return String(input.ticker).startsWith("US") ? input.upperTicker : "";
+      const ticker = String(input.ticker || "");
+      return ticker.startsWith("US") ? ticker.toUpperCase() : "";
     },
     listAllDefaultAttributePlans() {
       return [defaultLeaf];

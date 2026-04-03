@@ -41,7 +41,6 @@ export interface RequestInputInit {
   infoMode: ParsedTickerRequest["infoMode"];
   sourceOverride: string;
   ticker: string;
-  upperTicker: string;
 }
 
 export interface RequestInputRuntimeDependencies {
@@ -62,10 +61,11 @@ function isRequestInputInit(value: unknown): value is RequestInputInit {
 
 function classifyRequestInputFromDerivedState(
   ticker: string,
-  upperTicker: string,
   fxPair: FxPair | null,
   looksLikeIsin: (value: string) => boolean,
 ): RequestClassification {
+  const upperTicker = String(ticker || "").trim().toUpperCase();
+
   if (looksLikeIsin(ticker)) {
     return "isin";
   }
@@ -93,7 +93,6 @@ export class RequestInput {
   readonly infoMode: ParsedTickerRequest["infoMode"];
   readonly sourceOverride: string;
   readonly ticker: string;
-  readonly upperTicker: string;
 
   constructor(init: RequestInputInit);
   constructor(identifier: unknown, attribute?: unknown);
@@ -119,7 +118,6 @@ export class RequestInput {
       this.infoMode = init.infoMode;
       this.sourceOverride = init.sourceOverride;
       this.ticker = init.ticker;
-      this.upperTicker = init.upperTicker;
       return;
     }
 
@@ -149,10 +147,8 @@ export class RequestInput {
     this.infoMode = parsedIdentifier.infoMode;
     this.sourceOverride = parsedIdentifier.sourceOverride;
     this.ticker = requestTicker;
-    this.upperTicker = requestTicker.toUpperCase();
     this.classification = classifyRequestInputFromDerivedState(
       this.ticker,
-      this.upperTicker,
       this.fxPair,
       runtimeDeps.looksLikeIsin,
     );
@@ -174,12 +170,11 @@ export class RequestInput {
 }
 
 export function classifyRequestInput(
-  input: Pick<RequestInput, "fxPair" | "ticker" | "upperTicker">,
+  input: Pick<RequestInput, "fxPair" | "ticker">,
   looksLikeIsin: (value: string) => boolean,
 ): RequestClassification {
   return classifyRequestInputFromDerivedState(
     String(input.ticker || "").trim(),
-    String(input.upperTicker || "").trim(),
     input.fxPair,
     looksLikeIsin,
   );

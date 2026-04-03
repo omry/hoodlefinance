@@ -85,6 +85,10 @@ transition can preserve runtime behavior first.
   layer.
 - Revisit `FunctionValueResolver` as an implementation detail rather than a
   first-class routing concept.
+- Replace legacy empty-string "not found / not applicable" helper returns with
+  clearer nullable results where appropriate.
+  - Example: PSE ISIN map lookup should likely return `null` instead of `""`
+    once runtime-parity constraints are no longer driving the API.
 - Tighten the request boundary.
   - Separate core request modeling from debug-only source override parsing.
   - Reduce how much parser-derived and runtime-wiring behavior lives in

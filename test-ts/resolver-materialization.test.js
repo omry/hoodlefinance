@@ -5,6 +5,7 @@ const {
   DirectIdentifierResolver,
   FunctionValueResolver,
   LocalFxResolver,
+  PseIsinMapResolver,
   RequestInput,
   createConcreteResolverMaterializationDependencies,
   getMaterializedResolverByCode,
@@ -97,12 +98,18 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       LOCAL: {
         resolverClass: "LocalFxResolver",
       },
+      "PSE-MAP": {
+        resolverClass: "PseIsinMapResolver",
+      },
     },
     createConcreteResolverMaterializationDependencies({
       resolveFunctionsByRef: {
         DIRECT(job) {
           return String(job.routeState.identifier || "").toUpperCase();
         },
+      },
+      resolvePseTickerFromIsinMap(isin) {
+        return isin === "PHY077751022" ? "PSE:BDO" : "";
       },
     }),
   );
@@ -113,6 +120,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     true,
   );
   assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
+  assert.equal(registry.byCode["PSE-MAP"] instanceof PseIsinMapResolver, true);
   assert.equal(
     registry.byCode.DIRECT.executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
     "GOOG",
@@ -140,4 +148,27 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
 
   assert.equal(resolved.status, "success");
   assert.equal(resolved.value.yahooSymbol, "GOOG");
+
+  const pseResolved = registry.byCode["PSE-MAP"].resolve(
+    new RequestInput({
+      attribute: "price",
+      attributeRequest: {
+        baseAttribute: "price",
+        outputCode: "",
+        rawAttribute: "price",
+        wantsOutputCurrency: false,
+      },
+      attributeType: "quote",
+      classification: "isin",
+      fxPair: null,
+      identifier: "ISIN:PHY077751022",
+      infoMode: "",
+      sourceOverride: "",
+      ticker: "ISIN:PHY077751022",
+      upperTicker: "ISIN:PHY077751022",
+    }),
+  );
+
+  assert.equal(pseResolved.status, "success");
+  assert.equal(pseResolved.value.exchange, "PSE");
 });

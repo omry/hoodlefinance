@@ -5,6 +5,7 @@ const {
   DirectIdentifierResolver,
   FunctionValueResolver,
   LocalFxResolver,
+  PseIsinMapResolver,
   RequestInput,
   FxRequest,
 } = require("../dist/ts/core/index.js");
@@ -129,4 +130,36 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
   assert.equal(results[0].status, "success");
   assert.equal(results[0].quote.regularMarketPrice, 1);
   assert.equal(results[0].quote.symbol, "USDUSD");
+});
+
+test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup", () => {
+  const resolver = new PseIsinMapResolver((isin) =>
+    isin === "PHY077751022" ? "PSE:BDO" : "",
+  );
+  const requestInput = createRequestInput({
+    attribute: "price",
+    attributeType: "quote",
+    classification: "isin",
+    identifier: "ISIN:PHY077751022",
+    ticker: "ISIN:PHY077751022",
+  });
+
+  assert.equal(resolver.canHandle(requestInput), true);
+  assert.deepEqual(resolver.getAttributeOverrideSources(requestInput), ["PSE"]);
+
+  const success = resolver.resolve(requestInput);
+  assert.equal(success.status, "success");
+  assert.equal(success.value.exchange, "PSE");
+  assert.equal(success.value.symbol, "BDO");
+
+  const failure = resolver.resolve(
+    createRequestInput({
+      attribute: "price",
+      attributeType: "quote",
+      classification: "isin",
+      identifier: "ISIN:US02079K1079",
+      ticker: "ISIN:US02079K1079",
+    }),
+  );
+  assert.equal(failure.status, "failure");
 });
