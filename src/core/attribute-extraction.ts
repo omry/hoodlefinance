@@ -1,4 +1,10 @@
 import { parseAttributeRequest } from "./request-parsing";
+import { stripDefaultTickerSourceOverride } from "./source-overrides";
+
+interface AttributeExtractionContext {
+  routeState?: Record<string, unknown> | null;
+  tickerInput?: string | null;
+}
 
 function normalizeCurrency(currency: unknown): string {
   return currency === "GBp"
@@ -90,9 +96,41 @@ function isFxContext(quote: Record<string, unknown>): boolean {
   );
 }
 
+function resolveSymbolAttribute(
+  quote: Record<string, unknown>,
+  context: AttributeExtractionContext | null | undefined,
+  style: "google" | "yahoo",
+): string {
+  const resolvedSymbol = String(quote.symbol || "").trim();
+
+  if (style === "yahoo") {
+    return resolvedSymbol;
+  }
+
+  const preferredYahooSymbol = String(
+    context && context.routeState ? context.routeState.preferredYahooSymbol || "" : "",
+  )
+    .trim()
+    .toUpperCase();
+  const tickerInput = stripDefaultTickerSourceOverride(
+    String(context && context.tickerInput ? context.tickerInput : ""),
+  ).trim();
+
+  if (
+    preferredYahooSymbol &&
+    tickerInput &&
+    resolvedSymbol.toUpperCase() === preferredYahooSymbol
+  ) {
+    return tickerInput;
+  }
+
+  return resolvedSymbol;
+}
+
 export function extractAttributeValue(
   quote: Record<string, unknown>,
   attribute: string,
+  context?: AttributeExtractionContext,
 ): unknown {
   const attributeRequest = parseAttributeRequest(attribute);
   const baseAttribute = attributeRequest.baseAttribute;
@@ -157,8 +195,9 @@ export function extractAttributeValue(
       return quote.exchangeDataDelayedBy != null ? quote.exchangeDataDelayedBy : 0;
     case "symbol":
     case "symbol:google":
+      return resolveSymbolAttribute(quote, context, "google");
     case "symbol:yahoo":
-      return quote.symbol || "";
+      return resolveSymbolAttribute(quote, context, "yahoo");
     case "exchange":
     case "exchange:google":
     case "exchange:yahoo":

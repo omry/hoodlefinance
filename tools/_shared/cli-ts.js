@@ -3,6 +3,8 @@
 
 const {
   createHoodlefinanceRuntime,
+  createPreferredYahooSymbolResolver,
+  parsePreferredReitTickerSet,
   parsePropertiesMap,
 } = require("../../dist/ts/runtime/host-adapter.js");
 const { createRequestInput } = require("../../dist/ts/core/request-building.js");
@@ -27,6 +29,12 @@ function loadPseIsinMap() {
   const dataPath = `${__dirname}/../../data/pse-isin-map.properties`;
 
   return parsePropertiesMap(loadTextFile(dataPath));
+}
+
+function loadPreferredReitTickerSet() {
+  const dataPath = `${__dirname}/../../data/preferred-reit-whitelist.json`;
+
+  return parsePreferredReitTickerSet(loadTextFile(dataPath));
 }
 
 function createSyncFetcher() {
@@ -76,6 +84,7 @@ function createJsonCache() {
 function createCliEnvironment() {
   const syncFetchText = createSyncFetcher();
   const pseIsinMap = loadPseIsinMap();
+  const preferredReitTickerSet = loadPreferredReitTickerSet();
   const stringCache = createStringCache();
   const jsonCache = createJsonCache();
   const runtime = createHoodlefinanceRuntime({
@@ -84,6 +93,9 @@ function createCliEnvironment() {
     getCachedString: stringCache.getCachedString,
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
+    resolvePreferredYahooSymbol: createPreferredYahooSymbolResolver(
+      preferredReitTickerSet,
+    ),
     resolvePseTickerFromIsinMap(isin) {
       return pseIsinMap[String(isin || "").trim().toUpperCase()] || "";
     },

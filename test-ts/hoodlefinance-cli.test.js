@@ -12,6 +12,7 @@ const {
   lookupWithEnvironment,
   runSmokeSuite,
 } = require("../tools/_shared/cli-ts.js");
+const { createRequestInput } = require("../dist/ts/core/request-building.js");
 const { EquityRequest, FxRequest } = require("../dist/ts/core/request.js");
 
 function createFakeEnvironment() {
@@ -388,6 +389,48 @@ test("lookup formatting and routing views stay readable", () => {
   assert.match(formatRoutingTable(), /PSE:BDO/);
   assert.match(formatRoutingTree(), /^ROOT \[switch\]$/m);
   assert.match(formatRoutingTree(), /PSE-FRAMES - PSE frames quote lookup/);
+});
+
+test("CLI prefers the local Yahoo fallback symbol for whitelisted REITs", () => {
+  const env = createCliEnvironment();
+  const requestInput = createRequestInput("NLY-I", "price");
+  const resolvePlan = env.buildResolvePlan(requestInput);
+  const routeState = resolvePlan.attributePlan.buildRuntimePlan(
+    resolvePlan.resolvedRequest,
+  ).routeState;
+
+  assert.equal(routeState.preferredYahooSymbol, "NLY-PI");
+  assert.equal(routeState.yahooSymbol, "NLY-I");
+});
+
+test("lookupWithEnvironment keeps the original Google-style symbol for preferred REITs", () => {
+  const env = createCliEnvironment();
+
+  env.yahooQuoteResolver.executeBatch = (jobs) =>
+    jobs.map(() => ({
+      status: "success",
+      quote: {
+        currency: "USD",
+        exchangeName: "NYSE",
+        regularMarketPrice: 24.78,
+        symbol: "NLY-PI",
+      },
+    }));
+
+  assert.equal(
+    lookupWithEnvironment(env, {
+      attribute: "symbol:google",
+      ticker: "NLY-I",
+    }).value,
+    "NLY-I",
+  );
+  assert.equal(
+    lookupWithEnvironment(env, {
+      attribute: "symbol:yahoo",
+      ticker: "NLY-I",
+    }).value,
+    "NLY-PI",
+  );
 });
 
 test("lookupEnvelopeWithEnvironment preserves the raw quote envelope", () => {

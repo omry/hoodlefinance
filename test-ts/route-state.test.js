@@ -96,3 +96,27 @@ test("route-state builders preserve the small planner state payloads", () => {
     },
   );
 });
+
+test("preferred REIT route-state keeps the original symbol alongside the Yahoo fallback", () => {
+  const preferredReitRequest = new EquityRequest({
+    allowTradingviewFallback: false,
+    attribute: "price",
+    exchange: "NYSE",
+    identifier: "NLY-I",
+    identifierResolutionMs: 0,
+    symbol: "NLY-I",
+    yahooSymbol: "NLY-I",
+  });
+
+  assert.deepEqual(
+    buildEquityYahooQuoteRouteState(
+      preferredReitRequest,
+      (symbol) => (symbol === "NLY-I" ? "NLY-PI" : ""),
+    ),
+    {
+      fxPair: null,
+      preferredYahooSymbol: "NLY-PI",
+      yahooSymbol: "NLY-I",
+    },
+  );
+});

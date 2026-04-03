@@ -1201,7 +1201,11 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
       }
 
       const yahooSymbol = String(job.routeState.yahooSymbol || "").trim();
-      const cacheKey = `hoodlefinance:${yahooSymbol}`;
+      const preferredYahooSymbol = String(
+        job.routeState.preferredYahooSymbol || "",
+      ).trim();
+      const lookupYahooSymbol = preferredYahooSymbol || yahooSymbol;
+      const cacheKey = `hoodlefinance:${lookupYahooSymbol}`;
       const cached = this.getCachedJson(cacheKey);
 
       if (cached) {
@@ -1217,8 +1221,8 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
       requests.push({
         cacheKey,
         index: i,
-        url: buildYahooChartUrl(yahooSymbol),
-        yahooSymbol,
+        url: buildYahooChartUrl(lookupYahooSymbol),
+        yahooSymbol: lookupYahooSymbol,
       });
     }
 

@@ -60,6 +60,13 @@ class GenerateSupportMatrixTest(unittest.TestCase):
         self.assertIn("✅", output)
         self.assertIn("⚠️", output)
 
+    def test_nyse_samples_include_preferred_reit_probe(self):
+        nyse = next(exchange for exchange in MODULE.EXCHANGES if exchange["code"] == "NYSE")
+
+        labels = [MODULE.sample_label(sample) for sample in nyse["samples"]]
+
+        self.assertIn("NLY-I (Annaly Pref I)", labels)
+
 
 if __name__ == "__main__":
     unittest.main()

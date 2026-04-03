@@ -1,10 +1,19 @@
-import { createHoodlefinanceRuntime, parsePropertiesMap } from "../runtime/host-adapter";
+import {
+  createHoodlefinanceRuntime,
+  createPreferredYahooSymbolResolver,
+  parsePreferredReitTickerSet,
+  parsePropertiesMap,
+} from "../runtime/host-adapter";
 
 const DEFAULT_ATTRIBUTE = "price";
 const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
 const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
+const PREFERRED_REIT_WHITELIST_CACHE_KEY = "hoodlefinance:ts:preferredReitWhitelist";
+const PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const PREFERRED_REIT_WHITELIST_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json";
 
 interface AppsScriptResponseLike {
   getContentText(): string;
@@ -38,10 +47,23 @@ interface HoodlefinanceAppScriptServices {
 interface HoodlefinanceAppScriptBindings {
   HOODLEFINANCE_TS(identifier: unknown, attribute?: unknown): unknown;
   HOODLEFINANCE_TS_ENVELOPE(identifier: unknown, attribute?: unknown): string;
+  hoodlefinanceBuildSheetsAddOnHomepage(): unknown;
 }
 
 interface HoodlefinanceAppScriptGlobals {
   CacheService: AppsScriptCacheServiceLike;
+  CardService?: {
+    newCardBuilder(): {
+      addSection(section: unknown): unknown;
+      build(): unknown;
+    };
+    newCardSection(): {
+      addWidget(widget: unknown): unknown;
+    };
+    newTextParagraph(): {
+      setText(text: string): unknown;
+    };
+  };
   UrlFetchApp: AppsScriptUrlFetchLike;
 }
 
@@ -159,6 +181,29 @@ function requireServices(
   };
 }
 
+function createPendingAddOnHomepage(): () => unknown {
+  return function hoodlefinanceBuildSheetsAddOnHomepage(): unknown {
+    const cardService = (globalThis as Partial<HoodlefinanceAppScriptGlobals>)
+      .CardService;
+
+    if (!cardService) {
+      throw new Error("CardService is not available.");
+    }
+
+    const cardBuilder = cardService.newCardBuilder();
+    const section = cardService.newCardSection();
+    const paragraph = cardService.newTextParagraph();
+
+    paragraph.setText(
+      "HOODLEFINANCE_TS custom functions are available, but the Sheets add-on homepage is not implemented in the TypeScript bundle yet.",
+    );
+    section.addWidget(paragraph);
+    cardBuilder.addSection(section);
+
+    return cardBuilder.build();
+  };
+}
+
 export function createHoodlefinanceAppScriptBindings(
   overrides?: Partial<HoodlefinanceAppScriptServices>,
 ): HoodlefinanceAppScriptBindings {
@@ -167,6 +212,7 @@ export function createHoodlefinanceAppScriptBindings(
   const stringCache = createStringCache(scriptCache);
   const jsonCache = createJsonCache(scriptCache);
   let pseIsinMap: Record<string, string> | null = null;
+  let preferredReitTickerSet: Set<string> | null = null;
   const runtime = createHoodlefinanceRuntime({
     fetchAllInChunks: createFetchAllInChunks(services.urlFetchApp),
     fetchText(url) {
@@ -176,6 +222,32 @@ export function createHoodlefinanceAppScriptBindings(
     getCachedString: stringCache.getCachedString,
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
+    resolvePreferredYahooSymbol(ticker) {
+      try {
+        if (!preferredReitTickerSet) {
+          let rawWhitelist = stringCache.getCachedString(
+            PREFERRED_REIT_WHITELIST_CACHE_KEY,
+          );
+
+          if (!rawWhitelist) {
+            rawWhitelist = services.urlFetchApp
+              .fetch(PREFERRED_REIT_WHITELIST_URL)
+              .getContentText();
+            stringCache.putCachedString(
+              PREFERRED_REIT_WHITELIST_CACHE_KEY,
+              rawWhitelist,
+              PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+            );
+          }
+
+          preferredReitTickerSet = parsePreferredReitTickerSet(rawWhitelist);
+        }
+      } catch {
+        return "";
+      }
+
+      return createPreferredYahooSymbolResolver(preferredReitTickerSet)(ticker);
+    },
     resolvePseTickerFromIsinMap(isin) {
       if (!pseIsinMap) {
         let rawMap = stringCache.getCachedString(PSE_ISIN_MAP_CACHE_KEY);
@@ -211,6 +283,7 @@ export function createHoodlefinanceAppScriptBindings(
       assertScalarIdentifier(identifier);
       return JSON.stringify(runtime.lookupEnvelope(identifier, attribute));
     },
+    hoodlefinanceBuildSheetsAddOnHomepage: createPendingAddOnHomepage(),
   };
 }
 
@@ -222,6 +295,8 @@ export function installHoodlefinanceAppScriptBindings(
 
   scope.HOODLEFINANCE_TS = bindings.HOODLEFINANCE_TS;
   scope.HOODLEFINANCE_TS_ENVELOPE = bindings.HOODLEFINANCE_TS_ENVELOPE;
+  scope.hoodlefinanceBuildSheetsAddOnHomepage =
+    bindings.hoodlefinanceBuildSheetsAddOnHomepage;
 
   return bindings;
 }

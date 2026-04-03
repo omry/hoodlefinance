@@ -24,9 +24,9 @@ EXCHANGES = [
     {
         "code": "NYSE",
         "name": "New York Stock Exchange",
-        "samples": ["NYSE:IBM", "NYSE:KO", "NYSE:DIS"],
-        "google_query_samples": ["NYSE:IBM", "NYSE:KO", "NYSE:DIS"],
-        "yahoo_query_samples": ["IBM", "KO", "DIS"],
+        "samples": ["NYSE:IBM", "NYSE:KO", "NYSE:DIS", {"ticker": "NLY-I", "label": "NLY-I (Annaly Pref I)"}],
+        "google_query_samples": ["NYSE:IBM", "NYSE:KO", "NYSE:DIS", {"ticker": "NLY-I", "label": "NLY-I (Annaly Pref I)"}],
+        "yahoo_query_samples": ["IBM", "KO", "DIS", {"ticker": "NLY-I", "label": "NLY-I (Annaly Pref I)"}],
         "isin_lookup_samples": [
             {"ticker": "US4592001014", "label": "US4592001014 (IBM)"},
         ],

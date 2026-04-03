@@ -62,3 +62,29 @@ test("extractAttributeValue rejects unsupported output-currency conversion", () 
     /Output-currency conversion is not yet supported in the TypeScript CLI\./,
   );
 });
+
+test("extractAttributeValue keeps the original Google-style symbol for preferred REIT quotes", () => {
+  const quote = {
+    exchangeName: "NYSE",
+    symbol: "NLY-PI",
+  };
+
+  assert.equal(
+    extractAttributeValue(quote, "symbol:google", {
+      routeState: {
+        preferredYahooSymbol: "NLY-PI",
+      },
+      tickerInput: "NLY-I@YAHOO",
+    }),
+    "NLY-I",
+  );
+  assert.equal(
+    extractAttributeValue(quote, "symbol:yahoo", {
+      routeState: {
+        preferredYahooSymbol: "NLY-PI",
+      },
+      tickerInput: "NLY-I@YAHOO",
+    }),
+    "NLY-PI",
+  );
+});

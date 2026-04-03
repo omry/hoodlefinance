@@ -84,6 +84,89 @@ test("HOODLEFINANCE_TS supports direct ISIN attribute lookups that only need fet
   assert.equal(bindings.HOODLEFINANCE_TS("LON:SJPA", "isin"), "US0000000001");
 });
 
+test("HOODLEFINANCE_TS uses the preferred REIT Yahoo fallback symbol", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
+      {
+        preferredTickers: ["NLY I"],
+      },
+    ),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+});
+
+test("HOODLEFINANCE_TS falls back to the original Yahoo symbol when the preferred REIT whitelist fetch fails", () => {
+  const services = createServices({
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.11,
+                symbol: "NLY-I",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.11);
+});
+
+test("HOODLEFINANCE_TS keeps the original Google-style symbol for preferred REITs", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
+      {
+        preferredTickers: ["NLY I"],
+      },
+    ),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
+      {
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      },
+    ),
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "symbol:google"), "NLY-I");
+  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "symbol:yahoo"), "NLY-PI");
+});
+
 test("HOODLEFINANCE_TS rejects range identifiers until the TS range surface exists", () => {
   const services = createServices();
   const bindings = createHoodlefinanceAppScriptBindings(services);
@@ -102,5 +185,9 @@ test("installHoodlefinanceAppScriptBindings publishes the formula functions onto
 
   assert.equal(typeof scope.HOODLEFINANCE_TS, "function");
   assert.equal(typeof scope.HOODLEFINANCE_TS_ENVELOPE, "function");
+  assert.equal(
+    typeof scope.hoodlefinanceBuildSheetsAddOnHomepage,
+    "function",
+  );
   assert.equal(scope.HOODLEFINANCE_TS("USDUSD", "price"), 1);
 });

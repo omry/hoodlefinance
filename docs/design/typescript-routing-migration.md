@@ -118,3 +118,10 @@ transition can preserve runtime behavior first.
 - Do a naming pass against `docs/design/hoodlefinance-routing-design.md` so the
   code reads more like the routing design and less like the legacy runtime table
   names.
+- Do a test-driven parity pass between the legacy runtime and the TypeScript
+  migration surface.
+  - Compare the legacy test coverage against `test-ts/**/*.test.js` and use the
+    missing cases as an explicit migration checklist.
+  - Prioritize behavior-sensitive areas where the TS runtime can appear green
+    while still missing host or adapter parity, such as preferred REIT symbol
+    handling, source-specific fallbacks, and Apps Script-specific wiring.

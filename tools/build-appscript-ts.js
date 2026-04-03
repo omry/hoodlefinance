@@ -8,6 +8,12 @@ const path = require("node:path");
 const esbuild = require("esbuild");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
+const TRACKED_MANIFEST_PATH = path.join(
+  ROOT_DIR,
+  "docs",
+  "google-sheets-editor-addon",
+  "appsscript.json",
+);
 const ENTRY_PATH = path.join(
   ROOT_DIR,
   "src",
@@ -15,24 +21,6 @@ const ENTRY_PATH = path.join(
   "install-global-bindings.ts",
 );
 const CURRENCY_CODES_PATH = path.join(ROOT_DIR, "data", "currency-codes.json");
-const MANIFEST = {
-  exceptionLogging: "STACKDRIVER",
-  oauthScopes: [
-    "https://www.googleapis.com/auth/script.external_request",
-  ],
-  runtimeVersion: "V8",
-  timeZone: "Etc/UTC",
-  urlFetchWhitelist: [
-    "https://raw.githubusercontent.com/omry/hoodlefinance/",
-    "https://www.londonstockexchange.com/exchange/",
-    "https://www.tradingview.com/symbols/",
-    "https://edge.pse.com.ph/",
-    "https://frames.pse.com.ph/",
-    "https://www.google.com/finance/",
-    "https://query1.finance.yahoo.com/v8/finance/",
-    "https://query2.finance.yahoo.com/v1/finance/",
-  ],
-};
 const resolveRepoDataPlugin = {
   name: "resolve-repo-data",
   setup(build) {
@@ -64,6 +52,9 @@ function parseArgs(argv) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const trackedManifest = JSON.parse(
+    await fs.readFile(TRACKED_MANIFEST_PATH, "utf8"),
+  );
   const outDir = path.join(
     ROOT_DIR,
     "dist",
@@ -90,7 +81,10 @@ async function main() {
     minify: options.minify,
     target: ["es2020"],
   });
-  await fs.writeFile(manifestPath, JSON.stringify(MANIFEST, null, 2) + "\n");
+  await fs.writeFile(
+    manifestPath,
+    JSON.stringify(trackedManifest, null, 2) + "\n",
+  );
   process.stdout.write(`Built ${path.relative(ROOT_DIR, outfile)}\n`);
   process.stdout.write(`Wrote ${path.relative(ROOT_DIR, manifestPath)}\n`);
 }

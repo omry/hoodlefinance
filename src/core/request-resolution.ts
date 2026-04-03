@@ -186,6 +186,7 @@ function projectLookupValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
   envelope: LookupEnvelopeResult,
+  resolvePlan?: Readonly<ResolvePlan> | null,
 ): LookupEnvelopeResult {
   if (envelope.status !== "success") {
     return envelope;
@@ -210,6 +211,20 @@ function projectLookupValue(
         : extractAttributeValue(
             (envelope.value || {}) as Record<string, unknown>,
             requestInput.attribute,
+            resolvePlan &&
+              resolvePlan.attributePlan &&
+              resolvePlan.resolvedRequest &&
+              typeof resolvePlan.attributePlan.buildRuntimePlan === "function"
+              ? {
+                  routeState:
+                    resolvePlan.attributePlan.buildRuntimePlan(
+                      resolvePlan.resolvedRequest,
+                    ).routeState || null,
+                  tickerInput: requestInput.ticker,
+                }
+              : {
+                  tickerInput: requestInput.ticker,
+                },
           );
 
     return {
@@ -297,9 +312,39 @@ export function resolveRequestValue(
     }
   }
 
-  return projectLookupValue(
-    env,
-    requestInput,
-    resolveRequestEnvelope(env, requestInput),
-  );
+  let resolvePlan: Readonly<ResolvePlan> | null = null;
+
+  try {
+    validateDeferredLookupModes(requestInput);
+    resolvePlan = env.buildResolvePlan(requestInput);
+  } catch (error) {
+    return failureResult("(none)", [], error);
+  }
+
+  if (resolvePlan.debugValue) {
+    return {
+      attemptedRoutes: [],
+      kind: "quote",
+      route: resolvePlan.plannedRoute || "(none)",
+      status: "success",
+      value: resolvePlan.debugValue,
+    };
+  }
+
+  const envelope =
+    resolvePlan.attributePlan && resolvePlan.resolvedRequest
+      ? resolvePlannedQuoteEnvelope(
+          resolvePlan.attributePlan,
+          resolvePlan.resolvedRequest,
+          [],
+        )
+      : resolvePlan.identifierPlan
+        ? resolveIdentifierPlanEnvelope(requestInput, resolvePlan)
+        : failureResult(
+            resolvePlan.plannedRoute || "(none)",
+            [],
+            "Identifier resolution failed.",
+          );
+
+  return projectLookupValue(env, requestInput, envelope, resolvePlan);
 }
