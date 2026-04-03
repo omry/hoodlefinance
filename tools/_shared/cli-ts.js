@@ -13,14 +13,9 @@ const {
   TradingviewFundResolver,
 } = require("../../dist/ts/core/concrete-resolvers.js");
 const {
-  buildTypedRequestFromParsedInput,
   createRequestInput,
-  extractIsinFromRequestInput,
 } = require("../../dist/ts/core/request-building.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
-const {
-  extractAttributeValue,
-} = require("../../dist/ts/core/attribute-extraction.js");
 const { describePlanSource } = require("../../dist/ts/core/route-results.js");
 const {
   createDefaultPlanMaterializationDependencies,
@@ -28,7 +23,10 @@ const {
   materializePlanFromSpec,
 } = require("../../dist/ts/core/plan-materialization.js");
 const { PLAN_SPECS_BY_CODE } = require("../../dist/ts/core/spec-data.js");
-const { resolveQuoteForResolvedRequest } = require("../../dist/ts/core/quote-routing.js");
+const {
+  resolveRequestEnvelope,
+  resolveRequestValue,
+} = require("../../dist/ts/core/request-resolution.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
 
@@ -257,12 +255,16 @@ function createCliEnvironment() {
 
   return {
     directIdentifierResolver,
+    fetchText: syncFetchText,
+    getCachedString: stringCache.getCachedString,
     identifierIsinPlan,
     googleFxResolver,
     localFxResolver,
+    looksLikeIsin,
     pseEdgeResolver,
     pseFramesResolver,
     pseIsinMapResolver,
+    putCachedString: stringCache.putCachedString,
     quoteEquityPlan,
     quoteFxPlan,
     tradingviewFundResolver,
@@ -282,141 +284,18 @@ function routeLabelFromLookup(result) {
   return result.route || "(none)";
 }
 
-function applyRequestedAttribute(result, attribute) {
-  if (result.status !== "success" || result.kind !== "quote") {
-    return result;
-  }
-
-  try {
-    const value = extractAttributeValue(
-      result.value || {},
-      String(attribute || "price"),
-    );
-
-    return {
-      ...result,
-      value,
-    };
-  } catch (error) {
-    return {
-      ...result,
-      error: error instanceof Error ? error.message : String(error),
-      status: "failure",
-      value: null,
-    };
-  }
-}
-
 function lookupEnvelopeWithEnvironment(env, args) {
-  const attribute = String(args.attribute || "price").trim();
-  const requestInput = createRequestInput(args.ticker, attribute);
-
-  if (requestInput.classification === "fx" && requestInput.fxPair) {
-    return resolveFxRequest(env, requestInput);
-  }
-
-  if (extractIsinFromRequestInput(requestInput)) {
-    return resolveIsinRequest(env, requestInput);
-  }
-
-  return resolveDirectRequest(env, requestInput);
-}
-
-function resolveFxRequest(env, requestInput) {
-  const resolvedRequest = buildTypedRequestFromParsedInput(
-    requestInput,
-    requestInput,
-    0,
+  return resolveRequestEnvelope(
+    env,
+    createRequestInput(args.ticker, String(args.attribute || "price").trim()),
   );
-  return resolveQuoteForResolvedRequest(env, resolvedRequest, []);
-}
-
-function resolveIsinRequest(env, requestInput) {
-  const isin = extractIsinFromRequestInput(requestInput);
-  const attemptedRoutes = [];
-  if (env.identifierIsinPlan) {
-    const plan = env.identifierIsinPlan;
-    const routeLabel = plan.describe(requestInput);
-    attemptedRoutes.push(routeLabel);
-    const identifierOutcome = plan.resolve(requestInput);
-
-    if (identifierOutcome.status !== "success") {
-      return {
-        ...identifierOutcome,
-        attemptedRoutes,
-        kind: "quote",
-        route: routeLabel,
-      };
-    }
-
-    return {
-      ...resolveQuoteForResolvedRequest(
-        env,
-        identifierOutcome.value,
-        attemptedRoutes,
-      ),
-    };
-  }
-
-  const routeClass = "IDENTIFIER:ISIN";
-
-  if (isin.startsWith("PH")) {
-    const routeLabel = routeLabelFromPlan(
-      routeClass,
-      env.pseIsinMapResolver.name,
-    );
-    attemptedRoutes.push(routeLabel);
-    const pseOutcome = env.pseIsinMapResolver.resolve(requestInput);
-
-    if (pseOutcome.status === "success") {
-      return {
-        ...resolveQuoteForResolvedRequest(env, pseOutcome.value, attemptedRoutes),
-      };
-    }
-  }
-
-  const routeLabel = routeLabelFromPlan(
-    routeClass,
-    env.yahooIsinSearchResolver.name,
-  );
-  attemptedRoutes.push(routeLabel);
-  const yahooOutcome = env.yahooIsinSearchResolver.resolve(requestInput);
-
-  if (yahooOutcome.status !== "success") {
-    return {
-      ...yahooOutcome,
-      attemptedRoutes,
-      kind: "quote",
-      route: routeLabel,
-    };
-  }
-
-  return {
-    ...resolveQuoteForResolvedRequest(env, yahooOutcome.value, attemptedRoutes),
-  };
-}
-
-function resolveDirectRequest(env, requestInput) {
-  const outcome = env.directIdentifierResolver.resolve(requestInput);
-  const routeLabel = routeLabelFromPlan(env.directIdentifierResolver.name, "");
-
-  if (outcome.status !== "success") {
-    return {
-      ...outcome,
-      attemptedRoutes: [routeLabel],
-      kind: "quote",
-      route: routeLabel,
-    };
-  }
-
-  return {
-    ...resolveQuoteForResolvedRequest(env, outcome.value, [routeLabel]),
-  };
 }
 
 function lookupWithEnvironment(env, args) {
-  const attribute = String(args.attribute || "price").trim();
-  return applyRequestedAttribute(lookupEnvelopeWithEnvironment(env, args), attribute);
+  return resolveRequestValue(
+    env,
+    createRequestInput(args.ticker, String(args.attribute || "price").trim()),
+  );
 }
 
 function formatLookupResult(result) {

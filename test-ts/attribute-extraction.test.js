@@ -35,6 +35,20 @@ test("extractAttributeValue returns the final scalar for common quote attributes
   );
 });
 
+test("extractAttributeValue keeps isin out of the generic quote-field extractor", () => {
+  assert.throws(
+    () =>
+      extractAttributeValue(
+        {
+          isin: "US02079K1079",
+          symbol: "GOOG",
+        },
+        "isin",
+      ),
+    /Unsupported attribute "isin"\./,
+  );
+});
+
 test("extractAttributeValue rejects unsupported output-currency conversion", () => {
   assert.throws(
     () =>

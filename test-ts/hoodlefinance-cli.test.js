@@ -14,7 +14,8 @@ const {
 } = require("../tools/_shared/cli-ts.js");
 
 function createFakeEnvironment() {
-  return {
+  const stringCache = new Map();
+  const env = {
     directIdentifierResolver: {
       name: "DIRECT-IDENTIFIER",
       resolve(request) {
@@ -72,10 +73,24 @@ function createFakeEnvironment() {
             attribute: request.attribute,
             identifier: request.identifier,
             requestType: "equity",
+            symbol: "GOOG",
             yahooSymbol: "GOOG",
           },
         };
       },
+    },
+    fetchText(url) {
+      if (String(url).includes("tradingview.com/symbols/NASDAQ-GOOG/")) {
+        return [
+          '{"resolved_symbol":"NASDAQ:GOOG"}',
+          '{"isin_displayed":"US02079K1079"}',
+        ].join("");
+      }
+
+      throw new Error(`unexpected fetch: ${url}`);
+    },
+    getCachedString(key) {
+      return stringCache.get(key) || "";
     },
     googleFxResolver: {
       name: "GOOGLE",
@@ -104,6 +119,9 @@ function createFakeEnvironment() {
           },
         };
       },
+    },
+    looksLikeIsin(value) {
+      return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value || "").trim());
     },
     pseFramesResolver: {
       name: "PSE-FRAMES",
@@ -215,6 +233,8 @@ function createFakeEnvironment() {
           status: "success",
           value: {
             currency: "USD",
+            exchangeName: "NMS",
+            fullExchangeName: "NasdaqGS",
             regularMarketPrice: 123.45,
             symbol: "GOOG",
           },
@@ -243,7 +263,28 @@ function createFakeEnvironment() {
         };
       },
     },
+    putCachedString(key, value) {
+      const normalizedValue = String(value || "");
+      stringCache.set(key, normalizedValue);
+      return normalizedValue;
+    },
   };
+
+  env.identifierIsinPlan = {
+    describe(request) {
+      return String(request && request.ticker || "").toUpperCase().startsWith("PH")
+        ? "IDENTIFIER:ISIN -> PSE-MAP"
+        : "IDENTIFIER:ISIN -> YAHOO-ISIN";
+    },
+    resolve(request) {
+      const ticker = String(request && request.ticker || "").trim().toUpperCase();
+      return ticker.startsWith("PH")
+        ? env.pseIsinMapResolver.resolve(request)
+        : env.yahooIsinSearchResolver.resolve(request);
+    },
+  };
+
+  return env;
 }
 
 test("lookupWithEnvironment routes to the expected resolver family", () => {
@@ -288,7 +329,26 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   assert.equal(tradingview.route, "TICKER -> TRADINGVIEW-FUND");
   assert.equal(tradingview.status, "success");
   assert.equal(tradingview.value, 17.25);
+});
 
+test("lookupWithEnvironment resolves routed isin attributes", () => {
+  const env = createFakeEnvironment();
+
+  const tickerIsin = lookupWithEnvironment(env, {
+    attribute: "isin",
+    ticker: "GOOG",
+  });
+  assert.equal(tickerIsin.route, "TICKER -> YAHOO");
+  assert.equal(tickerIsin.status, "success");
+  assert.equal(tickerIsin.value, "US02079K1079");
+
+  const directIsin = lookupWithEnvironment(env, {
+    attribute: "isin",
+    ticker: "ISIN:US02079K1079",
+  });
+  assert.equal(directIsin.route, "DIRECT");
+  assert.equal(directIsin.status, "success");
+  assert.equal(directIsin.value, "US02079K1079");
 });
 
 test("lookupWithEnvironment falls through the real quote plan from PSE to ticker", () => {

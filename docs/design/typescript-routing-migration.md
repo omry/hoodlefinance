@@ -95,6 +95,11 @@ transition can preserve runtime behavior first.
     once runtime-parity constraints are no longer driving the API.
 - Tighten the request boundary.
   - Separate core request modeling from debug-only source override parsing.
+  - Re-introduce debug-only override and introspection support deliberately at
+    the boundary layer once the core plan path is stable.
+    - Explicitly deferred examples: `@SOURCE` forced routing and `@?`
+      source-name inspection are not part of the current TypeScript CLI
+      contract yet.
   - Reduce how much parser-derived and runtime-wiring behavior lives in
     `src/core/request.ts`.
 - Reduce public leakage from `src/core/index.ts` so low-level normalization and
