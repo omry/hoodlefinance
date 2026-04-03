@@ -40,8 +40,10 @@ The first executable extraction is the request-parsing layer:
 
 - `hf_parseAttributeRequest_`, `hf_parseTickerRequest_`, `RequestInput`, `EquityRequest`, `FxRequest`
   Future home: `src/core/request.ts`
-- `Resolver`, `AttemptResolver`, `ResolverPlan`, `IdentifierResolutionPlan`, `AttributeResolutionPlan`
+- `Resolver`, `IdentifierResolver`, `AttributeResolver`, `ResolverPlan`, `IdentifierResolutionPlan`, `AttributeResolutionPlan`
   Future home: `src/core/resolvers.ts`
+- `RouteExecutionResolver`
+  Internal helper for batch-oriented route execution. Useful implementation seam, but not part of the public routing design vocabulary.
 - `HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_`, `HOODLEFINANCE_PLAN_SPECS_BY_CODE_`
   Future home: `src/core/plan-specs.ts`
 - `hf_materializePlanFromSpec_`, `hf_resolveRoutingNode_`, `hf_buildIdentifierResolutionPlan_`, `hf_buildResolvePlan_`

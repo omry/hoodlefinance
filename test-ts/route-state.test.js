@@ -57,12 +57,6 @@ test("route-state builders preserve the small planner state payloads", () => {
     extractYahooExchangeFromSymbol() {
       return "";
     },
-    isPseTicker() {
-      return false;
-    },
-    isPseYahooSymbol() {
-      return false;
-    },
     looksLikeIsraeliFundYahooSymbol() {
       return false;
     },
@@ -85,12 +79,6 @@ test("route-state builders preserve the small planner state payloads", () => {
     },
     parseFxTicker() {
       return null;
-    },
-    parsePseSymbol(ticker) {
-      return String(ticker).trim().toUpperCase();
-    },
-    parsePseYahooSymbol(ticker) {
-      return String(ticker).trim().toUpperCase();
     },
     parseTickerRequest(ticker) {
       return { infoMode: "", sourceOverride: "", ticker: String(ticker).trim() };

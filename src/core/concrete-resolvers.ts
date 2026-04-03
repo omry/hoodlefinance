@@ -1,30 +1,24 @@
 import type { ResolverSpec, ResolverSpecOptions } from "./plan-specs";
 import { RequestInput, type ResolvedRequest } from "./request";
-import { AttemptResolver, Resolver } from "./resolver-classes";
+import {
+  AttributeResolver,
+  IdentifierResolver,
+} from "./resolver-classes";
+import {
+  buildTypedRequestFromParsedInput,
+  extractIsinFromRequestInput,
+} from "./request-building";
 import { createResolutionFailure, createResolutionSuccess, createRouteResult } from "./route-results";
 import type { RouteJob } from "./planner";
+import type { ResolverClassLike } from "./resolver-materialization";
 
-export interface DirectIdentifierResolverDependencies {
-  buildTypedRequestFromParsedInput(
-    originalInput: RequestInput,
-    parsedInput: RequestInput,
-    identifierResolutionMs: number,
-  ): ResolvedRequest;
-  extractIsinFromRequestInput(input: RequestInput): string;
-}
-
-export class DirectIdentifierResolver extends Resolver {
-  readonly deps: DirectIdentifierResolverDependencies;
-
-  constructor(deps: DirectIdentifierResolverDependencies) {
+export class DirectIdentifierResolver extends IdentifierResolver {
+  constructor() {
     super("DIRECT-IDENTIFIER");
-    this.deps = deps;
   }
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {
-    return (
-      input instanceof RequestInput && !this.deps.extractIsinFromRequestInput(input)
-    );
+    return input instanceof RequestInput && !extractIsinFromRequestInput(input);
   }
 
   resolve(input: RequestInput | ResolvedRequest) {
@@ -40,7 +34,7 @@ export class DirectIdentifierResolver extends Resolver {
       }
 
       const requestInput = input as RequestInput;
-      const resolvedRequest = this.deps.buildTypedRequestFromParsedInput(
+      const resolvedRequest = buildTypedRequestFromParsedInput(
         requestInput,
         requestInput,
         0,
@@ -63,6 +57,13 @@ export class DirectIdentifierResolver extends Resolver {
       );
     }
   }
+
+  static fromSpec(
+    _code: string,
+    _spec: ResolverSpec,
+  ): DirectIdentifierResolver {
+    return new this();
+  }
 }
 
 export type ResolveValueFunction = (
@@ -73,8 +74,9 @@ export interface FunctionValueResolverDependencies {
   resolveFunctionsByRef: Record<string, ResolveValueFunction | undefined>;
 }
 
-export class FunctionValueResolver extends AttemptResolver {
+export class FunctionValueResolver extends AttributeResolver {
   readonly resolveValue: ResolveValueFunction;
+  readonly traceLabel: string;
 
   constructor(
     code: string,
@@ -101,13 +103,37 @@ export class FunctionValueResolver extends AttemptResolver {
       resolvedSourceName = code;
     }
 
-    super(
-      code,
-      resolvedTraceLabel as string,
-      resolvedSourceName as string,
-      config,
-    );
+    const normalizedTraceLabel = resolvedTraceLabel as string;
+    const normalizedSourceName = resolvedSourceName as string;
+
+    super(code, normalizedSourceName, config);
+    this.traceLabel = normalizedTraceLabel;
     this.resolveValue = resolvedResolveValue as ResolveValueFunction;
+  }
+
+  buildRouteState(_request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    return {};
+  }
+
+  batchKey(_job: RouteJob, _attempt: unknown): string {
+    return "";
+  }
+
+  getRouteClass(_request: RequestInput | ResolvedRequest): string {
+    return this.name;
+  }
+
+  getRoutePath(_request: RequestInput | ResolvedRequest): string {
+    return this.traceLabel;
+  }
+
+  buildRuntimePlan(request: RequestInput | ResolvedRequest) {
+    return {
+      nodes: [this],
+      routeClass: this.getRouteClass(request),
+      routePath: this.getRoutePath(request),
+      routeState: this.buildRouteState(request),
+    };
   }
 
   executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
@@ -159,4 +185,30 @@ export class FunctionValueResolver extends AttemptResolver {
         )
       : new this(code, resolveValue, options);
   }
+}
+
+export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
+  DirectIdentifierResolver,
+  FunctionValueResolver,
+} as const;
+
+export interface ConcreteResolverMaterializationDependencies
+  extends FunctionValueResolverDependencies {}
+
+export function createConcreteResolverMaterializationDependencies(
+  deps: ConcreteResolverMaterializationDependencies,
+): {
+  resolverClassDependenciesByName: Record<string, unknown>;
+  resolverClassesByName: Record<string, ResolverClassLike>;
+} {
+  return {
+    resolverClassDependenciesByName: {
+      FunctionValueResolver: {
+        resolveFunctionsByRef: deps.resolveFunctionsByRef,
+      },
+    },
+    resolverClassesByName: {
+      ...CONCRETE_RESOLVER_CLASSES_BY_NAME,
+    },
+  };
 }

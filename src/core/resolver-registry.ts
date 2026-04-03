@@ -1,27 +1,39 @@
 import type { ResolverNode } from "./planner";
 
-export type ResolverRegistry = Record<string, ResolverNode>;
+export type ResolverRegistryByCode = Record<string, ResolverNode>;
+
+export type ResolverRegistryByName = Record<string, ResolverNode>;
+
+export interface MaterializedResolverRegistry {
+  byCode: ResolverRegistryByCode;
+  byName: ResolverRegistryByName;
+}
+
+function normalizeKey(value: string): string {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
 
 export function getResolverByCode(
-  registry: ResolverRegistry,
+  registry: ResolverRegistryByCode,
   code: string,
 ): ResolverNode | null {
-  return (
-    registry[
-      String(code || "")
-        .trim()
-        .toUpperCase()
-    ] || null
-  );
+  return registry[normalizeKey(code)] || null;
+}
+
+export function getRegisteredResolverByName(
+  registry: ResolverRegistryByName,
+  name: string,
+): ResolverNode | null {
+  return registry[normalizeKey(name)] || null;
 }
 
 export function registerResolver(
-  registry: ResolverRegistry,
+  registry: ResolverRegistryByName,
   resolver: ResolverNode,
 ): ResolverNode {
-  const name = String((resolver && resolver.name) || "")
-    .trim()
-    .toUpperCase();
+  const name = normalizeKey((resolver && resolver.name) || "");
   const existing = name ? registry[name] || null : null;
 
   if (existing && existing !== resolver) {

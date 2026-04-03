@@ -32,24 +32,7 @@ function createRequestInput(overrides = {}) {
 }
 
 test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requests", () => {
-  const resolver = new DirectIdentifierResolver({
-    buildTypedRequestFromParsedInput(originalInput, parsedInput, identifierResolutionMs) {
-      return {
-        classification: "equity",
-        identifierResolutionMs,
-        input: {
-          attribute: originalInput.attribute,
-          identifier: originalInput.identifier,
-        },
-        requestType: "equity",
-        symbol: parsedInput.ticker,
-        yahooSymbol: parsedInput.ticker,
-      };
-    },
-    extractIsinFromRequestInput(input) {
-      return String(input.ticker).startsWith("US") ? input.upperTicker : "";
-    },
-  });
+  const resolver = new DirectIdentifierResolver();
 
   const success = resolver.resolve(createRequestInput({ ticker: "GOOG" }));
   assert.equal(success.status, "success");

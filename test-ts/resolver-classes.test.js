@@ -2,10 +2,10 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  AttemptResolver,
   AttributeResolutionPlan,
   RequestInput,
   ResolverPlan,
+  RouteExecutionResolver,
   buildPlanNodeFromSpec,
   createPlanRuntimeRefs,
 } = require("../dist/ts/core/index.js");
@@ -35,7 +35,7 @@ function createRequestInput(overrides = {}) {
 }
 
 function createLeafResolver(name, extra = {}) {
-  class LeafResolver extends AttemptResolver {
+  class LeafResolver extends RouteExecutionResolver {
     constructor() {
       super(name, extra.traceLabel || name, extra.sourceName || name, extra);
     }
@@ -136,4 +136,34 @@ test("buildPlanNodeFromSpec materializes route refs into a real plan instance", 
     preferredYahooSymbol: "GOOG:ALT",
     yahooSymbol: "GOOG",
   });
+});
+
+test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime materializer", () => {
+  const refs = createPlanRuntimeRefs({
+    looksLikeIsin() {
+      return false;
+    },
+    resolvePreferredYahooSymbol(symbol) {
+      return symbol;
+    },
+  });
+
+  const plan = buildPlanNodeFromSpec(
+    "ROOT",
+    {
+      nodeCodes: ["MISSING"],
+      resolverClass: "ResolverPlan",
+    },
+    () => null,
+    null,
+    {
+      extractIsinCountryCode() {
+        return "";
+      },
+      refs,
+    },
+  );
+
+  assert.equal(plan.nodes.length, 1);
+  assert.equal(plan.nodes[0], null);
 });

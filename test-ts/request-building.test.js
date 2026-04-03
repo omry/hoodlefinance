@@ -19,12 +19,6 @@ function createDeps() {
     extractYahooExchangeFromSymbol(symbol) {
       return String(symbol).endsWith(".PS") ? "PSE" : "";
     },
-    isPseTicker(ticker) {
-      return String(ticker).startsWith("PSE:");
-    },
-    isPseYahooSymbol(ticker) {
-      return /^[A-Z]+\.PS$/i.test(String(ticker));
-    },
     looksLikeIsraeliFundYahooSymbol(symbol) {
       return String(symbol).startsWith("KSM.");
     },
@@ -56,12 +50,6 @@ function createDeps() {
         quoteCanonicalCode: "USD",
         yahooChartSymbol: "EURUSD=X",
       };
-    },
-    parsePseSymbol(ticker) {
-      return String(ticker).split(":").pop().trim().toUpperCase();
-    },
-    parsePseYahooSymbol(ticker) {
-      return String(ticker).replace(/\.PS$/i, "").trim().toUpperCase();
     },
     parseTickerRequest(ticker) {
       const value = String(ticker).trim();
@@ -216,4 +204,20 @@ test("buildTypedRequestFromResolvedTicker reuses RequestInput creation", () => {
   assert.equal(resolved.requestType, "equity");
   assert.equal(resolved.yahooSymbol, "GOOG");
   assert.equal(resolved.identifierResolutionMs, 5);
+});
+
+test("default FX parsing does not classify arbitrary 6-8 letter identifiers as FX", () => {
+  assert.equal(createRequestInput("ABCDEFGH", "price").classification, "equity");
+});
+
+test("default FX parsing preserves explicit CURRENCY validation errors", () => {
+  assert.throws(
+    () => createRequestInput("CURRENCY:ZZZ.USD", "price"),
+    /must use supported 3- or 4-character currency codes/,
+  );
+
+  assert.throws(
+    () => createRequestInput("CURRENCY:NOT-A-PAIR", "price"),
+    /must look like CURRENCY:USDEUR or CURRENCY:USDT\.USD/,
+  );
 });

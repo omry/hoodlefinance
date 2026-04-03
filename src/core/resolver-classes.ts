@@ -24,7 +24,7 @@ export interface ResolverOptions {
   sourceName?: string;
 }
 
-export interface AttemptResolverOptions extends ResolverOptions {}
+export interface RouteExecutionResolverOptions extends ResolverOptions {}
 
 export interface ResolverPlanOptions extends ResolverOptions {
   canHandle?: ((request: RequestInput | ResolvedRequest) => boolean) | null;
@@ -140,14 +140,18 @@ export class Resolver {
   }
 }
 
-export class AttemptResolver extends Resolver {
+export class IdentifierResolver extends Resolver {}
+
+export class AttributeResolver extends Resolver {}
+
+export class RouteExecutionResolver extends Resolver {
   readonly traceLabel: string;
 
   constructor(
     code: string,
-    traceLabel?: string | AttemptResolverOptions,
-    sourceName?: string | AttemptResolverOptions,
-    options?: AttemptResolverOptions,
+    traceLabel?: string | RouteExecutionResolverOptions,
+    sourceName?: string | RouteExecutionResolverOptions,
+    options?: RouteExecutionResolverOptions,
   ) {
     let resolvedTraceLabel = traceLabel;
     let resolvedSourceName = sourceName;
@@ -451,17 +455,9 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 
     return new this(
       code,
-      this.getSpecNodeCodes(spec).map((nodeCode) => {
-        const resolvedNode = resolveNodeByCode(nodeCode);
-
-        if (!resolvedNode) {
-          throw new Error(
-            `Resolver plan "${code}" references missing node "${nodeCode}".`,
-          );
-        }
-
-        return resolvedNode;
-      }),
+      this.getSpecNodeCodes(spec).map((nodeCode) =>
+        resolveNodeByCode(nodeCode),
+      ) as ResolverNode[],
       this.materializeOptions(spec, overrides, refs, extractIsinCountryCode),
     );
   }

@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
   getResolverByCode,
+  getRegisteredResolverByName,
   registerResolver,
 } = require("../dist/ts/core/index.js");
 
@@ -27,11 +28,16 @@ function createResolver(name) {
 
 test("resolver registry normalizes lookup keys and rejects duplicate names", () => {
   const registry = {};
+  const byCode = {
+    YAHOO: createResolver("YAHOO"),
+  };
   const yahoo = createResolver("YAHOO");
 
   assert.equal(registerResolver(registry, yahoo), yahoo);
-  assert.equal(getResolverByCode(registry, "yahoo"), yahoo);
-  assert.equal(getResolverByCode(registry, "missing"), null);
+  assert.equal(getRegisteredResolverByName(registry, "yahoo"), yahoo);
+  assert.equal(getRegisteredResolverByName(registry, "missing"), null);
+  assert.equal(getResolverByCode(byCode, "yahoo"), byCode.YAHOO);
+  assert.equal(getResolverByCode(byCode, "missing"), null);
 
   assert.throws(
     () => registerResolver(registry, createResolver("YAHOO")),
