@@ -1,4 +1,7 @@
-import { findNamedResolverNode, resolveRoutingNode } from "./plan-navigation";
+import {
+  findNamedResolverNode,
+  resolveRoutingNode,
+} from "./plan-navigation";
 import type { RequestInput, ResolvedRequest } from "./request";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
 
@@ -86,17 +89,20 @@ export function buildDefaultAttributePlanForResolvedRequest(
   deps: Pick<PlanSelectionDependencies, "materializePlanFromSpec">,
 ): ResolverPlanNode {
   const defaultAttributeRoot =
-    deps.materializePlanFromSpec("DEFAULT-ATTRIBUTE");
+    deps.materializePlanFromSpec("DEFAULT-ATTRIBUTE") as ResolverPlanNode;
+  const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
+    (plan) => !plan.canHandle || plan.canHandle(request),
+  ) as ResolverPlanNode[];
 
-  return resolveRoutingNode(defaultAttributeRoot, request, {
-    onMultiple: (_routingNode, plans) =>
-      buildAmbiguousDefaultAttributeRouteError(
-        request,
-        plans as Array<Pick<ResolverPlanNode, "name" | "routingLabel">>,
-      ),
-    onNone: () =>
-      new Error("No attribute route is available for this request."),
-  }) as ResolverPlanNode;
+  if (!candidatePlans.length) {
+    throw new Error("No attribute route is available for this request.");
+  }
+
+  if (candidatePlans.length > 1) {
+    throw buildAmbiguousDefaultAttributeRouteError(request, candidatePlans);
+  }
+
+  return candidatePlans[0] as ResolverPlanNode;
 }
 
 export function buildForcedAttributePlanForResolvedRequest(

@@ -1,37 +1,42 @@
-import type { ResolutionResult } from "./planner";
-import {
-  resolveQuoteForResolvedRequest,
-  type QuoteRoutingDependencies,
-  type QuoteRoutingPlanLike,
-} from "./quote-routing";
+import type {
+  ResolvePlan,
+  ResolutionResult,
+  ResolverPlanNode,
+} from "./planner";
 import type { RequestInput, ResolvedRequest } from "./request";
-import {
-  buildTypedRequestFromParsedInput,
-  extractIsinFromRequestInput,
-} from "./request-building";
+import { extractIsinFromRequestInput } from "./request-building";
 import { resolveIsinAttributeValue } from "./isin-lookup";
 import { extractAttributeValue } from "./attribute-extraction";
+import { buildSourceOverrideUnavailableError } from "./plan-selection";
 
-export interface IdentifierPlanLike {
-  describe(request: RequestInput): string;
-  resolve(request: RequestInput): ResolutionResult<ResolvedRequest>;
+interface QuotePlanOutcome {
+  error?: unknown;
+  status: "failure" | "success";
+  value?: unknown;
 }
 
-export interface DirectIdentifierResolverLike {
-  name: string;
-  resolve(request: RequestInput): ResolutionResult<ResolvedRequest>;
+interface ResolvablePlanLike<TRequest, TValue> {
+  describe(request: TRequest): string;
+  resolve(request: TRequest): ResolutionResult<TValue>;
 }
 
-export interface RequestResolutionDependencies
-  extends Omit<QuoteRoutingDependencies, "identifierIsinPlan"> {
-  directIdentifierResolver: DirectIdentifierResolverLike;
+interface RequestResolutionPlanLike {
+  buildAttributePlan:
+    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlanNode | null)
+    | null;
+  debugValue: string;
+  identifierPlan: ResolverPlanNode | null;
+  plannedRoute: string;
+  requestInput: RequestInput;
+  resolvedRequest: ResolvedRequest | null;
+}
+
+export interface RequestResolutionDependencies {
+  buildResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan>;
   fetchText(url: string): string;
   getCachedString(cacheKey: string): string;
-  identifierIsinPlan?: IdentifierPlanLike;
   looksLikeIsin(value: string): boolean;
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
-  quoteEquityPlan?: QuoteRoutingPlanLike;
-  quoteFxPlan?: QuoteRoutingPlanLike;
 }
 
 export interface LookupEnvelopeResult {
@@ -58,51 +63,95 @@ function failureResult(
   };
 }
 
-function resolveQuoteEnvelope(
-  env: RequestResolutionDependencies,
-  resolvedRequest: ResolvedRequest,
+function normalizePlanOutcome(
+  route: string,
   attemptedRoutes: string[],
+  outcome: QuotePlanOutcome,
 ): LookupEnvelopeResult {
-  const { identifierIsinPlan: _identifierIsinPlan, ...quoteRoutingEnv } = env;
-  const result = resolveQuoteForResolvedRequest(
-    quoteRoutingEnv,
-    resolvedRequest,
+  const normalized: LookupEnvelopeResult = {
     attemptedRoutes,
-  );
-  const route =
-    result.route != null
-      ? String(result.route)
-      : attemptedRoutes[attemptedRoutes.length - 1] || "(none)";
-  const status = result.status === "success" ? "success" : "failure";
-
-  const normalizedResult: LookupEnvelopeResult = {
-    attemptedRoutes: result.attemptedRoutes || attemptedRoutes,
     kind: "quote",
     route,
-    status,
+    status: outcome.status,
     value:
-      status === "success" &&
-      Object.prototype.hasOwnProperty.call(result, "value")
-        ? (result as { value?: unknown }).value
+      outcome.status === "success" &&
+      Object.prototype.hasOwnProperty.call(outcome, "value")
+        ? outcome.value
         : null,
   };
 
-  if (result.error != null) {
-    normalizedResult.error = String(
-      result.error instanceof Error ? result.error.message : result.error,
+  if (outcome.error != null) {
+    normalized.error = String(
+      outcome.error instanceof Error ? outcome.error.message : outcome.error,
     );
   }
 
-  return normalizedResult;
+  return normalized;
+}
+
+function requireResolvablePlan<TRequest, TValue>(
+  plan: ResolverPlanNode | null | undefined,
+  errorMessage: string,
+): ResolvablePlanLike<TRequest, TValue> {
+  if (!plan || typeof plan.resolve !== "function") {
+    throw new Error(errorMessage);
+  }
+
+  return plan as ResolvablePlanLike<TRequest, TValue>;
+}
+
+function validateDeferredLookupModes(requestInput: RequestInput): void {
+  const infoMode = String(requestInput.infoMode || "").trim();
+  const sourceOverride = String(requestInput.sourceOverride || "")
+    .trim()
+    .toUpperCase();
+
+  if (infoMode) {
+    throw new Error("Ticker route introspection is not yet available.");
+  }
+
+  if (sourceOverride) {
+    throw buildSourceOverrideUnavailableError(sourceOverride);
+  }
+}
+
+function resolvePlannedQuoteEnvelope(
+  attributePlan: ResolverPlanNode,
+  resolvedRequest: ResolvedRequest,
+  attemptedRoutes: string[],
+): LookupEnvelopeResult {
+  const resolvableAttributePlan = requireResolvablePlan<ResolvedRequest, unknown>(
+    attributePlan,
+    "Attribute plan cannot execute this request.",
+  );
+  const route = resolvableAttributePlan.describe(resolvedRequest);
+  const outcome = resolvableAttributePlan.resolve(resolvedRequest);
+
+  return normalizePlanOutcome(route, attemptedRoutes.concat([route]), {
+    error: outcome.status === "failure" ? outcome.error : undefined,
+    status: outcome.status,
+    value: outcome.status === "success" ? outcome.value : null,
+  });
 }
 
 function resolveIdentifierPlanEnvelope(
-  env: RequestResolutionDependencies,
   requestInput: RequestInput,
-  identifierPlan: IdentifierPlanLike,
+  resolvePlan: RequestResolutionPlanLike,
 ): LookupEnvelopeResult {
-  const identifierRoute = identifierPlan.describe(requestInput);
-  const identifierOutcome = identifierPlan.resolve(requestInput);
+  const identifierPlan = resolvePlan.identifierPlan;
+
+  if (!identifierPlan) {
+    return failureResult("(none)", [], "Identifier resolution failed.");
+  }
+
+  const resolvableIdentifierPlan = requireResolvablePlan<
+    RequestInput,
+    ResolvedRequest
+  >(identifierPlan, "Identifier plan cannot resolve this request.");
+  const identifierRoute = resolvableIdentifierPlan.describe(requestInput);
+  const identifierOutcome = resolvableIdentifierPlan.resolve(
+    requestInput,
+  );
 
   if (identifierOutcome.status !== "success") {
     return failureResult(
@@ -112,7 +161,23 @@ function resolveIdentifierPlanEnvelope(
     );
   }
 
-  return resolveQuoteEnvelope(env, identifierOutcome.value, [identifierRoute]);
+  const attributePlan = resolvePlan.buildAttributePlan
+    ? resolvePlan.buildAttributePlan(identifierOutcome.value)
+    : null;
+
+  if (!attributePlan) {
+    return failureResult(
+      identifierRoute,
+      [identifierRoute],
+      "No attribute route is available for this request.",
+    );
+  }
+
+  return resolvePlannedQuoteEnvelope(
+    attributePlan,
+    identifierOutcome.value,
+    [identifierRoute],
+  );
 }
 
 function projectLookupValue(
@@ -158,32 +223,42 @@ export function resolveRequestEnvelope(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
 ): LookupEnvelopeResult {
-  const directIsin = extractIsinFromRequestInput(requestInput);
+  let resolvePlan: Readonly<ResolvePlan>;
 
-  if (requestInput.classification === "fx" && requestInput.fxPair) {
-    return resolveQuoteEnvelope(
-      env,
-      buildTypedRequestFromParsedInput(requestInput, requestInput, 0),
+  try {
+    validateDeferredLookupModes(requestInput);
+    resolvePlan = env.buildResolvePlan(requestInput);
+  } catch (error) {
+    return failureResult("(none)", [], error);
+  }
+
+  if (resolvePlan.debugValue) {
+    return {
+      attemptedRoutes: [],
+      kind: "quote",
+      route: resolvePlan.plannedRoute || "(none)",
+      status: "success",
+      value: resolvePlan.debugValue,
+    };
+  }
+
+  if (resolvePlan.attributePlan && resolvePlan.resolvedRequest) {
+    return resolvePlannedQuoteEnvelope(
+      resolvePlan.attributePlan,
+      resolvePlan.resolvedRequest,
       [],
     );
   }
 
-  if (directIsin && env.identifierIsinPlan) {
-    return resolveIdentifierPlanEnvelope(env, requestInput, env.identifierIsinPlan);
+  if (resolvePlan.identifierPlan) {
+    return resolveIdentifierPlanEnvelope(requestInput, resolvePlan);
   }
 
-  const directOutcome = env.directIdentifierResolver.resolve(requestInput);
-  const directRoute = env.directIdentifierResolver.name;
-
-  if (directOutcome.status === "success") {
-    return resolveQuoteEnvelope(env, directOutcome.value, [directRoute]);
-  }
-
-  if (directIsin && env.identifierIsinPlan) {
-    return resolveIdentifierPlanEnvelope(env, requestInput, env.identifierIsinPlan);
-  }
-
-  return failureResult(directRoute, [directRoute], directOutcome.error);
+  return failureResult(
+    resolvePlan.plannedRoute || "(none)",
+    [],
+    "Identifier resolution failed.",
+  );
 }
 
 export function resolveRequestValue(

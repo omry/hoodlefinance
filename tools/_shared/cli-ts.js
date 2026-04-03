@@ -12,9 +12,8 @@ const {
   YahooQuoteResolver,
   TradingviewFundResolver,
 } = require("../../dist/ts/core/concrete-resolvers.js");
-const {
-  createRequestInput,
-} = require("../../dist/ts/core/request-building.js");
+const { createDefaultResolvePlanBuilder } = require("../../dist/ts/core/resolve-plan.js");
+const { createRequestInput } = require("../../dist/ts/core/request-building.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
 const { describePlanSource } = require("../../dist/ts/core/route-results.js");
 const {
@@ -237,36 +236,25 @@ function createCliEnvironment() {
     },
     resolversByCode,
   });
-  const identifierIsinPlan = materializePlanFromSpec(
-    "IDENTIFIER-ROOT",
-    null,
-    planMaterializationDeps,
-  );
-  const quoteEquityPlan = materializePlanFromSpec(
-    "DEFAULT-ATTRIBUTE:EQUITY",
-    null,
-    planMaterializationDeps,
-  );
-  const quoteFxPlan = materializePlanFromSpec(
-    "DEFAULT-ATTRIBUTE:FX",
-    null,
-    planMaterializationDeps,
-  );
+  const buildResolvePlan = createDefaultResolvePlanBuilder({
+    directIdentifierResolver,
+    materializePlanFromSpec(code) {
+      return materializePlanFromSpec(code, null, planMaterializationDeps);
+    },
+  });
 
   return {
+    buildResolvePlan,
     directIdentifierResolver,
     fetchText: syncFetchText,
     getCachedString: stringCache.getCachedString,
-    identifierIsinPlan,
     googleFxResolver,
-    localFxResolver,
     looksLikeIsin,
+    localFxResolver,
     pseEdgeResolver,
     pseFramesResolver,
     pseIsinMapResolver,
     putCachedString: stringCache.putCachedString,
-    quoteEquityPlan,
-    quoteFxPlan,
     tradingviewFundResolver,
     yahooIsinSearchResolver,
     yahooQuoteResolver,

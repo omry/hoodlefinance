@@ -2,9 +2,11 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  DirectIdentifierResolver,
   RequestInput,
   buildResolvePlan,
   classifyTickerJob,
+  createDefaultResolvePlanBuilder,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput({
@@ -74,6 +76,52 @@ function createResolvedRequest() {
     requestType: "equity",
     symbol: "GOOG",
     yahooSymbol: "GOOG",
+  };
+}
+
+function createFactoryMaterializer() {
+  const equityPlan = createPlan("EQUITY", "TICKER -> YAHOO");
+  equityPlan.canHandle = (request) =>
+    String((request && request.classification) || "")
+      .trim()
+      .toLowerCase() === "equity";
+
+  const fxPlan = createPlan("FX", "GOOGLE");
+  fxPlan.canHandle = (request) =>
+    String((request && request.classification) || "")
+      .trim()
+      .toLowerCase() === "fx";
+
+  const identifierPlan = createPlan("IDENTIFIER:ISIN", "YAHOO-ISIN");
+  identifierPlan.canHandle = (request) =>
+    String((request && request.classification) || "")
+      .trim()
+      .toLowerCase() === "isin";
+
+  const defaultAttributeRoot = createPlan("DEFAULT-ATTRIBUTE", "");
+  defaultAttributeRoot.isRoutingNode = true;
+  defaultAttributeRoot.nodes = [equityPlan, fxPlan];
+  defaultAttributeRoot.getNodesForRequest = function getNodesForRequest() {
+    return this.nodes || [];
+  };
+
+  const identifierRoot = createPlan("IDENTIFIER-ROOT", "");
+  identifierRoot.isRoutingNode = true;
+  identifierRoot.nodes = [identifierPlan];
+  identifierRoot.getNodesForRequest = function getNodesForRequest() {
+    return this.nodes || [];
+  };
+
+  return function materializePlanFromSpec(code) {
+    if (code === "DEFAULT-ATTRIBUTE") {
+      return defaultAttributeRoot;
+    }
+
+    if (code === "IDENTIFIER-ROOT") {
+      return identifierRoot;
+    }
+
+    throw new Error(`Unexpected spec ${code}`);
   };
 }
 
@@ -191,5 +239,45 @@ test("classifyTickerJob returns either debug plans or runtime plans from the res
       routePath: "IDENTIFIER:ISIN -> YAHOO-ISIN",
       routeState: {},
     },
+  );
+});
+
+test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", () => {
+  const buildResolvePlanBuilder = createDefaultResolvePlanBuilder({
+    directIdentifierResolver: new DirectIdentifierResolver(),
+    materializePlanFromSpec: createFactoryMaterializer(),
+  });
+
+  const equityPlan = buildResolvePlanBuilder(
+    createRequestInput({ ticker: "GOOG" }),
+  );
+  assert.equal(equityPlan.debugValue, "");
+  assert.equal(equityPlan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
+  assert.equal(
+    equityPlan.attributePlan.describe(equityPlan.resolvedRequest),
+    "EQUITY -> TICKER -> YAHOO",
+  );
+
+  const fxPlan = buildResolvePlanBuilder(
+    createRequestInput({
+      classification: "fx",
+      identifier: "EURUSD",
+      ticker: "EURUSD",
+    }),
+  );
+  assert.equal(fxPlan.debugValue, "");
+  assert.equal(fxPlan.plannedRoute, "FX -> GOOGLE");
+  assert.equal(fxPlan.attributePlan.describe(fxPlan.resolvedRequest), "FX -> GOOGLE");
+
+  const isinPlan = buildResolvePlanBuilder(
+    createRequestInput({
+      identifier: "US02079K1079",
+      ticker: "US02079K1079",
+    }),
+  );
+  assert.equal(isinPlan.resolvedRequest, null);
+  assert.equal(
+    isinPlan.identifierPlan.describe(isinPlan.requestInput),
+    "YAHOO-ISIN",
   );
 });

@@ -1,6 +1,24 @@
 import { createResolvePlan } from "./route-jobs";
+import {
+  buildForcedAttributePlanForResolvedRequest,
+  buildIdentifierResolutionPlan,
+  buildQuoteRoutePlanForResolvedRequest,
+  buildSourceOverrideUnavailableError,
+  type PlanSelectionDependencies,
+} from "./plan-selection";
+import { ResolverPlan } from "./resolver-classes";
 import type { RequestInput, ResolvedRequest } from "./request";
+import { createRequestInput, extractIsinFromRequestInput } from "./request-building";
+import { looksLikeIsin } from "./request";
 import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "./planner";
+import type { ResolutionResult } from "./planner";
+
+export interface DefaultResolvePlanBuilderDependencies {
+  directIdentifierResolver: {
+    resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
+  };
+  materializePlanFromSpec(code: string): ResolverPlanNode;
+}
 
 export interface ResolvePlanDependencies {
   buildForcedAttributePlanForResolvedRequest(
@@ -26,6 +44,105 @@ export interface ResolvePlanDependencies {
     requestInput: RequestInput,
     resolvedRequest: ResolvedRequest | null,
   ): void;
+}
+
+function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
+  const wrappedName = String((node && node.name) || "").trim();
+
+  return new ResolverPlan(wrappedName, [node], {
+    canHandle(request) {
+      return !node || !node.canHandle ? true : node.canHandle(request);
+    },
+    routeClass(request) {
+      return node && node.buildRuntimePlan
+        ? node.buildRuntimePlan(request).routeClass
+        : wrappedName;
+    },
+    routePath(request) {
+      return node && node.buildRuntimePlan
+        ? node.buildRuntimePlan(request).routePath
+        : wrappedName;
+    },
+    routingDescription: node && node.routingDescription ? node.routingDescription : "",
+    routingLabel: node && node.routingLabel ? node.routingLabel : "",
+    sourceName: node && node.sourceName ? node.sourceName : "",
+  });
+}
+
+export function createDefaultResolvePlanBuilder(
+  deps: DefaultResolvePlanBuilderDependencies,
+): (requestInput: RequestInput) => Readonly<ResolvePlan> {
+  function resolveIdentifierDirect(
+    requestInput: RequestInput,
+  ): ResolvedRequest | null {
+    const outcome = deps.directIdentifierResolver.resolve(requestInput);
+
+    return outcome && outcome.status === "success" ? outcome.value : null;
+  }
+
+  function buildSelectedIdentifierPlan(
+    resolverOrPlan: ResolverNode,
+  ): ResolverPlanNode {
+    return wrapSelectedResolverNode(resolverOrPlan);
+  }
+
+  function buildForcedSelectedAttributePlan(
+    resolverOrPlan: ResolverNode,
+  ): ResolverPlanNode {
+    return wrapSelectedResolverNode(resolverOrPlan);
+  }
+
+  function buildResolvePlanDependencies() {
+    const planSelectionDeps: PlanSelectionDependencies = {
+      buildForcedSelectedAttributePlan,
+      buildSelectedIdentifierPlan,
+      extractIsinFromRequestInput(request) {
+        return extractIsinFromRequestInput(request, looksLikeIsin);
+      },
+      listAllDefaultAttributePlans() {
+        return [];
+      },
+      materializePlanFromSpec: deps.materializePlanFromSpec,
+    };
+
+    const resolvePlanDeps: ResolvePlanDependencies = {
+      buildForcedAttributePlanForResolvedRequest(input, request) {
+        return wrapSelectedResolverNode(
+          buildForcedAttributePlanForResolvedRequest(input, request, {
+            buildForcedSelectedAttributePlan,
+            materializePlanFromSpec: deps.materializePlanFromSpec,
+          }),
+        );
+      },
+      buildIdentifierResolutionPlan(input) {
+        return buildIdentifierResolutionPlan(input, planSelectionDeps);
+      },
+      buildQuoteRoutePlanForResolvedRequest(input, request) {
+        return wrapSelectedResolverNode(
+          buildQuoteRoutePlanForResolvedRequest(input, request, {
+            buildForcedSelectedAttributePlan,
+            materializePlanFromSpec: deps.materializePlanFromSpec,
+          }),
+        );
+      },
+      buildRepresentativeForcedAttributeRequest(input) {
+        return resolveIdentifierDirect(input);
+      },
+      buildSourceOverrideUnavailableError,
+      createRequestInput,
+      listSupportedSourcesForRequest() {
+        return "";
+      },
+      resolveIdentifierDirect,
+      validateNonQuoteSourceOverride() {},
+    };
+
+    return resolvePlanDeps;
+  }
+
+  return function buildDefaultResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan> {
+    return buildResolvePlan(requestInput, buildResolvePlanDependencies());
+  };
 }
 
 function normalizeSourceOverride(requestInput: RequestInput): string {
