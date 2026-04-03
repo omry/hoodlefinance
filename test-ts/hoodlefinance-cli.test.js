@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  createCliEnvironment,
   formatLookupResult,
   formatEnvelopeResult,
   formatTraceOutput,
@@ -288,21 +289,42 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   assert.equal(tradingview.status, "success");
   assert.equal(tradingview.value, 17.25);
 
-  const pse = lookupWithEnvironment(env, {
+});
+
+test("lookupWithEnvironment falls through the real quote plan from PSE to ticker", () => {
+  const env = createCliEnvironment();
+
+  env.pseFramesResolver.executeBatch = (jobs) =>
+    jobs.map(() => ({
+      error: "not found",
+      status: "lookup_failure",
+    }));
+  env.pseEdgeResolver.executeBatch = (jobs) =>
+    jobs.map(() => ({
+      error: "not found",
+      status: "lookup_failure",
+    }));
+  env.yahooQuoteResolver.executeBatch = (jobs) =>
+    jobs.map(() => ({
+      status: "success",
+      quote: {
+        currency: "USD",
+        regularMarketPrice: 123.45,
+        symbol: "GOOG",
+      },
+    }));
+  env.tradingviewFundResolver.executeBatch = () => {
+    throw new Error("unexpected tradingview fallback");
+  };
+
+  const result = lookupWithEnvironment(env, {
     attribute: "price",
     ticker: "PSE:BDO",
   });
-  assert.equal(pse.route, "EQUITY -> PSE -> PSE-FRAMES");
-  assert.equal(pse.status, "success");
-  assert.equal(pse.value, 9.87);
 
-  const pseEdge = lookupWithEnvironment(env, {
-    attribute: "price",
-    ticker: "PSE:EDGE",
-  });
-  assert.equal(pseEdge.route, "EQUITY -> PSE -> PSE-EDGE");
-  assert.equal(pseEdge.status, "success");
-  assert.equal(pseEdge.value, 8.88);
+  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER");
+  assert.equal(result.status, "success");
+  assert.equal(result.value, 123.45);
 });
 
 test("lookup formatting and routing views stay readable", () => {

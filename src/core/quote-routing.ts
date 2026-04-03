@@ -80,59 +80,6 @@ export function resolveQuoteForResolvedRequest(
 
   if (
     resolvedRequest.requestType === "equity" &&
-    resolvedRequest.exchange === "PSE"
-  ) {
-    if (env.quoteEquityPlan) {
-      const plan = env.quoteEquityPlan;
-      const routeLabel = plan.describe(resolvedRequest);
-      const outcome = plan.resolve(resolvedRequest);
-
-      return {
-        ...outcome,
-        attemptedRoutes: attemptedRoutes.concat([routeLabel]),
-        kind: "quote",
-        route: routeLabel,
-      };
-    }
-
-    const routeClass = "EQUITY -> PSE";
-    const framesLabel = routeLabelFromPlan(
-      routeClass,
-      env.pseFramesResolver.name,
-    );
-    const framesOutcome = env.pseFramesResolver.resolve(resolvedRequest);
-    let nextAttemptedRoutes = attemptedRoutes.concat([framesLabel]);
-
-    if (framesOutcome.status === "success") {
-      return {
-        ...framesOutcome,
-        attemptedRoutes: nextAttemptedRoutes,
-        kind: "quote",
-        route: framesLabel,
-      };
-    }
-
-    const edgeLabel = routeLabelFromPlan(
-      routeClass,
-      env.pseEdgeResolver.name,
-    );
-    const edgeOutcome = env.pseEdgeResolver.resolve(resolvedRequest);
-    nextAttemptedRoutes = nextAttemptedRoutes.concat([edgeLabel]);
-
-    if (edgeOutcome.status === "success") {
-      return {
-        ...edgeOutcome,
-        attemptedRoutes: nextAttemptedRoutes,
-        kind: "quote",
-        route: edgeLabel,
-      };
-    }
-
-    attemptedRoutes = nextAttemptedRoutes;
-  }
-
-  if (
-    resolvedRequest.requestType === "equity" &&
     !!resolvedRequest.yahooSymbol
   ) {
     if (env.quoteEquityPlan) {

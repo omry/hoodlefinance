@@ -241,6 +241,29 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
     const selected = this.nodeSelector
       ? this.nodeSelector(this.nodes, request)
       : this.nodes;
+    const nodes = (selected || []).slice();
+
+    if (!nodes.length) {
+      return nodes;
+    }
+
+    const firstMatchingIndex = nodes.findIndex(
+      (node) => !node.canHandle || node.canHandle(request),
+    );
+
+    if (firstMatchingIndex < 0) {
+      return nodes;
+    }
+
+    return nodes.slice(firstMatchingIndex);
+  }
+
+  getHandleableNodesForRequest(
+    request: RequestInput | ResolvedRequest,
+  ): ResolverNode[] {
+    const selected = this.nodeSelector
+      ? this.nodeSelector(this.nodes, request)
+      : this.nodes;
 
     return (selected || []).filter(
       (node) => !node.canHandle || node.canHandle(request),
@@ -264,7 +287,7 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       return false;
     }
 
-    return this.getNodesForRequest(request).length > 0;
+    return this.getHandleableNodesForRequest(request).length > 0;
   }
 
   buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
