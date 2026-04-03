@@ -429,6 +429,19 @@ function runSmokeSuite(env = createCliEnvironment()) {
         }
 
         if (!Number.isFinite(result.value)) {
+          throw new Error("expected PSE ISIN map lookup to return a live quote");
+        }
+      },
+      ticker: "PHY077751022",
+    },
+    {
+      attribute: "price",
+      expected(result) {
+        if (result.status !== "success") {
+          throw new Error(`expected success, got ${result.status}`);
+        }
+
+        if (!Number.isFinite(result.value)) {
           throw new Error("expected TradingView fallback to return a live quote");
         }
       },
