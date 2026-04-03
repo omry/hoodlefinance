@@ -4,6 +4,13 @@ import {
 } from "./pse-quotes";
 
 const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
+const LON_ISIN_CACHE_TTL_SECONDS = 21600;
+
+interface CachedStringDependencies {
+  fetchText(url: string): string;
+  getCachedString(cacheKey: string): string;
+  putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
+}
 
 function extractLonCode(tickerInput: string): string {
   const normalized = String(tickerInput || "").trim().toUpperCase();
@@ -17,6 +24,23 @@ function extractLonCode(tickerInput: string): string {
   }
 
   return normalized;
+}
+
+function extractLonCodeFromContext(
+  tickerInput: string,
+  quoteSymbol: string,
+): string {
+  const candidates = [tickerInput, quoteSymbol];
+
+  for (const candidate of candidates) {
+    const code = extractLonCode(candidate);
+
+    if (code && code !== String(candidate || "").trim().toUpperCase()) {
+      return code;
+    }
+  }
+
+  return "";
 }
 
 function extractLonIsinFromHtml(html: string, code: string): string {
@@ -101,17 +125,31 @@ export function resolvePseIsinBySymbol(
 
 export function resolveLonIsinByTickerInput(
   tickerInput: string,
-  fetchText: (url: string) => string,
+  deps: CachedStringDependencies,
 ): string {
-  const code = extractLonCode(tickerInput);
+  const code = extractLonCodeFromContext(tickerInput, "");
 
+  return resolveLonIsinByCode(code, deps);
+}
+
+function resolveLonIsinByCode(
+  code: string,
+  deps: CachedStringDependencies,
+): string {
   if (!code) {
     throw new Error(
       "Could not determine the ticker code needed for LON ISIN lookup.",
     );
   }
 
-  const html = fetchText(
+  const cacheKey = `hoodlefinance:lon:isin:${code}`;
+  const cached = deps.getCachedString(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const html = deps.fetchText(
     `https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=${encodeURIComponent(code)}`,
   );
   const isin = extractLonIsinFromHtml(html, code);
@@ -120,5 +158,15 @@ export function resolveLonIsinByTickerInput(
     throw new Error(`No LON ISIN is available for "${code}".`);
   }
 
+  deps.putCachedString(cacheKey, isin, LON_ISIN_CACHE_TTL_SECONDS);
   return isin;
+}
+
+export function resolveLonIsin(
+  tickerInput: string,
+  quoteSymbol: string,
+  deps: CachedStringDependencies,
+): string {
+  const code = extractLonCodeFromContext(tickerInput, quoteSymbol);
+  return resolveLonIsinByCode(code, deps);
 }

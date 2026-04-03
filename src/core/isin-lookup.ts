@@ -6,6 +6,7 @@ import {
 import {
   buildTradingviewIsinLookupUrl,
   extractTradingviewIsinFromHtml,
+  resolveLonIsin,
   resolveLonIsinByTickerInput,
   resolvePseIsinBySymbol,
 } from "./isin-sources";
@@ -306,6 +307,14 @@ export function resolveIsinAttributeValue(
     throw new Error("No PSE ISIN is available for this ticker.");
   }
 
+  if (source === "LON") {
+    return resolveLonIsin(tickerInput, extractQuoteSymbol(quote), {
+      fetchText: deps.fetchText,
+      getCachedString: deps.getCachedString,
+      putCachedString: deps.putCachedString,
+    });
+  }
+
   if (source === "TRADINGVIEW") {
     const tradingviewExchange = inferTradingviewExchange(quote, tickerInput);
     const code = extractTradingviewCode(quote, tickerInput);
@@ -381,7 +390,11 @@ export function resolveDirectIsinAttributeValue(
   if (normalizedTicker.startsWith("LON:") || normalizedTicker.endsWith(".L")) {
     return {
       route: "LON",
-      value: resolveLonIsinByTickerInput(tickerInput, deps.fetchText),
+      value: resolveLonIsinByTickerInput(tickerInput, {
+        fetchText: deps.fetchText,
+        getCachedString: deps.getCachedString,
+        putCachedString: deps.putCachedString,
+      }),
     };
   }
 

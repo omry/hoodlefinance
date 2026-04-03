@@ -100,6 +100,11 @@ transition can preserve runtime behavior first.
     - Explicitly deferred examples: `@SOURCE` forced routing and `@?`
       source-name inspection are not part of the current TypeScript CLI
       contract yet.
+  - For ISIN attribute lookup, keep the migration scope limited to the sources
+    that are functionally needed by the current TypeScript user path.
+    - Current in-scope sources: `DIRECT`, `PSE`, `LON`, and `TRADINGVIEW`.
+    - Runtime-only sources such as `ARIVA` and `IBKR` are not near-term
+      migration targets unless a real user-facing gap makes them necessary.
   - Reduce how much parser-derived and runtime-wiring behavior lives in
     `src/core/request.ts`.
 - Reduce public leakage from `src/core/index.ts` so low-level normalization and

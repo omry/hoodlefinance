@@ -29,13 +29,21 @@ function createEnv(overrides = {}) {
 
       return "";
     },
-    getCachedString() {
+    getCachedString(key) {
+      if (typeof overrides.getCachedString === "function") {
+        return overrides.getCachedString(key);
+      }
+
       return "";
     },
     looksLikeIsin() {
       return false;
     },
-    putCachedString(_key, value) {
+    putCachedString(key, value) {
+      if (typeof overrides.putCachedString === "function") {
+        return overrides.putCachedString(key, value);
+      }
+
       return String(value || "");
     },
   };
@@ -241,4 +249,83 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
   assert.equal(buildResolvePlanCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, "US02079K1079");
+});
+
+test("resolveRequestValue supports quote-based LON isin resolution", () => {
+  let buildResolvePlanCalls = 0;
+  let fetchCalls = 0;
+  const cache = new Map();
+  const env = createEnv({
+    buildResolvePlan() {
+      buildResolvePlanCalls += 1;
+      return {
+        attributePlan: {
+          describe() {
+            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
+          },
+          resolve() {
+            return {
+              status: "success",
+              value: {
+                exchangeName: "LSE",
+                symbol: "VOD.L",
+              },
+            };
+          },
+        },
+        debugValue: "",
+        identifierPlan: null,
+        plannedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
+        requestInput: null,
+        resolvedRequest: {
+          attribute: "price",
+          identifier: "VOD",
+        },
+      };
+    },
+    fetchText(url) {
+      fetchCalls += 1;
+      assert.equal(
+        url,
+        "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=VOD",
+      );
+      return `
+        <html>
+          <table>
+            <tr>
+              <td>VOD</td>
+              <td>
+                <span>UpdateOpener('1','GB00BH4HKS39|GB|GBP|LSE|123|VOD')</span>
+                <a href="/instrument/VOD">Vodafone Group</a>
+              </td>
+            </tr>
+          </table>
+        </html>
+      `;
+    },
+    getCachedString(key) {
+      return cache.get(key) || "";
+    },
+    putCachedString(key, value) {
+      const normalized = String(value || "");
+      cache.set(key, normalized);
+      return normalized;
+    },
+  });
+
+  const result = resolveRequestValue(
+    env,
+    createRequestInput({ attribute: "isin", ticker: "VOD" }),
+  );
+  const repeatedResult = resolveRequestValue(
+    env,
+    createRequestInput({ attribute: "isin", ticker: "VOD" }),
+  );
+
+  assert.equal(buildResolvePlanCalls, 2);
+  assert.equal(fetchCalls, 1);
+  assert.equal(result.status, "success");
+  assert.equal(result.value, "GB00BH4HKS39");
+  assert.equal(repeatedResult.status, "success");
+  assert.equal(repeatedResult.value, "GB00BH4HKS39");
 });
