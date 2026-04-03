@@ -108,7 +108,9 @@ export function createDefaultPlanMaterializationDependencies(
   return {
     buildPlanNode(code, spec, resolveNode, overrides) {
       return buildPlanNodeFromSpec(code, spec, resolveNode, overrides, {
-        extractIsinCountryCode(request) {
+        extractIsinCountryCode(
+          request: { input?: { identifier?: unknown }; ticker?: unknown } | null,
+        ) {
           if (request && "ticker" in request) {
             const requestWithTicker = request as {
               ticker?: unknown;

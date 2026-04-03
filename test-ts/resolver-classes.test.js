@@ -111,12 +111,7 @@ test("buildPlanNodeFromSpec materializes route refs into a real plan instance", 
         YAHOO: yahoo,
       })[nodeCode],
     null,
-    {
-      extractIsinCountryCode() {
-        return "";
-      },
-      refs,
-    },
+    { refs },
   );
 
   assert.equal(plan instanceof AttributeResolutionPlan, true);
@@ -157,12 +152,7 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
     },
     () => null,
     null,
-    {
-      extractIsinCountryCode() {
-        return "";
-      },
-      refs,
-    },
+    { refs },
   );
 
   assert.equal(plan.nodes.length, 1);
