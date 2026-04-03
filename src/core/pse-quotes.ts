@@ -82,7 +82,7 @@ export function buildPseUnavailableError(detail: unknown): Error {
   );
 }
 
-export function buildPseHttpErrorMessage(statusCode: unknown): string {
+function buildPseHttpErrorMessage(statusCode: unknown): string {
   const numericCode = Number(statusCode);
 
   if (numericCode >= 520 && numericCode < 530) {
@@ -104,7 +104,7 @@ export function isPseUnavailableError(error: unknown): boolean {
   );
 }
 
-export function extractPseListings(html: string): PseListing[] {
+function extractPseListings(html: string): PseListing[] {
   const text = String(html || "");
   const pattern =
     /<tr>[\s\S]*?cmDetail\('(\d+)','(\d+)'\);return false;">([\s\S]*?)<\/a>[\s\S]*?<td class="alignC"><a[\s\S]*?>([\s\S]*?)<\/a>[\s\S]*?<\/tr>/gi;
@@ -123,7 +123,7 @@ export function extractPseListings(html: string): PseListing[] {
   return listings;
 }
 
-export function findPseListingBySymbol(
+function findPseListingBySymbol(
   listings: PseListing[] | null | undefined,
   symbol: string,
 ): PseListing | null {
@@ -267,7 +267,7 @@ function extractPseChangePercent(
   return null;
 }
 
-export function extractPseQuote(
+function extractPseQuote(
   html: string,
   listing: Pick<PseListing, "name" | "symbol"> | null | undefined,
 ): Record<string, unknown> {
