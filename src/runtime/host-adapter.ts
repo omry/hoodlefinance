@@ -11,7 +11,7 @@ import {
 } from "../core/concrete-resolvers";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
 import { createRequestInput } from "../core/request-building";
-import { looksLikeIsin, type RequestInput } from "../core/request";
+import { looksLikeIsin, type FxPair, type RequestInput } from "../core/request";
 import {
   createDefaultPlanMaterializationDependencies,
   materializePlanFromSpec,
@@ -49,6 +49,7 @@ interface HoodlefinanceRuntimeDependencies {
   fetchText(url: string): string;
   getCachedJson(key: string): unknown;
   getCachedString(key: string): string;
+  parseFxTicker?(ticker: string): FxPair | null;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
   resolvePreferredYahooSymbol?(symbol: string): string;
@@ -277,6 +278,13 @@ export function createHoodlefinanceRuntime(
       return createRequestInput(
         identifier,
         String(attribute == null ? "price" : attribute).trim(),
+        ...(typeof deps.parseFxTicker === "function"
+          ? [
+              {
+                parseFxTicker: deps.parseFxTicker,
+              },
+            ]
+          : []),
       );
     },
     directIdentifierResolver,
@@ -295,6 +303,13 @@ export function createHoodlefinanceRuntime(
         createRequestInput(
           identifier,
           String(attribute == null ? "price" : attribute).trim(),
+          ...(typeof deps.parseFxTicker === "function"
+            ? [
+                {
+                  parseFxTicker: deps.parseFxTicker,
+                },
+              ]
+            : []),
         ),
       );
     },
@@ -310,6 +325,13 @@ export function createHoodlefinanceRuntime(
         createRequestInput(
           identifier,
           String(attribute == null ? "price" : attribute).trim(),
+          ...(typeof deps.parseFxTicker === "function"
+            ? [
+                {
+                  parseFxTicker: deps.parseFxTicker,
+                },
+              ]
+            : []),
         ),
       );
     },

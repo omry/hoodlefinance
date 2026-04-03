@@ -6,7 +6,20 @@ const {
   installHoodlefinanceAppScriptBindings,
 } = require("../dist/ts/appscript/index.js");
 
+const CURRENCY_CODES_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
+
+const DEFAULT_CURRENCY_CODES_PAYLOAD = JSON.stringify({
+  aliases: {},
+  canonicalCodes: ["EUR", "USD"],
+  cryptoCodes: [],
+});
+
 function createServices(fetchByUrl = {}) {
+  const resolvedFetchByUrl = {
+    [CURRENCY_CODES_URL]: DEFAULT_CURRENCY_CODES_PAYLOAD,
+    ...fetchByUrl,
+  };
   const cache = new Map();
   const properties = new Map();
   const scriptCache = {
@@ -19,13 +32,13 @@ function createServices(fetchByUrl = {}) {
   };
   const urlFetchApp = {
     fetch(url) {
-      if (!Object.prototype.hasOwnProperty.call(fetchByUrl, url)) {
+      if (!Object.prototype.hasOwnProperty.call(resolvedFetchByUrl, url)) {
         throw new Error(`Unexpected fetch: ${url}`);
       }
 
       return {
         getContentText() {
-          return fetchByUrl[url];
+          return resolvedFetchByUrl[url];
         },
         getResponseCode() {
           return 200;
@@ -64,7 +77,9 @@ function createServices(fetchByUrl = {}) {
 }
 
 test("HOODLEFINANCE_TS resolves local FX requests through the App Script bindings", () => {
-  const services = createServices();
+  const services = createServices({
+    [CURRENCY_CODES_URL]: DEFAULT_CURRENCY_CODES_PAYLOAD,
+  });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE_TS("USDUSD", "price"), 1);
@@ -75,6 +90,40 @@ test("HOODLEFINANCE_TS resolves local FX requests through the App Script binding
   assert.equal(envelope.status, "success");
   assert.equal(envelope.value.regularMarketPrice, 1);
   assert.equal(envelope.value.hoodlefinanceFxDisplayCurrency, "USD");
+});
+
+test("HOODLEFINANCE_TS reuses stored currency code data when the cache is cold", () => {
+  const services = createServices();
+  services.propertiesState.set(
+    "hoodlefinance.currencyCodes",
+    DEFAULT_CURRENCY_CODES_PAYLOAD,
+  );
+  services.propertiesState.set(
+    "hoodlefinance.currencyCodesFetchedAtMs",
+    String(Date.now()),
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("USDUSD", "price"), 1);
+});
+
+test("HOODLEFINANCE_TS stores downloaded currency code data in script properties after FX lookups", () => {
+  const services = createServices({
+    [CURRENCY_CODES_URL]: DEFAULT_CURRENCY_CODES_PAYLOAD,
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE_TS("USDUSD", "price"), 1);
+  assert.equal(
+    services.propertiesState.get("hoodlefinance.currencyCodes"),
+    DEFAULT_CURRENCY_CODES_PAYLOAD,
+  );
+  assert.equal(
+    typeof Number(
+      services.propertiesState.get("hoodlefinance.currencyCodesFetchedAtMs"),
+    ),
+    "number",
+  );
 });
 
 test("HOODLEFINANCE_TS supports direct ISIN attribute lookups that only need fetchText", () => {
@@ -395,7 +444,9 @@ test("HOODLEFINANCE_TS rejects range identifiers until the TS range surface exis
 });
 
 test("installHoodlefinanceAppScriptBindings publishes the formula functions onto a target scope", () => {
-  const services = createServices();
+  const services = createServices({
+    [CURRENCY_CODES_URL]: DEFAULT_CURRENCY_CODES_PAYLOAD,
+  });
   const scope = {};
 
   installHoodlefinanceAppScriptBindings(scope, services);

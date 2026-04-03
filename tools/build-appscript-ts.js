@@ -20,14 +20,25 @@ const ENTRY_PATH = path.join(
   "appscript",
   "install-global-bindings.ts",
 );
-const CURRENCY_CODES_PATH = path.join(ROOT_DIR, "data", "currency-codes.json");
 const resolveRepoDataPlugin = {
   name: "resolve-repo-data",
   setup(build) {
     build.onResolve(
       { filter: /^\.\.\/\.\.\/\.\.\/data\/currency-codes\.json$/ },
       () => ({
-        path: CURRENCY_CODES_PATH,
+        namespace: "appscript-runtime-data",
+        path: "currency-codes.json",
+      }),
+    );
+    build.onLoad(
+      { filter: /^currency-codes\.json$/, namespace: "appscript-runtime-data" },
+      () => ({
+        contents: JSON.stringify({
+          aliases: {},
+          canonicalCodes: [],
+          cryptoCodes: [],
+        }),
+        loader: "json",
       }),
     );
   },

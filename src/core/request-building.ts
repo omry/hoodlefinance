@@ -71,9 +71,12 @@ export function extractIsinFromRequestInput(
 export function createRequestInput(
   identifier: unknown,
   attribute: unknown,
-  deps?: RequestBuildingDependencies,
+  deps?: Partial<RequestBuildingDependencies>,
 ): RequestInput {
-  const resolvedDeps = deps || DEFAULT_REQUEST_BUILDING_DEPENDENCIES;
+  const resolvedDeps = {
+    ...DEFAULT_REQUEST_BUILDING_DEPENDENCIES,
+    ...(deps || {}),
+  };
 
   return new RequestInput(identifier, attribute, {
     looksLikeIsin: resolvedDeps.looksLikeIsin,
@@ -88,9 +91,12 @@ export function buildTypedRequestFromParsedInput(
   originalInput: Pick<RequestInput, "attribute" | "identifier">,
   parsedInput: Pick<RequestInput, "fxPair" | "ticker">,
   identifierResolutionMs: number,
-  deps?: RequestBuildingDependencies,
+  deps?: Partial<RequestBuildingDependencies>,
 ): ResolvedRequest {
-  const resolvedDeps = deps || DEFAULT_REQUEST_BUILDING_DEPENDENCIES;
+  const resolvedDeps = {
+    ...DEFAULT_REQUEST_BUILDING_DEPENDENCIES,
+    ...(deps || {}),
+  };
   const resolvedTicker = String(parsedInput.ticker || "").trim();
   const fxPair =
     parsedInput.fxPair || resolvedDeps.parseFxTicker(resolvedTicker);
@@ -161,9 +167,12 @@ export function buildTypedRequestFromResolvedTicker(
   originalInput: Pick<RequestInput, "attribute" | "identifier">,
   resolvedTicker: string,
   identifierResolutionMs: number,
-  deps?: RequestBuildingDependencies,
+  deps?: Partial<RequestBuildingDependencies>,
 ): ResolvedRequest {
-  const resolvedDeps = deps || DEFAULT_REQUEST_BUILDING_DEPENDENCIES;
+  const resolvedDeps = {
+    ...DEFAULT_REQUEST_BUILDING_DEPENDENCIES,
+    ...(deps || {}),
+  };
   const parsedResolvedInput = createRequestInput(
     resolvedTicker,
     originalInput.attribute,

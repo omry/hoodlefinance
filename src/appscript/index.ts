@@ -4,8 +4,19 @@ import {
   parsePreferredReitTickerSet,
   parsePropertiesMap,
 } from "../runtime/host-adapter";
+import {
+  createFxTickerParser,
+  parseCurrencyCodeDataResource,
+} from "../core/fx-normalization";
 
 const DEFAULT_ATTRIBUTE = "price";
+const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
+const CURRENCY_CODES_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const CURRENCY_CODES_FETCHED_AT_PROPERTY = "hoodlefinance.currencyCodesFetchedAtMs";
+const CURRENCY_CODES_PROPERTY = "hoodlefinance.currencyCodes";
+const CURRENCY_CODES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const CURRENCY_CODES_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
 const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
 const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const PSE_ISIN_MAP_URL =
@@ -246,6 +257,7 @@ export function createHoodlefinanceAppScriptBindings(
   const scriptProperties = services.propertiesService
     ? services.propertiesService.getScriptProperties()
     : null;
+  let fxTickerParser: ReturnType<typeof createFxTickerParser> | null = null;
   let pseIsinMap: Record<string, string> | null = null;
   let preferredReitTickerSet: Set<string> | null = null;
   const runtime = createHoodlefinanceRuntime({
@@ -255,6 +267,89 @@ export function createHoodlefinanceAppScriptBindings(
     },
     getCachedJson: jsonCache.getCachedJson,
     getCachedString: stringCache.getCachedString,
+    parseFxTicker(ticker) {
+      if (!fxTickerParser) {
+        const cached = stringCache.getCachedString(CURRENCY_CODES_CACHE_KEY);
+        const nowMs = Date.now();
+        let storedPayloadText = scriptProperties
+          ? scriptProperties.getProperty(CURRENCY_CODES_PROPERTY)
+          : null;
+        const storedFetchedAtMs = scriptProperties
+          ? Number(scriptProperties.getProperty(CURRENCY_CODES_FETCHED_AT_PROPERTY))
+          : NaN;
+
+        if (cached) {
+          fxTickerParser = createFxTickerParser(
+            parseCurrencyCodeDataResource(cached),
+          );
+        } else if (storedPayloadText) {
+          try {
+            if (
+              Number.isFinite(storedFetchedAtMs) &&
+              nowMs - storedFetchedAtMs <= CURRENCY_CODES_REFRESH_INTERVAL_MS
+            ) {
+              stringCache.putCachedString(
+                CURRENCY_CODES_CACHE_KEY,
+                storedPayloadText,
+                CURRENCY_CODES_CACHE_TTL_SECONDS,
+              );
+              fxTickerParser = createFxTickerParser(
+                parseCurrencyCodeDataResource(storedPayloadText),
+              );
+            }
+          } catch {
+            storedPayloadText = "";
+          }
+        }
+
+        if (!fxTickerParser) {
+          try {
+            const downloadedText = services.urlFetchApp
+              .fetch(CURRENCY_CODES_URL)
+              .getContentText();
+            stringCache.putCachedString(
+              CURRENCY_CODES_CACHE_KEY,
+              downloadedText,
+              CURRENCY_CODES_CACHE_TTL_SECONDS,
+            );
+
+            if (scriptProperties) {
+              scriptProperties.setProperty(
+                CURRENCY_CODES_PROPERTY,
+                downloadedText,
+              );
+              scriptProperties.setProperty(
+                CURRENCY_CODES_FETCHED_AT_PROPERTY,
+                String(nowMs),
+              );
+            }
+
+            fxTickerParser = createFxTickerParser(
+              parseCurrencyCodeDataResource(downloadedText),
+            );
+          } catch {
+            if (storedPayloadText) {
+              stringCache.putCachedString(
+                CURRENCY_CODES_CACHE_KEY,
+                storedPayloadText,
+                CURRENCY_CODES_CACHE_TTL_SECONDS,
+              );
+              fxTickerParser = createFxTickerParser(
+                parseCurrencyCodeDataResource(storedPayloadText),
+              );
+            }
+          }
+        }
+
+        if (!fxTickerParser) {
+          throw new Error(
+            "Failed to download the currency code data from GitHub.",
+          );
+        }
+      }
+
+      return fxTickerParser(ticker);
+    },
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
     resolvePreferredYahooSymbol(ticker) {
