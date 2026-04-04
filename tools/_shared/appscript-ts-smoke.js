@@ -85,7 +85,7 @@ function main() {
   const expectedVersion = String(
     fs.readFileSync(VERSION_METADATA_PATH, "utf8").match(/^version=(.+)$/m)?.[1] ||
       "",
-  ).trim();
+  ).trim() + "-ts";
   const source = fs.readFileSync(bundlePath, "utf8");
   const sandbox = createSandbox();
   const requiredWrapperPatterns = [
@@ -98,6 +98,7 @@ function main() {
     /function HOODLEFINANCE_TS_VERSION\(/,
     /function HOODLEFINANCE_TS_ENVELOPE\(/,
   ];
+  requiredWrapperPatterns.push(/function HOODLEFINANCE_ENVELOPE\(/);
   const cases = [
     {
       attribute: "price",
@@ -150,6 +151,24 @@ function main() {
     failures.push(
       `version: expected ${expectedVersion}, got ${sandbox.HOODLEFINANCE_VERSION()}`,
     );
+  }
+
+  if (typeof sandbox.HOODLEFINANCE_ENVELOPE !== "function") {
+    failures.push("bundle shape: HOODLEFINANCE_ENVELOPE is not callable");
+  } else {
+    try {
+      const envelope = JSON.parse(
+        sandbox.HOODLEFINANCE_ENVELOPE("USDUSD", "price"),
+      );
+
+      if (envelope.status !== "success") {
+        failures.push(`envelope: expected success, got ${envelope.status}`);
+      }
+    } catch (error) {
+      failures.push(
+        `envelope: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   for (const smokeCase of cases) {
