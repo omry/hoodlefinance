@@ -13,7 +13,7 @@ This document serves as the authoritative ground-truth for the migration of the 
 | :- | :--- | :--- | :--- |
 | 1 | Ticker Normalization & Symbol Parsing | **100%** | All 9 branches match, including FX suffix and crypto dash rules. |
 | 2 | Architecture: Routing & Resolution Plans | **100%** | All materialization and selection branches match exactly. |
-| 3 | Identifiers (`isin` Lookups) | **85%** | 6/7 branches. Gap: `NASDAQGS` mapping in line 4310. |
+| 3 | Identifiers (`isin` Lookups) | **100%** | All 7 branches match, including exchange metadata mapping (Line 407). |
 | 4 | Quote Data & Attributes Resolution | **85%** | 14.5/17 branches. Gap: `isin` attribute and currency conversion logic. |
 | 5 | Batching, Performance, and Caching | **66%** | 2/3 branches. Gap: Job deduplication found in line 2688. |
 | 6 | Provider-Specific Integrations | **50%** | 2/4 branches. Gap: Map caching (line 1650) and scraper freshness. |
