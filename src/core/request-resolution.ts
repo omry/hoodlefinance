@@ -8,8 +8,13 @@ import {
   resolveDirectIsinAttributeValue,
   resolveIsinAttributeValue,
 } from "./isin-lookup";
-import { extractAttributeValue } from "./attribute-extraction";
+import {
+  extractAttributeValue,
+  parseAttributeRequest,
+  extractCurrencyValue,
+} from "./attribute-extraction";
 import { buildSourceOverrideUnavailableError } from "./plan-selection";
+import { createRequestInput } from "./request-building";
 
 interface QuotePlanOutcome {
   error?: unknown;
@@ -182,6 +187,55 @@ function resolveIdentifierPlanEnvelope(
   );
 }
 
+function resolveCurrencyRate(
+  env: RequestResolutionDependencies,
+  source: string,
+  target: string,
+  depth = 0,
+): number | null {
+  if (source === target) return 1;
+  if (depth > 2) return null; // Prevent infinite loops
+ 
+  // 1. Direct Try: S -> T
+  const directTicker = `${source}${target}=X`;
+  const directEnv = resolveRequestValue(
+    env,
+    createRequestInput(directTicker, "price"),
+  );
+  if (directEnv.status === "success") {
+    const rate = Number(directEnv.status === "success" ? directEnv.value : null);
+    if (Number.isFinite(rate)) return rate;
+  }
+ 
+  // 2. Inverse Try: T -> S
+  const inverseTicker = `${target}${source}=X`;
+  const inverseEnv = resolveRequestValue(
+    env,
+    createRequestInput(inverseTicker, "price"),
+  );
+  if (inverseEnv.status === "success") {
+    const rate = Number(inverseEnv.status === "success" ? inverseEnv.value : null);
+    if (Number.isFinite(rate) && rate !== 0) return 1 / rate;
+  }
+ 
+  // 3. Hub Try (USD): S -> USD -> T
+  if (source !== "USD" && target !== "USD") {
+    const rateToUsd = resolveCurrencyRate(env, source, "USD", depth + 1);
+    const rateFromUsd = resolveCurrencyRate(env, "USD", target, depth + 1);
+ 
+    if (
+      rateToUsd != null &&
+      Number.isFinite(rateToUsd) &&
+      rateFromUsd != null &&
+      Number.isFinite(rateFromUsd)
+    ) {
+      return rateToUsd * rateFromUsd;
+    }
+  }
+ 
+  return null;
+}
+ 
 function projectLookupValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
@@ -191,12 +245,38 @@ function projectLookupValue(
   if (envelope.status !== "success") {
     return envelope;
   }
-
+ 
+  const quote = (envelope.value || {}) as Record<string, unknown>;
+ 
   try {
+    const attributeRequest = parseAttributeRequest(requestInput.attribute);
+ 
+    if (
+      requestInput.attributeType === "quote" &&
+      attributeRequest.wantsOutputCurrency &&
+      attributeRequest.baseAttribute === "price"
+    ) {
+      const sourceCurrency = extractCurrencyValue(quote);
+      const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
+ 
+      if (
+        sourceCurrency &&
+        targetCurrency &&
+        sourceCurrency !== targetCurrency &&
+        (quote.hoodlefinanceFxUnitScale == null ||
+          !Number.isFinite(Number(quote.hoodlefinanceFxUnitScale)))
+      ) {
+        const fxRate = resolveCurrencyRate(env, sourceCurrency, targetCurrency);
+        if (fxRate != null && Number.isFinite(fxRate)) {
+          quote.hoodlefinanceFxUnitScale = fxRate;
+        }
+      }
+    }
+ 
     const value =
       requestInput.attributeType === "isin"
         ? resolveIsinAttributeValue(
-            (envelope.value || {}) as Record<string, unknown>,
+            quote,
             {
               sourceOverride: requestInput.sourceOverride,
               tickerInput: requestInput.ticker,
@@ -209,7 +289,7 @@ function projectLookupValue(
             },
           )
         : extractAttributeValue(
-            (envelope.value || {}) as Record<string, unknown>,
+            quote,
             requestInput.attribute,
             resolvePlan &&
               resolvePlan.attributePlan &&
@@ -226,7 +306,7 @@ function projectLookupValue(
                   tickerInput: requestInput.ticker,
                 },
           );
-
+ 
     return {
       ...envelope,
       value,

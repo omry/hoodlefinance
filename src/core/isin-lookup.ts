@@ -2,6 +2,7 @@ import {
   extractTickerExchange,
   extractYahooExchangeFromSymbol,
   normalizeIsraeliFundCode,
+  YAHOO_EXCHANGE_BY_META_NAME,
 } from "./exchange-symbols";
 import {
   buildTradingviewIsinLookupUrl,
@@ -10,28 +11,6 @@ import {
   resolveLonIsinByTickerInput,
   resolvePseIsinBySymbol,
 } from "./isin-sources";
-
-const YAHOO_EXCHANGE_BY_META_NAME: Record<string, string> = {
-  AMEX: "AMEX",
-  ARCA: "NYSEARCA",
-  ARCX: "NYSEARCA",
-  ASE: "AMEX",
-  BATS: "BATS",
-  NASDAQ: "NASDAQ",
-  NASDAQGS: "NASDAQ",
-  NCM: "NASDAQ",
-  NEO: "NEO",
-  NGM: "NASDAQ",
-  NMS: "NASDAQ",
-  NYQ: "NYSE",
-  NYSE: "NYSE",
-  "NYSE ARCA": "NYSEARCA",
-  NYSEARCA: "NYSEARCA",
-  OQX: "OTCMKTS",
-  OTO: "OTCMKTS",
-  PCX: "NYSEARCA",
-  PNK: "OTCMKTS",
-};
 
 const TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE: Record<string, string> = {
   AMEX: "AMEX",

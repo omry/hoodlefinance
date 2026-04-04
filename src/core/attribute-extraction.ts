@@ -1,5 +1,7 @@
 import { parseAttributeRequest } from "./request-parsing";
+export { parseAttributeRequest };
 import { stripDefaultTickerSourceOverride } from "./source-overrides";
+import { YAHOO_EXCHANGE_BY_META_NAME } from "./exchange-symbols";
 
 interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
@@ -80,7 +82,7 @@ function change(quote: Record<string, unknown>): number {
   return pickPrice(quote) - previousClose(quote);
 }
 
-function extractCurrencyValue(quote: Record<string, unknown>): string {
+export function extractCurrencyValue(quote: Record<string, unknown>): string {
   if (quote.hoodlefinanceFxDisplayCurrency != null) {
     return String(quote.hoodlefinanceFxDisplayCurrency);
   }
@@ -134,13 +136,9 @@ export function extractAttributeValue(
 ): unknown {
   const attributeRequest = parseAttributeRequest(attribute);
   const baseAttribute = attributeRequest.baseAttribute;
-
-  if (attributeRequest.wantsOutputCurrency) {
-    throw new Error(
-      "Output-currency conversion is not yet supported in the TypeScript CLI.",
-    );
-  }
-
+ 
+  let value: unknown;
+ 
   if (
     (baseAttribute === "high" ||
       baseAttribute === "low" ||
@@ -151,58 +149,114 @@ export function extractAttributeValue(
       `Attribute "${baseAttribute}" is not available for currency-pair identifiers.`,
     );
   }
-
+ 
   switch (baseAttribute) {
     case "price":
-      return normalizeMoney(quote, pickPrice(quote));
+      value = normalizeMoney(quote, pickPrice(quote));
+      break;
     case "name":
-      return (
+      value =
         quote.longName ||
         quote.shortName ||
         quote.displayName ||
         quote.symbol ||
-        ""
-      );
+        "";
+      break;
     case "currency":
-      return extractCurrencyValue(quote);
+      value = extractCurrencyValue(quote);
+      break;
+    case "isin":
+      value = quote.isin || "";
+      break;
     case "high":
-      return normalizeMoney(quote, quote.regularMarketDayHigh);
+      value = normalizeMoney(quote, quote.regularMarketDayHigh);
+      break;
     case "low":
-      return normalizeMoney(quote, quote.regularMarketDayLow);
+      value = normalizeMoney(quote, quote.regularMarketDayLow);
+      break;
     case "close":
-      return normalizeMoney(quote, previousClose(quote));
+      value = normalizeMoney(quote, previousClose(quote));
+      break;
     case "change":
-      return normalizeMoney(quote, change(quote));
+      value = normalizeMoney(quote, change(quote));
+      break;
     case "changepct":
-      return change(quote) / previousClose(quote);
+      value = change(quote) / previousClose(quote);
+      break;
     case "volume":
       if (quote.regularMarketVolume == null) {
         throw new Error("No volume is available for this ticker.");
       }
-      return quote.regularMarketVolume;
+      value = quote.regularMarketVolume;
+      break;
     case "tradetime": {
       const timestamp =
         quote.regularMarketTime || quote.postMarketTime || quote.preMarketTime;
       const numericTimestamp = Number(timestamp);
-
+ 
       if (timestamp == null || !Number.isFinite(numericTimestamp)) {
         throw new Error("No trade time is available for this ticker.");
       }
-
-      return new Date(numericTimestamp * 1000);
+ 
+      value = new Date(numericTimestamp * 1000);
+      break;
     }
     case "datadelay":
-      return quote.exchangeDataDelayedBy != null ? quote.exchangeDataDelayedBy : 0;
+      value = quote.exchangeDataDelayedBy != null ? quote.exchangeDataDelayedBy : 0;
+      break;
     case "symbol":
     case "symbol:google":
-      return resolveSymbolAttribute(quote, context, "google");
+      value = resolveSymbolAttribute(quote, context, "google");
+      break;
     case "symbol:yahoo":
-      return resolveSymbolAttribute(quote, context, "yahoo");
+      value = resolveSymbolAttribute(quote, context, "yahoo");
+      break;
     case "exchange":
     case "exchange:google":
-    case "exchange:yahoo":
-      return quote.fullExchangeName || quote.exchangeName || "";
+    case "exchange:yahoo": {
+      const exchangeName = String(
+        quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
+      )
+        .trim()
+        .toUpperCase();
+      value = exchangeName ? YAHOO_EXCHANGE_BY_META_NAME[exchangeName] || exchangeName : exchangeName;
+      break;
+    }
     default:
       throw new Error(`Unsupported attribute "${attribute}".`);
   }
+ 
+  if (!attributeRequest.wantsOutputCurrency) {
+    return value;
+  }
+ 
+  if (baseAttribute === "currency") {
+    throw new Error(
+      'Attribute "currency" does not support output-currency conversion.',
+    );
+  }
+ 
+  if (baseAttribute !== "price") {
+    throw new Error(
+      `Attribute "${baseAttribute}" does not support output-currency conversion. Supported attribute is: price.`,
+    );
+  }
+ 
+  const quoteCurrency = extractCurrencyValue(quote);
+  const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
+ 
+  if (quoteCurrency === targetCurrency) {
+    return value;
+  }
+ 
+  const fxScale = quote.hoodlefinanceFxUnitScale != null ? Number(quote.hoodlefinanceFxUnitScale) : null;
+  const isCorrectScale = fxScale != null && Number.isFinite(fxScale);
+ 
+  if (isCorrectScale) {
+    return value;
+  }
+ 
+  throw new Error(
+    `Output-currency conversion from "${quoteCurrency}" to "${targetCurrency}" is currently unavailable for this ticker. Try an identifier source override such as "@TRADINGVIEW" or "@LON".`,
+  );
 }

@@ -279,7 +279,13 @@ export function createFxTickerParser(
     const value = String(ticker || "").trim();
     const explicitMatch = value.match(/^([^:]+):(.*)$/);
     const exchange = explicitMatch?.[1]?.trim().toUpperCase() || "";
-    const pairText = explicitMatch?.[2]?.trim() || value;
+    let pairText = explicitMatch?.[2]?.trim() || value;
+ 
+    // YAHOO-STYLE FX: Handle =X suffix (e.g. PHPILS=X)
+    if (pairText.toUpperCase().endsWith("=X")) {
+      pairText = pairText.slice(0, -2);
+    }
+ 
     const dottedMatch = explicitMatch
       ? pairText.match(/^([A-Za-z]{3,4})\.([A-Za-z]{3,4})$/)
       : null;

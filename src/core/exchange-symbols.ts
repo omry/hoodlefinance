@@ -137,6 +137,28 @@ const KNOWN_IBKR_EXCHANGES = new Set([
   "VSE",
   "WSE",
 ]);
+ 
+export const YAHOO_EXCHANGE_BY_META_NAME: Record<string, string> = {
+  AMEX: "AMEX",
+  ARCA: "NYSEARCA",
+  ARCX: "NYSEARCA",
+  ASE: "AMEX",
+  BATS: "BATS",
+  NASDAQ: "NASDAQ",
+  NASDAQGS: "NASDAQ",
+  NCM: "NASDAQ",
+  NEO: "NEO",
+  NGM: "NASDAQ",
+  NMS: "NASDAQ",
+  NYQ: "NYSE",
+  NYSE: "NYSE",
+  "NYSE ARCA": "NYSEARCA",
+  NYSEARCA: "NYSEARCA",
+  OQX: "OTCMKTS",
+  OTO: "OTCMKTS",
+  PCX: "NYSEARCA",
+  PNK: "OTCMKTS",
+};
 
 export function normalizeExplicitIbkrExchange(exchange: string): string {
   const normalizedExchange = String(exchange || "")
