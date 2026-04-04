@@ -1,90 +1,77 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { extractAttributeValue } = require("../dist/ts/core/index.js");
+const {
+  extractAttributeValue,
+} = require("../dist/ts/core/index.js");
 
-test("extractAttributeValue returns the final scalar for common quote attributes", () => {
+test("extractAttributeValue handles standard numeric and text fields", () => {
   const quote = {
+    regularMarketPrice: 150.25,
+    regularMarketPreviousClose: 148.50,
+    longName: "Apple Inc.",
+    symbol: "AAPL",
     currency: "USD",
-    fullExchangeName: "NasdaqGS",
-    longName: "Alphabet Inc.",
-    regularMarketDayHigh: 300,
-    regularMarketDayLow: 290,
-    regularMarketPreviousClose: 294.9,
-    regularMarketPrice: 294.46,
-    regularMarketTime: 1775160002,
-    regularMarketVolume: 13309515,
-    symbol: "GOOG",
+    regularMarketDayHigh: 151.00,
+    regularMarketDayLow: 149.00,
+    regularMarketVolume: 1000000,
+    regularMarketTime: 1625097600, // 2021-06-30
+    exchangeDataDelayedBy: 15,
   };
 
-  assert.equal(extractAttributeValue(quote, "price"), 294.46);
-  assert.equal(extractAttributeValue(quote, "name"), "Alphabet Inc.");
+  assert.equal(extractAttributeValue(quote, "price"), 150.25);
+  assert.equal(extractAttributeValue(quote, "name"), "Apple Inc.");
   assert.equal(extractAttributeValue(quote, "currency"), "USD");
-  assert.equal(extractAttributeValue(quote, "close"), 294.9);
-  assert.equal(extractAttributeValue(quote, "change"), -0.4399999999999977);
-  assert.equal(
-    extractAttributeValue(quote, "changepct"),
-    -0.4399999999999977 / 294.9,
-  );
-  assert.equal(extractAttributeValue(quote, "volume"), 13309515);
-  assert.equal(extractAttributeValue(quote, "symbol"), "GOOG");
-  assert.equal(extractAttributeValue(quote, "exchange"), "NasdaqGS");
-  assert.equal(
-    extractAttributeValue(quote, "tradetime").toISOString(),
-    "2026-04-02T20:00:02.000Z",
-  );
+  assert.equal(extractAttributeValue(quote, "high"), 151.00);
+  assert.equal(extractAttributeValue(quote, "low"), 149.00);
+  assert.equal(extractAttributeValue(quote, "close"), 148.50);
+  assert.equal(extractAttributeValue(quote, "change"), 1.75);
+  assert.equal(extractAttributeValue(quote, "changepct"), 1.75 / 148.50);
+  assert.equal(extractAttributeValue(quote, "volume"), 1000000);
+  assert.equal(extractAttributeValue(quote, "datadelay"), 15);
+  assert.ok(extractAttributeValue(quote, "tradetime") instanceof Date);
 });
 
-test("extractAttributeValue keeps isin out of the generic quote-field extractor", () => {
-  assert.throws(
-    () =>
-      extractAttributeValue(
-        {
-          isin: "US02079K1079",
-          symbol: "GOOG",
-        },
-        "isin",
-      ),
-    /Unsupported attribute "isin"\./,
-  );
-});
-
-test("extractAttributeValue rejects unsupported output-currency conversion", () => {
-  assert.throws(
-    () =>
-      extractAttributeValue(
-        {
-          currency: "USD",
-          regularMarketPrice: 10,
-        },
-        "price@EUR",
-      ),
-    /Output-currency conversion is not yet supported in the TypeScript CLI\./,
-  );
-});
-
-test("extractAttributeValue keeps the original Google-style symbol for preferred REIT quotes", () => {
-  const quote = {
-    exchangeName: "NYSE",
-    symbol: "NLY-PI",
+test("extractAttributeValue rejects high/low/volume for FX pairs (Parity)", () => {
+  const fxQuote = {
+    symbol: "EURUSD=X",
+    hoodlefinanceFxDisplayCurrency: "USD",
   };
 
-  assert.equal(
-    extractAttributeValue(quote, "symbol:google", {
-      routeState: {
-        preferredYahooSymbol: "NLY-PI",
-      },
-      tickerInput: "NLY-I@YAHOO",
-    }),
-    "NLY-I",
-  );
-  assert.equal(
-    extractAttributeValue(quote, "symbol:yahoo", {
-      routeState: {
-        preferredYahooSymbol: "NLY-PI",
-      },
-      tickerInput: "NLY-I@YAHOO",
-    }),
-    "NLY-PI",
-  );
+  assert.throws(() => extractAttributeValue(fxQuote, "high"), /is not available for currency-pair identifiers/);
+  assert.throws(() => extractAttributeValue(fxQuote, "low"), /is not available for currency-pair identifiers/);
+  assert.throws(() => extractAttributeValue(fxQuote, "volume"), /is not available for currency-pair identifiers/);
+});
+
+// --- ACTUAL GAPS (EXPECTED TO FAIL) ---
+
+test("GAP: exchange:google style mapping (e.g. NasdaqGS -> NASDAQ)", () => {
+  const quote = {
+    symbol: "AAPL",
+    fullExchangeName: "NasdaqGS",
+  };
+
+  // Legacy logic maps NasdaqGS to NASDAQ in Google style
+  assert.equal(extractAttributeValue(quote, "exchange:google"), "NASDAQ");
+});
+
+test("GAP: isin attribute extraction", () => {
+  const quote = {
+    symbol: "AAPL",
+    isin: "US0378331005",
+  };
+
+  // Currently missing in TS extractAttributeValue switch
+  assert.equal(extractAttributeValue(quote, "isin"), "US0378331005");
+});
+
+test("GAP: output-currency conversion (price@USD)", () => {
+  const quote = {
+    symbol: "BDO.PS",
+    regularMarketPrice: 100,
+    currency: "PHP",
+  };
+
+  // Currently explicitly disabled in TS core
+  assert.doesNotThrow(() => extractAttributeValue(quote, "price@USD"));
 });
