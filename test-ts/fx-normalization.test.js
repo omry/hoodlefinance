@@ -3,8 +3,11 @@ const test = require("node:test");
 
 const { parseFxTicker } = require("../dist/ts/core/index.js");
 
-test("ambiguous bare 4-character FX candidates do not auto-parse as currency pairs", () => {
-  assert.equal(parseFxTicker("USDTUSD"), null);
+test("ambiguous bare 4-character FX candidates do not auto-parse as currency pairs (Strict Parity)", () => {
+  assert.throws(
+    () => parseFxTicker("USDTUSD"),
+    /Currency ticker "USDTUSD" is ambiguous\. Use CURRENCY:USD\.TUSD or CURRENCY:USDT\.USD\./,
+  );
 });
 
 test("ambiguous compact prefixed FX tickers require dotted CURRENCY syntax", () => {

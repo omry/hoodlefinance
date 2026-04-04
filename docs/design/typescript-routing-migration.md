@@ -11,7 +11,7 @@ This document serves as the authoritative ground-truth for the migration of the 
 
 | # | Functional Area | TS Coverage Progress | Notes |
 | :- | :--- | :--- | :--- |
-| 1 | Ticker Normalization & Symbol Parsing | **88%** | 8/9 branches. Gap: FX `=X` suffix rule found in line 2012. |
+| 1 | Ticker Normalization & Symbol Parsing | **100%** | All 9 branches match, including FX suffix and crypto dash rules. |
 | 2 | Architecture: Routing & Resolution Plans | **100%** | All materialization and selection branches match exactly. |
 | 3 | Identifiers (`isin` Lookups) | **85%** | 6/7 branches. Gap: `NASDAQGS` mapping in line 4310. |
 | 4 | Quote Data & Attributes Resolution | **85%** | 14.5/17 branches. Gap: `isin` attribute and currency conversion logic. |

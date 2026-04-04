@@ -311,6 +311,19 @@ export function createFxTickerParser(
       );
     }
 
+    if (compactCandidates.length > 1) {
+      const suggestions = compactCandidates
+        .slice(0, 2)
+        .map(
+          (c) => `CURRENCY:${c.baseDisplayCode}.${c.displayQuoteCode}`,
+        )
+        .join(" or ");
+
+      throw new Error(
+        `Currency ticker "${ticker}" is ambiguous. Use ${suggestions}.`,
+      );
+    }
+
     if (!looksLikeCompactPair || compactCandidates.length !== 1) {
       if (explicitMatch && !compactCandidates.length) {
         throw new Error(

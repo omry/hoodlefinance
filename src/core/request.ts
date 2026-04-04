@@ -22,7 +22,7 @@ export interface FxPair {
   quoteDisplayCode?: string;
   scale?: number;
   yahooChartSymbol: string;
-  yahooSymbol?: string;
+  yahooSymbol: string;
 }
 
 export interface ParsedTickerRequest {

@@ -14,7 +14,7 @@ export function normalizeTickerWithoutIsin(ticker: string): string {
   const parts = value.split(":");
 
   if (fxPair) {
-    return fxPair.yahooChartSymbol;
+    return fxPair.yahooSymbol;
   }
 
   if (parts.length < 2) {
