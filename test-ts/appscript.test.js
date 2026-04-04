@@ -76,23 +76,23 @@ function createServices(fetchByUrl = {}) {
   };
 }
 
-test("HOODLEFINANCE_TS resolves local FX requests through the App Script bindings", () => {
+test("HOODLEFINANCE resolves local FX requests through the App Script bindings", () => {
   const services = createServices({
     [CURRENCY_CODES_URL]: DEFAULT_CURRENCY_CODES_PAYLOAD,
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("USDUSD", "price"), 1);
+  assert.equal(bindings.HOODLEFINANCE("USDUSD", "price"), 1);
 
   const envelope = JSON.parse(
-    bindings.HOODLEFINANCE_TS_ENVELOPE("USDUSD", "price"),
+    bindings.hoodlefinanceDebugEnvelope("USDUSD", "price"),
   );
   assert.equal(envelope.status, "success");
   assert.equal(envelope.value.regularMarketPrice, 1);
   assert.equal(envelope.value.hoodlefinanceFxDisplayCurrency, "USD");
 });
 
-test("HOODLEFINANCE_TS reuses stored currency code data when the cache is cold", () => {
+test("HOODLEFINANCE reuses stored currency code data when the cache is cold", () => {
   const services = createServices();
   services.propertiesState.set(
     "hoodlefinance.currencyCodes",
@@ -104,16 +104,16 @@ test("HOODLEFINANCE_TS reuses stored currency code data when the cache is cold",
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("USDUSD", "price"), 1);
+  assert.equal(bindings.HOODLEFINANCE("USDUSD", "price"), 1);
 });
 
-test("HOODLEFINANCE_TS stores downloaded currency code data in script properties after FX lookups", () => {
+test("HOODLEFINANCE stores downloaded currency code data in script properties after FX lookups", () => {
   const services = createServices({
     [CURRENCY_CODES_URL]: DEFAULT_CURRENCY_CODES_PAYLOAD,
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("USDUSD", "price"), 1);
+  assert.equal(bindings.HOODLEFINANCE("USDUSD", "price"), 1);
   assert.equal(
     services.propertiesState.get("hoodlefinance.currencyCodes"),
     DEFAULT_CURRENCY_CODES_PAYLOAD,
@@ -126,7 +126,7 @@ test("HOODLEFINANCE_TS stores downloaded currency code data in script properties
   );
 });
 
-test("HOODLEFINANCE_TS supports direct ISIN attribute lookups that only need fetchText", () => {
+test("HOODLEFINANCE supports direct ISIN attribute lookups that only need fetchText", () => {
   const services = createServices({
     "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA": `
       <html>
@@ -144,10 +144,10 @@ test("HOODLEFINANCE_TS supports direct ISIN attribute lookups that only need fet
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("LON:SJPA", "isin"), "US0000000001");
+  assert.equal(bindings.HOODLEFINANCE("LON:SJPA", "isin"), "US0000000001");
 });
 
-test("HOODLEFINANCE_TS uses the preferred REIT Yahoo fallback symbol", () => {
+test("HOODLEFINANCE uses the preferred REIT Yahoo fallback symbol", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
       {
@@ -173,10 +173,10 @@ test("HOODLEFINANCE_TS uses the preferred REIT Yahoo fallback symbol", () => {
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
 });
 
-test("HOODLEFINANCE_TS falls back to the original Yahoo symbol when the preferred REIT whitelist fetch fails", () => {
+test("HOODLEFINANCE falls back to the original Yahoo symbol when the preferred REIT whitelist fetch fails", () => {
   const services = createServices({
     "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d": JSON.stringify(
       {
@@ -197,10 +197,10 @@ test("HOODLEFINANCE_TS falls back to the original Yahoo symbol when the preferre
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.11);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.11);
 });
 
-test("HOODLEFINANCE_TS reuses the stored preferred REIT whitelist when the cache is cold", () => {
+test("HOODLEFINANCE reuses the stored preferred REIT whitelist when the cache is cold", () => {
   const services = createServices({
     "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
       {
@@ -230,10 +230,10 @@ test("HOODLEFINANCE_TS reuses the stored preferred REIT whitelist when the cache
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
 });
 
-test("HOODLEFINANCE_TS stores the preferred REIT whitelist in script properties after downloading it", () => {
+test("HOODLEFINANCE stores the preferred REIT whitelist in script properties after downloading it", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
       {
@@ -259,7 +259,7 @@ test("HOODLEFINANCE_TS stores the preferred REIT whitelist in script properties 
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
 
   const storedPayload = JSON.parse(
     services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
@@ -274,7 +274,7 @@ test("HOODLEFINANCE_TS stores the preferred REIT whitelist in script properties 
   assert.equal(typeof storedPayload.fetchedAtMs, "number");
 });
 
-test("HOODLEFINANCE_TS ignores malformed cached preferred REIT whitelist data and refreshes it", () => {
+test("HOODLEFINANCE ignores malformed cached preferred REIT whitelist data and refreshes it", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
       {
@@ -304,7 +304,7 @@ test("HOODLEFINANCE_TS ignores malformed cached preferred REIT whitelist data an
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
   assert.equal(
     services.cacheState.get("hoodlefinance:ts:preferredReitWhitelist"),
     JSON.stringify({
@@ -313,7 +313,7 @@ test("HOODLEFINANCE_TS ignores malformed cached preferred REIT whitelist data an
   );
 });
 
-test("HOODLEFINANCE_TS ignores malformed stored preferred REIT whitelist data and refreshes it", () => {
+test("HOODLEFINANCE ignores malformed stored preferred REIT whitelist data and refreshes it", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
       {
@@ -346,7 +346,7 @@ test("HOODLEFINANCE_TS ignores malformed stored preferred REIT whitelist data an
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
 
   const storedPayload = JSON.parse(
     services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
@@ -360,7 +360,7 @@ test("HOODLEFINANCE_TS ignores malformed stored preferred REIT whitelist data an
   );
 });
 
-test("HOODLEFINANCE_TS skips persisting malformed downloaded preferred REIT whitelist data and falls back to stored data", () => {
+test("HOODLEFINANCE skips persisting malformed downloaded preferred REIT whitelist data and falls back to stored data", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": "{not valid json",
     "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
@@ -392,7 +392,7 @@ test("HOODLEFINANCE_TS skips persisting malformed downloaded preferred REIT whit
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
   assert.equal(
     services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
     storedPayloadText,
@@ -403,7 +403,7 @@ test("HOODLEFINANCE_TS skips persisting malformed downloaded preferred REIT whit
   );
 });
 
-test("HOODLEFINANCE_TS keeps the original Google-style symbol for preferred REITs", () => {
+test("HOODLEFINANCE keeps the original Google-style symbol for preferred REITs", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
       {
@@ -429,17 +429,17 @@ test("HOODLEFINANCE_TS keeps the original Google-style symbol for preferred REIT
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "symbol:google"), "NLY-I");
-  assert.equal(bindings.HOODLEFINANCE_TS("NLY-I", "symbol:yahoo"), "NLY-PI");
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "symbol:google"), "NLY-I");
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "symbol:yahoo"), "NLY-PI");
 });
 
-test("HOODLEFINANCE_TS rejects range identifiers until the TS range surface exists", () => {
+test("HOODLEFINANCE rejects range identifiers until the TS range surface exists", () => {
   const services = createServices();
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.throws(
-    () => bindings.HOODLEFINANCE_TS([["GOOG"]], "price"),
-    /Range identifiers are not yet supported in HOODLEFINANCE_TS\./,
+    () => bindings.HOODLEFINANCE([["GOOG"]], "price"),
+    /Range identifiers are not yet supported in HOODLEFINANCE\./,
   );
 });
 
@@ -451,11 +451,11 @@ test("installHoodlefinanceAppScriptBindings publishes the formula functions onto
 
   installHoodlefinanceAppScriptBindings(scope, services);
 
-  assert.equal(typeof scope.HOODLEFINANCE_TS, "function");
-  assert.equal(typeof scope.HOODLEFINANCE_TS_ENVELOPE, "function");
+  assert.equal(typeof scope.HOODLEFINANCE, "function");
+  assert.equal(typeof scope.HOODLEFINANCE_TS_ENVELOPE, "undefined");
   assert.equal(
     typeof scope.hoodlefinanceBuildSheetsAddOnHomepage,
     "function",
   );
-  assert.equal(scope.HOODLEFINANCE_TS("USDUSD", "price"), 1);
+  assert.equal(scope.HOODLEFINANCE("USDUSD", "price"), 1);
 });

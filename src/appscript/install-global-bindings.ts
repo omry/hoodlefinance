@@ -1,3 +1,4 @@
-import { installHoodlefinanceAppScriptBindings } from "./index";
+import { createHoodlefinanceAppScriptBindings } from "./index";
 
-installHoodlefinanceAppScriptBindings();
+(globalThis as Record<string, unknown>).__hoodlefinanceBindings =
+  createHoodlefinanceAppScriptBindings();

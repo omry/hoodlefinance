@@ -59,8 +59,8 @@ interface HoodlefinanceAppScriptServices {
 }
 
 interface HoodlefinanceAppScriptBindings {
-  HOODLEFINANCE_TS(identifier: unknown, attribute?: unknown): unknown;
-  HOODLEFINANCE_TS_ENVELOPE(identifier: unknown, attribute?: unknown): string;
+  HOODLEFINANCE(identifier: unknown, attribute?: unknown): unknown;
+  hoodlefinanceDebugEnvelope(identifier: unknown, attribute?: unknown): string;
   hoodlefinanceBuildSheetsAddOnHomepage(): unknown;
 }
 
@@ -85,7 +85,7 @@ interface HoodlefinanceAppScriptGlobals {
 function assertScalarIdentifier(identifier: unknown): void {
   if (Array.isArray(identifier)) {
     throw new Error(
-      "Range identifiers are not yet supported in HOODLEFINANCE_TS.",
+      "Range identifiers are not yet supported in HOODLEFINANCE.",
     );
   }
 }
@@ -126,7 +126,7 @@ function createPendingAddOnHomepage(): () => unknown {
     const paragraph = cardService.newTextParagraph();
 
     paragraph.setText(
-      "HOODLEFINANCE_TS custom functions are available, but the Sheets add-on homepage is not implemented in the TypeScript bundle yet.",
+      "HOODLEFINANCE custom functions are available, but the Sheets add-on homepage is not implemented in the TypeScript bundle yet.",
     );
     section.addWidget(paragraph);
     cardBuilder.addSection(section);
@@ -349,7 +349,7 @@ export function createHoodlefinanceAppScriptBindings(
   });
 
   return {
-    HOODLEFINANCE_TS(identifier, attribute = DEFAULT_ATTRIBUTE) {
+    HOODLEFINANCE(identifier, attribute = DEFAULT_ATTRIBUTE) {
       assertScalarIdentifier(identifier);
       const result = runtime.lookup(identifier, attribute);
 
@@ -359,7 +359,7 @@ export function createHoodlefinanceAppScriptBindings(
 
       return result.value;
     },
-    HOODLEFINANCE_TS_ENVELOPE(identifier, attribute = DEFAULT_ATTRIBUTE) {
+    hoodlefinanceDebugEnvelope(identifier, attribute = DEFAULT_ATTRIBUTE) {
       assertScalarIdentifier(identifier);
       return JSON.stringify(runtime.lookupEnvelope(identifier, attribute));
     },
@@ -373,8 +373,7 @@ export function installHoodlefinanceAppScriptBindings(
 ): HoodlefinanceAppScriptBindings {
   const bindings = createHoodlefinanceAppScriptBindings(overrides);
 
-  scope.HOODLEFINANCE_TS = bindings.HOODLEFINANCE_TS;
-  scope.HOODLEFINANCE_TS_ENVELOPE = bindings.HOODLEFINANCE_TS_ENVELOPE;
+  scope.HOODLEFINANCE = bindings.HOODLEFINANCE;
   scope.hoodlefinanceBuildSheetsAddOnHomepage =
     bindings.hoodlefinanceBuildSheetsAddOnHomepage;
 

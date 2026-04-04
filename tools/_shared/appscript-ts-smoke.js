@@ -9,6 +9,7 @@ const vm = require("node:vm");
 const { createUrlFetchApp } = require("./urlfetch-sync.js");
 
 const ROOT_DIR = path.resolve(__dirname, "..", "..");
+const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
 
 function parseArgs(argv) {
   const options = {
@@ -81,8 +82,22 @@ function main() {
     options.minify ? "appscript-min" : "appscript",
     "hoodlefinance-ts.js",
   );
+  const expectedVersion = String(
+    fs.readFileSync(VERSION_METADATA_PATH, "utf8").match(/^version=(.+)$/m)?.[1] ||
+      "",
+  ).trim();
   const source = fs.readFileSync(bundlePath, "utf8");
   const sandbox = createSandbox();
+  const requiredWrapperPatterns = [
+    /@customfunction[\s\S]*function HOODLEFINANCE\(/,
+    /@customfunction[\s\S]*function HOODLEFINANCE_VERSION\(/,
+    /function hoodlefinanceBuildSheetsAddOnHomepage\(/,
+  ];
+  const forbiddenWrapperPatterns = [
+    /function HOODLEFINANCE_TS\(/,
+    /function HOODLEFINANCE_TS_VERSION\(/,
+    /function HOODLEFINANCE_TS_ENVELOPE\(/,
+  ];
   const cases = [
     {
       attribute: "price",
@@ -114,13 +129,33 @@ function main() {
   ];
   const failures = [];
 
+  for (const pattern of requiredWrapperPatterns) {
+    if (!pattern.test(source)) {
+      failures.push(`bundle shape: missing ${pattern}`);
+    }
+  }
+
+  for (const pattern of forbiddenWrapperPatterns) {
+    if (pattern.test(source)) {
+      failures.push(`bundle shape: unexpected ${pattern}`);
+    }
+  }
+
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: "hoodlefinance-ts.js" });
+
+  if (typeof sandbox.HOODLEFINANCE_VERSION !== "function") {
+    failures.push("bundle shape: HOODLEFINANCE_VERSION is not callable");
+  } else if (sandbox.HOODLEFINANCE_VERSION() !== expectedVersion) {
+    failures.push(
+      `version: expected ${expectedVersion}, got ${sandbox.HOODLEFINANCE_VERSION()}`,
+    );
+  }
 
   for (const smokeCase of cases) {
     try {
       smokeCase.validate(
-        sandbox.HOODLEFINANCE_TS(smokeCase.ticker, smokeCase.attribute),
+        sandbox.HOODLEFINANCE(smokeCase.ticker, smokeCase.attribute),
       );
     } catch (error) {
       failures.push(

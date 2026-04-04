@@ -14,12 +14,14 @@ const TRACKED_MANIFEST_PATH = path.join(
   "google-sheets-editor-addon",
   "appsscript.json",
 );
+const VERSION_METADATA_PATH = path.join(ROOT_DIR, "version.properties");
 const ENTRY_PATH = path.join(
   ROOT_DIR,
   "src",
   "appscript",
   "install-global-bindings.ts",
 );
+const INTERNAL_BINDINGS_GLOBAL = "__hoodlefinanceBindings";
 const resolveRepoDataPlugin = {
   name: "resolve-repo-data",
   setup(build) {
@@ -97,8 +99,101 @@ function parseArgs(argv) {
   return options;
 }
 
+function parseVersion(versionMetadataText) {
+  const match = String(versionMetadataText || "").match(/^version=(.+)$/m);
+
+  if (!match || !match[1].trim()) {
+    throw new Error("version.properties is missing a version entry.");
+  }
+
+  return match[1].trim();
+}
+
+function buildAppsScriptWrapperBlock() {
+  return `
+/**
+ * Quote function for supported current quote attributes.
+ *
+ * Supported attributes in this version:
+ * - "price" (default)
+ * - "name"
+ * - "currency"
+ * - "symbol"
+ * - "exchange"
+ * - "tradetime"
+ * - "datadelay"
+ * - "volume"
+ * - "high"
+ * - "low"
+ * - "isin"
+ * - "close"
+ * - "changepct"
+ * - "change"
+ * - "price" with an optional "@currency" qualifier
+ *
+ * Examples:
+ *   =HOODLEFINANCE("NASDAQ:GOOG")
+ *   =HOODLEFINANCE("NASDAQ:GOOG", "price")
+ *   =HOODLEFINANCE("SJPA.L", "price@USD")
+ *   =HOODLEFINANCE("NYSE:IBM", "name")
+ *   =HOODLEFINANCE("CURRENCY:USDEUR", "price")
+ *   =HOODLEFINANCE("LON:SJPA", "isin")
+ *   =HOODLEFINANCE("ISIN:IE00B3XXRP09", "price")
+ *   =HOODLEFINANCE("PSE:AAA", "price")
+ *
+ * Note: the current TypeScript Apps Script build supports scalar identifiers
+ * only. Range/spilled-array inputs are not yet supported here.
+ * Symbol and exchange attributes accept ":google" and ":yahoo" qualifiers.
+ *
+ * @param {string} identifier Ticker symbol or qualified identifier.
+ * @param {string=} attribute Optional attribute name. Defaults to "price".
+ * @return {string|number} The requested quote field.
+ * @customfunction
+ */
+function HOODLEFINANCE(identifier, attribute) {
+  var bindings = globalThis.${INTERNAL_BINDINGS_GLOBAL};
+
+  if (!bindings) {
+    throw new Error("HOODLEFINANCE bindings were not initialized.");
+  }
+
+  return bindings.HOODLEFINANCE(identifier, attribute);
+}
+
+/**
+ * Returns the current HOODLEFINANCE script version.
+ *
+ * @return {string}
+ * @customfunction
+ */
+function HOODLEFINANCE_VERSION() {
+  return HOODLEFINANCE_VERSION_;
+}
+
+function hoodlefinanceBuildSheetsAddOnHomepage() {
+  var bindings = globalThis.${INTERNAL_BINDINGS_GLOBAL};
+
+  if (!bindings) {
+    throw new Error("HOODLEFINANCE bindings were not initialized.");
+  }
+
+  return bindings.hoodlefinanceBuildSheetsAddOnHomepage();
+}
+`;
+}
+
+function buildAppsScriptPreamble(version) {
+  return (
+    "/* SPDX-License-Identifier: MPL-2.0 */\n" +
+    `const HOODLEFINANCE_VERSION_ = ${JSON.stringify(version)};\n`
+  );
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const version = parseVersion(
+    await fs.readFile(VERSION_METADATA_PATH, "utf8"),
+  );
   const trackedManifest = JSON.parse(
     await fs.readFile(TRACKED_MANIFEST_PATH, "utf8"),
   );
@@ -113,9 +208,6 @@ async function main() {
 
   await fs.mkdir(outDir, { recursive: true });
   await esbuild.build({
-    banner: {
-      js: "/* SPDX-License-Identifier: MPL-2.0 */",
-    },
     bundle: true,
     entryPoints: [ENTRY_PATH],
     format: "iife",
@@ -129,6 +221,14 @@ async function main() {
     minify: options.minify,
     target: ["es2020"],
   });
+  const bundledSource = await fs.readFile(outfile, "utf8");
+  await fs.writeFile(
+    outfile,
+    buildAppsScriptPreamble(version) +
+      buildAppsScriptWrapperBlock() +
+      "\n" +
+      bundledSource,
+  );
   const afterBytes = await readFileSize(outfile);
   await fs.writeFile(
     manifestPath,
