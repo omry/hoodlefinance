@@ -3,7 +3,8 @@ import type {
   ResolutionResult,
   ResolverPlanNode,
 } from "./planner";
-import type { RequestInput, ResolvedRequest } from "./request";
+import type { FxPair, RequestInput, ResolvedRequest } from "./request";
+import { buildFxPairFromCodes } from "./fx-normalization";
 import {
   resolveDirectIsinAttributeValue,
   resolveIsinAttributeValue,
@@ -44,6 +45,7 @@ export interface RequestResolutionDependencies {
   getCachedString(cacheKey: string): string;
   looksLikeIsin(value: string): boolean;
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
+  resolveFxRate(fxPair: FxPair): LookupEnvelopeResult;
 }
 
 export interface LookupEnvelopeResult {
@@ -122,7 +124,7 @@ function validateDeferredLookupModes(requestInput: RequestInput): void {
   }
 }
 
-function resolvePlannedQuoteEnvelope(
+export function resolvePlannedQuoteEnvelope(
   attributePlan: ResolverPlanNode,
   resolvedRequest: ResolvedRequest,
   attemptedRoutes: string[],
@@ -187,54 +189,6 @@ function resolveIdentifierPlanEnvelope(
   );
 }
 
-function resolveCurrencyRate(
-  env: RequestResolutionDependencies,
-  source: string,
-  target: string,
-  depth = 0,
-): number | null {
-  if (source === target) return 1;
-  if (depth > 2) return null; // Prevent infinite loops
- 
-  // 1. Direct Try: S -> T
-  const directTicker = `${source}${target}=X`;
-  const directEnv = resolveRequestValue(
-    env,
-    createRequestInput(directTicker, "price"),
-  );
-  if (directEnv.status === "success") {
-    const rate = Number(directEnv.status === "success" ? directEnv.value : null);
-    if (Number.isFinite(rate)) return rate;
-  }
- 
-  // 2. Inverse Try: T -> S
-  const inverseTicker = `${target}${source}=X`;
-  const inverseEnv = resolveRequestValue(
-    env,
-    createRequestInput(inverseTicker, "price"),
-  );
-  if (inverseEnv.status === "success") {
-    const rate = Number(inverseEnv.status === "success" ? inverseEnv.value : null);
-    if (Number.isFinite(rate) && rate !== 0) return 1 / rate;
-  }
- 
-  // 3. Hub Try (USD): S -> USD -> T
-  if (source !== "USD" && target !== "USD") {
-    const rateToUsd = resolveCurrencyRate(env, source, "USD", depth + 1);
-    const rateFromUsd = resolveCurrencyRate(env, "USD", target, depth + 1);
- 
-    if (
-      rateToUsd != null &&
-      Number.isFinite(rateToUsd) &&
-      rateFromUsd != null &&
-      Number.isFinite(rateFromUsd)
-    ) {
-      return rateToUsd * rateFromUsd;
-    }
-  }
- 
-  return null;
-}
  
 function projectLookupValue(
   env: RequestResolutionDependencies,
@@ -266,9 +220,22 @@ function projectLookupValue(
         (quote.hoodlefinanceFxUnitScale == null ||
           !Number.isFinite(Number(quote.hoodlefinanceFxUnitScale)))
       ) {
-        const fxRate = resolveCurrencyRate(env, sourceCurrency, targetCurrency);
-        if (fxRate != null && Number.isFinite(fxRate)) {
-          quote.hoodlefinanceFxUnitScale = fxRate;
+        const fxPair = buildFxPairFromCodes(sourceCurrency, targetCurrency);
+        if (!fxPair) {
+          throw new Error(
+            `Output-currency conversion from "${sourceCurrency}" to "${targetCurrency}" is not supported. Use recognized 3- or 4-character currency codes.`,
+          );
+        }
+
+        const fxEnvelope = env.resolveFxRate(fxPair);
+        envelope.attemptedRoutes = envelope.attemptedRoutes.concat(
+          fxEnvelope.attemptedRoutes,
+        );
+        if (fxEnvelope.status === "success") {
+          const rate = Number(fxEnvelope.value);
+          if (Number.isFinite(rate)) {
+            quote.hoodlefinanceFxUnitScale = rate;
+          }
         }
       }
     }

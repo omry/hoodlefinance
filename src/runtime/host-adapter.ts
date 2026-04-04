@@ -11,13 +11,21 @@ import {
 } from "../core/concrete-resolvers";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
 import { createRequestInput } from "../core/request-building";
-import { looksLikeIsin, type FxPair, type RequestInput } from "../core/request";
+import { extractAttributeValue } from "../core/attribute-extraction";
+import {
+  looksLikeIsin,
+  FxRequest,
+  type FxPair,
+  type RequestInput,
+} from "../core/request";
+import { buildFxPairFromCodes } from "../core/fx-normalization";
 import {
   createDefaultPlanMaterializationDependencies,
   materializePlanFromSpec,
 } from "../core/plan-materialization";
 import { PLAN_SPECS_BY_CODE } from "../core/spec-data";
 import {
+  resolvePlannedQuoteEnvelope,
   resolveRequestEnvelope,
   resolveRequestValue,
   type LookupEnvelopeResult,
@@ -72,6 +80,7 @@ interface HoodlefinanceRuntime {
   tradingviewFundResolver: TradingviewFundResolver;
   yahooIsinSearchResolver: YahooIsinSearchResolver;
   yahooQuoteResolver: YahooQuoteResolver;
+  resolveFxRate(fxPair: FxPair): LookupEnvelopeResult;
 }
 
 function createInlineFetchResponse(
@@ -261,6 +270,12 @@ export function createHoodlefinanceRuntime(
     },
     resolversByCode,
   });
+  const fxPlan = materializePlanFromSpec(
+    "DEFAULT-ATTRIBUTE:FX",
+    null,
+    planMaterializationDeps,
+  ) as ResolverPlanNode;
+
   const buildResolvePlan = createDefaultResolvePlanBuilder({
     directIdentifierResolver,
     materializePlanFromSpec(code) {
@@ -272,6 +287,27 @@ export function createHoodlefinanceRuntime(
     },
   });
 
+  function resolveFxRate(fxPair: FxPair): LookupEnvelopeResult {
+    const fxRequest = new FxRequest({
+      attribute: "price",
+      fxPair,
+      identifier: fxPair.yahooSymbol,
+    });
+
+    const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
+
+    if (env.status === "success") {
+      const price = Number(
+        extractAttributeValue(env.value as Record<string, unknown>, "price"),
+      );
+      if (Number.isFinite(price)) {
+        return { ...env, value: price };
+      }
+    }
+
+    return env;
+  }
+
   return {
     buildResolvePlan,
     createRequestInput(identifier, attribute) {
@@ -280,57 +316,64 @@ export function createHoodlefinanceRuntime(
         String(attribute == null ? "price" : attribute).trim(),
         ...(typeof deps.parseFxTicker === "function"
           ? [
-              {
-                parseFxTicker: deps.parseFxTicker,
-              },
-            ]
+            {
+              parseFxTicker: deps.parseFxTicker,
+            },
+          ]
           : []),
       );
     },
+    resolveFxRate,
     directIdentifierResolver,
     fetchText: deps.fetchText,
     googleFxResolver,
     localFxResolver,
     lookup(identifier, attribute) {
+      const env = {
+        buildResolvePlan,
+        fetchText: deps.fetchText,
+        getCachedString: deps.getCachedString,
+        looksLikeIsin,
+        putCachedString: deps.putCachedString,
+        resolveFxRate,
+      };
+
       return resolveRequestValue(
-        {
-          buildResolvePlan,
-          fetchText: deps.fetchText,
-          getCachedString: deps.getCachedString,
-          looksLikeIsin,
-          putCachedString: deps.putCachedString,
-        },
+        env,
         createRequestInput(
           identifier,
           String(attribute == null ? "price" : attribute).trim(),
           ...(typeof deps.parseFxTicker === "function"
             ? [
-                {
-                  parseFxTicker: deps.parseFxTicker,
-                },
-              ]
+              {
+                parseFxTicker: deps.parseFxTicker,
+              },
+            ]
             : []),
         ),
       );
     },
     lookupEnvelope(identifier, attribute) {
+      const env = {
+        buildResolvePlan,
+        fetchText: deps.fetchText,
+        getCachedString: deps.getCachedString,
+        looksLikeIsin,
+        putCachedString: deps.putCachedString,
+        resolveFxRate,
+      };
+
       return resolveRequestEnvelope(
-        {
-          buildResolvePlan,
-          fetchText: deps.fetchText,
-          getCachedString: deps.getCachedString,
-          looksLikeIsin,
-          putCachedString: deps.putCachedString,
-        },
+        env,
         createRequestInput(
           identifier,
           String(attribute == null ? "price" : attribute).trim(),
           ...(typeof deps.parseFxTicker === "function"
             ? [
-                {
-                  parseFxTicker: deps.parseFxTicker,
-                },
-              ]
+              {
+                parseFxTicker: deps.parseFxTicker,
+              },
+            ]
             : []),
         ),
       );

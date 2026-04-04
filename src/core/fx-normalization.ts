@@ -281,11 +281,6 @@ export function createFxTickerParser(
     const exchange = explicitMatch?.[1]?.trim().toUpperCase() || "";
     let pairText = explicitMatch?.[2]?.trim() || value;
  
-    // YAHOO-STYLE FX: Handle =X suffix (e.g. PHPILS=X)
-    if (pairText.toUpperCase().endsWith("=X")) {
-      pairText = pairText.slice(0, -2);
-    }
- 
     const dottedMatch = explicitMatch
       ? pairText.match(/^([A-Za-z]{3,4})\.([A-Za-z]{3,4})$/)
       : null;
@@ -349,3 +344,14 @@ const DEFAULT_CURRENCY_UNITS = buildCurrencyUnits(
 );
 
 export const parseFxTicker = createFxTickerParser(DEFAULT_CURRENCY_UNITS);
+
+export function buildFxPairFromCodes(
+  base: string,
+  quote: string,
+): FxPair | null {
+  try {
+    return buildFxPairWithUnits(base, quote, DEFAULT_CURRENCY_UNITS);
+  } catch {
+    return null;
+  }
+}

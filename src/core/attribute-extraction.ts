@@ -257,6 +257,6 @@ export function extractAttributeValue(
   }
  
   throw new Error(
-    `Output-currency conversion from "${quoteCurrency}" to "${targetCurrency}" is currently unavailable for this ticker. Try an identifier source override such as "@TRADINGVIEW" or "@LON".`,
+    `Output-currency conversion from "${quoteCurrency}" to "${targetCurrency}" is currently unavailable. No valid FX rate was successfully resolved for this ticker.`,
   );
 }
