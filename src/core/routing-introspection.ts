@@ -104,8 +104,16 @@ export function buildRoutingTableGrid(
 }
 
 export function buildRoutingPlanTreeNode(
-  node: ResolverNode | RoutingPlanNodeLike,
+  node: ResolverNode | RoutingPlanNodeLike | null,
 ): RoutingPlanTreeNode {
+  if (!node) {
+    return {
+      children: [],
+      kind: "leaf",
+      label: "NULL",
+    };
+  }
+
   const isPlanNode = isRoutingPlanNode(node);
 
   return {
@@ -114,7 +122,7 @@ export function buildRoutingPlanTreeNode(
           .getRoutingNodes()
           .map((childNode) => buildRoutingPlanTreeNode(childNode))
       : [],
-    kind: node.getRoutingNodeKind(),
+    kind: node.getRoutingNodeKind ? node.getRoutingNodeKind() : "leaf",
     label: isPlanNode
       ? formatRoutingPlanTreeLabel(node.routingLabel || node.name || "")
       : String(

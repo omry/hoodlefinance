@@ -75,9 +75,10 @@ These are known naming and boundary issues that should be revisited after more o
 the routing subsystem is migrated. They are intentionally deferred so the
 transition can preserve runtime behavior first.
 
-- Rename vague resolver/spec codes that mirror the current runtime but do not
-  communicate intent clearly.
-  - `DIRECT` should become a more explicit attribute-side name (WIP, still cleanup to do)
+  - `DIRECT` became `ATTRIBUTE-IDENTITY`.
+  - `DIRECT-IDENTIFIER` became `RESOLVED-IDENTIFIER`.
+  - `LOCAL` became `FX-IDENTITY`.
+  - `GOOGLE` became `GOOGLE-FX`.
 - Revisit `FunctionValueResolver` as an implementation detail rather than a
   first-class routing concept.
 - Collapse temporary constructor dependency bundles in concrete resolvers once
@@ -120,3 +121,4 @@ transition can preserve runtime behavior first.
   - Prioritize behavior-sensitive areas where the TS runtime can appear green
     while still missing host or adapter parity, such as preferred REIT symbol
     handling, source-specific fallbacks, and Apps Script-specific wiring.
+- Normalize identity resolution plan. right now its half hard-coded

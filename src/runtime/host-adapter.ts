@@ -239,7 +239,7 @@ export function createHoodlefinanceRuntime(
     putCachedString: deps.putCachedString,
   });
   const resolversByCode = {
-    "DIRECT-IDENTIFIER": directIdentifierResolver,
+    "RESOLVED-IDENTIFIER": directIdentifierResolver,
     "FX-IDENTITY": localFxResolver,
     "GOOGLE-FX": googleFxResolver,
     "PSE-EDGE": pseEdgeResolver,

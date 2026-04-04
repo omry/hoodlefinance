@@ -203,7 +203,6 @@ function formatRoutingTree(env = createCliEnvironment()) {
   const rootNode = buildRoutingPlanTreeNode({
     getRoutingNodes() {
       return [
-        env.directIdentifierResolver,
         env.materializePlanFromSpec("IDENTIFIER-ROOT"),
         env.materializePlanFromSpec("DEFAULT-ATTRIBUTE"),
       ];

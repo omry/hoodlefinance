@@ -100,7 +100,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
         resolverClass: "FunctionValueResolver",
         resolveFunctionRef: "ATTRIBUTE-IDENTITY",
       },
-      "DIRECT-IDENTIFIER": {
+      "RESOLVED-IDENTIFIER": {
         resolverClass: "DirectIdentifierResolver",
       },
       LOCAL: {
@@ -348,7 +348,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
 
   assert.equal(registry.byCode["ATTRIBUTE-IDENTITY"] instanceof FunctionValueResolver, true);
   assert.equal(
-    registry.byCode["DIRECT-IDENTIFIER"] instanceof DirectIdentifierResolver,
+    registry.byCode["RESOLVED-IDENTIFIER"] instanceof DirectIdentifierResolver,
     true,
   );
   assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
@@ -400,7 +400,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(pseEdgeResolved.status, "success");
   assert.equal(pseEdgeResolved.value.symbol, "BDO");
 
-  const resolved = registry.byCode["DIRECT-IDENTIFIER"].resolve(
+  const resolved = registry.byCode["RESOLVED-IDENTIFIER"].resolve(
     new RequestInput({
       attribute: "price",
       attributeRequest: {

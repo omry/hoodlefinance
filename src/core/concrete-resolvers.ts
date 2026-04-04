@@ -62,7 +62,7 @@ import { buildFxQuoteRouteState } from "./route-state";
 
 export class DirectIdentifierResolver extends IdentifierResolver {
   constructor() {
-    super("DIRECT-IDENTIFIER");
+    super("RESOLVED-IDENTIFIER");
   }
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {

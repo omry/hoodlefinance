@@ -12,7 +12,7 @@ const {
 
 test("extracted routing spec data matches the current production tables", () => {
   assert.equal(
-    RESOLVER_SPECS_BY_CODE["DIRECT-IDENTIFIER"].resolverClass,
+    RESOLVER_SPECS_BY_CODE["RESOLVED-IDENTIFIER"].resolverClass,
     "DirectIdentifierResolver",
   );
   assert.equal(

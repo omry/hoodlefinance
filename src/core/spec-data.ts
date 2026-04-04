@@ -5,7 +5,7 @@ function definePlanSpec<T extends PlanSpec>(spec: T): T {
 }
 
 export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
-  "DIRECT-IDENTIFIER": {
+  "RESOLVED-IDENTIFIER": {
     resolverClass: "DirectIdentifierResolver",
   },
   "PSE-MAP": {
@@ -141,7 +141,7 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "IDENTIFIER-ROOT": {
-    nodeCodes: ["IDENTIFIER:ISIN"],
+    nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
     resolverClass: "ResolverPlan",
     options: {
       isRoutingNode: true,
