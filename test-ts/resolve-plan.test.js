@@ -86,7 +86,7 @@ function createFactoryMaterializer() {
       .trim()
       .toLowerCase() === "equity";
 
-  const fxPlan = createPlan("FX", "GOOGLE");
+  const fxPlan = createPlan("FX", "GOOGLE-FX");
   fxPlan.canHandle = (request) =>
     String((request && request.classification) || "")
       .trim()
@@ -266,8 +266,11 @@ test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", ()
     }),
   );
   assert.equal(fxPlan.debugValue, "");
-  assert.equal(fxPlan.plannedRoute, "FX -> GOOGLE");
-  assert.equal(fxPlan.attributePlan.describe(fxPlan.resolvedRequest), "FX -> GOOGLE");
+  assert.equal(fxPlan.plannedRoute, "FX -> GOOGLE-FX");
+  assert.equal(
+    fxPlan.attributePlan.describe(fxPlan.resolvedRequest),
+    "FX -> GOOGLE-FX",
+  );
 
   const isinPlan = buildResolvePlanBuilder(
     createRequestInput({

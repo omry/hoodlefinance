@@ -1,5 +1,4 @@
 import type {
-  NodeSelector,
   ResolverNode,
   RouteClassResolver,
   RoutePathResolver,
@@ -24,16 +23,6 @@ export const PLAN_ROUTE_PATH_BY_REF: Record<string, RoutePathResolver> = {
   },
 };
 
-export const PLAN_NODE_SELECTOR_BY_REF: Record<string, NodeSelector> = {
-  DEFAULT_FX_QUOTE(nodes) {
-    return nodes.filter(
-      (node) =>
-        String((node && node.name) || "")
-          .trim()
-          .toUpperCase() === "GOOGLE",
-    );
-  },
-};
 
 export interface PlanRuntimeRefDependencies {
   looksLikeIsin(value: string): boolean;
@@ -95,7 +84,6 @@ export function createPlanRuntimeRefs(
   return {
     canHandleByRef: PLAN_CAN_HANDLE_BY_REF,
     looksLikeIsin: deps.looksLikeIsin,
-    nodeSelectorByRef: PLAN_NODE_SELECTOR_BY_REF,
     routeClassByRef: PLAN_ROUTE_CLASS_BY_REF,
     routePathByRef: PLAN_ROUTE_PATH_BY_REF,
     routeStateBuilderByRef: createPlanRouteStateBuilders(deps),
@@ -108,7 +96,6 @@ export interface PlanRuntimeRefs {
     (request: RequestInput | ResolvedRequest) => boolean
   >;
   looksLikeIsin(value: string): boolean;
-  nodeSelectorByRef: Record<string, NodeSelector>;
   routeClassByRef: Record<string, RouteClassResolver>;
   routePathByRef: Record<string, RoutePathResolver>;
   routeStateBuilderByRef: Record<string, RouteStateBuilder>;

@@ -240,8 +240,8 @@ export function createHoodlefinanceRuntime(
   });
   const resolversByCode = {
     "DIRECT-IDENTIFIER": directIdentifierResolver,
-    GOOGLE: googleFxResolver,
-    LOCAL: localFxResolver,
+    "FX-IDENTITY": localFxResolver,
+    "GOOGLE-FX": googleFxResolver,
     "PSE-EDGE": pseEdgeResolver,
     "PSE-FRAMES": pseFramesResolver,
     "PSE-MAP": pseIsinMapResolver,

@@ -1,6 +1,5 @@
 import type { PlanSpec } from "./plan-specs";
 import type {
-  NodeSelector,
   ResolutionResult,
   ResolverNode,
   ResolverPlanNode,
@@ -30,7 +29,6 @@ export interface RouteExecutionResolverOptions extends ResolverOptions {}
 export interface ResolverPlanOptions extends ResolverOptions {
   canHandle?: ((request: RequestInput | ResolvedRequest) => boolean) | null;
   isRoutingNode?: boolean;
-  nodeSelector?: NodeSelector | null;
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
   routeStateBuilder?: RouteStateBuilder | null;
@@ -245,7 +243,6 @@ export class RouteExecutionResolver extends AttributeResolver {
 export class ResolverPlan extends Resolver implements ResolverPlanNode {
   readonly canHandlePredicate: ((request: RequestInput | ResolvedRequest) => boolean) | null;
   readonly isRoutingNode: boolean;
-  readonly nodeSelector: NodeSelector | null;
   readonly nodes: ResolverNode[];
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
@@ -263,14 +260,10 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
     this.routeClass = options.routeClass || name;
     this.routePath = options.routePath || "";
     this.routeStateBuilder = options.routeStateBuilder || null;
-    this.nodeSelector = options.nodeSelector || null;
   }
 
   getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[] {
-    const selected = this.nodeSelector
-      ? this.nodeSelector(this.nodes, request)
-      : this.nodes;
-    const nodes = (selected || []).slice();
+    const nodes = (this.nodes || []).slice();
 
     if (!nodes.length) {
       return nodes;
@@ -290,25 +283,13 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   getHandleableNodesForRequest(
     request: RequestInput | ResolvedRequest,
   ): ResolverNode[] {
-    const selected = this.nodeSelector
-      ? this.nodeSelector(this.nodes, request)
-      : this.nodes;
-
-    return (selected || []).filter(
+    return (this.nodes || []).filter(
       (node) => !node.canHandle || node.canHandle(request),
     );
   }
 
   getRoutingNodes(): ResolverNode[] {
-    if (!this.nodeSelector || this.isRoutingNode) {
-      return (this.nodes || []).slice();
-    }
-
-    if (this.nodeSelector.requestDependent === true) {
-      return (this.nodes || []).slice();
-    }
-
-    return (this.nodeSelector(this.nodes, null) || []).slice();
+    return (this.nodes || []).slice();
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -454,11 +435,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
       delete materializedOptions.routeStateBuilderRef;
     }
 
-    if (sourceOptions.nodeSelectorRef) {
-      materializedOptions.nodeSelector =
-        refs.nodeSelectorByRef[sourceOptions.nodeSelectorRef] || null;
-      delete materializedOptions.nodeSelectorRef;
-    }
 
     if (sourceOptions.canHandleRef) {
       materializedOptions.canHandle =
@@ -494,6 +470,10 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 }
 
 export class IdentifierResolutionPlan extends ResolverPlan {
+  nodeCodeByIsinCountry: Record<string, string> | null = null;
+  defaultLookupNodeCodes: string[] = [];
+  looksLikeIsin?: (value: string) => boolean;
+
   static getSpecNodeCodes(spec: PlanSpec): string[] {
     const nodeCodes = super.getSpecNodeCodes(spec);
     const nodeCodeByIsinCountry = (
@@ -513,69 +493,36 @@ export class IdentifierResolutionPlan extends ResolverPlan {
     return nodeCodes;
   }
 
-  static buildCountryNodeSelector(
-    spec: PlanSpec,
-    refs: PlanRuntimeRefs,
-  ): NodeSelector | null {
-    const nodeCodeByIsinCountry = (
-      spec as IdentifierResolutionPlanSpec
-    ).nodeCodeByIsinCountry || null;
-    const defaultNodeCodes = (spec.defaultNodeCodes || []).map(normalizeNodeCode);
+  getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[] {
+    const nodeByCode: Record<string, ResolverNode> = {};
+    const selectedNodes: ResolverNode[] = [];
+    const countryCode = extractIsinCountryCodeFromPlanRequest(
+      request,
+      this.looksLikeIsin || (() => false),
+    );
+    const countryNodeCode = normalizeNodeCode(
+      (this.nodeCodeByIsinCountry || {})[countryCode] || "",
+    );
 
-    if (!nodeCodeByIsinCountry) {
-      return null;
-    }
+    (this.nodes || []).forEach((node) => {
+      nodeByCode[normalizeNodeCode(node?.name || "")] = node;
+    });
 
-    const selector: NodeSelector = (nodes, request) => {
-      const nodeByCode: Record<string, ResolverNode> = {};
-      const selectedNodes: ResolverNode[] = [];
-      const countryCode = extractIsinCountryCodeFromPlanRequest(
-        request,
-        refs.looksLikeIsin,
-      );
-      const countryNodeCode = normalizeNodeCode(
-        nodeCodeByIsinCountry[countryCode] || "",
-      );
+    [countryNodeCode].concat(this.defaultLookupNodeCodes).forEach((nodeCode) => {
+      if (nodeByCode[nodeCode] && !selectedNodes.includes(nodeByCode[nodeCode])) {
+        selectedNodes.push(nodeByCode[nodeCode]);
+      }
+    });
 
-      nodes.forEach((node) => {
-        nodeByCode[normalizeNodeCode(node?.name || "")] = node;
-      });
+    const firstMatchingIndex = selectedNodes.findIndex(
+      (node) => !node.canHandle || node.canHandle(request),
+    );
 
-      [countryNodeCode].concat(defaultNodeCodes).forEach((nodeCode) => {
-        if (nodeByCode[nodeCode] && !selectedNodes.includes(nodeByCode[nodeCode])) {
-          selectedNodes.push(nodeByCode[nodeCode]);
-        }
-      });
-
+    if (firstMatchingIndex < 0) {
       return selectedNodes;
-    };
-
-    selector.requestDependent = true;
-    return selector;
-  }
-
-  static materializeOptions(
-    spec: PlanSpec,
-    overrides: Record<string, unknown> | null | undefined,
-    refs: PlanRuntimeRefs,
-    deps?: PlanNodeBuilderDependencies,
-  ): ResolverPlanOptions {
-    const materializedOptions = super.materializeOptions(
-      spec,
-      overrides,
-      refs,
-      deps,
-    );
-    const nodeSelector = this.buildCountryNodeSelector(
-      spec,
-      refs,
-    );
-
-    if (nodeSelector) {
-      materializedOptions.nodeSelector = nodeSelector;
     }
 
-    return materializedOptions;
+    return selectedNodes.slice(firstMatchingIndex);
   }
 
   getRoutingNodeKind(): RoutingNodeKind {
@@ -596,20 +543,52 @@ export class IdentifierResolutionPlan extends ResolverPlan {
         ? resolverMap
         : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
 
-    return new this(
+    const plan = new this(
       code,
       this.getSpecNodeCodes(spec).map((nodeCode) =>
         resolveNodeByCode(nodeCode),
       ) as ResolverNode[],
       this.materializeOptions(spec, overrides, deps.refs, deps),
     );
+
+    plan.nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
+    plan.defaultLookupNodeCodes = (spec.defaultNodeCodes || []).map(normalizeNodeCode);
+    plan.looksLikeIsin = deps.refs.looksLikeIsin;
+
+    return plan;
   }
 }
 
 export class AttributeResolutionPlan extends ResolverPlan {}
 
+export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
+  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
+    super(name, nodes, options);
+    if (this.nodes.length < 2) {
+      throw new Error(`FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`);
+    }
+  }
+
+  getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[] {
+    const localNode = this.nodes[0];
+    if (localNode && (!localNode.canHandle || localNode.canHandle(request))) {
+      return [localNode];
+    }
+    const resolverNode = this.nodes[1];
+    return resolverNode ? [resolverNode] : [];
+  }
+
+  getRoutingNodes(): ResolverNode[] {
+    const routingNodes = [];
+    if (this.nodes[0]) routingNodes.push(this.nodes[0]);
+    if (this.nodes[1]) routingNodes.push(this.nodes[1]);
+    return routingNodes;
+  }
+}
+
 export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   AttributeResolutionPlan,
+  FxAttributeResolutionPlan,
   IdentifierResolutionPlan,
   ResolverPlan,
 } as const;

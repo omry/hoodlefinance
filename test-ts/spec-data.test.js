@@ -3,7 +3,6 @@ const test = require("node:test");
 
 const {
   PLAN_CAN_HANDLE_REFS,
-  PLAN_NODE_SELECTOR_REFS,
   PLAN_ROUTE_CLASS_REFS,
   PLAN_ROUTE_PATH_REFS,
   PLAN_ROUTE_STATE_BUILDER_REFS,
@@ -39,9 +38,7 @@ test("extracted routing spec data matches the current production tables", () => 
   assert.deepEqual(PLAN_ROUTE_PATH_REFS, {
     EQUITY_TICKER_PATH: "EQUITY_TICKER_PATH",
   });
-  assert.deepEqual(PLAN_NODE_SELECTOR_REFS, {
-    DEFAULT_FX_QUOTE: "DEFAULT_FX_QUOTE",
-  });
+
   assert.deepEqual(PLAN_ROUTE_STATE_BUILDER_REFS, {
     EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",
     FX_QUOTE: "FX_QUOTE",

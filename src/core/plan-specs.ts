@@ -2,6 +2,7 @@ export type ResolverClassName =
   | "AttributeResolutionPlan"
   | "DirectIdentifierResolver"
   | "FunctionValueResolver"
+  | "FxAttributeResolutionPlan"
   | "GoogleFxResolver"
   | "IdentifierResolutionPlan"
   | "LocalFxResolver"
@@ -30,7 +31,6 @@ export interface ResolverSpec {
 export interface PlanSpecOptions extends ResolverSpecOptions {
   canHandleRef?: string;
   isRoutingNode?: boolean;
-  nodeSelectorRef?: string;
   routeClass?: string;
   routeClassRef?: string;
   routePath?: string;

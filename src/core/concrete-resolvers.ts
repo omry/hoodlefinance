@@ -575,7 +575,7 @@ export class FunctionValueResolver extends AttributeResolver {
 
 export class LocalFxResolver extends RouteExecutionResolver {
   constructor() {
-    super("LOCAL", "LOCAL", {
+    super("FX-IDENTITY", "FX-IDENTITY", {
       routingDescription: "Same-currency FX identity rate",
     });
   }
@@ -634,7 +634,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
   readonly putCachedJson: GoogleFxResolverDependencies["putCachedJson"];
 
   constructor(deps: GoogleFxResolverDependencies) {
-    super("GOOGLE", "GOOGLE", {
+    super("GOOGLE-FX", "GOOGLE-FX", {
       isSourceOverrideable: true,
       representativeTicker: "EURUSD",
       routingDescription: "Google Finance FX quote lookup",

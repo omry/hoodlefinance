@@ -14,10 +14,10 @@ export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
   "YAHOO-ISIN": {
     resolverClass: "YahooIsinSearchResolver",
   },
-  LOCAL: {
+  "FX-IDENTITY": {
     resolverClass: "LocalFxResolver",
   },
-  GOOGLE: {
+  "GOOGLE-FX": {
     resolverClass: "GoogleFxResolver",
   },
   YAHOO: {
@@ -89,25 +89,9 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
       routeStateBuilderRef: "ISIN_IDENTIFIER",
     },
   }),
-  "QUOTE:FX-SAME": {
-    nodeCodes: ["LOCAL"],
+  "QUOTE:DEFAULT-FX": {
+    nodeCodes: ["GOOGLE-FX", "YAHOO"],
     resolverClass: "AttributeResolutionPlan",
-    options: {
-      routingLabel: "FX-SAME",
-      routeClass: "FX",
-      routePath: "LOCAL",
-    },
-  },
-  "QUOTE:FX": {
-    nodeCodes: ["GOOGLE", "YAHOO"],
-    resolverClass: "AttributeResolutionPlan",
-    options: {
-      nodeSelectorRef: "DEFAULT_FX_QUOTE",
-      routingLabel: "FX",
-      routeClass: "FX",
-      routePath: "GOOGLE",
-      routeStateBuilderRef: "FX_QUOTE",
-    },
   },
   "QUOTE:PSE": {
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
@@ -141,11 +125,10 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "DEFAULT-ATTRIBUTE:FX": {
-    nodeCodes: ["QUOTE:FX-SAME", "QUOTE:FX"],
-    resolverClass: "ResolverPlan",
+    nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
+    resolverClass: "FxAttributeResolutionPlan",
     options: {
       canHandleRef: "CLASSIFICATION_FX",
-      isRoutingNode: true,
       routingLabel: "FX",
     },
   },
@@ -195,9 +178,7 @@ export const PLAN_ROUTE_PATH_REFS = {
   EQUITY_TICKER_PATH: "EQUITY_TICKER_PATH",
 } as const;
 
-export const PLAN_NODE_SELECTOR_REFS = {
-  DEFAULT_FX_QUOTE: "DEFAULT_FX_QUOTE",
-} as const;
+
 
 export const PLAN_ROUTE_STATE_BUILDER_REFS = {
   EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",

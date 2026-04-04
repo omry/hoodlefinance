@@ -55,15 +55,12 @@ function createLeafResolver(name, extra = {}) {
   return new LeafResolver();
 }
 
-test("ResolverPlan keeps selector-aware runtime behavior and full routing-tree visibility", () => {
+test("ResolverPlan maintains standard fallback sequence and full routing-tree visibility", () => {
   const yahoo = createLeafResolver("YAHOO");
   const ibkr = createLeafResolver("IBKR");
-  const selector = (nodes) => [nodes[1]];
-  selector.requestDependent = true;
 
   const plan = new ResolverPlan("QUOTE", [yahoo, ibkr], {
     isRoutingNode: false,
-    nodeSelector: selector,
     routePath: "",
   });
 
@@ -71,13 +68,13 @@ test("ResolverPlan keeps selector-aware runtime behavior and full routing-tree v
 
   assert.deepEqual(
     plan.getNodesForRequest(request).map((node) => node.name),
-    ["IBKR"],
+    ["YAHOO", "IBKR"],
   );
   assert.deepEqual(
     plan.getRoutingNodes().map((node) => node.name),
     ["YAHOO", "IBKR"],
   );
-  assert.equal(plan.buildRoutePath(request), "IBKR");
+  assert.equal(plan.buildRoutePath(request), "YAHOO -> IBKR");
 });
 
 test("buildPlanNodeFromSpec materializes route refs into a real plan instance", () => {
@@ -194,12 +191,18 @@ test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
     plan.nodes.map((node) => node && node.name),
     ["PSE-MAP", "YAHOO-ISIN"],
   );
-  assert.equal(typeof plan.nodeSelector, "function");
-  assert.equal(plan.nodeSelector.requestDependent, true);
+  assert.deepEqual(plan.nodeCodeByIsinCountry, { PH: "PSE-MAP" });
+  assert.deepEqual(plan.defaultLookupNodeCodes, ["YAHOO-ISIN"]);
   assert.deepEqual(
     plan.getNodesForRequest(createRequestInput({ ticker: "PHY077751022" })).map(
       (node) => node.name,
     ),
     ["PSE-MAP", "YAHOO-ISIN"],
+  );
+  assert.deepEqual(
+    plan.getNodesForRequest(createRequestInput({ ticker: "US02079K1079" })).map(
+      (node) => node.name,
+    ),
+    ["YAHOO-ISIN"],
   );
 });

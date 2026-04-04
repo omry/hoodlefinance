@@ -278,7 +278,7 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
     attribute: "price",
     ticker: "EURUSD",
   });
-  assert.equal(fx.route, "DEFAULT-ATTRIBUTE:FX -> QUOTE:FX");
+  assert.equal(fx.route, "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX");
   assert.equal(fx.status, "success");
   assert.equal(fx.value, 1.25);
 
@@ -288,7 +288,7 @@ test("lookupWithEnvironment routes to the expected resolver family", () => {
   });
   assert.equal(
     sameCurrencyFx.route,
-    "DEFAULT-ATTRIBUTE:FX -> QUOTE:FX-SAME -> QUOTE:FX",
+    "DEFAULT-ATTRIBUTE:FX -> FX-IDENTITY",
   );
   assert.equal(sameCurrencyFx.status, "success");
   assert.equal(sameCurrencyFx.value, 1);

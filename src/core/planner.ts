@@ -43,14 +43,6 @@ export type RouteStateBuilder = (
   request: RequestInput | ResolvedRequest,
 ) => Record<string, unknown>;
 
-export interface NodeSelector {
-  (nodes: ResolverNode[], request: RequestInput | ResolvedRequest | null):
-    | ResolverNode[]
-    | null
-    | undefined;
-  requestDependent?: boolean;
-}
-
 export interface RouteContext {
   outputCurrencyCache?: {
     conversionRateByPair: Record<string, number>;
@@ -119,7 +111,6 @@ export interface ResolverPlanNode extends ResolverNode {
   isRoutingNode: boolean;
   getRoutingNodes?(): ResolverNode[];
   nodes?: ResolverNode[];
-  nodeSelector?: NodeSelector | null;
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
   routeStateBuilder?: RouteStateBuilder | null;
