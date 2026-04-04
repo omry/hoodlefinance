@@ -370,7 +370,7 @@ export function resolveDirectIsinAttributeValue(
 
   if (directIsinInput) {
     return {
-      route: "DIRECT",
+      route: "ATTRIBUTE-IDENTITY",
       value: directIsinInput,
     };
   }

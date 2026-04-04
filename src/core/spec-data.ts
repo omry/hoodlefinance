@@ -26,9 +26,9 @@ export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
   "TRADINGVIEW-FUND": {
     resolverClass: "TradingviewFundResolver",
   },
-  DIRECT: {
+  "ATTRIBUTE-IDENTITY": {
     resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "DIRECT",
+    resolveFunctionRef: "ATTRIBUTE-IDENTITY",
   },
   ARIVA: {
     resolverClass: "FunctionValueResolver",

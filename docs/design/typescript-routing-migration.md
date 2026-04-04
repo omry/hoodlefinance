@@ -77,12 +77,7 @@ transition can preserve runtime behavior first.
 
 - Rename vague resolver/spec codes that mirror the current runtime but do not
   communicate intent clearly.
-  - `LOCAL` should become an FX-specific name such as `FX-SAME` or
-    `FX-IDENTITY`.
-  - `DIRECT` should become a more explicit attribute-side name.
-- Re-evaluate whether same-currency FX resolution deserves a dedicated resolver
-  at all, or should collapse into a smaller shortcut in the planner or request
-  layer.
+  - `DIRECT` should become a more explicit attribute-side name (WIP, still cleanup to do)
 - Revisit `FunctionValueResolver` as an implementation detail rather than a
   first-class routing concept.
 - Collapse temporary constructor dependency bundles in concrete resolvers once

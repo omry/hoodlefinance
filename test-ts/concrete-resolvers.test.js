@@ -128,17 +128,17 @@ test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requ
 
 test("FunctionValueResolver executes resolved job callbacks and materializes from refs", () => {
   const resolver = FunctionValueResolver.fromSpec(
-    "DIRECT",
+    "ATTRIBUTE-IDENTITY",
     {
       options: {
         routingDescription: "Direct lookup",
       },
-      resolveFunctionRef: "DIRECT",
+      resolveFunctionRef: "ATTRIBUTE-IDENTITY",
       resolverClass: "FunctionValueResolver",
     },
     {
       resolveFunctionsByRef: {
-        DIRECT(job) {
+        "ATTRIBUTE-IDENTITY"(job) {
           return String(job.routeState.isin || "").toUpperCase();
         },
       },
@@ -163,7 +163,7 @@ test("FunctionValueResolver executes resolved job callbacks and materializes fro
   assert.throws(
     () =>
       FunctionValueResolver.fromSpec(
-        "DIRECT",
+        "ATTRIBUTE-IDENTITY",
         {
           resolveFunctionRef: "MISSING",
           resolverClass: "FunctionValueResolver",
@@ -172,7 +172,7 @@ test("FunctionValueResolver executes resolved job callbacks and materializes fro
           resolveFunctionsByRef: {},
         },
       ),
-    /Unknown resolver function ref "MISSING" for "DIRECT"\./,
+    /Unknown resolver function ref "MISSING" for "ATTRIBUTE-IDENTITY"\./,
   );
 });
 

@@ -325,7 +325,7 @@ test("lookupWithEnvironment resolves routed isin attributes", () => {
     attribute: "isin",
     ticker: "ISIN:US02079K1079",
   });
-  assert.equal(directIsin.route, "DIRECT");
+  assert.equal(directIsin.route, "ATTRIBUTE-IDENTITY");
   assert.equal(directIsin.status, "success");
   assert.equal(directIsin.value, "US02079K1079");
 });

@@ -96,9 +96,9 @@ test("materializeResolversByCode rejects unknown class names", () => {
 test("materializeResolversByCode can instantiate concrete resolvers with class-specific dependencies", () => {
   const registry = materializeResolversByCode(
     {
-      DIRECT: {
-        resolveFunctionRef: "DIRECT",
+      "ATTRIBUTE-IDENTITY": {
         resolverClass: "FunctionValueResolver",
+        resolveFunctionRef: "ATTRIBUTE-IDENTITY",
       },
       "DIRECT-IDENTIFIER": {
         resolverClass: "DirectIdentifierResolver",
@@ -130,7 +130,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     },
     createConcreteResolverMaterializationDependencies({
       resolveFunctionsByRef: {
-        DIRECT(job) {
+        "ATTRIBUTE-IDENTITY"(job) {
           return String(job.routeState.identifier || "").toUpperCase();
         },
       },
@@ -346,7 +346,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     }),
   );
 
-  assert.equal(registry.byCode.DIRECT instanceof FunctionValueResolver, true);
+  assert.equal(registry.byCode["ATTRIBUTE-IDENTITY"] instanceof FunctionValueResolver, true);
   assert.equal(
     registry.byCode["DIRECT-IDENTIFIER"] instanceof DirectIdentifierResolver,
     true,
@@ -366,7 +366,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     true,
   );
   assert.equal(
-    registry.byCode.DIRECT.executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
+    registry.byCode["ATTRIBUTE-IDENTITY"].executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
     "GOOG",
   );
 
