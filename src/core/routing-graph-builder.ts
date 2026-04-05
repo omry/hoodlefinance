@@ -19,6 +19,7 @@ import {
   CurrencyConversionNode,
 } from "./routing-nodes";
 import type { ResolverNode } from "./planner";
+import type { ResolveIsinAttributeDependencies } from "./routing-nodes";
 
 export interface RoutingGraphBuilderDependencies {
   directIdentifierResolver: ResolverNode;
@@ -30,6 +31,8 @@ export interface RoutingGraphBuilderDependencies {
   pseEdgeResolver: ResolverNode;
   pseFramesResolver: ResolverNode;
   tradingviewFundResolver: ResolverNode;
+  /** Required for ISIN attribute type requests. */
+  isinDeps?: ResolveIsinAttributeDependencies;
 }
 
 interface SubgraphResult {
@@ -128,6 +131,7 @@ function buildIdentifierSubgraph(
   const attrNode = new AttributeExtractionNode(
     attrParent as RoutingNode<Record<string, unknown>>,
     inputNode,
+    deps.isinDeps,
   );
   nodes.push(attrNode);
 
@@ -189,8 +193,10 @@ export function buildRoutingGraph(
         allNodes.push(convNode);
         outputs[i] = convNode;
 
-        // Wire: attrNode.next → convNode, fxRateBatchNode.next already handled by FxRateBatchNode constructor
+        // Wire all three parents → convNode
         attrNode.next.push(convNode);
+        fxRateBatchNode.next.push(convNode);
+        quoteNode.next.push(convNode);
       }
     }
   }

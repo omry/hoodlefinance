@@ -4,6 +4,13 @@ import type { RoutingNode, NodeInput } from "./routing-graph";
 import type { RequestInput, ResolvedRequest } from "./request";
 import { executeRouteNode } from "./route-execution";
 import type { ResolverNode } from "./planner";
+import { extractAttributeValue, extractCurrencyValue } from "./attribute-extraction";
+import {
+  resolveIsinAttributeValue,
+  type ResolveIsinAttributeDependencies,
+} from "./isin-lookup";
+
+export type { ResolveIsinAttributeDependencies };
 
 /**
  * InputNode: Entry point for each identifier in the graph.
@@ -305,29 +312,40 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
 /**
  * AttributeExtractionNode: Extract attribute from quote (no parent resolver).
  * Parents: quote/fx node, InputNode.
+ * For ISIN attribute type, isinDeps must be provided at construction time.
  */
 export class AttributeExtractionNode implements RoutingNode<unknown> {
   readonly name: string;
   readonly next: RoutingNode[] = [];
   private readonly quoteOrFxNode: RoutingNode<Record<string, unknown>>;
   private readonly inputNode: InputNode;
+  private readonly isinDeps: ResolveIsinAttributeDependencies | null;
 
   constructor(
     quoteOrFxNode: RoutingNode<Record<string, unknown>>,
     inputNode: InputNode,
+    isinDeps?: ResolveIsinAttributeDependencies,
   ) {
     this.name = `attribute-extraction:${inputNode.name}`;
     this.quoteOrFxNode = quoteOrFxNode;
     this.inputNode = inputNode;
+    this.isinDeps = isinDeps ?? null;
   }
 
   execute(inputs: Record<string, NodeInput>): unknown {
     const quote = inputs[this.quoteOrFxNode.name]!.value as Record<string, unknown>;
     const input = inputs[this.inputNode.name]!.value as RequestInput;
 
-    // TODO: Phase 2 impl — extract attribute value
-    // Call extractAttributeValue(quote, input.attribute, ...)
-    return null;
+    if (input.attributeType === "isin") {
+      if (!this.isinDeps) throw new Error("ISIN attribute resolution requires isinDeps.");
+      return resolveIsinAttributeValue(
+        quote,
+        { sourceOverride: input.sourceOverride, tickerInput: input.ticker },
+        this.isinDeps,
+      );
+    }
+
+    return extractAttributeValue(quote, input.attribute, { tickerInput: input.ticker });
   }
 }
 
@@ -355,11 +373,14 @@ export class CurrencyConversionNode implements RoutingNode<unknown> {
 
   execute(inputs: Record<string, NodeInput>): unknown {
     const attributeValue = inputs[this.attrNode.name]!.value;
-    const _rateTable = inputs[this.fxBatchNode.name]!.value as Record<string, number>;
-    const _quote = inputs[this.quoteNode.name]!.value as Record<string, unknown>;
+    const rateTable = inputs[this.fxBatchNode.name]!.value as Record<string, number>;
+    const quote = inputs[this.quoteNode.name]!.value as Record<string, unknown>;
 
-    // TODO: Phase 2 impl — apply FX conversion
-    // Call extractCurrencyValue(quote), lookup rate, re-extract with rate
-    return attributeValue;
+    const sourceCurrency = extractCurrencyValue(quote);
+    const rate = rateTable[sourceCurrency];
+    if (!rate || !Number.isFinite(rate)) return attributeValue;
+
+    const patchedQuote = { ...quote, hoodlefinanceFxUnitScale: rate };
+    return extractAttributeValue(patchedQuote, "price", {});
   }
 }
