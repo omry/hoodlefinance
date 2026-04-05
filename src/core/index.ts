@@ -33,3 +33,7 @@ export * from "./route-execution";
 export * from "./route-results";
 export * from "./quote-routing";
 export * from "./route-state";
+export * from "./routing-graph";
+export * from "./routing-engine";
+export * from "./routing-nodes";
+export * from "./routing-graph-builder";
