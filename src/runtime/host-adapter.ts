@@ -25,6 +25,7 @@ import {
   resolveRequestEnvelope,
   resolveRequestValue,
   type LookupEnvelopeResult,
+  type RequestResolutionDependencies,
 } from "../core/request-resolution";
 import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "../core/planner";
 
@@ -61,14 +62,8 @@ interface HoodlefinanceRuntimeDependencies {
 }
 
 interface HoodlefinanceRuntime {
-  buildResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan>;
-  createRequestInput(identifier: unknown, attribute?: unknown): RequestInput;
-  fetchText(url: string): string;
-  lookup(identifier: unknown, attribute?: unknown): LookupEnvelopeResult;
-  lookupEnvelope(identifier: unknown, attribute?: unknown): LookupEnvelopeResult;
-  materializePlanFromSpec(code: string): ResolverPlanNode;
-  resolversByCode: Record<string, ResolverNode>;
-  resolveFxRate(fxPair: FxPair): LookupEnvelopeResult;
+  lookup(identifier: string, attribute?: string): LookupEnvelopeResult;
+  lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult;
 }
 
 function createInlineFetchResponse(
@@ -258,18 +253,33 @@ export function createHoodlefinanceRuntime(
     },
   });
 
-  function resolveFxRate(fxPair: FxPair): LookupEnvelopeResult {
+  // Hoist FX plan to construction time — materialize once, execute many
+  const fxPlan = materializePlanFromSpec(
+    "DEFAULT-ATTRIBUTE:FX",
+    null,
+    planMaterializationDeps,
+  ) as ResolverPlanNode;
+
+  // Forward declare resolveFxRate for circular reference in resolutionEnv
+  let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
+
+  // Hoist resolution environment to construction time
+  const resolutionEnv: RequestResolutionDependencies = {
+    buildResolvePlan,
+    fetchText: deps.fetchText,
+    getCachedString: deps.getCachedString,
+    looksLikeIsin,
+    putCachedString: deps.putCachedString,
+    resolveFxRate: (fxPair) => resolveFxRate(fxPair),
+  };
+
+  // Now define resolveFxRate using the hoisted fxPlan
+  resolveFxRate = (fxPair: FxPair): LookupEnvelopeResult => {
     const fxRequest = new FxRequest({
       attribute: "price",
       fxPair,
       identifier: fxPair.yahooSymbol,
     });
-
-    const fxPlan = materializePlanFromSpec(
-      "DEFAULT-ATTRIBUTE:FX",
-      null,
-      planMaterializationDeps,
-    ) as ResolverPlanNode;
 
     const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
 
@@ -283,82 +293,46 @@ export function createHoodlefinanceRuntime(
     }
 
     return env;
-  }
+  };
 
-  return {
+  // Helper to normalize request input parameters
+  const normalizeRequestInput = (
+    identifier: string,
+    attribute: string | undefined,
+  ) =>
+    createRequestInput(
+      identifier,
+      String(attribute == null ? "price" : attribute).trim(),
+      ...(typeof deps.parseFxTicker === "function"
+        ? [
+          {
+            parseFxTicker: deps.parseFxTicker,
+          },
+        ]
+        : []),
+    );
+
+  const runtime = {
+    lookup(identifier: string, attribute?: string): LookupEnvelopeResult {
+      return resolveRequestValue(resolutionEnv, normalizeRequestInput(identifier, attribute));
+    },
+    lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult {
+      return resolveRequestEnvelope(resolutionEnv, normalizeRequestInput(identifier, attribute));
+    },
+    // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
     buildResolvePlan,
-    createRequestInput(identifier, attribute) {
-      return createRequestInput(
-        identifier,
-        String(attribute == null ? "price" : attribute).trim(),
-        ...(typeof deps.parseFxTicker === "function"
-          ? [
-            {
-              parseFxTicker: deps.parseFxTicker,
-            },
-          ]
-          : []),
-      );
-    },
-    resolveFxRate,
+    createRequestInput: normalizeRequestInput,
     fetchText: deps.fetchText,
-    lookup(identifier, attribute) {
-      const env = {
-        buildResolvePlan,
-        fetchText: deps.fetchText,
-        getCachedString: deps.getCachedString,
-        looksLikeIsin,
-        putCachedString: deps.putCachedString,
-        resolveFxRate,
-      };
-
-      return resolveRequestValue(
-        env,
-        createRequestInput(
-          identifier,
-          String(attribute == null ? "price" : attribute).trim(),
-          ...(typeof deps.parseFxTicker === "function"
-            ? [
-              {
-                parseFxTicker: deps.parseFxTicker,
-              },
-            ]
-            : []),
-        ),
-      );
-    },
-    lookupEnvelope(identifier, attribute) {
-      const env = {
-        buildResolvePlan,
-        fetchText: deps.fetchText,
-        getCachedString: deps.getCachedString,
-        looksLikeIsin,
-        putCachedString: deps.putCachedString,
-        resolveFxRate,
-      };
-
-      return resolveRequestEnvelope(
-        env,
-        createRequestInput(
-          identifier,
-          String(attribute == null ? "price" : attribute).trim(),
-          ...(typeof deps.parseFxTicker === "function"
-            ? [
-              {
-                parseFxTicker: deps.parseFxTicker,
-              },
-            ]
-            : []),
-        ),
-      );
-    },
-    materializePlanFromSpec(code) {
+    materializePlanFromSpec(code: string) {
       return materializePlanFromSpec(
         code,
         null,
         planMaterializationDeps,
       ) as ResolverPlanNode;
     },
+    resolveFxRate,
     resolversByCode,
   };
+
+  return runtime as HoodlefinanceRuntime & typeof runtime;
 }
