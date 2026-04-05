@@ -125,6 +125,122 @@ transition can preserve runtime behavior first.
 - Transition `src/core/fx-normalization.ts` to fetch `currency-codes.json` from GitHub at runtime instead of inlining it in the bundle, similar to other data files.
 - Evaluate converting to a real execution plan DAG representation that is then executed by the engine.
 
+## Open/Closed Principle Violations in TS Core
+
+The TypeScript port has achieved 100% functional parity on Areas 1–4, but **11 major OCP violations** remain that prevent adding new extensions without modifying existing code. This section catalogs them for future refactoring.
+
+### OCP Violation Categories
+
+#### 🔴 **Critical: Block Core Extensions**
+
+1. **Hard-Coded Attribute Extraction Switch** (`src/core/attribute-extraction.ts:153–227`)
+   - 20+ hardcoded attribute cases. Adding new attributes requires modifying the switch statement.
+   - **Impact**: Blocks custom attributes, experimental attributes, provider-specific extensions.
+   - **Fix Strategy**: Attribute registry + polymorphic extraction interface.
+   - **Effort**: High | **Priority**: High (Areas 2–4 depend on this)
+
+2. **Hard-Coded ISIN Source Routing** (`src/core/isin-lookup.ts:242–343`)
+   - If/else chains for PSE, LON, TRADINGVIEW. New country ISIN sources require code changes.
+   - **Impact**: Blocks adding ARIVA, IBKR, or new regional exchanges (Area 6 blocker).
+   - **Fix Strategy**: ISIN source registry + spec-driven routing.
+   - **Effort**: Medium | **Priority**: High (needed for Area 6)
+
+3. **Static Exchange-to-Source Mappings** (`src/core/isin-lookup.ts:61–106`)
+   - 80+ hard-coded exchange abbreviations (ISIN_SOURCE_BY_EXCHANGE, TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE).
+   - **Impact**: Adding new exchanges requires changing constants, not specs.
+   - **Fix Strategy**: Move to spec-driven registry (EXCHANGE_SPECS_BY_CODE).
+   - **Effort**: Low | **Priority**: Medium (quick win)
+
+#### 🟠 **High: Affects Maintainability & Extensibility**
+
+4. **Hard-Coded Request Type Routing** (`src/core/quote-routing.ts:23–49`)
+   - If/else chains only handle "fx" and "equity". New request types require routing logic changes.
+   - **Impact**: Blocks futures, options, bonds, commodities without code modification.
+   - **Fix Strategy**: Polymorphic routing via request type interface + specs.
+   - **Effort**: Medium | **Priority**: Medium (needed for new financial instruments)
+
+5. **Manual Type Checking in Resolvers** (`src/core/concrete-resolvers.ts:258+`)
+   - 6+ resolvers with `instanceof RequestInput` checks instead of polymorphic dispatch.
+   - **Impact**: Adding new request types requires checking all resolver implementations.
+   - **Fix Strategy**: Type-based dispatch via request interface.
+   - **Effort**: Medium | **Priority**: High (foundational for extensibility)
+
+6. **Manual Dependency Injection** (`src/core/concrete-resolvers.ts:309+`)
+   - 5+ resolvers with manual `typeof` dependency checks in `fromSpec()` methods.
+   - **Impact**: Adding optional dependencies requires modifying fromSpec() implementations.
+   - **Fix Strategy**: Spec-driven dependency declarations.
+   - **Effort**: Medium | **Priority**: Medium (consolidates pattern)
+
+#### 🟡 **Medium: Architectural Debt**
+
+7. **Hard-Coded Special Market Logic** (`src/core/concrete-resolvers.ts:1337–1358`)
+   - Israeli fund fallback logic hard-coded in TradingviewFundResolver.
+   - **Impact**: Supporting new special markets (Arab exchanges, SSE, BSE) requires code changes.
+   - **Fix Strategy**: Declarative special-case specs for markets.
+   - **Effort**: Low–Medium | **Priority**: Low (niche use case)
+
+8. **Spec System with Manual Bypass** (`src/core/resolver-materialization.ts:55–57`)
+   - `resolversByCode` parameter allows mixing spec-driven and non-spec-driven registration.
+   - **Impact**: Inconsistent registration patterns, spec system loses authority.
+   - **Fix Strategy**: Enforce materialization path or document bypass explicitly.
+   - **Effort**: Low | **Priority**: Low (consistency issue)
+
+9. **Public Methods as Extension Points** (`src/core/resolver-classes.ts:96+`)
+   - Methods like `getAttributeOverrideSources()` are public but meant only for override.
+   - **Impact**: Confuses API surface; unclear which methods are truly public.
+   - **Fix Strategy**: Extract extension interface, hide abstract patterns.
+   - **Effort**: Low | **Priority**: Low (documentation/clarity only)
+
+#### 🟢 **Lower Priority: Refactoring Only**
+
+10. **Multiple Ref Type Handlers** (`src/core/resolver-classes.ts:420–442`)
+    - Each ref type (routeClassRef, routePathRef, routeStateBuilderRef) needs separate code.
+    - **Impact**: Adding new ref types requires modifying materializeOptions().
+    - **Fix Strategy**: Generic ref handler pattern.
+    - **Effort**: Low | **Priority**: Very Low
+
+11. **Attribute Type-Specific Resolution** (`src/core/request-resolution.ts:332–360`)
+    - Each attribute type (isin, price, symbol, etc.) has special handling in resolveRequestValue().
+    - **Impact**: Same as violation #1 but at resolution layer.
+    - **Fix Strategy**: Polymorphic attribute resolution.
+    - **Effort**: Medium | **Priority**: Low (covered by #1 fix)
+
+### OCP Refactoring Roadmap
+
+Suggested phasing to migrate from hard-coded chains to spec-driven systems:
+
+**Phase A: Foundation (Areas 5–6 prep)** — Address violations #2, #3, #4
+- Migrate ISIN source routing to spec-driven system (enables Area 6: ARIVA, IBKR)
+- Convert exchange mappings to spec-based lookups
+- Introduce request-type routing polymorphism
+- **Effort**: 3–4 days | **Enables**: Area 6 parity work
+
+**Phase B: Extensibility (Architectural) — Address violations #1, #5, #6
+- Extract attribute extraction into polymorphic interface + registry
+- Replace `instanceof` checks with type-based dispatch in resolvers
+- Consolidate dependency injection into spec declarations
+- **Effort**: 4–5 days | **Enables**: Custom attributes, new request types
+
+**Phase C: Polish (Technical Debt)** — Address violations #7–11
+- Normalize special-case logic (Israeli funds, etc.)
+- Document/enforce spec-bypass policy
+- Clarify extension interfaces
+- Generic ref handler
+- **Effort**: 2–3 days | **Enables**: Cleaner codebase
+
+### Migration Path for Violations
+
+When adding new functionality (e.g., Area 6 ARIVA support, Area 9 versioning), check this table:
+
+| If Adding… | Then Fix Violation… | Before Adding | Effort |
+| :--- | :--- | :--- | :--- |
+| New ISIN source (ARIVA, IBKR) | #2, #3 | Spec-driven ISIN routing | 1–2 days |
+| New exchange | #3 | Exchange spec registry | Few hours |
+| New attribute type | #1 | Attribute extraction registry | 1–2 days |
+| New financial instrument (futures, options) | #4, #5 | Polymorphic request routing | 2–3 days |
+| New dependency injection pattern | #6 | Spec-driven dependencies | Few hours |
+| New special market handling | #7 | Declarative special-case specs | Few hours |
+
 ## Parity Tracker & Baseline Audit
 
 This section serves as the authoritative ground-truth for the migration of the `hoodlefinance.js` functional core to the new TypeScript routing subsystem.
