@@ -23,6 +23,7 @@ import { PLAN_SPECS_BY_CODE, RESOLVER_SPECS_BY_CODE } from "../core/spec-data";
 import {
   resolvePlannedQuoteEnvelope,
   resolveRequestEnvelope,
+  resolveRequestValue,
   type LookupEnvelopeResult,
   type RequestResolutionDependencies,
 } from "../core/request-resolution";
@@ -335,30 +336,7 @@ export function createHoodlefinanceRuntime(
 
   const runtime = {
     lookup(identifier: string, attribute?: string): LookupEnvelopeResult {
-      // Use graph path (replaces resolveRequestValue old path in Phase 4.3 cutover)
-      const requestInput = normalizeRequestInput(identifier, attribute);
-      const graph = buildRoutingGraph(requestInput, graphResolverDeps);
-      const engineResult = executeGraph(graph);
-      const outputOutcome = engineResult.settled.get(graph.outputs[0]!);
-
-      if (!outputOutcome || outputOutcome.status === "failed") {
-        return {
-          attemptedRoutes: [],
-          error: outputOutcome?.error ?? "Graph execution failed.",
-          kind: "quote",
-          route: "(graph)",
-          status: "failure",
-          value: null,
-        };
-      }
-
-      return {
-        attemptedRoutes: [],
-        kind: "quote",
-        route: "(graph)",
-        status: "success",
-        value: outputOutcome.value,
-      };
+      return resolveRequestValue(resolutionEnv, normalizeRequestInput(identifier, attribute));
     },
     lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult {
       return resolveRequestEnvelope(resolutionEnv, normalizeRequestInput(identifier, attribute));
