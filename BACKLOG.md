@@ -39,6 +39,10 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
 
 - [ ] Automate the Google Apps Script refresh for the preferred REIT whitelist.
   - Source: [`tools/generate-preferred-reit-whitelist.js`](./tools/generate-preferred-reit-whitelist.js)
+- [ ] Improve TS-core coverage beyond the current `check:ts:coverage` baseline, with emphasis on low-covered runtime paths rather than adding more wrapper tests.
+  - Current hotspots from `/tmp/hoodlefinance-ts-coverage/lcov.info`: `quote-routing`, `ticker-normalization`, `route-execution`, `tradingview-fund`, `concrete-resolvers`, `pse-quotes`, `isin-lookup`, and `isin-sources`.
+  - Focus next tests on unhappy paths, branch-heavy routing decisions, and source-specific fallback behavior.
+  - Source: `npm run check:ts:coverage`
 
 ## Codebase cleanup
 
