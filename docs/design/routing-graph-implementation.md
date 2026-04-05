@@ -624,9 +624,27 @@ export function resolveRequestValueViaGraph(
 
 ### 4.2 Test parity
 
-Run the existing test suite against both `resolveRequestValue` (old path) and
-`resolveRequestValueViaGraph` (new path). Both must produce identical results
-before the old path is removed.
+#### 4.2a Collection phase
+
+Run the existing test suite (161+ tests in `test-ts/`) against both `resolveRequestValue`
+(old path) and `resolveRequestValueViaGraph` (new path). Collect results:
+- Tests that pass on both paths (parity ✓)
+- Tests that pass on old, fail on new (regressions)
+- Tests that pass on new, fail on old (improvements, unlikely)
+
+**Checkpoint:** Review collected results and categorize failures. Pause here with a
+summary report before proceeding to fixing phase.
+
+#### 4.2b Fixing phase
+
+For each regression, diagnose root cause:
+- Missing node implementation (e.g., `FxRateBatchNode.execute` is still a stub)
+- Graph wiring bug (e.g., missing parent edges)
+- Semantic mismatch between node behavior and old resolver behavior
+- Edge case not covered by 6 unit parity tests
+
+Fix in routing-nodes or routing-graph-builder. Re-run affected tests. Repeat until
+all 161+ tests pass on the graph path with identical outputs to old path.
 
 ### 4.3 Cut over
 

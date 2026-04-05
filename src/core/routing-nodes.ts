@@ -9,6 +9,7 @@ import {
   resolveIsinAttributeValue,
   type ResolveIsinAttributeDependencies,
 } from "./isin-lookup";
+import { buildFxPairFromCodes } from "./fx-normalization";
 
 export type { ResolveIsinAttributeDependencies };
 
@@ -303,9 +304,59 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
     // All parent quote nodes have delivered — collect their values
     const quotes = Object.values(inputs).map((inp) => inp.value as Record<string, unknown>);
 
-    // TODO: Phase 2 impl — extract currency pairs, batch fetch rates
-    // For now, return empty to allow graph to progress
-    return {};
+    // Extract unique source currencies from all quotes
+    const sourceCurrencies = new Set<string>();
+    for (const quote of quotes) {
+      const currency = extractCurrencyValue(quote);
+      if (currency && currency !== this.targetCurrency) {
+        sourceCurrencies.add(currency);
+      }
+    }
+
+    if (sourceCurrencies.size === 0) {
+      // No FX rates needed
+      return {};
+    }
+
+    // Build FX pairs and fetch rates
+    const rateMap: Record<string, number> = {};
+    for (const sourceCurrency of sourceCurrencies) {
+      const fxPair = buildFxPairFromCodes(sourceCurrency, this.targetCurrency);
+      if (!fxPair) {
+        // Skip if pair is invalid
+        continue;
+      }
+
+      // Create a minimal FX request for the resolver
+      const fxRequest = {
+        attribute: "price",
+        identifier: fxPair.yahooSymbol,
+        ticker: fxPair.yahooSymbol,
+        attributeType: "quote",
+        classification: "fx",
+        attributeRequest: {
+          baseAttribute: "price",
+          outputCode: this.targetCurrency,
+          rawAttribute: "price",
+          wantsOutputCurrency: false,
+        },
+        fxPair,
+        infoMode: "",
+        sourceOverride: "",
+      } as RequestInput;
+
+      const job = executeRouteNode(this.resolver, fxRequest, String);
+      if (!job.error && job.quote) {
+        // Extract price from the FX quote
+        const price = extractAttributeValue(job.quote as Record<string, unknown>, "price");
+        const rate = Number(price);
+        if (Number.isFinite(rate)) {
+          rateMap[sourceCurrency] = rate;
+        }
+      }
+    }
+
+    return rateMap;
   }
 }
 

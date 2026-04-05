@@ -189,6 +189,89 @@ test("routing-graph parity: currency conversion node receives all three parents"
   assert.equal(outcome.status, "settled", `expected settled, got: ${outcome.error}`);
 });
 
+test("routing-graph parity: FX batch node fetches rates for multiple source currencies", () => {
+  // Tests FxRateBatchNode.execute(): extracts unique source currencies, builds
+  // FX pairs, and fetches rates via the resolver.
+  const resolvedRequest = new EquityRequest({ identifier: "AAPL", attribute: "price", symbol: "AAPL", yahooSymbol: "AAPL" });
+
+  // Quote in GBP; target is USD → need to fetch GBP→USD rate
+  const quoteGbp = { regularMarketPrice: 100.0, currency: "GBP" };
+
+  // Mock FX resolver that returns rate
+  const mockFxResolver = {
+    name: "mock-fx",
+    code: "MOCK-FX",
+    canHandle: () => true,
+    buildRuntimePlan() { return { nodes: [mockFxResolver], routeClass: "mock", routePath: "mock", routeState: {} }; },
+    executeBatch(jobs) {
+      // Return a quote with price = 1.27 (GBP→USD rate)
+      return jobs.map(() => ({ status: "success", quote: { regularMarketPrice: 1.27, currency: "USD" } }));
+    },
+    describe: () => "mock-fx",
+    getRoutingNodeKind: () => "leaf",
+    get routingDescription() { return "mock-fx"; },
+    get routingLabel() { return "mock-fx"; },
+    get sourceName() { return "mock-fx"; },
+  };
+
+  const deps = makeDeps({
+    directIdentifierResolver: makeIdentifierResolver(resolvedRequest),
+    yahooQuoteResolver: makeQuoteResolver(quoteGbp),
+    googleFxResolver: mockFxResolver,
+  });
+
+  const input = createRequestInput("AAPL", "price:USD");
+
+  // Only run if wantsOutputCurrency is true
+  if (!input.attributeRequest.wantsOutputCurrency) {
+    return;
+  }
+
+  const graph = buildRoutingGraph(input, deps);
+  const result = executeGraph(graph);
+  const fxBatchNode = Array.from(result.settled.keys()).find(n => n.name === "fx-rate-batch");
+
+  assert.ok(fxBatchNode, "FxRateBatchNode should exist in graph");
+  const fxOutcome = result.settled.get(fxBatchNode);
+  assert.ok(fxOutcome);
+  assert.equal(fxOutcome.status, "settled", `FX batch failed: ${fxOutcome.error}`);
+
+  // Rate table should have GBP → 1.27
+  const rateMap = fxOutcome.value;
+  assert.ok(rateMap.GBP, "GBP rate should be in map");
+  assert.equal(rateMap.GBP, 1.27, "GBP→USD rate should be 1.27");
+});
+
+test("routing-graph parity: FX batch node skips when source equals target currency", () => {
+  // USD→USD: no FX fetch needed
+  const resolvedRequest = new EquityRequest({ identifier: "AAPL", attribute: "price", symbol: "AAPL", yahooSymbol: "AAPL" });
+  const quoteUsd = { regularMarketPrice: 150.0, currency: "USD" };
+
+  const deps = makeDeps({
+    directIdentifierResolver: makeIdentifierResolver(resolvedRequest),
+    yahooQuoteResolver: makeQuoteResolver(quoteUsd),
+  });
+
+  const input = createRequestInput("AAPL", "price:USD");
+
+  if (!input.attributeRequest.wantsOutputCurrency) {
+    return;
+  }
+
+  const graph = buildRoutingGraph(input, deps);
+  const result = executeGraph(graph);
+  const fxBatchNode = Array.from(result.settled.keys()).find(n => n.name === "fx-rate-batch");
+
+  assert.ok(fxBatchNode);
+  const fxOutcome = result.settled.get(fxBatchNode);
+  assert.ok(fxOutcome);
+  assert.equal(fxOutcome.status, "settled");
+
+  // Rate map should be empty (no FX needed for USD→USD)
+  const rateMap = fxOutcome.value;
+  assert.equal(Object.keys(rateMap).length, 0, "USD→USD should not fetch any rates");
+});
+
 test("routing-graph parity: PSE equity falls through to PSEEdge when PSEFrames fails", () => {
   const resolvedRequest = new EquityRequest({ identifier: "PSE:BDO", attribute: "price", symbol: "BDO", yahooSymbol: "BDO.PS" });
   const quote = { regularMarketPrice: 99.5, currency: "PHP" };
