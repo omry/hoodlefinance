@@ -122,10 +122,10 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
         resolverClass: "GoogleFxResolver",
       },
       "PSE-FRAMES": {
-        resolverClass: "PseFramesResolver",
+        resolverClass: "PSEFramesResolver",
       },
       "PSE-EDGE": {
-        resolverClass: "PseEdgeResolver",
+        resolverClass: "PSEEdgeResolver",
       },
     },
     createConcreteResolverMaterializationDependencies({

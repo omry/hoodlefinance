@@ -18,7 +18,7 @@ const { EquityRequest, FxRequest } = require("../dist/ts/core/request.js");
 function createFakeEnvironment() {
   const env = createCliEnvironment();
 
-  env.directIdentifierResolver.resolve = function resolve(request) {
+  env.resolversByCode["RESOLVED-IDENTIFIER"].resolve = function resolve(request) {
     const ticker = String((request && request.ticker) || "")
       .trim()
       .toUpperCase();
@@ -131,7 +131,7 @@ function createFakeEnvironment() {
     throw new Error(`unexpected fetch: ${url}`);
   };
 
-  env.googleFxResolver.executeBatch = (jobs) =>
+  env.resolversByCode["GOOGLE-FX"].executeBatch = (jobs) =>
     jobs.map(() => ({
       quote: {
         regularMarketPrice: 1.25,
@@ -141,7 +141,7 @@ function createFakeEnvironment() {
       status: "success",
     }));
 
-  env.localFxResolver.executeBatch = (jobs) =>
+  env.resolversByCode["FX-IDENTITY"].executeBatch = (jobs) =>
     jobs.map(() => ({
       quote: {
         regularMarketPrice: 1,
@@ -151,7 +151,7 @@ function createFakeEnvironment() {
       status: "success",
     }));
 
-  env.pseFramesResolver.executeBatch = (jobs) =>
+  env.resolversByCode["PSE-FRAMES"].executeBatch = (jobs) =>
     jobs.map(() => ({
       quote: {
         currency: "PHP",
@@ -162,7 +162,7 @@ function createFakeEnvironment() {
       status: "success",
     }));
 
-  env.pseEdgeResolver.executeBatch = (jobs) =>
+  env.resolversByCode["PSE-EDGE"].executeBatch = (jobs) =>
     jobs.map(() => ({
       quote: {
         currency: "PHP",
@@ -173,7 +173,7 @@ function createFakeEnvironment() {
       status: "success",
     }));
 
-  env.pseIsinMapResolver.resolve = function resolve(request) {
+  env.resolversByCode["PSE-MAP"].resolve = function resolve(request) {
     const ticker = String((request && request.ticker) || "")
       .trim()
       .toUpperCase();
@@ -195,7 +195,7 @@ function createFakeEnvironment() {
         };
   };
 
-  env.yahooIsinSearchResolver.executeBatch = (jobs) =>
+  env.resolversByCode["YAHOO-ISIN"].executeBatch = (jobs) =>
     jobs.map((job) => {
       const ticker = String(job && job.routeState && job.routeState.isin ? job.routeState.isin : "")
         .trim()
@@ -217,7 +217,7 @@ function createFakeEnvironment() {
           };
     });
 
-  env.yahooQuoteResolver.executeBatch = (jobs) =>
+  env.resolversByCode["YAHOO"].executeBatch = (jobs) =>
     jobs.map((job) => {
       const yahooSymbol = String(
         job && job.routeState && job.routeState.yahooSymbol
@@ -246,7 +246,7 @@ function createFakeEnvironment() {
       };
     });
 
-  env.tradingviewFundResolver.executeBatch = (jobs) =>
+  env.resolversByCode["TRADINGVIEW-FUND"].executeBatch = (jobs) =>
     jobs.map(() => ({
       quote: {
         currency: "ILS",
@@ -333,17 +333,17 @@ test("lookupWithEnvironment resolves routed isin attributes", () => {
 test("lookupWithEnvironment falls through the real quote plan from PSE to ticker", () => {
   const env = createCliEnvironment();
 
-  env.pseFramesResolver.executeBatch = (jobs) =>
+  env.resolversByCode["PSE-FRAMES"].executeBatch = (jobs) =>
     jobs.map(() => ({
       error: "not found",
       status: "lookup_failure",
     }));
-  env.pseEdgeResolver.executeBatch = (jobs) =>
+  env.resolversByCode["PSE-EDGE"].executeBatch = (jobs) =>
     jobs.map(() => ({
       error: "not found",
       status: "lookup_failure",
     }));
-  env.yahooQuoteResolver.executeBatch = (jobs) =>
+  env.resolversByCode["YAHOO"].executeBatch = (jobs) =>
     jobs.map(() => ({
       status: "success",
       quote: {
@@ -352,7 +352,7 @@ test("lookupWithEnvironment falls through the real quote plan from PSE to ticker
         symbol: "GOOG",
       },
     }));
-  env.tradingviewFundResolver.executeBatch = () => {
+  env.resolversByCode["TRADINGVIEW-FUND"].executeBatch = () => {
     throw new Error("unexpected tradingview fallback");
   };
 
@@ -406,7 +406,7 @@ test("CLI prefers the local Yahoo fallback symbol for whitelisted REITs", () => 
 test("lookupWithEnvironment keeps the original Google-style symbol for preferred REITs", () => {
   const env = createCliEnvironment();
 
-  env.yahooQuoteResolver.executeBatch = (jobs) =>
+  env.resolversByCode["YAHOO"].executeBatch = (jobs) =>
     jobs.map(() => ({
       status: "success",
       quote: {

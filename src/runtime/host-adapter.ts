@@ -1,14 +1,10 @@
 import {
-  DirectIdentifierResolver,
-  GoogleFxResolver,
-  LocalFxResolver,
-  PseEdgeResolver,
-  PseFramesResolver,
-  PseIsinMapResolver,
-  TradingviewFundResolver,
-  YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  createConcreteResolverMaterializationDependencies,
 } from "../core/concrete-resolvers";
+import {
+  materializeResolversByCode,
+  getMaterializedResolverByCode,
+} from "../core/resolver-materialization";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
 import { createRequestInput } from "../core/request-building";
 import { extractAttributeValue } from "../core/attribute-extraction";
@@ -23,14 +19,14 @@ import {
   createDefaultPlanMaterializationDependencies,
   materializePlanFromSpec,
 } from "../core/plan-materialization";
-import { PLAN_SPECS_BY_CODE } from "../core/spec-data";
+import { PLAN_SPECS_BY_CODE, RESOLVER_SPECS_BY_CODE } from "../core/spec-data";
 import {
   resolvePlannedQuoteEnvelope,
   resolveRequestEnvelope,
   resolveRequestValue,
   type LookupEnvelopeResult,
 } from "../core/request-resolution";
-import type { ResolvePlan, ResolverPlanNode } from "../core/planner";
+import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "../core/planner";
 
 interface FetchTextResponseLike {
   getContentText(): string;
@@ -67,19 +63,11 @@ interface HoodlefinanceRuntimeDependencies {
 interface HoodlefinanceRuntime {
   buildResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan>;
   createRequestInput(identifier: unknown, attribute?: unknown): RequestInput;
-  directIdentifierResolver: DirectIdentifierResolver;
   fetchText(url: string): string;
-  googleFxResolver: GoogleFxResolver;
-  localFxResolver: LocalFxResolver;
   lookup(identifier: unknown, attribute?: unknown): LookupEnvelopeResult;
   lookupEnvelope(identifier: unknown, attribute?: unknown): LookupEnvelopeResult;
   materializePlanFromSpec(code: string): ResolverPlanNode;
-  pseEdgeResolver: PseEdgeResolver;
-  pseFramesResolver: PseFramesResolver;
-  pseIsinMapResolver: PseIsinMapResolver;
-  tradingviewFundResolver: TradingviewFundResolver;
-  yahooIsinSearchResolver: YahooIsinSearchResolver;
-  yahooQuoteResolver: YahooQuoteResolver;
+  resolversByCode: Record<string, ResolverNode>;
   resolveFxRate(fxPair: FxPair): LookupEnvelopeResult;
 }
 
@@ -212,52 +200,41 @@ export function createHoodlefinanceRuntime(
 ): HoodlefinanceRuntime {
   const fetchAllInChunks =
     deps.fetchAllInChunks || createSequentialFetchAllInChunks(deps.fetchText);
-  const directIdentifierResolver = new DirectIdentifierResolver();
-  const googleFxResolver = new GoogleFxResolver({
-    fetchText: deps.fetchText,
-    getCachedJson: deps.getCachedJson,
-    putCachedJson: deps.putCachedJson,
-  });
-  const localFxResolver = new LocalFxResolver();
-  const pseFramesResolver = new PseFramesResolver({
-    fetchAllInChunks,
-    getCachedJson: deps.getCachedJson,
-    putCachedJson: deps.putCachedJson,
-  });
-  const pseEdgeResolver = new PseEdgeResolver({
-    fetchAllInChunks,
-    getCachedJson: deps.getCachedJson,
-    putCachedJson: deps.putCachedJson,
-  });
-  const pseIsinMapResolver = new PseIsinMapResolver((isin) =>
-    deps.resolvePseTickerFromIsinMap(isin),
+  const { byCode: resolversByCode } = materializeResolversByCode(
+    RESOLVER_SPECS_BY_CODE,
+    createConcreteResolverMaterializationDependencies({
+      googleFx: {
+        fetchText: deps.fetchText,
+        getCachedJson: deps.getCachedJson,
+        putCachedJson: deps.putCachedJson,
+      },
+      pseQuotes: {
+        fetchAllInChunks,
+        getCachedJson: deps.getCachedJson,
+        putCachedJson: deps.putCachedJson,
+      },
+      resolvePseTickerFromIsinMap: (isin) => deps.resolvePseTickerFromIsinMap(isin),
+      yahooIsinSearch: {
+        fetchAllInChunks,
+        getCachedString: deps.getCachedString,
+        putCachedString: deps.putCachedString,
+      },
+      yahooQuote: {
+        fetchAllInChunks,
+        getCachedJson: deps.getCachedJson,
+        putCachedJson: deps.putCachedJson,
+      },
+      tradingviewFund: {
+        fetchAllInChunks,
+        getCachedJson: deps.getCachedJson,
+        putCachedJson: deps.putCachedJson,
+      },
+    }),
   );
-  const yahooQuoteResolver = new YahooQuoteResolver({
-    fetchAllInChunks,
-    getCachedJson: deps.getCachedJson,
-    putCachedJson: deps.putCachedJson,
-  });
-  const tradingviewFundResolver = new TradingviewFundResolver({
-    fetchAllInChunks,
-    getCachedJson: deps.getCachedJson,
-    putCachedJson: deps.putCachedJson,
-  });
-  const yahooIsinSearchResolver = new YahooIsinSearchResolver({
-    fetchAllInChunks,
-    getCachedString: deps.getCachedString,
-    putCachedString: deps.putCachedString,
-  });
-  const resolversByCode = {
-    "RESOLVED-IDENTIFIER": directIdentifierResolver,
-    "FX-IDENTITY": localFxResolver,
-    "GOOGLE-FX": googleFxResolver,
-    "PSE-EDGE": pseEdgeResolver,
-    "PSE-FRAMES": pseFramesResolver,
-    "PSE-MAP": pseIsinMapResolver,
-    "TRADINGVIEW-FUND": tradingviewFundResolver,
-    YAHOO: yahooQuoteResolver,
-    "YAHOO-ISIN": yahooIsinSearchResolver,
-  };
+  const directIdentifierResolver = getMaterializedResolverByCode(
+    { byCode: resolversByCode, byName: {} },
+    "RESOLVED-IDENTIFIER",
+  )!;
   const planMaterializationDeps = createDefaultPlanMaterializationDependencies({
     looksLikeIsin(value) {
       return looksLikeIsin(value);
@@ -270,14 +247,8 @@ export function createHoodlefinanceRuntime(
     },
     resolversByCode,
   });
-  const fxPlan = materializePlanFromSpec(
-    "DEFAULT-ATTRIBUTE:FX",
-    null,
-    planMaterializationDeps,
-  ) as ResolverPlanNode;
-
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver,
+    directIdentifierResolver: directIdentifierResolver as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"],
     materializePlanFromSpec(code) {
       return materializePlanFromSpec(
         code,
@@ -293,6 +264,12 @@ export function createHoodlefinanceRuntime(
       fxPair,
       identifier: fxPair.yahooSymbol,
     });
+
+    const fxPlan = materializePlanFromSpec(
+      "DEFAULT-ATTRIBUTE:FX",
+      null,
+      planMaterializationDeps,
+    ) as ResolverPlanNode;
 
     const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
 
@@ -324,10 +301,7 @@ export function createHoodlefinanceRuntime(
       );
     },
     resolveFxRate,
-    directIdentifierResolver,
     fetchText: deps.fetchText,
-    googleFxResolver,
-    localFxResolver,
     lookup(identifier, attribute) {
       const env = {
         buildResolvePlan,
@@ -385,11 +359,6 @@ export function createHoodlefinanceRuntime(
         planMaterializationDeps,
       ) as ResolverPlanNode;
     },
-    pseEdgeResolver,
-    pseFramesResolver,
-    pseIsinMapResolver,
-    tradingviewFundResolver,
-    yahooIsinSearchResolver,
-    yahooQuoteResolver,
+    resolversByCode,
   };
 }

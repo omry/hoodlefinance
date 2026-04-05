@@ -53,8 +53,8 @@ function createIntegratedResolverRegistry() {
     YahooQuoteResolver: commonDeps,
     TradingviewFundResolver: commonDeps,
     GoogleFxResolver: commonDeps,
-    PseFramesResolver: commonDeps,
-    PseEdgeResolver: commonDeps,
+    PSEFramesResolver: commonDeps,
+    PSEEdgeResolver: commonDeps,
   };
 
   return materializeResolversByCode(RESOLVER_SPECS_BY_CODE, {
@@ -63,8 +63,8 @@ function createIntegratedResolverRegistry() {
       GoogleFxResolver,
       FunctionValueResolver,
       LocalFxResolver,
-      PseEdgeResolver,
-      PseFramesResolver,
+      PSEEdgeResolver: PseEdgeResolver,
+      PSEFramesResolver: PseFramesResolver,
       PseIsinMapResolver,
       YahooIsinSearchResolver,
       YahooQuoteResolver,

@@ -119,7 +119,7 @@ export type ResolveValueFunction = (
 ) => unknown;
 
 export interface FunctionValueResolverDependencies {
-  resolveFunctionsByRef: Record<string, ResolveValueFunction | undefined>;
+  resolveFunctionsByRef?: Record<string, ResolveValueFunction | undefined>;
 }
 
 export type ResolvePseTickerFromIsinMap = (isin: string) => string;
@@ -545,21 +545,13 @@ export class FunctionValueResolver extends AttributeResolver {
     spec: ResolverSpec,
     deps: FunctionValueResolverDependencies,
   ): FunctionValueResolver {
-    const resolveValue =
-      deps.resolveFunctionsByRef[
-        String(spec.resolveFunctionRef || "")
-          .trim()
-          .toUpperCase()
-      ] || null;
+    const ref = String(spec.resolveFunctionRef || "").trim().toUpperCase();
+    const resolveValue: ResolveValueFunction =
+      (deps.resolveFunctionsByRef || {})[ref] ||
+      (() => { throw new Error(`Resolver function ref "${String(spec.resolveFunctionRef || "")}" is not available for "${code}".`); });
     const traceLabel = (spec as ResolverSpec & { traceLabel?: string }).traceLabel;
     const sourceName = (spec as ResolverSpec & { sourceName?: string }).sourceName;
     const options = spec.options || {};
-
-    if (!resolveValue) {
-      throw new Error(
-        `Unknown resolver function ref "${String(spec.resolveFunctionRef || "")}" for "${code}".`,
-      );
-    }
 
     return traceLabel || sourceName
       ? new this(
@@ -1423,8 +1415,8 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   FunctionValueResolver,
   LocalFxResolver,
   GoogleFxResolver,
-  PseFramesResolver,
-  PseEdgeResolver,
+  PSEFramesResolver: PseFramesResolver,
+  PSEEdgeResolver: PseEdgeResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
@@ -1453,8 +1445,8 @@ export function createConcreteResolverMaterializationDependencies(
         resolveFunctionsByRef: deps.resolveFunctionsByRef,
       },
       GoogleFxResolver: deps.googleFx,
-      PseFramesResolver: deps.pseQuotes,
-      PseEdgeResolver: deps.pseQuotes,
+      PSEFramesResolver: deps.pseQuotes,
+      PSEEdgeResolver: deps.pseQuotes,
       PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
       YahooIsinSearchResolver: deps.yahooIsinSearch,
       YahooQuoteResolver: deps.yahooQuote,

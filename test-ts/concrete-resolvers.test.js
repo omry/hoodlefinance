@@ -160,19 +160,21 @@ test("FunctionValueResolver executes resolved job callbacks and materializes fro
     },
   ]);
 
-  assert.throws(
-    () =>
-      FunctionValueResolver.fromSpec(
-        "ATTRIBUTE-IDENTITY",
-        {
-          resolveFunctionRef: "MISSING",
-          resolverClass: "FunctionValueResolver",
-        },
-        {
-          resolveFunctionsByRef: {},
-        },
-      ),
-    /Unknown resolver function ref "MISSING" for "ATTRIBUTE-IDENTITY"\./,
+  const stubResolver = FunctionValueResolver.fromSpec(
+    "ATTRIBUTE-IDENTITY",
+    {
+      resolveFunctionRef: "MISSING",
+      resolverClass: "FunctionValueResolver",
+    },
+    {
+      resolveFunctionsByRef: {},
+    },
+  );
+  const stubResults = stubResolver.executeBatch([{ routeState: {} }]);
+  assert.equal(stubResults[0].status, "terminal_error");
+  assert.match(
+    String(stubResults[0].error instanceof Error ? stubResults[0].error.message : stubResults[0].error),
+    /Resolver function ref "MISSING" is not available for "ATTRIBUTE-IDENTITY"\./,
   );
 });
 

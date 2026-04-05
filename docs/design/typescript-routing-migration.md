@@ -123,6 +123,7 @@ transition can preserve runtime behavior first.
     handling, source-specific fallbacks, and Apps Script-specific wiring.
 - Normalize identity resolution plan. right now its half hard-coded
 - Transition `src/core/fx-normalization.ts` to fetch `currency-codes.json` from GitHub at runtime instead of inlining it in the bundle, similar to other data files.
+- Evaluate converting to a real execution plan DAG representation that is then executed by the engine.
 
 ## Parity Tracker & Baseline Audit
 
