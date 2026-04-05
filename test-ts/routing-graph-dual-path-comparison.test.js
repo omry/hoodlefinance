@@ -123,7 +123,7 @@ test("dual-path: US equity resolves exchange attribute via graph", () => {
         }),
       },
       "YAHOO": {
-        quote: { regularMarketPrice: 150.25, currency: "USD", exchange: "NASDAQ" },
+        quote: { regularMarketPrice: 150.25, currency: "USD", exchangeName: "NASDAQ" },
       },
     },
   };
