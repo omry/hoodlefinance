@@ -13,14 +13,7 @@ export const PLAN_ROUTE_CLASS_BY_REF: Record<string, RouteClassResolver> = {
   },
 };
 
-export const PLAN_ROUTE_PATH_BY_REF: Record<string, RoutePathResolver> = {
-  EQUITY_TICKER_PATH(equityRequest) {
-    return "allowTradingviewFallback" in equityRequest &&
-      equityRequest.allowTradingviewFallback
-      ? "YAHOO -> TRADINGVIEW"
-      : "YAHOO";
-  },
-};
+export const PLAN_ROUTE_PATH_BY_REF: Record<string, RoutePathResolver> = {};
 
 
 export interface PlanRuntimeRefDependencies {

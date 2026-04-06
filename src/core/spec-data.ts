@@ -108,7 +108,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     options: {
       routingLabel: "TICKER",
       routeClassRef: "EQUITY_TICKER_CLASS",
-      routePathRef: "EQUITY_TICKER_PATH",
       routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
     },
   },
@@ -171,11 +170,7 @@ export const PLAN_ROUTE_CLASS_REFS = {
   EQUITY_TICKER_CLASS: "EQUITY_TICKER_CLASS",
 } as const;
 
-export const PLAN_ROUTE_PATH_REFS = {
-  EQUITY_TICKER_PATH: "EQUITY_TICKER_PATH",
-} as const;
-
-
+export const PLAN_ROUTE_PATH_REFS = {} as const;
 
 export const PLAN_ROUTE_STATE_BUILDER_REFS = {
   EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",
