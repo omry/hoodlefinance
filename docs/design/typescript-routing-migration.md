@@ -75,6 +75,8 @@ These are known naming and boundary issues that should be revisited after more o
 the routing subsystem is migrated. They are intentionally deferred so the
 transition can preserve runtime behavior first.
 
+- Revisit the not implemented `HOODLEFINANCE_ROUTES()` prior to release of the TS version.
+
   - `DIRECT` became `ATTRIBUTE-IDENTITY`.
   - `DIRECT-IDENTIFIER` became `RESOLVED-IDENTIFIER`.
   - `LOCAL` became `FX-IDENTITY`.

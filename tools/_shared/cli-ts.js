@@ -387,7 +387,7 @@ function main(argv = process.argv.slice(2)) {
   }
 
   if (firstArg === "--routing-table" || firstArg === "routing-table") {
-    console.log(formatRoutingTable());
+    console.log("NOT IMPLEMENTED");
     return;
   }
 
