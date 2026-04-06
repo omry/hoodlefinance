@@ -132,7 +132,7 @@ test("default plan materialization builds typed resolver plans from runtime refs
     planSpecsByCode: {
       "QUOTE:TICKER": {
         nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
-        resolverClass: "AttributeResolutionPlan",
+        resolverClass: "TickerQuoteResolutionPlan",
         options: {
           routeClassRef: "EQUITY_TICKER_CLASS",
           routePathRef: "EQUITY_TICKER_PATH",

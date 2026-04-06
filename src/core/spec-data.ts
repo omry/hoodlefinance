@@ -103,7 +103,7 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "QUOTE:TICKER": {
-    resolverClass: "AttributeResolutionPlan",
+    resolverClass: "TickerQuoteResolutionPlan",
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     options: {
       routingLabel: "TICKER",

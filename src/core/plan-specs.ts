@@ -11,6 +11,7 @@ export type ResolverClassName =
   | "PSEFramesResolver"
   | "PseIsinMapResolver"
   | "ResolverPlan"
+  | "TickerQuoteResolutionPlan"
   | "TradingviewFundResolver"
   | "YahooIsinSearchResolver"
   | "YahooQuoteResolver";
