@@ -483,15 +483,18 @@ export class IdentifierResolutionPlan extends ResolverPlan {
       spec as IdentifierResolutionPlanSpec
     ).nodeCodeByIsinCountry || null;
 
-    Object.keys(nodeCodeByIsinCountry || {}).forEach((countryCode) => {
-      const normalizedCode = normalizeNodeCode(
-        (nodeCodeByIsinCountry || {})[countryCode] || "",
-      );
-
+    Object.entries(nodeCodeByIsinCountry || {}).forEach(([countryCode, nodeCode]) => {
+      if (countryCode === "_default_") return;
+      const normalizedCode = normalizeNodeCode(nodeCode || "");
       if (normalizedCode && !nodeCodes.includes(normalizedCode)) {
         nodeCodes.unshift(normalizedCode);
       }
     });
+
+    const defaultCode = normalizeNodeCode((nodeCodeByIsinCountry || {})["_default_"] || "");
+    if (defaultCode && !nodeCodes.includes(defaultCode)) {
+      nodeCodes.push(defaultCode);
+    }
 
     return nodeCodes;
   }
@@ -554,8 +557,10 @@ export class IdentifierResolutionPlan extends ResolverPlan {
       this.materializeOptions(spec, overrides, deps.refs, deps),
     );
 
-    plan.nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
-    plan.defaultLookupNodeCodes = (spec.defaultNodeCodes || []).map(normalizeNodeCode);
+    const nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
+    const defaultCode = normalizeNodeCode((nodeCodeByIsinCountry || {})["_default_"] || "");
+    plan.nodeCodeByIsinCountry = nodeCodeByIsinCountry;
+    plan.defaultLookupNodeCodes = defaultCode ? [defaultCode] : (spec.defaultNodeCodes || []).map(normalizeNodeCode);
     plan.looksLikeIsin = deps.refs.looksLikeIsin;
 
     return plan;

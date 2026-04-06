@@ -171,9 +171,9 @@ test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
   const plan = buildPlanNodeFromSpec(
     "IDENTIFIER:ISIN",
     {
-      defaultNodeCodes: ["YAHOO-ISIN"],
       nodeCodeByIsinCountry: {
         PH: "PSE-MAP",
+        _default_: "YAHOO-ISIN",
       },
       resolverClass: "IdentifierResolutionPlan",
     },
@@ -191,7 +191,7 @@ test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
     plan.nodes.map((node) => node && node.name),
     ["PSE-MAP", "YAHOO-ISIN"],
   );
-  assert.deepEqual(plan.nodeCodeByIsinCountry, { PH: "PSE-MAP" });
+  assert.deepEqual(plan.nodeCodeByIsinCountry, { PH: "PSE-MAP", _default_: "YAHOO-ISIN" });
   assert.deepEqual(plan.defaultLookupNodeCodes, ["YAHOO-ISIN"]);
   assert.deepEqual(
     plan.getNodesForRequest(createRequestInput({ ticker: "PHY077751022" })).map(

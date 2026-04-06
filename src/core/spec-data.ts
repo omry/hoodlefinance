@@ -83,8 +83,8 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     resolverClass: "IdentifierResolutionPlan",
     nodeCodeByIsinCountry: {
       PH: "PSE-MAP",
+      _default_: "YAHOO-ISIN",
     },
-    defaultNodeCodes: ["YAHOO-ISIN"],
   }),
   "QUOTE:DEFAULT-FX": {
     nodeCodes: ["GOOGLE-FX", "YAHOO"],
