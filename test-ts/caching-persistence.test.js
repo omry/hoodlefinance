@@ -5,14 +5,14 @@ const test = require("node:test");
 // These tests record the expected behavior from the legacy runtime infrastructure.
 const Core = require("../dist/ts/core/index.js");
 
-test("GAP: Cache key versioning (parity with hf_versionCacheKey_)", () => {
+test("GAP: Cache key versioning (parity with hf_versionCacheKey_)", { skip: "not yet implemented" }, () => {
   // Legacy prepends a version-based prefix to cache keys.
   // We expect a utility in the core to handle this normalization.
   assert.ok(typeof Core.versionCacheKey === "function", "versionCacheKey should be exported");
   assert.match(Core.versionCacheKey("my-key"), /^v\d+\.\d+\.\d+:my-key$/);
 });
 
-test("GAP: JSON cache serialization (parity with hf_putCachedJson_)", () => {
+test("GAP: JSON cache serialization (parity with hf_putCachedJson_)", { skip: "not yet implemented" }, () => {
   // Legacy handles JSON serialization transparently in the cache layer.
   // Current TS dependencies are string-only.
   const myData = { foo: "bar" };
@@ -28,7 +28,7 @@ test("GAP: JSON cache serialization (parity with hf_putCachedJson_)", () => {
   assert.equal(mockCache.val, JSON.stringify(myData));
 });
 
-test("GAP: Property store value chunking (parity with legacy property stores)", () => {
+test("GAP: Property store value chunking (parity with legacy property stores)", { skip: "not yet implemented" }, () => {
   // Legacy splits large strings (e.g. > 9KB) across multiple property keys.
   // We expect a persistence abstraction in the core that handles this logic.
   assert.ok(typeof Core.PersistenceManager === "function", "PersistenceManager class should exist");

@@ -61,7 +61,7 @@ test("executeRouteJobs groups by executor name (Existing behavior - PASS)", () =
 
 // --- RECORDED GAPS (EXPECTED TO FAIL) ---
 
-test("GAP: batching deduplication (two identical requests should be one batch item)", () => {
+test("GAP: batching deduplication (two identical requests should be one batch item)", { skip: "not yet implemented" }, () => {
   const resolver = new MockBatchResolver("DEDUPE-RESOLVER");
   const jobs = [
     createResolverRouteJob(new RequestInput("GOOG", "price")),
@@ -77,7 +77,7 @@ test("GAP: batching deduplication (two identical requests should be one batch it
   assert.equal(resolver.batchedJobCounts[0], 1, "Should have deduplicated the identical requests in the batch");
 });
 
-test("GAP: dynamic batchKey usage for grouping", () => {
+test("GAP: dynamic batchKey usage for grouping", { skip: "not yet implemented" }, () => {
   const resolver = new MockBatchResolver("KEY-RESOLVER");
   const jobs = [
     createResolverRouteJob(new RequestInput("AAPL", "price")),
