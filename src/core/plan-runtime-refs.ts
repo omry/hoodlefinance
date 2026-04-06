@@ -1,17 +1,9 @@
 import type {
-  ResolverNode,
-  RouteClassResolver,
   RoutePathResolver,
   RouteStateBuilder,
 } from "./planner";
 import { buildEquityYahooQuoteRouteState, buildFxQuoteRouteState, buildPseQuoteRouteState } from "./route-state";
 import type { RequestInput, ResolvedRequest } from "./request";
-
-export const PLAN_ROUTE_CLASS_BY_REF: Record<string, RouteClassResolver> = {
-  EQUITY_TICKER_CLASS() {
-    return "EQUITY -> TICKER";
-  },
-};
 
 export const PLAN_ROUTE_PATH_BY_REF: Record<string, RoutePathResolver> = {};
 
@@ -70,7 +62,6 @@ export function createPlanRuntimeRefs(
   return {
     canHandleByRef: PLAN_CAN_HANDLE_BY_REF,
     looksLikeIsin: deps.looksLikeIsin,
-    routeClassByRef: PLAN_ROUTE_CLASS_BY_REF,
     routePathByRef: PLAN_ROUTE_PATH_BY_REF,
     routeStateBuilderByRef: createPlanRouteStateBuilders(deps),
   };
@@ -82,7 +73,6 @@ export interface PlanRuntimeRefs {
     (request: RequestInput | ResolvedRequest) => boolean
   >;
   looksLikeIsin(value: string): boolean;
-  routeClassByRef: Record<string, RouteClassResolver>;
   routePathByRef: Record<string, RoutePathResolver>;
   routeStateBuilderByRef: Record<string, RouteStateBuilder>;
 }

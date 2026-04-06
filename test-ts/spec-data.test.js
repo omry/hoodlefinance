@@ -36,12 +36,8 @@ test("extracted routing spec data matches the current production tables", () => 
   ]);
   assert.equal(PLAN_SPECS_BY_CODE["ROOT"].resolverClass, "ResolverPlan");
 
-  assert.deepEqual(PLAN_ROUTE_CLASS_REFS, {
-    EQUITY_TICKER_CLASS: "EQUITY_TICKER_CLASS",
-  });
-  assert.deepEqual(PLAN_ROUTE_PATH_REFS, {
-    EQUITY_TICKER_PATH: "EQUITY_TICKER_PATH",
-  });
+  assert.deepEqual(PLAN_ROUTE_CLASS_REFS, {});
+  assert.deepEqual(PLAN_ROUTE_PATH_REFS, {});
 
   assert.deepEqual(PLAN_ROUTE_STATE_BUILDER_REFS, {
     EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",

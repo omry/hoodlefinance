@@ -123,8 +123,8 @@ test("buildPlanNodeFromSpec materializes route refs into a real plan instance", 
     yahooSymbol: "GOOG",
   });
 
-  assert.equal(runtimePlan.routeClass, "EQUITY -> TICKER");
-  assert.equal(runtimePlan.routePath, "YAHOO -> TRADINGVIEW");
+  assert.equal(runtimePlan.routeClass, "QUOTE:TICKER");
+  assert.equal(runtimePlan.routePath, "YAHOO -> TRADINGVIEW-FUND");
   assert.deepEqual(runtimePlan.routeState, {
     fxPair: null,
     preferredYahooSymbol: "GOOG:ALT",

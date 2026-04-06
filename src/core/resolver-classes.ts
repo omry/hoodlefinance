@@ -415,16 +415,9 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
     const materializedOptions = Object.assign({}, sourceOptions) as ResolverPlanOptions & {
       canHandleRef?: string;
       nodeSelectorRef?: string;
-      routeClassRef?: string;
       routePathRef?: string;
       routeStateBuilderRef?: string;
     };
-
-    if (sourceOptions.routeClassRef) {
-      materializedOptions.routeClass =
-        refs.routeClassByRef[sourceOptions.routeClassRef] || "";
-      delete materializedOptions.routeClassRef;
-    }
 
     if (sourceOptions.routePathRef) {
       materializedOptions.routePath =

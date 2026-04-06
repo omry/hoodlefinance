@@ -97,7 +97,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
       isSourceOverrideable: true,
       representativeTicker: "PSE:BDO",
       routingLabel: "PSE",
-      routeClass: "EQUITY -> PSE",
       routeStateBuilderRef: "PSE_QUOTE",
       sourceName: "PSE",
     },
@@ -107,7 +106,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     options: {
       routingLabel: "TICKER",
-      routeClassRef: "EQUITY_TICKER_CLASS",
       routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
     },
   },
@@ -166,9 +164,7 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
   },
 };
 
-export const PLAN_ROUTE_CLASS_REFS = {
-  EQUITY_TICKER_CLASS: "EQUITY_TICKER_CLASS",
-} as const;
+export const PLAN_ROUTE_CLASS_REFS = {} as const;
 
 export const PLAN_ROUTE_PATH_REFS = {} as const;
 
