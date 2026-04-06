@@ -85,9 +85,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
       PH: "PSE-MAP",
     },
     defaultNodeCodes: ["YAHOO-ISIN"],
-    options: {
-      routeStateBuilderRef: "ISIN_IDENTIFIER",
-    },
   }),
   "QUOTE:DEFAULT-FX": {
     nodeCodes: ["GOOGLE-FX", "YAHOO"],
@@ -183,7 +180,6 @@ export const PLAN_ROUTE_PATH_REFS = {
 export const PLAN_ROUTE_STATE_BUILDER_REFS = {
   EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",
   FX_QUOTE: "FX_QUOTE",
-  ISIN_IDENTIFIER: "ISIN_IDENTIFIER",
   PSE_QUOTE: "PSE_QUOTE",
 } as const;
 

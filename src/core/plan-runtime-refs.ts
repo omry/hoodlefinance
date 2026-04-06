@@ -4,9 +4,8 @@ import type {
   RoutePathResolver,
   RouteStateBuilder,
 } from "./planner";
-import { buildIsinIdentifierRouteState, buildEquityYahooQuoteRouteState, buildFxQuoteRouteState, buildPseQuoteRouteState } from "./route-state";
+import { buildEquityYahooQuoteRouteState, buildFxQuoteRouteState, buildPseQuoteRouteState } from "./route-state";
 import type { RequestInput, ResolvedRequest } from "./request";
-import { extractIsinFromRequestInput } from "./request-building";
 
 export const PLAN_ROUTE_CLASS_BY_REF: Record<string, RouteClassResolver> = {
   EQUITY_TICKER_CLASS() {
@@ -42,12 +41,6 @@ export function createPlanRouteStateBuilders(
     FX_QUOTE(request) {
       return buildFxQuoteRouteState(
         request as Extract<ResolvedRequest, { requestType: "fx" }>,
-      );
-    },
-    ISIN_IDENTIFIER(request) {
-      return buildIsinIdentifierRouteState(
-        request as RequestInput,
-        (input) => extractIsinFromRequestInput(input, deps.looksLikeIsin),
       );
     },
     PSE_QUOTE(request) {

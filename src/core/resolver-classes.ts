@@ -10,7 +10,10 @@ import type {
   RouteStateBuilder,
   RuntimePlan,
 } from "./planner";
-import type { RequestInput, ResolvedRequest } from "./request";
+import { RequestInput } from "./request";
+import type { ResolvedRequest } from "./request";
+import { buildIsinIdentifierRouteState } from "./route-state";
+import { extractIsinFromRequestInput } from "./request-building";
 import { createResolutionFailure, createResolutionSuccess, describePlanSource } from "./route-results";
 import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
@@ -556,6 +559,14 @@ export class IdentifierResolutionPlan extends ResolverPlan {
     plan.looksLikeIsin = deps.refs.looksLikeIsin;
 
     return plan;
+  }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!(request instanceof RequestInput)) return {};
+    return buildIsinIdentifierRouteState(
+      request,
+      (input) => extractIsinFromRequestInput(input, this.looksLikeIsin || (() => false)),
+    );
   }
 }
 

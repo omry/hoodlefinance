@@ -42,7 +42,6 @@ test("extracted routing spec data matches the current production tables", () => 
   assert.deepEqual(PLAN_ROUTE_STATE_BUILDER_REFS, {
     EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",
     FX_QUOTE: "FX_QUOTE",
-    ISIN_IDENTIFIER: "ISIN_IDENTIFIER",
     PSE_QUOTE: "PSE_QUOTE",
   });
   assert.deepEqual(PLAN_CAN_HANDLE_REFS, {
