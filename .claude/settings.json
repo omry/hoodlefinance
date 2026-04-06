@@ -1,4 +1,9 @@
+
 {
+  "env": {
+      "ENABLE_TOOL_SEARCH": "true"
+  },
+  
   "permissions": {
     "allow": [
       "Bash(git add:*)",

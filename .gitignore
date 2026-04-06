@@ -1,5 +1,6 @@
 .continue
 .codex
+.claude
 __pycache__/
 .venv/
 *.py[cod]
