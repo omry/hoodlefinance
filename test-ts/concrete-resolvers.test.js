@@ -682,7 +682,6 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
   });
 
   assert.equal(resolver.canHandle(requestInput), true);
-  assert.deepEqual(resolver.getAttributeOverrideSources(requestInput), ["PSE"]);
 
   const success = resolver.resolve(requestInput);
   assert.equal(success.status, "success");
@@ -723,9 +722,6 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
   });
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
-  assert.deepEqual(cachedResolver.getAttributeOverrideSources(cachedRequest), [
-    "YAHOO",
-  ]);
 
   const cachedResult = cachedResolver.resolve(cachedRequest);
   assert.equal(cachedResult.status, "success");

@@ -16,7 +16,6 @@ export type ResolverClassName =
   | "YahooQuoteResolver";
 
 export interface ResolverSpecOptions {
-  isSourceOverrideable?: boolean;
   representativeTicker?: string;
   routingDescription?: string;
   routingLabel?: string;

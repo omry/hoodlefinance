@@ -20,7 +20,6 @@ import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
 export interface ResolverOptions {
-  isSourceOverrideable?: boolean;
   representativeTicker?: string;
   routingDescription?: string;
   routingLabel?: string;
@@ -75,7 +74,6 @@ interface IdentifierResolutionPlanSpec extends PlanSpec {
 
 export class Resolver {
   readonly code: string;
-  readonly isSourceOverrideable: boolean;
   readonly name: string;
   readonly representativeTicker: string;
   readonly routingDescription: string;
@@ -89,15 +87,10 @@ export class Resolver {
     this.routingDescription = options.routingDescription || "";
     this.representativeTicker = options.representativeTicker || "";
     this.sourceName = sourceName != null ? sourceName : this.code;
-    this.isSourceOverrideable = options.isSourceOverrideable === true;
   }
 
   canHandle(_request: RequestInput | ResolvedRequest): boolean {
     return true;
-  }
-
-  getAttributeOverrideSources(_request: RequestInput | ResolvedRequest): string[] {
-    return [];
   }
 
   buildRuntimePlan(_request: RequestInput | ResolvedRequest): RuntimePlan {

@@ -237,14 +237,6 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return input instanceof RequestInput && isin.startsWith("PH");
   }
 
-  getAttributeOverrideSources(input: RequestInput | ResolvedRequest): string[] {
-    return input instanceof RequestInput &&
-      this.canHandle(input) &&
-      input.attributeType === "quote"
-      ? ["PSE"]
-      : [];
-  }
-
   buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
     if (!(request instanceof RequestInput)) {
       return {};
@@ -328,14 +320,6 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       input instanceof RequestInput &&
       !!extractIsinFromRequestInput(input)
     );
-  }
-
-  getAttributeOverrideSources(input: RequestInput | ResolvedRequest): string[] {
-    return input instanceof RequestInput &&
-      this.canHandle(input) &&
-      input.attributeType === "quote"
-      ? ["YAHOO"]
-      : [];
   }
 
   buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
@@ -513,7 +497,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
   constructor(deps: GoogleFxResolverDependencies) {
     super("GOOGLE-FX", "GOOGLE-FX", {
-      isSourceOverrideable: true,
+
       representativeTicker: "EURUSD",
       routingDescription: "Google Finance FX quote lookup",
     });
@@ -636,7 +620,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
 
   constructor(deps: PseQuoteResolverDependencies) {
     super("PSE-FRAMES", {
-      isSourceOverrideable: true,
+
       representativeTicker: "PSE:BDO",
       routingDescription: "PSE frames quote lookup",
     });
@@ -780,7 +764,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
   constructor(deps: PseQuoteResolverDependencies) {
     super("PSE-EDGE", {
-      isSourceOverrideable: true,
+
       representativeTicker: "PSE:BDO",
       routingDescription: "PSE edge quote lookup",
     });
@@ -1021,7 +1005,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 
   constructor(deps: YahooQuoteResolverDependencies) {
     super("YAHOO", "YAHOO", {
-      isSourceOverrideable: true,
+
       representativeTicker: "GOOG",
       routingDescription: "Yahoo quote lookup",
     });

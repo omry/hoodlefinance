@@ -4,7 +4,6 @@ const test = require("node:test");
 const {
   extractIsinCountryCode,
   createDefaultPlanMaterializationDependencies,
-  listSourceOverridePlanCodes,
   materializePlanFromSpec,
   materializePlanNodeByCode,
 } = require("../dist/ts/core/index.js");
@@ -82,10 +81,7 @@ test("plan materialization returns resolvers, builds plans, and validates bad in
         nodeCodes: ["YAHOO"],
         resolverClass: "ResolverPlan",
       },
-      SOURCEABLE: {
-        options: { isSourceOverrideable: true },
-        resolverClass: "ResolverPlan",
-      },
+
     },
     resolversByCode: {
       YAHOO: yahoo,
@@ -97,10 +93,6 @@ test("plan materialization returns resolvers, builds plans, and validates bad in
     materializePlanFromSpec("ROOT", { foo: "bar" }, deps).describe(),
     "ROOT:ResolverPlan:1",
   );
-  assert.deepEqual(listSourceOverridePlanCodes(deps.planSpecsByCode), [
-    "SOURCEABLE",
-  ]);
-
   assert.throws(
     () => materializePlanNodeByCode("MISSING", null, [], deps),
     /Unknown resolver plan spec/,

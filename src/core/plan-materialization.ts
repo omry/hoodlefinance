@@ -88,13 +88,6 @@ export function materializePlanFromSpec(
   return materializePlanNodeByCode(code, optionOverrides, [], deps);
 }
 
-export function listSourceOverridePlanCodes(
-  planSpecsByCode: Record<string, PlanSpec>,
-): string[] {
-  return Object.keys(planSpecsByCode).filter(
-    (code) => !!(planSpecsByCode[code]?.options || {}).isSourceOverrideable,
-  );
-}
 
 export interface DefaultPlanMaterializationDependencies
   extends Omit<PlanMaterializationDependencies, "buildPlanNode">,

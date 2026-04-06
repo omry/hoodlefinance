@@ -94,7 +94,6 @@ export interface ResolverLike {
   routingDescription: string;
   routingLabel: string;
   sourceName: string;
-  isSourceOverrideable?: boolean;
 }
 
 export interface ResolverNode extends ResolverLike {
