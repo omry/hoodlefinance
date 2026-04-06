@@ -14,10 +14,6 @@ test("extracted routing spec data matches the current production tables", () => 
     "DirectIdentifierResolver",
   );
   assert.equal(
-    PLAN_SPECS_BY_CODE["QUOTE:PSE"].options.representativeTicker,
-    "PSE:BDO",
-  );
-  assert.equal(
     PLAN_SPECS_BY_CODE["QUOTE:PSE"].resolverClass,
     "PseQuoteResolutionPlan",
   );

@@ -81,6 +81,7 @@ export interface ResolverLike {
   code: string;
   describe(request: RequestInput | ResolvedRequest): string;
   describeRoutingNode?(): string;
+  getExampleInput(): string | null;
   getRoutingNodeKind(): RoutingNodeKind;
   getGroupedSourceNames?(request: RequestInput | ResolvedRequest): string[];
   getGroupedSourceNamesForDisplay?(
@@ -90,7 +91,6 @@ export interface ResolverLike {
   getRoutingNodes?(): ResolverNode[];
   matchesSourceName?(source: string): boolean;
   name: string;
-  representativeTicker?: string;
   routingDescription: string;
   routingLabel: string;
   sourceName: string;

@@ -20,7 +20,6 @@ import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
 export interface ResolverOptions {
-  representativeTicker?: string;
   routingDescription?: string;
   routingLabel?: string;
   sourceName?: string;
@@ -75,7 +74,6 @@ interface IdentifierResolutionPlanSpec extends PlanSpec {
 export class Resolver {
   readonly code: string;
   readonly name: string;
-  readonly representativeTicker: string;
   readonly routingDescription: string;
   readonly routingLabel: string;
   readonly sourceName: string;
@@ -85,8 +83,11 @@ export class Resolver {
     this.name = this.code;
     this.routingLabel = options.routingLabel || "";
     this.routingDescription = options.routingDescription || "";
-    this.representativeTicker = options.representativeTicker || "";
     this.sourceName = sourceName != null ? sourceName : this.code;
+  }
+
+  getExampleInput(): string | null {
+    return null;
   }
 
   canHandle(_request: RequestInput | ResolvedRequest): boolean {
@@ -563,7 +564,11 @@ export class IdentifierResolutionPlan extends ResolverPlan {
 
 export class AttributeResolutionPlan extends ResolverPlan {}
 
-export class PseQuoteResolutionPlan extends AttributeResolutionPlan {}
+export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
+  getExampleInput(): string | null {
+    return "PSE:BDO";
+  }
+}
 
 export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {}
 

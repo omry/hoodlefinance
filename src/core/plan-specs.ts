@@ -16,7 +16,6 @@ export type ResolverClassName =
   | "YahooQuoteResolver";
 
 export interface ResolverSpecOptions {
-  representativeTicker?: string;
   routingDescription?: string;
   routingLabel?: string;
   sourceName?: string;

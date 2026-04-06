@@ -50,7 +50,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     resolverClass: "PseQuoteResolutionPlan",
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
     options: {
-      representativeTicker: "PSE:BDO",
       routingLabel: "PSE",
       routeStateBuilderRef: "PSE_QUOTE",
       sourceName: "PSE",

@@ -497,13 +497,15 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
   constructor(deps: GoogleFxResolverDependencies) {
     super("GOOGLE-FX", "GOOGLE-FX", {
-
-      representativeTicker: "EURUSD",
       routingDescription: "Google Finance FX quote lookup",
     });
     this.fetchText = deps.fetchText;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
+  }
+
+  getExampleInput(): string | null {
+    return "EURUSD";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -620,13 +622,15 @@ export class PseFramesResolver extends RouteExecutionResolver {
 
   constructor(deps: PseQuoteResolverDependencies) {
     super("PSE-FRAMES", {
-
-      representativeTicker: "PSE:BDO",
       routingDescription: "PSE frames quote lookup",
     });
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
+  }
+
+  getExampleInput(): string | null {
+    return "PSE:BDO";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -764,13 +768,15 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
   constructor(deps: PseQuoteResolverDependencies) {
     super("PSE-EDGE", {
-
-      representativeTicker: "PSE:BDO",
       routingDescription: "PSE edge quote lookup",
     });
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
+  }
+
+  getExampleInput(): string | null {
+    return "PSE:BDO";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1005,13 +1011,15 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 
   constructor(deps: YahooQuoteResolverDependencies) {
     super("YAHOO", "YAHOO", {
-
-      representativeTicker: "GOOG",
       routingDescription: "Yahoo quote lookup",
     });
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
+  }
+
+  getExampleInput(): string | null {
+    return "GOOG";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1165,12 +1173,15 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
   constructor(deps: TradingviewFundResolverDependencies) {
     super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW", {
-      representativeTicker: "TLV:KSMF59",
       routingDescription: "TradingView fund quote lookup",
     });
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
+  }
+
+  getExampleInput(): string | null {
+    return "TLV:KSMF59";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
