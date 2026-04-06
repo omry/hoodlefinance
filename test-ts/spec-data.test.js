@@ -14,10 +14,6 @@ test("extracted routing spec data matches the current production tables", () => 
     "DirectIdentifierResolver",
   );
   assert.equal(
-    RESOLVER_SPECS_BY_CODE["TRADINGVIEW"].options.routingDescription,
-    "TradingView symbol page ISIN lookup",
-  );
-  assert.equal(
     PLAN_SPECS_BY_CODE["QUOTE:PSE"].options.representativeTicker,
     "PSE:BDO",
   );
@@ -25,13 +21,6 @@ test("extracted routing spec data matches the current production tables", () => 
     PLAN_SPECS_BY_CODE["QUOTE:PSE"].resolverClass,
     "PseQuoteResolutionPlan",
   );
-  assert.deepEqual(PLAN_SPECS_BY_CODE["ISIN-SOURCE"].nodeCodes, [
-    "ARIVA",
-    "IBKR",
-    "LON",
-    "PSE",
-    "TRADINGVIEW",
-  ]);
   assert.equal(PLAN_SPECS_BY_CODE["ROOT"].resolverClass, "ResolverPlan");
 
   assert.deepEqual(PLAN_ROUTE_STATE_BUILDER_REFS, {

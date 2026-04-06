@@ -4,7 +4,6 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   GoogleFxResolver,
-  FunctionValueResolver,
   LocalFxResolver,
   PseEdgeResolver,
   PseFramesResolver,
@@ -33,19 +32,10 @@ function createIntegratedResolverRegistry() {
     putCachedJson: (k, v) => v,
   };
 
-  const resolveFunctionsByRef = {
-    "ARIVA": () => "ISIN:ARIVA",
-    "IBKR": () => "ISIN:IBKR",
-    "LON": () => "ISIN:LON",
-    "PSE": () => "ISIN:PSE",
-    "TRADINGVIEW": () => "ISIN:TRADINGVIEW",
-  };
-
   const resolvePseTickerFromIsinMap = (isin) => (isin === "PHY077751022" ? "PSE:BDO" : "");
 
   const resolverClassDependenciesByName = {
     DirectIdentifierResolver: {},
-    FunctionValueResolver: { resolveFunctionsByRef },
     LocalFxResolver: {},
     PseIsinMapResolver: resolvePseTickerFromIsinMap,
     YahooIsinSearchResolver: commonDeps,
@@ -60,7 +50,6 @@ function createIntegratedResolverRegistry() {
     resolverClassesByName: {
       DirectIdentifierResolver,
       GoogleFxResolver,
-      FunctionValueResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,
       PSEFramesResolver: PseFramesResolver,

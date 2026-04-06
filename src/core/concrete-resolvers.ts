@@ -1,8 +1,7 @@
-import type { ResolverSpec, ResolverSpecOptions } from "./plan-specs";
+import type { ResolverSpec } from "./plan-specs";
 import { EquityRequest, FxRequest, RequestInput, type ResolvedRequest } from "./request";
 import { buildIsinIdentifierRouteState, buildPseQuoteRouteState } from "./route-state";
 import {
-  AttributeResolver,
   IdentifierResolver,
   RouteExecutionResolver,
 } from "./resolver-classes";
@@ -112,14 +111,6 @@ export class DirectIdentifierResolver extends IdentifierResolver {
   ): DirectIdentifierResolver {
     return new this();
   }
-}
-
-export type ResolveValueFunction = (
-  job: RouteJob<Record<string, unknown>>,
-) => unknown;
-
-export interface FunctionValueResolverDependencies {
-  resolveFunctionsByRef?: Record<string, ResolveValueFunction | undefined>;
 }
 
 export type ResolvePseTickerFromIsinMap = (isin: string) => string;
@@ -457,111 +448,6 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     }
 
     return new this(deps);
-  }
-}
-
-export class FunctionValueResolver extends AttributeResolver {
-  readonly resolveValue: ResolveValueFunction;
-  readonly traceLabel: string;
-
-  constructor(
-    code: string,
-    traceLabel:
-      | string
-      | ResolveValueFunction
-      | (ResolverSpecOptions & { sourceName?: string }),
-    sourceName?:
-      | string
-      | ResolveValueFunction
-      | (ResolverSpecOptions & { sourceName?: string }),
-    resolveValue?: ResolveValueFunction | ResolverSpecOptions,
-    options?: ResolverSpecOptions,
-  ) {
-    let resolvedTraceLabel = traceLabel;
-    let resolvedSourceName = sourceName;
-    let resolvedResolveValue = resolveValue;
-    let config = options;
-
-    if (typeof traceLabel === "function") {
-      resolvedResolveValue = traceLabel;
-      config = (sourceName || {}) as ResolverSpecOptions;
-      resolvedTraceLabel = code;
-      resolvedSourceName = code;
-    }
-
-    const normalizedTraceLabel = resolvedTraceLabel as string;
-    const normalizedSourceName = resolvedSourceName as string;
-
-    super(code, normalizedSourceName, config);
-    this.traceLabel = normalizedTraceLabel;
-    this.resolveValue = resolvedResolveValue as ResolveValueFunction;
-  }
-
-  buildRouteState(_request: RequestInput | ResolvedRequest): Record<string, unknown> {
-    return {};
-  }
-
-  batchKey(_job: RouteJob, _attempt: unknown): string {
-    return "";
-  }
-
-  getRouteClass(_request: RequestInput | ResolvedRequest): string {
-    return this.name;
-  }
-
-  getRoutePath(_request: RequestInput | ResolvedRequest): string {
-    return this.traceLabel;
-  }
-
-  buildRuntimePlan(request: RequestInput | ResolvedRequest) {
-    return {
-      nodes: [this],
-      routeClass: this.getRouteClass(request),
-      routePath: this.getRoutePath(request),
-      routeState: this.buildRouteState(request),
-    };
-  }
-
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results = [];
-
-    for (const job of jobs) {
-      try {
-        results.push(
-          createRouteResult("success", {
-            value: this.resolveValue(job),
-          }),
-        );
-      } catch (error) {
-        results.push(createRouteResult("terminal_error", { error }));
-      }
-    }
-
-    return results as unknown as Array<Record<string, unknown> | null>;
-  }
-
-  static fromSpec(
-    code: string,
-    spec: ResolverSpec,
-    deps: FunctionValueResolverDependencies,
-  ): FunctionValueResolver {
-    const ref = String(spec.resolveFunctionRef || "").trim().toUpperCase();
-    const resolveValue: ResolveValueFunction =
-      (deps.resolveFunctionsByRef || {})[ref] ||
-      (() => { throw new Error(`Resolver function ref "${String(spec.resolveFunctionRef || "")}" is not available for "${code}".`); });
-    const traceLabel = (spec as ResolverSpec & { traceLabel?: string }).traceLabel;
-    const sourceName = (spec as ResolverSpec & { sourceName?: string }).sourceName;
-    const options = spec.options || {};
-
-    return traceLabel || sourceName
-      ? new this(
-          code,
-          traceLabel || code,
-          sourceName || traceLabel || code,
-          resolveValue,
-          options,
-        )
-      : new this(code, resolveValue, options);
   }
 }
 
@@ -1412,7 +1298,6 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
 export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   DirectIdentifierResolver,
-  FunctionValueResolver,
   LocalFxResolver,
   GoogleFxResolver,
   PSEFramesResolver: PseFramesResolver,
@@ -1423,8 +1308,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   TradingviewFundResolver,
 } as const;
 
-export interface ConcreteResolverMaterializationDependencies
-  extends FunctionValueResolverDependencies {
+export interface ConcreteResolverMaterializationDependencies {
   googleFx?: GoogleFxResolverDependencies;
   pseQuotes?: PseQuoteResolverDependencies;
   resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
@@ -1441,9 +1325,6 @@ export function createConcreteResolverMaterializationDependencies(
 } {
   return {
     resolverClassDependenciesByName: {
-      FunctionValueResolver: {
-        resolveFunctionsByRef: deps.resolveFunctionsByRef,
-      },
       GoogleFxResolver: deps.googleFx,
       PSEFramesResolver: deps.pseQuotes,
       PSEEdgeResolver: deps.pseQuotes,

@@ -4,7 +4,6 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   GoogleFxResolver,
-  FunctionValueResolver,
   LocalFxResolver,
   PseEdgeResolver,
   PseFramesResolver,
@@ -124,58 +123,6 @@ test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requ
   );
   assert.equal(failure.status, "failure");
   assert.match(failure.error, /requires a discovery resolver/);
-});
-
-test("FunctionValueResolver executes resolved job callbacks and materializes from refs", () => {
-  const resolver = FunctionValueResolver.fromSpec(
-    "ATTRIBUTE-IDENTITY",
-    {
-      options: {
-        routingDescription: "Direct lookup",
-      },
-      resolveFunctionRef: "ATTRIBUTE-IDENTITY",
-      resolverClass: "FunctionValueResolver",
-    },
-    {
-      resolveFunctionsByRef: {
-        "ATTRIBUTE-IDENTITY"(job) {
-          return String(job.routeState.isin || "").toUpperCase();
-        },
-      },
-    },
-  );
-
-  assert.equal(resolver.routingDescription, "Direct lookup");
-
-  const results = resolver.executeBatch([
-    {
-      routeState: { isin: "us02079k1079" },
-    },
-  ]);
-
-  assert.deepEqual(results, [
-    {
-      status: "success",
-      value: "US02079K1079",
-    },
-  ]);
-
-  const stubResolver = FunctionValueResolver.fromSpec(
-    "ATTRIBUTE-IDENTITY",
-    {
-      resolveFunctionRef: "MISSING",
-      resolverClass: "FunctionValueResolver",
-    },
-    {
-      resolveFunctionsByRef: {},
-    },
-  );
-  const stubResults = stubResolver.executeBatch([{ routeState: {} }]);
-  assert.equal(stubResults[0].status, "terminal_error");
-  assert.match(
-    String(stubResults[0].error instanceof Error ? stubResults[0].error.message : stubResults[0].error),
-    /Resolver function ref "MISSING" is not available for "ATTRIBUTE-IDENTITY"\./,
-  );
 });
 
 test("LocalFxResolver returns a same-currency synthetic quote", () => {

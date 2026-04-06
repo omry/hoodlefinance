@@ -26,46 +26,6 @@ export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
   "TRADINGVIEW-FUND": {
     resolverClass: "TradingviewFundResolver",
   },
-  ARIVA: {
-    resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "ARIVA",
-    options: {
-      isSourceOverrideable: true,
-      routingDescription: "ARIVA ISIN lookup",
-    },
-  },
-  IBKR: {
-    resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "IBKR",
-    options: {
-      isSourceOverrideable: true,
-      routingDescription: "IBKR contract search ISIN lookup",
-    },
-  },
-  LON: {
-    resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "LON",
-    options: {
-      isSourceOverrideable: true,
-      routingDescription: "LSE search ISIN lookup",
-    },
-  },
-  PSE: {
-    resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "PSE",
-    options: {
-      isSourceOverrideable: true,
-      routingDescription: "PSE quote ISIN lookup",
-    },
-  },
-  TRADINGVIEW: {
-    resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "TRADINGVIEW",
-    options: {
-      isSourceOverrideable: true,
-      routingDescription: "TradingView symbol page ISIN lookup",
-    },
-  },
   "PSE-FRAMES": {
     resolverClass: "PSEFramesResolver",
   },
@@ -138,21 +98,9 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
       routingLabel: "IDENTIFIER",
     },
   },
-  "ISIN-ATTRIBUTE-ROOT": {
-    resolverClass: "ResolverPlan",
-    nodeCodes: ["ISIN-SOURCE"],
-    options: {
-      isRoutingNode: true,
-      routingLabel: "ISIN ATTRIBUTE",
-    },
-  },
-  "ISIN-SOURCE": {
-    resolverClass: "AttributeResolutionPlan",
-    nodeCodes: ["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"],
-  },
   "ROOT": {
     resolverClass: "ResolverPlan",
-    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT", "ISIN-ATTRIBUTE-ROOT"],
+    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
     options: {
       isRoutingNode: true,
       routingLabel: "ROOT",

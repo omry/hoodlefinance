@@ -1,7 +1,6 @@
 export type ResolverClassName =
   | "AttributeResolutionPlan"
   | "DirectIdentifierResolver"
-  | "FunctionValueResolver"
   | "FxAttributeResolutionPlan"
   | "GoogleFxResolver"
   | "IdentifierResolutionPlan"
@@ -26,7 +25,6 @@ export interface ResolverSpecOptions {
 
 export interface ResolverSpec {
   options?: ResolverSpecOptions;
-  resolveFunctionRef?: string;
   resolverClass: ResolverClassName;
 }
 

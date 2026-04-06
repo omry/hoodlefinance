@@ -4,7 +4,6 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   GoogleFxResolver,
-  FunctionValueResolver,
   LocalFxResolver,
   PseEdgeResolver,
   PseFramesResolver,
