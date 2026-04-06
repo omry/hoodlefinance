@@ -138,28 +138,28 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "IDENTIFIER-ROOT": {
-    nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
     resolverClass: "ResolverPlan",
+    nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
     options: {
       isRoutingNode: true,
       routingLabel: "IDENTIFIER",
     },
   },
   "ISIN-ATTRIBUTE-ROOT": {
-    nodeCodes: ["ISIN-SOURCE"],
     resolverClass: "ResolverPlan",
+    nodeCodes: ["ISIN-SOURCE"],
     options: {
       isRoutingNode: true,
       routingLabel: "ISIN ATTRIBUTE",
     },
   },
   "ISIN-SOURCE": {
-    nodeCodes: ["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"],
     resolverClass: "AttributeResolutionPlan",
+    nodeCodes: ["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"],
   },
   ROOT: {
-    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT", "ISIN-ATTRIBUTE-ROOT"],
     resolverClass: "ResolverPlan",
+    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT", "ISIN-ATTRIBUTE-ROOT"],
     options: {
       isRoutingNode: true,
       routingLabel: "ROOT",
