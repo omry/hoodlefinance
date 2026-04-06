@@ -134,6 +134,13 @@ function lookupWithEnvironment(env, args) {
   );
 }
 
+function lookupWithGraphEnvironment(env, args) {
+  return env.lookupViaGraph(
+    args.ticker,
+    String(args.attribute || "price").trim(),
+  );
+}
+
 function formatLookupResult(result) {
   if (result.status !== "success") {
     return null;
@@ -339,6 +346,8 @@ function runSmokeSuite(env = createCliEnvironment()) {
 function printUsage() {
   console.error("Usage: npm run hoodlefinance.ts -- <ticker> [attribute]");
   console.error("       npm run hoodlefinance.ts -- --envelope <ticker> [attribute]");
+  console.error("       npm run hoodlefinance.ts -- --graph <ticker> [attribute]");
+  console.error("       npm run hoodlefinance.ts -- --compare <ticker> [attribute]");
   console.error("       npm run hoodlefinance.ts -- --routing");
   console.error("       npm run hoodlefinance.ts -- --routing-table");
   console.error("       npm run hoodlefinance.ts -- --trace <symbol>");
@@ -406,6 +415,53 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
+  if (firstArg === "--graph" || firstArg === "graph") {
+    if (!secondArg) {
+      printUsage();
+      process.exit(1);
+    }
+
+    const result = lookupWithGraphEnvironment(env, {
+      attribute: thirdArg || "price",
+      ticker: secondArg,
+    });
+    console.log(formatEnvelopeResult(result));
+
+    if (result.status !== "success") {
+      process.exit(1);
+    }
+
+    return;
+  }
+
+  if (firstArg === "--compare" || firstArg === "compare") {
+    if (!secondArg) {
+      printUsage();
+      process.exit(1);
+    }
+
+    const requestArgs = { attribute: thirdArg || "price", ticker: secondArg };
+    const oldResult = lookupWithEnvironment(env, requestArgs);
+    const newResult = lookupWithGraphEnvironment(env, requestArgs);
+
+    console.log(`ticker: ${secondArg}  attribute: ${requestArgs.attribute}`);
+    console.log(`old: status=${oldResult.status}  route=${oldResult.route}  value=${oldResult.value}`);
+    console.log(`new: status=${newResult.status}  route=${newResult.route}  value=${newResult.value}`);
+
+    const statusMatch = oldResult.status === newResult.status;
+    const valueMatch = String(oldResult.value) === String(newResult.value);
+
+    if (statusMatch && valueMatch) {
+      console.log("parity: ok");
+    } else {
+      if (!statusMatch) console.error(`parity: status mismatch (${oldResult.status} vs ${newResult.status})`);
+      if (!valueMatch) console.error(`parity: value mismatch (${oldResult.value} vs ${newResult.value})`);
+      process.exit(1);
+    }
+
+    return;
+  }
+
   if (firstArg === "--smoke" || firstArg === "smoke") {
     const smoke = runSmokeSuite(env);
 
@@ -469,6 +525,7 @@ module.exports = {
   formatRoutingTree,
   lookupEnvelopeWithEnvironment,
   lookupWithEnvironment,
+  lookupWithGraphEnvironment,
   main,
   runSmokeSuite,
 };

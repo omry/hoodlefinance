@@ -66,6 +66,7 @@ interface HoodlefinanceRuntimeDependencies {
 interface HoodlefinanceRuntime {
   lookup(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult;
+  lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult;
 }
 
 function createInlineFetchResponse(
