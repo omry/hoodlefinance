@@ -12,297 +12,259 @@ Converting the routing pipeline into an explicit DAG makes the entire path from
 input to output a first-class data structure that can be inspected, tested, and
 executed by a generic engine — without modifying any routing logic.
 
+## Core Principle: the Plan is the Map
+
+The existing resolver system already encodes all routing decisions as a
+**plan** — a data structure that describes, for a given request, which resolvers
+to try and in what order. `buildResolvePlan(requestInput)` is the map. It knows:
+
+- Which classification applies (equity, FX, ISIN)
+- Which identifier resolver to use (direct parsing vs ISIN search)
+- Which quote resolvers to try, in order (`DEFAULT-ATTRIBUTE:FX` →
+  `[FX-IDENTITY, GOOGLE-FX]`; equity → `[YAHOO, TRADINGVIEW-FUND]`; PSE →
+  `[PSE-FRAMES, PSE-EDGE]`)
+- What fallback order the spec declares
+
+The graph builder is a **compiler** — it reads this plan and turns it into a
+graph. It does not restate routing decisions. If the resolver spec changes
+(new source added, fallback order swapped), the graph changes automatically.
+
+This is the key architectural constraint: **routing logic lives in the plan
+spec, not in the graph builder**.
+
 ## The Routing Pipeline as a DAG
 
-The DAG is built to match the request. Classification (`"equity"`, `"isin"`, or
-`"fx"`) happens before graph construction, so the graph is pre-shaped for the
-request — no switch nodes are needed at runtime.
+Each request compiles into a specific graph for that input. The nodes are pure
+data structures with no routing logic of their own — the plan carries the
+decisions, the engine carries the execution.
 
-Each request follows a path through a graph of routing nodes. The shape of the
-path depends on the request classification and the resolved exchange.
+**Case 0 — ISIN attribute** (e.g. `AAPL isin`):
 
 ```
-┌──────────────────┐
-│  InputNode       │  root — holds RequestInput, no deps
-└──────┬───────────┘
-       │                         │
-  [equity / isin]               [fx]
-       │                         │
-       ▼                         ▼
-SymbolFastForwardNode    LocalFxNode /
-YahooIsinSearchNode      GoogleFxNode
-PseIsinMapNode
-       │                         │
-       ▼                         │
-FirstSuccessNode (quote)         │
-  PSEFrames + PSEEdge            │
-  — or —                         │
-  Yahoo + TradingviewFund        │
-       │                         │
-       └──────────┬──────────────┘
-                  │  (paths converge)
-                  ▼
-        AttributeExtractionNode
-                  │
-         ┌────────┴──────────────────┐
-         │                           │
-         ▼                    (if price@CURRENCY)
-    OutputValue                      │
-                                     ▼
-                             FxRateBatchNode
-                                     │
-                                     ▼
-                           CurrencyConversionNode
-                                     │
-                                     ▼
-                                OutputValue
+InputNode → IsinResolutionNode
 ```
 
-The `"isin"` classification is for requests where the input ticker **is** an
-ISIN (e.g. `US0378331005`) — the identifier must be resolved to a symbol and
-exchange before a quote can be fetched. This is distinct from the `isin`
-*attribute* request (where the user asks for the ISIN value of a known ticker),
-which selects its source node statically from the resolved exchange at build time.
+No quote fetch. Exchange source is derived from the input itself (ticker prefix/suffix or ISIN country code).
+
+**Case 1 — price without currency conversion** (e.g. `AAPL price`):
+
+```
+InputNode → PlanIdentifierNode → PlanQuoteNode → AttributeExtractionNode
+```
+
+**Case 2 — price with output currency conversion** (e.g. `AAPL price@USD`):
+
+```
+                                                  ┌─→ AttributeExtractionNode ─┐
+InputNode → PlanIdentifierNode → PlanQuoteNode ───┤                            ├→ CurrencyConversionNode
+                                                  └─→ FxRateBatchNode ─────────┘
+```
+
+`AttributeExtractionNode` is pure in-memory computation (no I/O), so the
+parallelism here is real in the DAG sense but not meaningfully concurrent in
+practice. The more significant parallelism is across multiple identifiers.
+
+**Case 3 — multiple identifiers** (Phase 2; see [Phase 2](#phase-2-array-identifier-input-and-batch-dispatch)):
+
+```
+InputNode(AAPL) → PlanIdentifierNode → PlanQuoteNode(AAPL) ─┬─→ AttributeExtractionNode(AAPL) ─┐
+                                                            │                                  ├─→ CurrencyConversionNode(AAPL)
+                                                            ├──────────────→ FxRateBatchNode ──┤
+                                                            │                                  ├─→ CurrencyConversionNode(MSFT)
+InputNode(MSFT) → PlanIdentifierNode → PlanQuoteNode(MSFT) ─┴─→ AttributeExtractionNode(MSFT) ─┘
+```
+
+(`├` and `┤` represent fan-in/fan-out; in reality each `CurrencyConversionNode` joins only its own `AttributeExtractionNode` with the shared `FxRateBatchNode`.)
+
+All `PlanQuoteNode`s that share the same underlying resolver (e.g. both AAPL and
+MSFT going to Yahoo) are dispatched in a single `executeBatch` call. The shared
+`FxRateBatchNode` then deduplicates FX pairs across the whole batch — if both
+quotes come back in USD and the output currency is USD, only one FX lookup
+occurs. This is where the DAG structure pays off: parallelism is structural, not
+manually coordinated.
+
 
 ## Node Contracts
 
 Each node in the DAG has:
 
-- **Typed inputs** — the settled outputs of its dependency nodes, received in
-  `deps` order
-- **Typed output** — passed to dependent nodes
+- **Typed output** — `TOutput` is enforced at the interface level and passed to
+  dependent nodes via the engine
+- **Untyped inputs** — inputs arrive as `Record<string, NodeInput>` where
+  `value` is `unknown`; each node retrieves its parent outputs using `getInput`
+  and `getInputs`, which infer the expected type from the parent node's `TOutput`
+  and throw on a missing parent
 - **An `execute` function** — pure or side-effecting, depending on the node
 
 ```ts
-interface RoutingNode<TInput, TOutput> {
-  id: string;          // stable, deterministic key for dedup
-  deps: RoutingNode[]; // nodes that must settle before this one
-  execute(...depOutputs: unknown[]): TOutput;
+interface RoutingNode<TOutput> {
+  name: string;
+  next: RoutingNode[];
+  execute(inputs: Record<string, NodeInput>): TOutput;
 }
-```
 
-Every node receives the settled outputs of its `deps` in order. Root nodes
-(`deps: []`) receive nothing and return their pre-held value. The engine calls
-all nodes uniformly — it has no concept of "root" vs "interior."
+// Helpers used inside execute() — type inferred from parent node's TOutput:
+getInput(inputs, parentNode)          // single typed parent
+getInputs(inputs, parentNodes)        // array of homogeneous parents (e.g. FxRateBatchNode)
+```
 
 ## Node Hierarchy
 
-`RoutingNode` has a concrete subclass for each distinct resolver role. Nodes
-that wrap a leaf resolver own that relationship directly — typed inputs in,
-typed call to the resolver, typed output out.
+> **Implementation status:**
+> - Implemented: `InputNode`, `AttributeExtractionNode`, `CurrencyConversionNode`
+> - Implemented (temporary): `FxRateBatchNode` — carries a design issue inherited
+>   from the static graph; will be revisited when currency conversion is fixed there
+> - Not yet implemented: `PlanIdentifierNode`, `PlanQuoteNode`
+> - Not yet implemented: `buildRoutingGraph` — see [Routing Graph Construction](#routing-graph-construction)
+
+> **Known issue — `AttributeExtractionNode` is not fully pure, and `ResolvePlan`
+> is incomplete.** When `input.attributeType === "isin"`, the node performs a
+> network call (TradingView / LON) that belongs in a dedicated `IsinResolutionNode`.
+> The root cause is that `ResolvePlan` has no step for ISIN attribute resolution,
+> so the builder cannot wire it as a graph node — it leaks into `AttributeExtractionNode`
+> instead.
+>
+> `IsinResolutionNode` should be a direct child of `InputNode` (no quote needed):
+> exchange determination is trivial from the input alone — ISIN country code prefix,
+> ticker prefix/suffix (`PSE:`, `.L`), or explicit exchange. Quote metadata is only
+> a last-resort fallback for bare tickers.
+>
+> The fix is to add `isinAttrPlan` to `ResolvePlan`. The builder then wires
+> `IsinResolutionNode` mechanically without any `attributeType` check. Until then,
+> `AttributeExtractionNode` accepts `isinDeps` as a temporary bridge.
+
+The graph uses two generic plan-driven nodes plus pure-computation nodes for
+attribute extraction and currency conversion. There are no resolver-specific
+subclasses — the plan carries the routing decisions.
 
 ```
-RoutingNode (abstract)
-  ├── InputNode                    no resolver — holds one identifier from RequestInput
-  ├── SymbolFastForwardNode        wraps DirectIdentifierResolver
-  ├── YahooIsinSearchNode          wraps YahooIsinSearchResolver
-  ├── PseIsinMapNode               wraps PseIsinMapResolver
-  ├── LocalFxNode                  wraps LocalFxResolver
-  ├── GoogleFxNode                 wraps GoogleFxResolver
-  ├── YahooQuoteNode               wraps YahooQuoteResolver
-  ├── PSEEdgeQuoteNode             wraps PSEEdgeResolver
-  ├── PSEFramesQuoteNode           wraps PSEFramesResolver
-  ├── TradingviewFundQuoteNode     wraps TradingviewFundResolver
-  ├── FxRateBatchNode              wraps GoogleFxResolver (batch, see below)
-  ├── AttributeExtractionNode      no resolver — pure computation
-  ├── CurrencyConversionNode       no resolver — pure computation
-  └── FirstSuccessNode             combinator — see below
+RoutingNode
+  ├── InputNode                no resolver — holds RequestInput
+  ├── PlanIdentifierNode       wraps identifierPlan or pre-resolved request        [not yet implemented]
+  ├── PlanQuoteNode            wraps attributePlan or buildAttributePlan factory    [not yet implemented]
+  ├── IsinResolutionNode       ISIN lookup — child of InputNode, not quote          [not yet implemented]
+  ├── FxRateBatchNode          fetches FX rates after all quotes settle (see below) [temporary]
+  ├── AttributeExtractionNode  no resolver — pure computation
+  └── CurrencyConversionNode   no resolver — pure computation
 ```
 
-The graph builder selects which quote node subclass(es) to use based on the
-resolved exchange and request type. `FirstSuccessNode` wraps an ordered list of
-candidates and tries them in sequence; multiple instances may appear in one
-graph.
+`PlanIdentifierNode` and `PlanQuoteNode` delegate all resolver selection to the
+plan. The "try each" fallback chain for quotes is executed inside
+`executeRouteNode(attributePlan, resolved)` — the existing route execution
+machinery already handles sequential fallback via `executeRouteJobs`.
 
-## Graph Construction
+## Routing Graph Construction
 
-Building the DAG for a request is pure and synchronous. The builder reads the
-request and wires the appropriate node subclasses:
+> **Status:** not yet implemented — `PlanIdentifierNode` and `PlanQuoteNode` must
+> exist before this can be built. See [routing-graph-builder.ts](../../src/core/routing-graph-builder.ts).
+
+`buildRoutingGraph(input: RequestInput): RoutingGraph` is pure and synchronous.
+It calls `buildResolvePlan(input)` once and translates each plan step into a graph node.
+The builder contains **no routing logic** — it only checks which steps the plan has
+populated for this request, and wires a node for each one. Every decision about
+which steps are needed, in what order, and with what resolvers is encoded in `ResolvePlan`.
 
 ```
-buildRoutingGraph(input: RequestInput): RoutingGraph
+plan step present?          → graph node
+─────────────────────────────────────────────────────
+(always)                    → InputNode
+resolvePlan.identifierPlan  → PlanIdentifierNode
+resolvePlan.attributePlan   → PlanQuoteNode + AttributeExtractionNode
+resolvePlan.isinAttrPlan    → IsinResolutionNode  (replaces quote + extraction)
+resolvePlan.fxPlan          → FxRateBatchNode + CurrencyConversionNode
 ```
 
-For each identifier in `input.identifiers`:
-
-1. Create `InputNode(identifier, input)` — the graph root for this identifier.
-2. Branch on classification (determined before graph construction):
-   - `"equity"` → `SymbolFastForwardNode(inputNode)`
-   - `"isin"` → select ISIN resolver by country code (first two chars of ISIN):
-     - `"PH"` → `PseIsinMapNode(inputNode)`
-     - default → `YahooIsinSearchNode(inputNode)`
-   - `"fx"` → `LocalFxNode` or `GoogleFxNode(inputNode)`
-3. For `"equity"` and `"isin"` paths, select and wire the appropriate quote
-   `FirstSuccessNode`. The exchange is knowable at build time from the ticker
-   string (equity) or ISIN country code (isin):
-   - PSE exchange → `FirstSuccessNode([PSEFramesQuoteNode, PSEEdgeQuoteNode])`
-   - other equity → `FirstSuccessNode([YahooQuoteNode, TradingviewFundQuoteNode])`
-4. Wire `AttributeExtractionNode(quoteOrFxNode, inputNode)`.
-   - For `isin` attribute requests, the builder selects the ISIN source node
-     statically from the resolved exchange: `LON` → `LonNode`, `PSE` →
-     `PseIsinAttributeNode`, default → `TradingviewIsinNode`. ARIVA and IBKR
-     are only reachable via `@SOURCE` override.
-5. If attribute includes output currency:
-   - Wire `FxRateBatchNode` (shared across all inputs — see below).
-   - Wire `CurrencyConversionNode(attributeExtractionNode, fxRateBatchNode)`.
-
-The builder is the only place where routing decisions are made. The plan
-resolver classes (`ResolverPlan`, `IdentifierResolutionPlan`,
-`FxAttributeResolutionPlan`) dissolve here — their `getNodesForRequest` logic
-becomes graph wiring decisions, not class logic.
+> **Technical debt in `ResolvePlan`:** the plan currently has no step for ISIN
+> attribute resolution (`attributeType === "isin"`). That lookup is instead
+> special-cased inside `AttributeExtractionNode` via injected `isinDeps`. The fix
+> is to add `isinAttrPlan` to `ResolvePlan` so the builder can wire
+> `IsinResolutionNode` without any `if attributeType` check. Until then,
+> `AttributeExtractionNode` carries `isinDeps` as a temporary bridge.
 
 ## Engine
 
 The engine is a simple topological executor with no routing knowledge:
 
 ```
-executeGraph(graph: RoutingGraph, env: ExecutionEnv): SettledGraph
+executeGraph(graph: RoutingGraph): EngineResult
 ```
 
-1. Find nodes whose deps are all settled.
-2. Group by executor id (enables batching across identifiers).
-3. Dispatch each group, mark nodes settled or failed.
-4. Repeat until no progress.
+1. Find nodes whose parents are all settled.
+2. Call `node.execute(inputs)` — inputs are the settled outputs of all parents.
+3. Mark node settled (with value) or failed (with error message).
+4. Propagate failure: if any parent failed, skip the node without calling execute.
+5. Repeat until queue is empty.
 
-A failed dependency marks its dependents as `skipped` (not `failed`), so the
-result collector can distinguish "lookup failed" from "could not run."
+The engine has no concept of "try each," fallback, or resolver selection. Those
+are plan concerns.
 
-## FX Rate Batching
 
-When converting prices for an array of identifiers to a specific output
-currency (e.g. `price@USD`), the source currency of each symbol is only known
-after its quote node settles. A single `FxRateBatchNode` is shared across the
-entire graph:
+## Phase 2: Array Identifier Input and Batch Dispatch
 
-- It takes all quote nodes in the batch as deps.
-- After they settle, it extracts the unique source→output pairs.
-- It fetches only those unique pairs in one call.
-- It returns a `Record<sourceCurrency, rate>` table.
-
-Each `CurrencyConversionNode` depends on its own quote node plus the shared
-`FxRateBatchNode`, and looks up its rate by source currency. The graph remains
-fully static — no dynamic expansion needed.
-
-## Array Identifier Input
+> **Status:** not yet implemented. The design supports this structurally via
+> `executorId` grouping, but the engine does not yet implement batch dispatch
+> and `RequestInput` does not yet carry multiple identifiers. This section
+> describes the intended future behavior.
 
 `RequestInput` carries an array of identifiers, all requesting the same
 attribute (e.g. a column of tickers all wanting `price`). Each identifier gets
 its own subgraph from `InputNode` through to `OutputValue`, all built from the
-single `RequestInput`. Batching across identifiers happens at two points:
+single `RequestInput`. Batching happens at two points:
 
-1. **Quote nodes** with the same executor id (e.g. all Yahoo equities) are
-   grouped by the engine and dispatched in one `executeBatch` call.
-2. **`FxRateBatchNode`** deduplicates FX pairs across the whole batch as
+1. **Quote nodes** — `PlanQuoteNode` instances using the same underlying
+   resolver (e.g. all YAHOO equity quotes) share the same `executorId`. The
+   engine groups them and dispatches a single `executeBatch` call.
+2. **`FxRateBatchNode`** — deduplicates FX pairs across the whole batch as
    described above.
 
 ## Relationship to Existing Resolver Classes
 
-The migration proceeds in two stages.
+The plan-driven approach preserves all existing resolver implementations
+unchanged. `PlanIdentifierNode` and `PlanQuoteNode` delegate to the plan, which
+in turn delegates to the same `IdentifierResolver` and `RouteExecutionResolver`
+subclasses that exist today. No resolver logic moves or changes.
 
-**Stage 1 — wrap.** Each `RoutingNode` subclass wraps its corresponding leaf
-resolver. It constructs the `RouteJob[]` the resolver needs, calls
-`executeBatch`, and extracts the typed result. The leaf resolver classes are
-unchanged.
+What dissolves is the **graph builder's knowledge of resolver internals** — the
+hardcoded classification branches and the per-resolver node subclasses.
 
 ```
-RoutingNode subclass  ← new: typed inputs/outputs, graph wiring
-    │
-    ▼
-Leaf resolver         ← existing: executeBatch, unchanged
+PlanQuoteNode → executeRouteNode(attributePlan, resolved)
+                    │
+                    ▼
+               attributePlan  (ResolverPlan from buildResolvePlan — the existing map)
+                    │
+                    ▼
+               leaf resolvers  (YahooQuoteResolver, LocalFxResolver, etc. — unchanged)
 ```
-
-**Stage 2 — dissolve.** Once the DAG is settled and the wrapping layer is
-stable, the leaf resolver classes can be deconstructed. Their I/O logic moves
-directly into the `RoutingNode` subclasses, eliminating the intermediate layer.
-This is a cleanup step, not a behavior change.
 
 ## What This Replaces
 
-| Current code | Replaced by |
+| Current graph builder code | Replaced by |
 | :--- | :--- |
-| `resolveIdentifierPlanEnvelope` in `request-resolution.ts:146` | `YahooIsinSearchNode` + `PseIsinMapNode` |
-| `buildAttributePlan` callback in `ResolvePlan` | quote node wired at graph-build time |
-| `resolvePlannedQuoteEnvelope` in `request-resolution.ts:127` | quote node `execute` |
-| `projectLookupValue` in `request-resolution.ts:193` | `CurrencyConversionNode` (only added when needed) |
-| `resolveQuoteForResolvedRequest` in `quote-routing.ts:18` | `FirstSuccessNode` per exchange type |
-| `executeRouteJobs` while-loop in `route-execution.ts:33` | topological engine |
-| `ResolverPlan.getNodesForRequest` | graph builder wiring |
-| `IdentifierResolutionPlan.getNodesForRequest` | `YahooIsinSearchNode` / `PseIsinMapNode` construction |
-| `FxAttributeResolutionPlan.getNodesForRequest` | `LocalFxNode` vs `GoogleFxNode` branch in builder |
+| `if classification === "equity \|\| fx"` branch | `resolvePlan.resolvedRequest` present |
+| `if classification === "isin"` with PH country code branch | `resolvePlan.identifierPlan` present |
+| `SymbolFastForwardNode` | `PlanIdentifierNode` (equity/FX fast path) |
+| `YahooIsinSearchNode`, `PseIsinMapNode` | `PlanIdentifierNode` (ISIN path, plan-selected) |
+| `LocalFxNode`, `GoogleFxNode` | `PlanQuoteNode` (FX — plan selects FX-IDENTITY then GOOGLE-FX) |
+| `YahooQuoteNode`, `TradingviewFundQuoteNode` | `PlanQuoteNode` (equity — plan selects YAHOO then TRADINGVIEW-FUND) |
+| `PSEFramesQuoteNode`, `PSEEdgeQuoteNode` | `PlanQuoteNode` (PSE — plan selects PSE-FRAMES then PSE-EDGE) |
+| `FirstSuccessNode` combinator | `executeRouteJobs` fallback inside plan execution |
+| `RoutingGraphBuilderDependencies` (9 named resolvers) | `buildResolvePlan` (plan encodes all resolver selection) |
 
 ## Key Properties
 
-**Node overrides.** The graph builder accepts override hints that replace
-specific node subclasses. For example, a `@SOURCE` annotation on the request
-can force FX resolution to `YahooFxNode` instead of `GoogleFxNode`. The
-builder substitutes the override at wiring time; the engine and the rest of the
-graph are unaffected.
+**Single source of truth.** All routing decisions — which resolvers to try, in
+what order, for what classification — live in the resolver plan specs. The graph
+builder reads from that single source. Adding a new quote source means updating
+the spec; the graph picks it up automatically.
 
-**Conditional nodes.** `CurrencyConversionNode`, `FxRateBatchNode`,
-`YahooIsinSearchNode`, and `PseIsinMapNode` are only added to the graph when
-the request actually needs them. There is no runtime branching inside the
-engine.
+**Conditional nodes.** `CurrencyConversionNode`, `FxRateBatchNode`, and
+`PlanIdentifierNode` (ISIN path) are only added to the graph when the request
+actually needs them. There is no runtime branching inside the engine.
 
 **Inspectability.** The full routing path for any request is a subgraph that
 can be walked, printed, or compared against expected structure in tests — before
 any I/O happens.
 
-**Sync-compatible.** `execute` on each node can be synchronous. The engine
-does not require `Promise`. Apps Script compatibility is preserved.
-
-## FirstSuccessNode
-
-Some routing steps need to try candidates in order and stop at the first
-success. These are modeled with a `FirstSuccessNode` combinator.
-
-Two places in the routing tree use this pattern:
-
-| Location | Candidates (in order) |
-| :--- | :--- |
-| PSE equity quotes | `PSEFramesQuoteNode` → `PSEEdgeQuoteNode` |
-| Non-PSE equity quotes | `YahooQuoteNode` → `TradingviewFundQuoteNode` |
-
-`FirstSuccessNode` is a leaf from the engine's perspective: it has normal DAG
-deps (data inputs) and a single output. Internally it holds an ordered
-`candidates` list — resolver wrappers that are not DAG nodes themselves but
-receive the same inputs as the `FirstSuccessNode`.
-
-```
-FirstSuccessNode
-  deps:       [SymbolFastForwardNode]  ← normal DAG deps (identifier node)
-  candidates: [PSEFramesQuoteNode,     ← ordered, inspectable
-               PSEEdgeQuoteNode]
-  execute(resolvedRequest):
-    for each candidate in order:
-      result = candidate.execute(resolvedRequest)
-      trace.record(candidate, result)
-      if success: return result
-    return failure
-```
-
-**Why this is responsible:**
-
-- The engine stays dumb — no special-casing for first-success semantics.
-- Attempt order is explicit and inspectable on the node before any I/O.
-- Every attempt outcome is recorded in the trace, not just the winner.
-- Downstream nodes depend on `FirstSuccessNode`, correctly modeling "I need
-  *a* PSE quote" rather than a specific strategy.
-- Candidates cannot have deps that aren't already deps of their
-  `FirstSuccessNode` — a clean, enforceable constraint.
-
-**Rendering.** The DAG renderer expands `candidates` as if they were children,
-using visual marking (dashed edges, a `⊕` label, or a bracketed group) to
-distinguish first-success fan-out from normal deps. The graph reads as native
-while the fallback semantics remain unambiguous.
-
-## Resolved Design Decisions
-
-- **RouteState.** Each `RoutingNode` subclass constructs `RouteJob[]` from its
-  typed dep outputs and populates `routeState` at that boundary. No RouteState
-  crosses resolver boundaries — all four shapes (`IsinIdentifierRouteState`,
-  `FxQuoteRouteState`, `PseQuoteRouteState`, `EquityYahooQuoteRouteState`) are
-  derived entirely from `RequestInput` or `ResolvedRequest`, both available as
-  dep outputs. Intermediate state within a resolver (e.g. `listing` in PSE
-  resolvers) stays inside `executeBatch` and is unaffected. No migration
-  needed.
-- **Caching.** Injected into `ExecutionEnv` rather than modeled as nodes.
+**Sync-compatible.** `execute` on each node is synchronous. The engine does
+not require `Promise`. Apps Script compatibility is preserved.

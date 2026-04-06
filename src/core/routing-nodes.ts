@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 
-import type { RoutingNode, NodeInput } from "./routing-graph";
-import type { RequestInput, ResolvedRequest } from "./request";
+import { getInput, getInputs, type RoutingNode, type NodeInput } from "./routing-graph";
+import type { RequestInput } from "./request";
 import { executeRouteNode } from "./route-execution";
 import type { ResolverNode } from "./planner";
 import { extractAttributeValue, extractCurrencyValue } from "./attribute-extraction";
@@ -33,258 +33,13 @@ export class InputNode implements RoutingNode<RequestInput> {
 }
 
 /**
- * SymbolFastForwardNode: Direct identifier resolution.
- * Wraps DirectIdentifierResolver. Parent: InputNode.
- */
-export class SymbolFastForwardNode implements RoutingNode<ResolvedRequest> {
-  readonly name: string;
-  readonly next: RoutingNode[] = [];
-  readonly executorId = "direct-identifier";
-  private readonly inputNode: InputNode;
-  private readonly resolver: ResolverNode;
-
-  constructor(inputNode: InputNode, resolver: ResolverNode) {
-    this.name = `symbol-fast-forward:${inputNode.name}`;
-    this.inputNode = inputNode;
-    this.resolver = resolver;
-  }
-
-  execute(inputs: Record<string, NodeInput>): ResolvedRequest {
-    const input = inputs[this.inputNode.name]!.value as RequestInput;
-    const job = executeRouteNode(this.resolver, input, String);
-    if (job.error) throw new Error(job.error);
-    return job.value as ResolvedRequest;
-  }
-}
-
-/**
- * YahooIsinSearchNode: ISIN resolution via Yahoo.
- * Wraps YahooIsinSearchResolver. Parent: InputNode.
- */
-export class YahooIsinSearchNode implements RoutingNode<ResolvedRequest> {
-  readonly name: string;
-  readonly next: RoutingNode[] = [];
-  readonly executorId = "yahoo-isin-search";
-  private readonly inputNode: InputNode;
-  private readonly resolver: ResolverNode;
-
-  constructor(inputNode: InputNode, resolver: ResolverNode) {
-    this.name = `yahoo-isin-search:${inputNode.name}`;
-    this.inputNode = inputNode;
-    this.resolver = resolver;
-  }
-
-  execute(inputs: Record<string, NodeInput>): ResolvedRequest {
-    const input = inputs[this.inputNode.name]!.value as RequestInput;
-    const job = executeRouteNode(this.resolver, input, String);
-    if (job.error) throw new Error(job.error);
-    return job.value as ResolvedRequest;
-  }
-}
-
-/**
- * PseIsinMapNode: ISIN resolution via PSE map (Philippines).
- * Wraps PseIsinMapResolver. Parent: InputNode.
- */
-export class PseIsinMapNode implements RoutingNode<ResolvedRequest> {
-  readonly name: string;
-  readonly next: RoutingNode[] = [];
-  readonly executorId = "pse-isin-map";
-  private readonly inputNode: InputNode;
-  private readonly resolver: ResolverNode;
-
-  constructor(inputNode: InputNode, resolver: ResolverNode) {
-    this.name = `pse-isin-map:${inputNode.name}`;
-    this.inputNode = inputNode;
-    this.resolver = resolver;
-  }
-
-  execute(inputs: Record<string, NodeInput>): ResolvedRequest {
-    const input = inputs[this.inputNode.name]!.value as RequestInput;
-    const job = executeRouteNode(this.resolver, input, String);
-    if (job.error) throw new Error(job.error);
-    return job.value as ResolvedRequest;
-  }
-}
-
-/**
- * LocalFxNode: FX resolution via local provider.
- * Wraps LocalFxResolver. Parent: InputNode.
- */
-export class LocalFxNode implements RoutingNode<ResolvedRequest> {
-  readonly name: string;
-  readonly next: RoutingNode[] = [];
-  readonly executorId = "local-fx";
-  private readonly inputNode: InputNode;
-  private readonly resolver: ResolverNode;
-
-  constructor(inputNode: InputNode, resolver: ResolverNode) {
-    this.name = `local-fx:${inputNode.name}`;
-    this.inputNode = inputNode;
-    this.resolver = resolver;
-  }
-
-  execute(inputs: Record<string, NodeInput>): ResolvedRequest {
-    const input = inputs[this.inputNode.name]!.value as RequestInput;
-    const job = executeRouteNode(this.resolver, input, String);
-    if (job.error) throw new Error(job.error);
-    return job.value as ResolvedRequest;
-  }
-}
-
-/**
- * GoogleFxNode: FX resolution via Google Finance.
- * Wraps GoogleFxResolver. Parent: InputNode.
- */
-export class GoogleFxNode implements RoutingNode<ResolvedRequest> {
-  readonly name: string;
-  readonly next: RoutingNode[] = [];
-  readonly executorId = "google-fx";
-  private readonly inputNode: InputNode;
-  private readonly resolver: ResolverNode;
-
-  constructor(inputNode: InputNode, resolver: ResolverNode) {
-    this.name = `google-fx:${inputNode.name}`;
-    this.inputNode = inputNode;
-    this.resolver = resolver;
-  }
-
-  execute(inputs: Record<string, NodeInput>): ResolvedRequest {
-    const input = inputs[this.inputNode.name]!.value as RequestInput;
-    const job = executeRouteNode(this.resolver, input, String);
-    if (job.error) throw new Error(job.error);
-    return job.value as ResolvedRequest;
-  }
-}
-
-/**
- * Quote node base pattern (YahooQuoteNode, PSEEdgeQuoteNode, etc.)
- * These nodes are standalone or used as candidates in FirstSuccessNode.
- */
-export abstract class QuoteNode implements RoutingNode<Record<string, unknown>> {
-  abstract readonly name: string;
-  readonly next: RoutingNode[] = [];
-  abstract readonly executorId: string;
-  protected readonly identifierNode: RoutingNode<ResolvedRequest>;
-  protected readonly resolver: ResolverNode;
-
-  constructor(identifierNode: RoutingNode<ResolvedRequest>, resolver: ResolverNode) {
-    this.identifierNode = identifierNode;
-    this.resolver = resolver;
-  }
-
-  execute(inputs: Record<string, NodeInput>): Record<string, unknown> {
-    const resolved = inputs[this.identifierNode.name]!.value as ResolvedRequest;
-    const job = executeRouteNode(this.resolver, resolved, String);
-    if (job.error) throw new Error(job.error);
-    return job.quote as Record<string, unknown>;
-  }
-
-  /** For use in FirstSuccessNode candidates */
-  asCandidate() {
-    return {
-      execute: (resolved: ResolvedRequest) => {
-        const job = executeRouteNode(this.resolver, resolved, String);
-        if (job.error) return null;
-        return job.quote as Record<string, unknown>;
-      },
-      label: this.name,
-    };
-  }
-}
-
-export class YahooQuoteNode extends QuoteNode {
-  readonly name: string;
-  readonly executorId = "yahoo-quote";
-
-  constructor(identifierNode: RoutingNode<ResolvedRequest>, resolver: ResolverNode) {
-    super(identifierNode, resolver);
-    this.name = `yahoo-quote:${identifierNode.name}`;
-  }
-}
-
-export class PSEEdgeQuoteNode extends QuoteNode {
-  readonly name: string;
-  readonly executorId = "pse-edge-quote";
-
-  constructor(identifierNode: RoutingNode<ResolvedRequest>, resolver: ResolverNode) {
-    super(identifierNode, resolver);
-    this.name = `pse-edge-quote:${identifierNode.name}`;
-  }
-}
-
-export class PSEFramesQuoteNode extends QuoteNode {
-  readonly name: string;
-  readonly executorId = "pse-frames-quote";
-
-  constructor(identifierNode: RoutingNode<ResolvedRequest>, resolver: ResolverNode) {
-    super(identifierNode, resolver);
-    this.name = `pse-frames-quote:${identifierNode.name}`;
-  }
-}
-
-export class TradingviewFundQuoteNode extends QuoteNode {
-  readonly name: string;
-  readonly executorId = "tradingview-fund-quote";
-
-  constructor(identifierNode: RoutingNode<ResolvedRequest>, resolver: ResolverNode) {
-    super(identifierNode, resolver);
-    this.name = `tradingview-fund-quote:${identifierNode.name}`;
-  }
-}
-
-/**
- * FirstSuccessNode: Try fallback chain of quote nodes.
- * Tries candidates in order until one succeeds.
- */
-export type QuoteCandidate = {
-  execute(resolved: ResolvedRequest): Record<string, unknown> | null;
-  label: string;
-};
-
-export class FirstSuccessNode implements RoutingNode<Record<string, unknown>> {
-  readonly name: string;
-  readonly next: RoutingNode[] = [];
-  readonly executorId: string;
-  readonly candidates: QuoteCandidate[];
-  private readonly identifierNode: RoutingNode<ResolvedRequest>;
-
-  constructor(
-    name: string,
-    identifierNode: RoutingNode<ResolvedRequest>,
-    candidates: QuoteCandidate[],
-  ) {
-    this.name = name;
-    this.identifierNode = identifierNode;
-    this.executorId = name;
-    this.candidates = candidates;
-  }
-
-  execute(inputs: Record<string, NodeInput>): Record<string, unknown> {
-    const resolved = inputs[this.identifierNode.name]!.value as ResolvedRequest;
-    let lastError: string = "No candidates.";
-
-    for (const candidate of this.candidates) {
-      try {
-        const quote = candidate.execute(resolved);
-        if (quote) return quote;
-        lastError = `${candidate.label} returned empty.`;
-      } catch (err) {
-        lastError = err instanceof Error ? err.message : String(err ?? "");
-      }
-    }
-
-    throw new Error(lastError);
-  }
-}
-
-/**
  * FxRateBatchNode: Batch fetch FX rates after all quote nodes settle.
  * Parents: all quote nodes. Output: Record<sourceCurrency, rate>
  */
 export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
   readonly name = "fx-rate-batch";
   readonly next: RoutingNode[] = [];
+  private readonly quoteNodes: RoutingNode<Record<string, unknown>>[];
   private readonly targetCurrency: string;
   private readonly resolver: ResolverNode;
 
@@ -293,6 +48,7 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
     targetCurrency: string,
     resolver: ResolverNode,
   ) {
+    this.quoteNodes = quoteNodes;
     for (const qn of quoteNodes) {
       qn.next.push(this);
     }
@@ -301,10 +57,8 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
   }
 
   execute(inputs: Record<string, NodeInput>): Record<string, number> {
-    // All parent quote nodes have delivered — collect their values
-    const quotes = Object.values(inputs).map((inp) => inp.value as Record<string, unknown>);
+    const quotes = getInputs(inputs, this.quoteNodes);
 
-    // Extract unique source currencies from all quotes
     const sourceCurrencies = new Set<string>();
     for (const quote of quotes) {
       const currency = extractCurrencyValue(quote);
@@ -314,20 +68,14 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
     }
 
     if (sourceCurrencies.size === 0) {
-      // No FX rates needed
       return {};
     }
 
-    // Build FX pairs and fetch rates
     const rateMap: Record<string, number> = {};
     for (const sourceCurrency of sourceCurrencies) {
       const fxPair = buildFxPairFromCodes(sourceCurrency, this.targetCurrency);
-      if (!fxPair) {
-        // Skip if pair is invalid
-        continue;
-      }
+      if (!fxPair) continue;
 
-      // Create a minimal FX request for the resolver
       const fxRequest = {
         attribute: "price",
         identifier: fxPair.yahooSymbol,
@@ -347,7 +95,6 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
 
       const job = executeRouteNode(this.resolver, fxRequest, String);
       if (!job.error && job.quote) {
-        // Extract price from the FX quote
         const price = extractAttributeValue(job.quote as Record<string, unknown>, "price");
         const rate = Number(price);
         if (Number.isFinite(rate)) {
@@ -361,31 +108,30 @@ export class FxRateBatchNode implements RoutingNode<Record<string, number>> {
 }
 
 /**
- * AttributeExtractionNode: Extract attribute from quote (no parent resolver).
- * Parents: quote/fx node, InputNode.
- * For ISIN attribute type, isinDeps must be provided at construction time.
+ * AttributeExtractionNode: Extract attribute from quote.
+ * Parents: quote node, InputNode.
  */
 export class AttributeExtractionNode implements RoutingNode<unknown> {
   readonly name: string;
   readonly next: RoutingNode[] = [];
-  private readonly quoteOrFxNode: RoutingNode<Record<string, unknown>>;
+  private readonly quoteNode: RoutingNode<Record<string, unknown>>;
   private readonly inputNode: InputNode;
   private readonly isinDeps: ResolveIsinAttributeDependencies | null;
 
   constructor(
-    quoteOrFxNode: RoutingNode<Record<string, unknown>>,
+    quoteNode: RoutingNode<Record<string, unknown>>,
     inputNode: InputNode,
     isinDeps?: ResolveIsinAttributeDependencies,
   ) {
     this.name = `attribute-extraction:${inputNode.name}`;
-    this.quoteOrFxNode = quoteOrFxNode;
+    this.quoteNode = quoteNode;
     this.inputNode = inputNode;
     this.isinDeps = isinDeps ?? null;
   }
 
   execute(inputs: Record<string, NodeInput>): unknown {
-    const quote = inputs[this.quoteOrFxNode.name]!.value as Record<string, unknown>;
-    const input = inputs[this.inputNode.name]!.value as RequestInput;
+    const quote = getInput(inputs, this.quoteNode);
+    const input = getInput(inputs, this.inputNode);
 
     if (input.attributeType === "isin") {
       if (!this.isinDeps) throw new Error("ISIN attribute resolution requires isinDeps.");
@@ -423,9 +169,9 @@ export class CurrencyConversionNode implements RoutingNode<unknown> {
   }
 
   execute(inputs: Record<string, NodeInput>): unknown {
-    const attributeValue = inputs[this.attrNode.name]!.value;
-    const rateTable = inputs[this.fxBatchNode.name]!.value as Record<string, number>;
-    const quote = inputs[this.quoteNode.name]!.value as Record<string, unknown>;
+    const attributeValue = getInput(inputs, this.attrNode);
+    const rateTable = getInput(inputs, this.fxBatchNode);
+    const quote = getInput(inputs, this.quoteNode);
 
     const sourceCurrency = extractCurrencyValue(quote);
     const rate = rateTable[sourceCurrency];

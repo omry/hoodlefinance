@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildRoutingGraph } from "../dist/ts/core/routing-graph-builder.js";
 import { executeGraph } from "../dist/ts/core/routing-engine.js";
-import { EquityRequest } from "../dist/ts/core/request.js";
+import { EquityRequest, FxRequest } from "../dist/ts/core/request.js";
 import { createRequestInput } from "../dist/ts/core/request-building.js";
 
 // Shared mock infrastructure
@@ -305,4 +305,47 @@ test("routing-graph parity: PSE equity falls through to PSEEdge when PSEFrames f
   assert.ok(outcome);
   assert.equal(outcome.status, "settled");
   assert.equal(outcome.value, 99.5);
+});
+
+test("routing-graph parity: FX same-currency resolves to 1 via local provider", () => {
+  // USDUSD: identifier resolves to FxRequest, LocalFx returns same-currency quote
+  const fxPair = { baseCanonicalCode: "USD", quoteCanonicalCode: "USD", yahooSymbol: "USDUSD=X", yahooChartSymbol: "USDUSD=X" };
+  const resolvedFxRequest = new FxRequest({ identifier: "USDUSD", attribute: "price", fxPair });
+  const quote = { regularMarketPrice: 1, currency: "USD" };
+
+  const deps = makeDeps({
+    directIdentifierResolver: makeIdentifierResolver(resolvedFxRequest),
+    localFxResolver: makeQuoteResolver(quote),
+  });
+
+  const input = createRequestInput("USDUSD", "price");
+  const graph = buildRoutingGraph(input, deps);
+  const result = executeGraph(graph);
+  const outcome = result.settled.get(graph.outputs[0]);
+
+  assert.ok(outcome);
+  assert.equal(outcome.status, "settled", `expected settled, got: ${outcome.error}`);
+  assert.equal(outcome.value, 1);
+});
+
+test("routing-graph parity: FX cross-currency falls back to Google FX when local fails", () => {
+  // EURUSD: LocalFx fails (not a same-currency pair), GoogleFx returns the rate
+  const fxPair = { baseCanonicalCode: "EUR", quoteCanonicalCode: "USD", yahooSymbol: "EURUSD=X", yahooChartSymbol: "EURUSD=X" };
+  const resolvedFxRequest = new FxRequest({ identifier: "EURUSD", attribute: "price", fxPair });
+  const quote = { regularMarketPrice: 1.15, currency: "USD" };
+
+  const deps = makeDeps({
+    directIdentifierResolver: makeIdentifierResolver(resolvedFxRequest),
+    // localFxResolver left as failingResolver → FirstSuccessNode falls through
+    googleFxResolver: makeQuoteResolver(quote),
+  });
+
+  const input = createRequestInput("EURUSD", "price");
+  const graph = buildRoutingGraph(input, deps);
+  const result = executeGraph(graph);
+  const outcome = result.settled.get(graph.outputs[0]);
+
+  assert.ok(outcome);
+  assert.equal(outcome.status, "settled", `expected settled, got: ${outcome.error}`);
+  assert.equal(outcome.value, 1.15);
 });

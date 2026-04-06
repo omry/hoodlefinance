@@ -28,8 +28,6 @@ import {
   type RequestResolutionDependencies,
 } from "../core/request-resolution";
 import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "../core/planner";
-import { buildRoutingGraph } from "../core/routing-graph-builder";
-import { executeGraph } from "../core/routing-engine";
 
 interface FetchTextResponseLike {
   getContentText(): string;
@@ -315,57 +313,12 @@ export function createHoodlefinanceRuntime(
         : []),
     );
 
-  // Build the resolver deps object for the routing graph, pulling from the
-  // already-materialized resolversByCode registry.
-  const graphResolverDeps = {
-    directIdentifierResolver: resolversByCode["RESOLVED-IDENTIFIER"]!,
-    yahooIsinSearchResolver: resolversByCode["YAHOO-ISIN"]!,
-    pseIsinMapResolver: resolversByCode["PSE-MAP"]!,
-    localFxResolver: resolversByCode["FX-IDENTITY"]!,
-    googleFxResolver: resolversByCode["GOOGLE-FX"]!,
-    yahooQuoteResolver: resolversByCode["YAHOO"]!,
-    pseEdgeResolver: resolversByCode["PSE-EDGE"]!,
-    pseFramesResolver: resolversByCode["PSE-FRAMES"]!,
-    tradingviewFundResolver: resolversByCode["TRADINGVIEW-FUND"]!,
-    isinDeps: {
-      fetchText: deps.fetchText,
-      getCachedString: deps.getCachedString,
-      looksLikeIsin,
-      putCachedString: deps.putCachedString,
-    },
-  };
-
   const runtime = {
     lookup(identifier: string, attribute?: string): LookupEnvelopeResult {
       return resolveRequestValue(resolutionEnv, normalizeRequestInput(identifier, attribute));
     },
     lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult {
       return resolveRequestEnvelope(resolutionEnv, normalizeRequestInput(identifier, attribute));
-    },
-    lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult {
-      const requestInput = normalizeRequestInput(identifier, attribute);
-      const graph = buildRoutingGraph(requestInput, graphResolverDeps);
-      const engineResult = executeGraph(graph);
-      const outputOutcome = engineResult.settled.get(graph.outputs[0]!);
-
-      if (!outputOutcome || outputOutcome.status === "failed") {
-        return {
-          attemptedRoutes: [],
-          error: outputOutcome?.error ?? "Graph execution failed.",
-          kind: "quote",
-          route: "(graph)",
-          status: "failure",
-          value: null,
-        };
-      }
-
-      return {
-        attemptedRoutes: [],
-        kind: "quote",
-        route: "(graph)",
-        status: "success",
-        value: outputOutcome.value,
-      };
     },
     // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
     buildResolvePlan,

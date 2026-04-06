@@ -44,3 +44,22 @@ export interface RoutingGraph {
    */
   outputs: RoutingNode[];
 }
+
+/**
+ * Retrieve the settled output of a specific parent node from the inputs map.
+ * Throws if the parent is missing — indicates a graph wiring bug.
+ * Return type is inferred from the parent node's TOutput.
+ */
+export function getInput<T>(inputs: Record<string, NodeInput>, node: RoutingNode<T>): T {
+  const input = inputs[node.name];
+  if (!input) throw new Error(`Missing input from node: ${node.name}`);
+  return input.value as T;
+}
+
+/**
+ * Retrieve settled outputs from a list of parent nodes of uniform type.
+ * Useful for nodes with a variable number of homogeneous parents (e.g. FxRateBatchNode).
+ */
+export function getInputs<T>(inputs: Record<string, NodeInput>, nodes: RoutingNode<T>[]): T[] {
+  return nodes.map((n) => getInput(inputs, n));
+}
