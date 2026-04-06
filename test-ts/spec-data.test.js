@@ -3,8 +3,6 @@ const test = require("node:test");
 
 const {
   PLAN_CAN_HANDLE_REFS,
-  PLAN_ROUTE_CLASS_REFS,
-  PLAN_ROUTE_PATH_REFS,
   PLAN_ROUTE_STATE_BUILDER_REFS,
   PLAN_SPECS_BY_CODE,
   RESOLVER_SPECS_BY_CODE,
@@ -35,9 +33,6 @@ test("extracted routing spec data matches the current production tables", () => 
     "TRADINGVIEW",
   ]);
   assert.equal(PLAN_SPECS_BY_CODE["ROOT"].resolverClass, "ResolverPlan");
-
-  assert.deepEqual(PLAN_ROUTE_CLASS_REFS, {});
-  assert.deepEqual(PLAN_ROUTE_PATH_REFS, {});
 
   assert.deepEqual(PLAN_ROUTE_STATE_BUILDER_REFS, {
     EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",

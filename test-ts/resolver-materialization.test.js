@@ -96,10 +96,6 @@ test("materializeResolversByCode rejects unknown class names", () => {
 test("materializeResolversByCode can instantiate concrete resolvers with class-specific dependencies", () => {
   const registry = materializeResolversByCode(
     {
-      "ATTRIBUTE-IDENTITY": {
-        resolverClass: "FunctionValueResolver",
-        resolveFunctionRef: "ATTRIBUTE-IDENTITY",
-      },
       "RESOLVED-IDENTIFIER": {
         resolverClass: "DirectIdentifierResolver",
       },
@@ -129,11 +125,6 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       },
     },
     createConcreteResolverMaterializationDependencies({
-      resolveFunctionsByRef: {
-        "ATTRIBUTE-IDENTITY"(job) {
-          return String(job.routeState.identifier || "").toUpperCase();
-        },
-      },
       resolvePseTickerFromIsinMap(isin) {
         return isin === "PHY077751022" ? "PSE:BDO" : "";
       },
@@ -346,7 +337,6 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     }),
   );
 
-  assert.equal(registry.byCode["ATTRIBUTE-IDENTITY"] instanceof FunctionValueResolver, true);
   assert.equal(
     registry.byCode["RESOLVED-IDENTIFIER"] instanceof DirectIdentifierResolver,
     true,
@@ -365,11 +355,6 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     registry.byCode["YAHOO-ISIN"] instanceof YahooIsinSearchResolver,
     true,
   );
-  assert.equal(
-    registry.byCode["ATTRIBUTE-IDENTITY"].executeBatch([{ routeState: { identifier: "goog" } }])[0].value,
-    "GOOG",
-  );
-
   const pseFramesResolved = registry.byCode["PSE-FRAMES"].resolve(
     new EquityRequest({
       attribute: "price",

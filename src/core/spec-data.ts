@@ -26,10 +26,6 @@ export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
   "TRADINGVIEW-FUND": {
     resolverClass: "TradingviewFundResolver",
   },
-  "ATTRIBUTE-IDENTITY": {
-    resolverClass: "FunctionValueResolver",
-    resolveFunctionRef: "ATTRIBUTE-IDENTITY",
-  },
   ARIVA: {
     resolverClass: "FunctionValueResolver",
     resolveFunctionRef: "ARIVA",
@@ -163,10 +159,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
 };
-
-export const PLAN_ROUTE_CLASS_REFS = {} as const;
-
-export const PLAN_ROUTE_PATH_REFS = {} as const;
 
 export const PLAN_ROUTE_STATE_BUILDER_REFS = {
   EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",

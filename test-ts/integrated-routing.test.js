@@ -34,7 +34,6 @@ function createIntegratedResolverRegistry() {
   };
 
   const resolveFunctionsByRef = {
-    "ATTRIBUTE-IDENTITY": (job) => String(job.routeState.identifier || "").toUpperCase(),
     "ARIVA": () => "ISIN:ARIVA",
     "IBKR": () => "ISIN:IBKR",
     "LON": () => "ISIN:LON",
