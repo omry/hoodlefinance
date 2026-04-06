@@ -6,6 +6,7 @@ export type ResolverClassName =
   | "GoogleFxResolver"
   | "IdentifierResolutionPlan"
   | "LocalFxResolver"
+  | "PseQuoteResolutionPlan"
   | "PSEEdgeResolver"
   | "PSEFramesResolver"
   | "PseIsinMapResolver"

@@ -23,6 +23,10 @@ test("extracted routing spec data matches the current production tables", () => 
     PLAN_SPECS_BY_CODE["QUOTE:PSE"].options.representativeTicker,
     "PSE:BDO",
   );
+  assert.equal(
+    PLAN_SPECS_BY_CODE["QUOTE:PSE"].resolverClass,
+    "PseQuoteResolutionPlan",
+  );
   assert.deepEqual(PLAN_SPECS_BY_CODE["ISIN-SOURCE"].nodeCodes, [
     "ARIVA",
     "IBKR",

@@ -87,12 +87,12 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   }),
   "QUOTE:DEFAULT-FX": {
-    nodeCodes: ["GOOGLE-FX", "YAHOO"],
     resolverClass: "AttributeResolutionPlan",
+    nodeCodes: ["GOOGLE-FX", "YAHOO"],
   },
   "QUOTE:PSE": {
+    resolverClass: "PseQuoteResolutionPlan",
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
-    resolverClass: "AttributeResolutionPlan",
     options: {
       isSourceOverrideable: true,
       representativeTicker: "PSE:BDO",
@@ -103,8 +103,8 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "QUOTE:TICKER": {
-    nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     resolverClass: "AttributeResolutionPlan",
+    nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     options: {
       routingLabel: "TICKER",
       routeClassRef: "EQUITY_TICKER_CLASS",
@@ -113,8 +113,8 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "DEFAULT-ATTRIBUTE:EQUITY": {
-    nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
     resolverClass: "ResolverPlan",
+    nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
     options: {
       canHandleRef: "CLASSIFICATION_EQUITY",
       isRoutingNode: true,
@@ -122,16 +122,16 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     },
   },
   "DEFAULT-ATTRIBUTE:FX": {
-    nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
     resolverClass: "FxAttributeResolutionPlan",
+    nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
     options: {
       canHandleRef: "CLASSIFICATION_FX",
       routingLabel: "FX",
     },
   },
   "DEFAULT-ATTRIBUTE": {
-    nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
     resolverClass: "ResolverPlan",
+    nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
     options: {
       isRoutingNode: true,
       routingLabel: "DEFAULT ATTRIBUTE",
@@ -157,7 +157,7 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     resolverClass: "AttributeResolutionPlan",
     nodeCodes: ["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"],
   },
-  ROOT: {
+  "ROOT": {
     resolverClass: "ResolverPlan",
     nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT", "ISIN-ATTRIBUTE-ROOT"],
     options: {

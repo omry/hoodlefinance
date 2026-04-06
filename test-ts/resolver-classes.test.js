@@ -5,6 +5,7 @@ const {
   AttributeResolutionPlan,
   IdentifierResolutionPlan,
   RequestInput,
+  PseQuoteResolutionPlan,
   ResolverPlan,
   RouteExecutionResolver,
   buildPlanNodeFromSpec,
@@ -204,5 +205,39 @@ test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
       (node) => node.name,
     ),
     ["YAHOO-ISIN"],
+  );
+});
+
+test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () => {
+  const pseFrames = createLeafResolver("PSE-FRAMES");
+  const pseEdge = createLeafResolver("PSE-EDGE");
+  const refs = createPlanRuntimeRefs({
+    looksLikeIsin(value) {
+      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
+    },
+    resolvePreferredYahooSymbol(symbol) {
+      return symbol;
+    },
+  });
+
+  const plan = buildPlanNodeFromSpec(
+    "QUOTE:PSE",
+    {
+      nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
+      resolverClass: "PseQuoteResolutionPlan",
+    },
+    (nodeCode) =>
+      ({
+        "PSE-EDGE": pseEdge,
+        "PSE-FRAMES": pseFrames,
+      })[nodeCode],
+    null,
+    { refs },
+  );
+
+  assert.equal(plan instanceof PseQuoteResolutionPlan, true);
+  assert.deepEqual(
+    plan.nodes.map((node) => node && node.name),
+    ["PSE-FRAMES", "PSE-EDGE"],
   );
 });

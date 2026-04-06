@@ -577,6 +577,8 @@ export class IdentifierResolutionPlan extends ResolverPlan {
 
 export class AttributeResolutionPlan extends ResolverPlan {}
 
+export class PseQuoteResolutionPlan extends AttributeResolutionPlan {}
+
 export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
   constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
     super(name, nodes, options);
@@ -606,6 +608,7 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   AttributeResolutionPlan,
   FxAttributeResolutionPlan,
   IdentifierResolutionPlan,
+  PseQuoteResolutionPlan,
   ResolverPlan,
 } as const;
 
