@@ -2,7 +2,6 @@ export interface PlanSpecOptions {
   isRoutingNode?: boolean;
   routeClass?: string;
   routePath?: string;
-  routeStateBuilderRef?: string;
 }
 
 export interface PlanSpec {

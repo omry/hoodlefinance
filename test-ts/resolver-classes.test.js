@@ -8,6 +8,7 @@ const {
   PseQuoteResolutionPlan,
   ResolverPlan,
   RouteExecutionResolver,
+  TickerQuoteResolutionPlan,
   buildPlanNodeFromSpec,
   createPlanRuntimeRefs,
 } = require("../dist/ts/core/index.js");
@@ -78,7 +79,7 @@ test("ResolverPlan maintains standard fallback sequence and full routing-tree vi
   assert.equal(plan.buildRoutePath(request), "YAHOO -> IBKR");
 });
 
-test("buildPlanNodeFromSpec materializes route refs into a real plan instance", () => {
+test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan with injected resolvePreferredYahooSymbol", () => {
   const yahoo = createLeafResolver("YAHOO");
   const tradingview = createLeafResolver("TRADINGVIEW-FUND", {
     sourceName: "TRADINGVIEW",
@@ -86,9 +87,6 @@ test("buildPlanNodeFromSpec materializes route refs into a real plan instance", 
   const refs = createPlanRuntimeRefs({
     looksLikeIsin(value) {
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
-    },
-    resolvePreferredYahooSymbol(symbol) {
-      return `${symbol}:ALT`;
     },
   });
 
@@ -99,9 +97,8 @@ test("buildPlanNodeFromSpec materializes route refs into a real plan instance", 
       options: {
         routeClassRef: "EQUITY_TICKER_CLASS",
         routePathRef: "EQUITY_TICKER_PATH",
-        routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
       },
-      resolverClass: "AttributeResolutionPlan",
+      resolverClass: "TickerQuoteResolutionPlan",
     },
     (nodeCode) =>
       ({
@@ -109,10 +106,15 @@ test("buildPlanNodeFromSpec materializes route refs into a real plan instance", 
         YAHOO: yahoo,
       })[nodeCode],
     null,
-    { refs },
+    {
+      refs,
+      resolvePreferredYahooSymbol(symbol) {
+        return `${symbol}:ALT`;
+      },
+    },
   );
 
-  assert.equal(plan instanceof AttributeResolutionPlan, true);
+  assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
 
   const runtimePlan = plan.buildRuntimePlan({
     allowTradingviewFallback: true,

@@ -31,16 +31,10 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
   "QUOTE:PSE": {
     resolverClass: "PseQuoteResolutionPlan",
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
-    options: {
-routeStateBuilderRef: "PSE_QUOTE",
-    },
   },
   "QUOTE:TICKER": {
     resolverClass: "TickerQuoteResolutionPlan",
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
-    options: {
-      routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
-    },
   },
   "DEFAULT-ATTRIBUTE:EQUITY": {
     resolverClass: "EquityAttributeResolutionPlan",
@@ -75,10 +69,4 @@ routeStateBuilderRef: "PSE_QUOTE",
     },
   },
 };
-
-export const PLAN_ROUTE_STATE_BUILDER_REFS = {
-  EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",
-  FX_QUOTE: "FX_QUOTE",
-  PSE_QUOTE: "PSE_QUOTE",
-} as const;
 

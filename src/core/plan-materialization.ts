@@ -100,6 +100,7 @@ export function createDefaultPlanMaterializationDependencies(
     buildPlanNode(code, spec, resolveNode, overrides) {
       return buildPlanNodeFromSpec(code, spec, resolveNode, overrides, {
         refs: createPlanRuntimeRefs(deps),
+        resolvePreferredYahooSymbol: deps.resolvePreferredYahooSymbol ?? null,
       });
     },
     planSpecsByCode: deps.planSpecsByCode,

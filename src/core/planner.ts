@@ -39,10 +39,6 @@ export type RoutePathResolver = (
   request: RequestInput | ResolvedRequest,
 ) => string;
 
-export type RouteStateBuilder = (
-  request: RequestInput | ResolvedRequest,
-) => Record<string, unknown>;
-
 export interface RouteContext {
   outputCurrencyCache?: {
     conversionRateByPair: Record<string, number>;
@@ -110,7 +106,6 @@ export interface ResolverPlanNode extends ResolverNode {
   nodes?: ResolverNode[];
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
-  routeStateBuilder?: RouteStateBuilder | null;
 }
 
 export interface ResolvePlan {
@@ -127,10 +122,4 @@ export interface ResolvePlan {
 
 export interface DebugRoutePlan {
   debugValue: string;
-}
-
-export interface RouteStateBuilderInput {
-  classification?: RequestClassification;
-  fxPair?: FxPair | null;
-  yahooSymbol?: string;
 }

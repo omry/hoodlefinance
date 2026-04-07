@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  PLAN_ROUTE_STATE_BUILDER_REFS,
   PLAN_SPECS_BY_CODE,
   RESOLVER_SPECS_BY_CODE,
 } = require("../dist/ts/core/index.js");
@@ -17,11 +16,4 @@ test("extracted routing spec data matches the current production tables", () => 
     "PseQuoteResolutionPlan",
   );
   assert.equal(PLAN_SPECS_BY_CODE["ROOT"].resolverClass, "ResolverPlan");
-
-  assert.deepEqual(PLAN_ROUTE_STATE_BUILDER_REFS, {
-    EQUITY_YAHOO_QUOTE: "EQUITY_YAHOO_QUOTE",
-    FX_QUOTE: "FX_QUOTE",
-    PSE_QUOTE: "PSE_QUOTE",
-  });
-
 });

@@ -7,12 +7,11 @@ import type {
   RouteJob,
   RoutingNodeKind,
   RoutePathResolver,
-  RouteStateBuilder,
   RuntimePlan,
 } from "./planner";
 import { RequestInput } from "./request";
 import type { ResolvedRequest } from "./request";
-import { buildIsinIdentifierRouteState } from "./route-state";
+import { buildIsinIdentifierRouteState, buildPseQuoteRouteState, buildFxQuoteRouteState, buildEquityYahooQuoteRouteState } from "./route-state";
 import { extractIsinFromRequestInput } from "./request-building";
 import { createResolutionFailure, createResolutionSuccess, describePlanSource } from "./route-results";
 import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
@@ -23,7 +22,6 @@ export interface ResolverPlanOptions {
   isRoutingNode?: boolean;
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
-  routeStateBuilder?: RouteStateBuilder | null;
 }
 
 function formatRoutingPlanTreeLabel(value: unknown): string {
@@ -200,7 +198,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   readonly nodes: ResolverNode[];
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
-  readonly routeStateBuilder: RouteStateBuilder | null;
 
   constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
     super(name);
@@ -208,7 +205,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
     this.nodes = nodes || [];
     this.routeClass = options.routeClass || name;
     this.routePath = options.routePath || "";
-    this.routeStateBuilder = options.routeStateBuilder || null;
   }
 
   getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[] {
@@ -251,10 +247,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 
   buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
-
-    if (this.routeStateBuilder) {
-      return this.routeStateBuilder(request);
-    }
 
     if (singleNode && singleNode.buildRouteState) {
       return singleNode.buildRouteState(request);
@@ -350,22 +342,11 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   static materializeOptions(
     spec: PlanSpec,
     overrides: Record<string, unknown> | null | undefined,
-    refs: PlanRuntimeRefs,
+    _refs: PlanRuntimeRefs,
     _deps?: PlanNodeBuilderDependencies,
   ): ResolverPlanOptions {
     const sourceOptions = Object.assign({}, spec.options || {}, overrides || {});
-    const materializedOptions = Object.assign({}, sourceOptions) as ResolverPlanOptions & {
-      nodeSelectorRef?: string;
-      routeStateBuilderRef?: string;
-    };
-
-    if (sourceOptions.routeStateBuilderRef) {
-      materializedOptions.routeStateBuilder =
-        refs.routeStateBuilderByRef[sourceOptions.routeStateBuilderRef] || null;
-      delete materializedOptions.routeStateBuilderRef;
-    }
-
-    return materializedOptions;
+    return Object.assign({}, sourceOptions) as ResolverPlanOptions;
   }
 
   static fromSpec(
@@ -507,11 +488,62 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
   getExampleInput(): string | null {
     return "PSE:BDO";
   }
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!("symbol" in request)) return {};
+    return buildPseQuoteRouteState(
+      request as Extract<ResolvedRequest, { requestType: "equity" }>,
+    );
+  }
 }
 
-export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {}
+export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {
+  resolvePreferredYahooSymbol?: ((symbol: string) => string) | null;
+
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!("yahooSymbol" in request)) return {};
+    return buildEquityYahooQuoteRouteState(
+      request as Extract<ResolvedRequest, { requestType: "equity" }>,
+      this.resolvePreferredYahooSymbol,
+    );
+  }
+
+  static fromSpec(
+    code: string,
+    spec: PlanSpec,
+    resolverMap:
+      | Record<string, ResolverNode>
+      | ((nodeCode: string) => ResolverNode | null),
+    overrides: Record<string, unknown> | null | undefined,
+    deps: PlanNodeBuilderDependencies,
+  ): TickerQuoteResolutionPlan {
+    const resolveNodeByCode =
+      typeof resolverMap === "function"
+        ? resolverMap
+        : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
+
+    const plan = new this(
+      code,
+      this.getSpecNodeCodes(spec).map((nodeCode) =>
+        resolveNodeByCode(nodeCode),
+      ) as ResolverNode[],
+      this.materializeOptions(spec, overrides, deps.refs, deps),
+    );
+
+    plan.resolvePreferredYahooSymbol = deps.resolvePreferredYahooSymbol ?? null;
+
+    return plan;
+  }
+}
 
 export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
+  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+    if (!("fxPair" in request)) return {};
+    return buildFxQuoteRouteState(
+      request as Extract<ResolvedRequest, { requestType: "fx" }>,
+    );
+  }
+
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return request.classification === "fx" && super.canHandle(request);
   }
@@ -554,6 +586,7 @@ export type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
 
 export interface PlanNodeBuilderDependencies {
   refs: PlanRuntimeRefs;
+  resolvePreferredYahooSymbol?: ((symbol: string) => string) | null;
 }
 
 export function buildPlanNodeFromSpec(

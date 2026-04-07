@@ -128,7 +128,6 @@ test("default plan materialization builds typed resolver plans from runtime refs
         options: {
           routeClassRef: "EQUITY_TICKER_CLASS",
           routePathRef: "EQUITY_TICKER_PATH",
-          routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
         },
       },
     },

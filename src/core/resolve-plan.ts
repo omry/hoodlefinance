@@ -60,11 +60,6 @@ function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
         ? node.buildRuntimePlan(request).routePath
         : wrappedName;
     },
-    routeStateBuilder(request) {
-      return node && node.buildRuntimePlan
-        ? node.buildRuntimePlan(request).routeState || {}
-        : {};
-    },
   });
 }
 
