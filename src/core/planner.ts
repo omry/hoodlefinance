@@ -92,8 +92,6 @@ export interface ResolverLike {
   getRoutingNodes?(): ResolverNode[];
   matchesSourceName?(source: string): boolean;
   name: string;
-  routingLabel: string;
-  alias: string;
 }
 
 export interface ResolverNode extends ResolverLike {

@@ -38,14 +38,14 @@ export function buildSourceOverrideUnavailableError(
 
 export function buildAmbiguousDefaultAttributeRouteError(
   request: Pick<ResolvedRequest, "classification">,
-  plans: Array<Pick<ResolverPlanNode, "name" | "routingLabel">>,
+  plans: Array<Pick<ResolverPlanNode, "name">>,
 ): Error {
   const classification = String(request.classification || "")
     .trim()
     .toLowerCase();
   const planNames = plans.map(
     (plan) =>
-      String((plan && (plan.routingLabel || plan.name)) || "").trim() ||
+      String((plan && plan.name) || "").trim() ||
       "<unknown>",
   );
 

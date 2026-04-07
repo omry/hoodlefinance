@@ -222,7 +222,7 @@ export class PseIsinMapResolver extends IdentifierResolver {
   readonly resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap;
 
   constructor(resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap) {
-    super("PSE-MAP", "PSE");
+    super("PSE-MAP");
     this.traceLabel = "pse-isin-map";
     this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
   }
@@ -308,7 +308,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
   readonly putCachedString: YahooIsinSearchResolverDependencies["putCachedString"];
 
   constructor(deps: YahooIsinSearchResolverDependencies) {
-    super("YAHOO-ISIN", "YAHOO");
+    super("YAHOO-ISIN");
     this.traceLabel = "YAHOO-ISIN";
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedString = deps.getCachedString;
@@ -441,7 +441,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
 export class LocalFxResolver extends RouteExecutionResolver {
   constructor() {
-    super("FX-IDENTITY", "FX-IDENTITY");
+    super("FX-IDENTITY");
   }
 
   getRoutingDescription(): string | null {
@@ -502,7 +502,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
   readonly putCachedJson: GoogleFxResolverDependencies["putCachedJson"];
 
   constructor(deps: GoogleFxResolverDependencies) {
-    super("GOOGLE-FX", "GOOGLE-FX");
+    super("GOOGLE-FX");
     this.fetchText = deps.fetchText;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -1022,7 +1022,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
   readonly putCachedJson: YahooQuoteResolverDependencies["putCachedJson"];
 
   constructor(deps: YahooQuoteResolverDependencies) {
-    super("YAHOO", "YAHOO");
+    super("YAHOO");
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -1186,7 +1186,7 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
   readonly putCachedJson: TradingviewFundResolverDependencies["putCachedJson"];
 
   constructor(deps: TradingviewFundResolverDependencies) {
-    super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW");
+    super("TRADINGVIEW-FUND", "TRADINGVIEW");
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;

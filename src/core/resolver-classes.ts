@@ -19,13 +19,7 @@ import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
-export interface ResolverOptions {
-  routingLabel?: string;
-}
-
-export interface RouteExecutionResolverOptions extends ResolverOptions {}
-
-export interface ResolverPlanOptions extends ResolverOptions {
+export interface ResolverPlanOptions {
   canHandle?: ((request: RequestInput | ResolvedRequest) => boolean) | null;
   isRoutingNode?: boolean;
   routeClass?: string | RouteClassResolver;
@@ -72,14 +66,10 @@ interface IdentifierResolutionPlanSpec extends PlanSpec {
 export class Resolver {
   readonly code: string;
   readonly name: string;
-  readonly alias: string;
-  readonly routingLabel: string;
 
-  constructor(code = "", alias?: string, options: ResolverOptions = {}) {
+  constructor(code = "") {
     this.code = code || "";
     this.name = this.code;
-    this.routingLabel = options.routingLabel || "";
-    this.alias = alias != null ? alias : this.code;
   }
 
   getExampleInput(): string | null {
@@ -118,7 +108,7 @@ export class Resolver {
 
   matchesSourceName(source: string): boolean {
     return (
-      String(this.alias || "")
+      String(this.name || "")
         .trim()
         .toUpperCase() ===
       String(source || "")
@@ -171,40 +161,9 @@ export class AttributeResolver extends Resolver {}
 export class RouteExecutionResolver extends AttributeResolver {
   readonly traceLabel: string;
 
-  constructor(
-    code: string,
-    traceLabel?: string | RouteExecutionResolverOptions,
-    alias?: string | RouteExecutionResolverOptions,
-    options?: RouteExecutionResolverOptions,
-  ) {
-    let resolvedTraceLabel = traceLabel;
-    let resolvedAlias = alias;
-    let config = options;
-
-    if (
-      resolvedTraceLabel &&
-      typeof resolvedTraceLabel === "object" &&
-      !Array.isArray(resolvedTraceLabel)
-    ) {
-      config = resolvedTraceLabel;
-      resolvedTraceLabel = "";
-      resolvedAlias = "";
-    } else if (
-      resolvedAlias &&
-      typeof resolvedAlias === "object" &&
-      !Array.isArray(resolvedAlias)
-    ) {
-      config = resolvedAlias;
-      resolvedAlias = "";
-    }
-
-    const normalizedTraceLabel =
-      (resolvedTraceLabel as string | undefined) || code;
-    const normalizedAlias =
-      (resolvedAlias as string | undefined) || normalizedTraceLabel || code;
-
-    super(code, normalizedAlias, config);
-    this.traceLabel = normalizedTraceLabel;
+  constructor(code: string, traceLabel?: string) {
+    super(code);
+    this.traceLabel = traceLabel || code;
   }
 
   buildRouteState(_request: RequestInput | ResolvedRequest): Record<string, unknown> {
@@ -245,8 +204,8 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   readonly routePath: string | RoutePathResolver;
   readonly routeStateBuilder: RouteStateBuilder | null;
 
-  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}, alias = "") {
-    super(name, alias, options);
+  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
+    super(name);
     this.canHandlePredicate = options.canHandle || null;
     this.isRoutingNode = options.isRoutingNode === true;
     this.nodes = nodes || [];
@@ -336,7 +295,7 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 
       if (
         groupedName &&
-        groupedName !== String(this.alias || "").trim().toUpperCase() &&
+        groupedName !== String(this.name || "").trim().toUpperCase() &&
         !groupedNames.includes(groupedName)
       ) {
         groupedNames.push(groupedName);
@@ -561,8 +520,6 @@ export class IdentifierResolutionPlan extends ResolverPlan {
 export class AttributeResolutionPlan extends ResolverPlan {}
 
 export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
-  override readonly alias = "PSE";
-
   getExampleInput(): string | null {
     return "PSE:BDO";
   }

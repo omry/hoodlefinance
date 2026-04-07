@@ -117,9 +117,9 @@ test("resolveRoutingNode unwraps routing plans until it reaches a concrete node"
   assert.equal(resolved, yahoo);
 });
 
-test("resolver node name matching and lookup search by both name and source name", () => {
+test("resolver node name matching and lookup search by name", () => {
   const request = createRequest();
-  const yahoo = createResolverNode("YAHOO", { sourceName: "Yahoo Finance" });
+  const yahoo = createResolverNode("YAHOO");
   const ibkr = createResolverNode("IBKR");
 
   const root = {
@@ -132,15 +132,12 @@ test("resolver node name matching and lookup search by both name and source name
     isRoutingNode: false,
     name: "ROOT",
     nodes: [yahoo, ibkr],
-    routingDescription: "",
-    routingLabel: "ROOT",
-    sourceName: "ROOT",
   };
 
   assert.equal(matchesResolverNodeName(yahoo, "YAHOO"), true);
-  assert.equal(matchesResolverNodeName(yahoo, "yahoo finance"), true);
+  assert.equal(matchesResolverNodeName(yahoo, "yahoo finance"), false);
   assert.equal(findNamedResolverNode(root, "IBKR", request), ibkr);
-  assert.equal(findNamedResolverNode(root, "YAHOO FINANCE", request), yahoo);
+  assert.equal(findNamedResolverNode(root, "YAHOO", request), yahoo);
   assert.equal(findNamedResolverNode(root, "MISSING", request), null);
 });
 

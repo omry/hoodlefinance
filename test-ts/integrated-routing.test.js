@@ -179,6 +179,6 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
       parseFxTicker: () => null,
       parseTickerRequest: (t) => ({ ticker: t, sourceOverride: "", infoMode: "" }),
     })),
-    /Ambiguous default attribute route for classification "equity": EQUITY, AMBIGUOUS-EXTRA\./
+    /Ambiguous default attribute route for classification "equity": DEFAULT-ATTRIBUTE:EQUITY, AMBIGUOUS-EXTRA\./
   );
 });

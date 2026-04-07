@@ -41,7 +41,6 @@ interface RoutingPlanNodeLike {
   getRoutingNodes(): ResolverNode[];
   getRoutingNodeKind(): RoutingNodeKind;
   name: string;
-  routingLabel: string;
 }
 
 interface DescribableRoutingNode {
@@ -124,7 +123,7 @@ export function buildRoutingPlanTreeNode(
       : [],
     kind: node.getRoutingNodeKind ? node.getRoutingNodeKind() : "leaf",
     label: isPlanNode
-      ? formatRoutingPlanTreeLabel(node.routingLabel || node.name || "")
+      ? formatRoutingPlanTreeLabel(node.name || "")
       : String(
           isDescribableRoutingNode(node)
             ? node.describeRoutingNode()

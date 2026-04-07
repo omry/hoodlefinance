@@ -50,15 +50,13 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     resolverClass: "PseQuoteResolutionPlan",
     nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
     options: {
-      routingLabel: "PSE",
-      routeStateBuilderRef: "PSE_QUOTE",
+routeStateBuilderRef: "PSE_QUOTE",
     },
   },
   "QUOTE:TICKER": {
     resolverClass: "TickerQuoteResolutionPlan",
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
     options: {
-      routingLabel: "TICKER",
       routeStateBuilderRef: "EQUITY_YAHOO_QUOTE",
     },
   },
@@ -68,7 +66,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     options: {
       canHandleRef: "CLASSIFICATION_EQUITY",
       isRoutingNode: true,
-      routingLabel: "EQUITY",
     },
   },
   "DEFAULT-ATTRIBUTE:FX": {
@@ -76,7 +73,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
     options: {
       canHandleRef: "CLASSIFICATION_FX",
-      routingLabel: "FX",
     },
   },
   "DEFAULT-ATTRIBUTE": {
@@ -84,7 +80,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
     options: {
       isRoutingNode: true,
-      routingLabel: "DEFAULT ATTRIBUTE",
     },
   },
   "IDENTIFIER-ROOT": {
@@ -92,7 +87,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
     options: {
       isRoutingNode: true,
-      routingLabel: "IDENTIFIER",
     },
   },
   "ROOT": {
@@ -100,7 +94,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
     options: {
       isRoutingNode: true,
-      routingLabel: "ROOT",
     },
   },
 };
