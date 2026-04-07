@@ -1,30 +1,4 @@
-export type ResolverClassName =
-  | "AttributeResolutionPlan"
-  | "DirectIdentifierResolver"
-  | "FxAttributeResolutionPlan"
-  | "GoogleFxResolver"
-  | "IdentifierResolutionPlan"
-  | "LocalFxResolver"
-  | "PseQuoteResolutionPlan"
-  | "PSEEdgeResolver"
-  | "PSEFramesResolver"
-  | "PseIsinMapResolver"
-  | "ResolverPlan"
-  | "TickerQuoteResolutionPlan"
-  | "TradingviewFundResolver"
-  | "YahooIsinSearchResolver"
-  | "YahooQuoteResolver";
-
-export interface ResolverSpecOptions {
-  routingDescription?: string;
-}
-
-export interface ResolverSpec {
-  options?: ResolverSpecOptions;
-  resolverClass: ResolverClassName;
-}
-
-export interface PlanSpecOptions extends ResolverSpecOptions {
+export interface PlanSpecOptions {
   canHandleRef?: string;
   isRoutingNode?: boolean;
   routeClass?: string;
@@ -38,5 +12,5 @@ export interface PlanSpec {
   defaultNodeCodes?: string[];
   nodeCodes?: string[];
   options?: PlanSpecOptions;
-  resolverClass: ResolverClassName;
+  resolverClass: string;
 }

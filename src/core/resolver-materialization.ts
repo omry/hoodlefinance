@@ -1,4 +1,3 @@
-import type { ResolverSpec } from "./plan-specs";
 import type { ResolverNode } from "./planner";
 import {
   getResolverByCode,
@@ -9,7 +8,7 @@ import {
 } from "./resolver-registry";
 
 export interface ResolverClassLike {
-  fromSpec(code: string, spec: ResolverSpec, deps?: unknown): ResolverNode;
+  fromSpec(code: string, deps?: unknown): ResolverNode;
 }
 
 export interface ResolverMaterializationDependencies {
@@ -26,7 +25,7 @@ function normalizeCode(code: string): string {
 }
 
 export function materializeResolversByCode(
-  resolverSpecs: Record<string, ResolverSpec>,
+  resolverSpecs: Record<string, string>,
   deps: ResolverMaterializationDependencies,
 ): MaterializedResolverRegistry {
   const byCode = deps.registryByCode || {};
@@ -34,19 +33,18 @@ export function materializeResolversByCode(
 
   Object.keys(resolverSpecs || {}).forEach((code) => {
     const normalizedCode = normalizeCode(code);
-    const spec = resolverSpecs[code] as ResolverSpec;
-    const ResolverClass = deps.resolverClassesByName[spec.resolverClass] || null;
+    const resolverClass = resolverSpecs[code] as string;
+    const ResolverClass = deps.resolverClassesByName[resolverClass] || null;
 
     if (!ResolverClass) {
       throw new Error(
-        `Unknown resolver class "${String(spec.resolverClass || "")}" for "${normalizedCode}".`,
+        `Unknown resolver class "${String(resolverClass || "")}" for "${normalizedCode}".`,
       );
     }
 
     const resolver = ResolverClass.fromSpec(
       normalizedCode,
-      spec,
-      deps.resolverClassDependenciesByName?.[spec.resolverClass],
+      deps.resolverClassDependenciesByName?.[resolverClass],
     );
 
     registerResolver(byName, resolver);

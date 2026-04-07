@@ -1,4 +1,3 @@
-import type { ResolverSpec } from "./plan-specs";
 import { EquityRequest, FxRequest, RequestInput, type ResolvedRequest } from "./request";
 import { buildIsinIdentifierRouteState, buildPseQuoteRouteState } from "./route-state";
 import {
@@ -107,7 +106,6 @@ export class DirectIdentifierResolver extends IdentifierResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
   ): DirectIdentifierResolver {
     return new this();
   }
@@ -288,7 +286,6 @@ export class PseIsinMapResolver extends IdentifierResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap,
   ): PseIsinMapResolver {
     if (typeof resolvePseTickerFromIsinMap !== "function") {
@@ -421,7 +418,6 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     deps?: YahooIsinSearchResolverDependencies,
   ): YahooIsinSearchResolver {
     if (
@@ -490,7 +486,6 @@ export class LocalFxResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
   ): LocalFxResolver {
     return new this();
   }
@@ -575,7 +570,6 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     deps?: GoogleFxResolverDependencies,
   ): GoogleFxResolver {
     if (
@@ -753,7 +747,6 @@ export class PseFramesResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     deps?: PseQuoteResolverDependencies,
   ): PseFramesResolver {
     if (
@@ -998,7 +991,6 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     deps?: PseQuoteResolverDependencies,
   ): PseEdgeResolver {
     if (
@@ -1161,7 +1153,6 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     deps?: YahooQuoteResolverDependencies,
   ): YahooQuoteResolver {
     if (
@@ -1289,7 +1280,6 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    _spec: ResolverSpec,
     deps?: TradingviewFundResolverDependencies,
   ): TradingviewFundResolver {
     if (

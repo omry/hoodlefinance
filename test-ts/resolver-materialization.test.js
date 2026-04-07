@@ -21,12 +21,9 @@ const {
 } = require("../dist/ts/core/index.js");
 
 class FakeResolver {
-  constructor(code, label, name) {
+  constructor(code) {
     this.code = code;
-    this.name = name || code;
-    this.routingDescription = label;
-    this.routingLabel = code;
-    this.sourceName = code;
+    this.name = code;
   }
 
   canHandle() {
@@ -41,26 +38,14 @@ class FakeResolver {
     return this.name;
   }
 
-  static fromSpec(code, spec) {
-    return new this(
-      code,
-      spec.options?.routingDescription || "",
-      spec.options?.materializedName || code,
-    );
+  static fromSpec(code) {
+    return new this(code);
   }
 }
 
 test("materializeResolversByCode instantiates and registers resolvers by class name", () => {
   const registry = materializeResolversByCode(
-    {
-      YAHOO: {
-        options: {
-          materializedName: "YAHOO-LOOKUP",
-          routingDescription: "Yahoo quote lookup",
-        },
-        resolverClass: "FakeResolver",
-      },
-    },
+    { YAHOO: "FakeResolver" },
     {
       resolverClassesByName: {
         FakeResolver,
@@ -70,20 +55,15 @@ test("materializeResolversByCode instantiates and registers resolvers by class n
 
   const resolver = getMaterializedResolverByCode(registry, "yahoo");
   assert.equal(registry.byCode.YAHOO, resolver);
-  assert.equal(getRegisteredResolverByName(registry.byName, "YAHOO-LOOKUP"), resolver);
-  assert.equal(resolver?.name, "YAHOO-LOOKUP");
-  assert.equal(registry.byCode.YAHOO?.routingDescription, "Yahoo quote lookup");
+  assert.equal(getRegisteredResolverByName(registry.byName, "YAHOO"), resolver);
+  assert.equal(resolver?.name, "YAHOO");
 });
 
 test("materializeResolversByCode rejects unknown class names", () => {
   assert.throws(
     () =>
       materializeResolversByCode(
-        {
-          YAHOO: {
-            resolverClass: "MissingResolver",
-          },
-        },
+        { YAHOO: "MissingResolver" },
         {
           resolverClassesByName: {},
         },
@@ -95,33 +75,15 @@ test("materializeResolversByCode rejects unknown class names", () => {
 test("materializeResolversByCode can instantiate concrete resolvers with class-specific dependencies", () => {
   const registry = materializeResolversByCode(
     {
-      "RESOLVED-IDENTIFIER": {
-        resolverClass: "DirectIdentifierResolver",
-      },
-      LOCAL: {
-        resolverClass: "LocalFxResolver",
-      },
-      "PSE-MAP": {
-        resolverClass: "PseIsinMapResolver",
-      },
-      "YAHOO-ISIN": {
-        resolverClass: "YahooIsinSearchResolver",
-      },
-      YAHOO: {
-        resolverClass: "YahooQuoteResolver",
-      },
-      "TRADINGVIEW-FUND": {
-        resolverClass: "TradingviewFundResolver",
-      },
-      GOOGLE: {
-        resolverClass: "GoogleFxResolver",
-      },
-      "PSE-FRAMES": {
-        resolverClass: "PSEFramesResolver",
-      },
-      "PSE-EDGE": {
-        resolverClass: "PSEEdgeResolver",
-      },
+      "RESOLVED-IDENTIFIER": "DirectIdentifierResolver",
+      LOCAL: "LocalFxResolver",
+      "PSE-MAP": "PseIsinMapResolver",
+      "YAHOO-ISIN": "YahooIsinSearchResolver",
+      YAHOO: "YahooQuoteResolver",
+      "TRADINGVIEW-FUND": "TradingviewFundResolver",
+      GOOGLE: "GoogleFxResolver",
+      "PSE-FRAMES": "PSEFramesResolver",
+      "PSE-EDGE": "PSEEdgeResolver",
     },
     createConcreteResolverMaterializationDependencies({
       resolvePseTickerFromIsinMap(isin) {

@@ -1,37 +1,19 @@
-import type { PlanSpec, ResolverSpec } from "./plan-specs";
+import type { PlanSpec } from "./plan-specs";
 
 function definePlanSpec<T extends PlanSpec>(spec: T): T {
   return spec;
 }
 
-export const RESOLVER_SPECS_BY_CODE: Record<string, ResolverSpec> = {
-  "RESOLVED-IDENTIFIER": {
-    resolverClass: "DirectIdentifierResolver",
-  },
-  "PSE-MAP": {
-    resolverClass: "PseIsinMapResolver",
-  },
-  "YAHOO-ISIN": {
-    resolverClass: "YahooIsinSearchResolver",
-  },
-  "FX-IDENTITY": {
-    resolverClass: "LocalFxResolver",
-  },
-  "GOOGLE-FX": {
-    resolverClass: "GoogleFxResolver",
-  },
-  YAHOO: {
-    resolverClass: "YahooQuoteResolver",
-  },
-  "TRADINGVIEW-FUND": {
-    resolverClass: "TradingviewFundResolver",
-  },
-  "PSE-FRAMES": {
-    resolverClass: "PSEFramesResolver",
-  },
-  "PSE-EDGE": {
-    resolverClass: "PSEEdgeResolver",
-  },
+export const RESOLVER_SPECS_BY_CODE: Record<string, string> = {
+  "RESOLVED-IDENTIFIER": "DirectIdentifierResolver",
+  "PSE-MAP": "PseIsinMapResolver",
+  "YAHOO-ISIN": "YahooIsinSearchResolver",
+  "FX-IDENTITY": "LocalFxResolver",
+  "GOOGLE-FX": "GoogleFxResolver",
+  YAHOO: "YahooQuoteResolver",
+  "TRADINGVIEW-FUND": "TradingviewFundResolver",
+  "PSE-FRAMES": "PSEFramesResolver",
+  "PSE-EDGE": "PSEEdgeResolver",
 };
 
 export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
