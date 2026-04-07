@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  PLAN_CAN_HANDLE_REFS,
   PLAN_ROUTE_STATE_BUILDER_REFS,
   PLAN_SPECS_BY_CODE,
   RESOLVER_SPECS_BY_CODE,
@@ -24,8 +23,5 @@ test("extracted routing spec data matches the current production tables", () => 
     FX_QUOTE: "FX_QUOTE",
     PSE_QUOTE: "PSE_QUOTE",
   });
-  assert.deepEqual(PLAN_CAN_HANDLE_REFS, {
-    CLASSIFICATION_EQUITY: "CLASSIFICATION_EQUITY",
-    CLASSIFICATION_FX: "CLASSIFICATION_FX",
-  });
+
 });

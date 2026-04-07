@@ -1,12 +1,6 @@
-import type {
-  RoutePathResolver,
-  RouteStateBuilder,
-} from "./planner";
+import type { RouteStateBuilder } from "./planner";
 import { buildEquityYahooQuoteRouteState, buildFxQuoteRouteState, buildPseQuoteRouteState } from "./route-state";
-import type { RequestInput, ResolvedRequest } from "./request";
-
-export const PLAN_ROUTE_PATH_BY_REF: Record<string, RoutePathResolver> = {};
-
+import type { ResolvedRequest } from "./request";
 
 export interface PlanRuntimeRefDependencies {
   looksLikeIsin(value: string): boolean;
@@ -36,43 +30,16 @@ export function createPlanRouteStateBuilders(
   };
 }
 
-export const PLAN_CAN_HANDLE_BY_REF: Record<
-  string,
-  (request: RequestInput | ResolvedRequest) => boolean
-> = {
-  CLASSIFICATION_EQUITY(request) {
-    return (
-      String((request && request.classification) || "")
-        .trim()
-        .toLowerCase() === "equity"
-    );
-  },
-  CLASSIFICATION_FX(request) {
-    return (
-      String((request && request.classification) || "")
-        .trim()
-        .toLowerCase() === "fx"
-    );
-  },
-};
-
 export function createPlanRuntimeRefs(
   deps: PlanRuntimeRefDependencies,
 ): PlanRuntimeRefs {
   return {
-    canHandleByRef: PLAN_CAN_HANDLE_BY_REF,
     looksLikeIsin: deps.looksLikeIsin,
-    routePathByRef: PLAN_ROUTE_PATH_BY_REF,
     routeStateBuilderByRef: createPlanRouteStateBuilders(deps),
   };
 }
 
 export interface PlanRuntimeRefs {
-  canHandleByRef: Record<
-    string,
-    (request: RequestInput | ResolvedRequest) => boolean
-  >;
   looksLikeIsin(value: string): boolean;
-  routePathByRef: Record<string, RoutePathResolver>;
   routeStateBuilderByRef: Record<string, RouteStateBuilder>;
 }

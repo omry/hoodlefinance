@@ -43,19 +43,15 @@ routeStateBuilderRef: "PSE_QUOTE",
     },
   },
   "DEFAULT-ATTRIBUTE:EQUITY": {
-    resolverClass: "ResolverPlan",
+    resolverClass: "EquityAttributeResolutionPlan",
     nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
     options: {
-      canHandleRef: "CLASSIFICATION_EQUITY",
       isRoutingNode: true,
     },
   },
   "DEFAULT-ATTRIBUTE:FX": {
     resolverClass: "FxAttributeResolutionPlan",
     nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
-    options: {
-      canHandleRef: "CLASSIFICATION_FX",
-    },
   },
   "DEFAULT-ATTRIBUTE": {
     resolverClass: "ResolverPlan",
@@ -86,7 +82,3 @@ export const PLAN_ROUTE_STATE_BUILDER_REFS = {
   PSE_QUOTE: "PSE_QUOTE",
 } as const;
 
-export const PLAN_CAN_HANDLE_REFS = {
-  CLASSIFICATION_EQUITY: "CLASSIFICATION_EQUITY",
-  CLASSIFICATION_FX: "CLASSIFICATION_FX",
-} as const;

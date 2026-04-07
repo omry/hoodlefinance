@@ -50,9 +50,6 @@ function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
   const wrappedName = String((node && node.name) || "").trim();
 
   return new ResolverPlan(wrappedName, [node], {
-    canHandle(request) {
-      return !node || !node.canHandle ? true : node.canHandle(request);
-    },
     routeClass(request) {
       return node && node.buildRuntimePlan
         ? node.buildRuntimePlan(request).routeClass

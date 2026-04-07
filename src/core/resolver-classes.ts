@@ -20,7 +20,6 @@ import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
 export interface ResolverPlanOptions {
-  canHandle?: ((request: RequestInput | ResolvedRequest) => boolean) | null;
   isRoutingNode?: boolean;
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
@@ -197,7 +196,6 @@ export class RouteExecutionResolver extends AttributeResolver {
 }
 
 export class ResolverPlan extends Resolver implements ResolverPlanNode {
-  readonly canHandlePredicate: ((request: RequestInput | ResolvedRequest) => boolean) | null;
   readonly isRoutingNode: boolean;
   readonly nodes: ResolverNode[];
   readonly routeClass: string | RouteClassResolver;
@@ -206,7 +204,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 
   constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
     super(name);
-    this.canHandlePredicate = options.canHandle || null;
     this.isRoutingNode = options.isRoutingNode === true;
     this.nodes = nodes || [];
     this.routeClass = options.routeClass || name;
@@ -245,10 +242,6 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
-    if (this.canHandlePredicate && !this.canHandlePredicate(request)) {
-      return false;
-    }
-
     return this.getHandleableNodesForRequest(request).length > 0;
   }
 
@@ -362,29 +355,14 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   ): ResolverPlanOptions {
     const sourceOptions = Object.assign({}, spec.options || {}, overrides || {});
     const materializedOptions = Object.assign({}, sourceOptions) as ResolverPlanOptions & {
-      canHandleRef?: string;
       nodeSelectorRef?: string;
-      routePathRef?: string;
       routeStateBuilderRef?: string;
     };
-
-    if (sourceOptions.routePathRef) {
-      materializedOptions.routePath =
-        refs.routePathByRef[sourceOptions.routePathRef] || "";
-      delete materializedOptions.routePathRef;
-    }
 
     if (sourceOptions.routeStateBuilderRef) {
       materializedOptions.routeStateBuilder =
         refs.routeStateBuilderByRef[sourceOptions.routeStateBuilderRef] || null;
       delete materializedOptions.routeStateBuilderRef;
-    }
-
-
-    if (sourceOptions.canHandleRef) {
-      materializedOptions.canHandle =
-        refs.canHandleByRef[sourceOptions.canHandleRef] || null;
-      delete materializedOptions.canHandleRef;
     }
 
     return materializedOptions;
@@ -519,6 +497,12 @@ export class IdentifierResolutionPlan extends ResolverPlan {
 
 export class AttributeResolutionPlan extends ResolverPlan {}
 
+export class EquityAttributeResolutionPlan extends AttributeResolutionPlan {
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return request.classification === "equity" && super.canHandle(request);
+  }
+}
+
 export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
   getExampleInput(): string | null {
     return "PSE:BDO";
@@ -528,6 +512,10 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
 export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {}
 
 export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return request.classification === "fx" && super.canHandle(request);
+  }
+
   constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
     super(name, nodes, options);
     if (this.nodes.length < 2) {
@@ -554,6 +542,7 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
 
 export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   AttributeResolutionPlan,
+  EquityAttributeResolutionPlan,
   FxAttributeResolutionPlan,
   IdentifierResolutionPlan,
   PseQuoteResolutionPlan,
