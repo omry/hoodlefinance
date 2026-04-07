@@ -101,7 +101,6 @@ export interface ResolverNode extends ResolverLike {
 
 export interface ResolverPlanNode extends ResolverNode {
   getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[];
-  isRoutingNode: boolean;
   getRoutingNodes?(): ResolverNode[];
   nodes?: ResolverNode[];
   routeClass?: string | RouteClassResolver;

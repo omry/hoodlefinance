@@ -6,7 +6,7 @@ import {
   buildSourceOverrideUnavailableError,
   type PlanSelectionDependencies,
 } from "./plan-selection";
-import { ResolverPlan } from "./resolver-classes";
+import { FirstSuccessPlan } from "./resolver-classes";
 import type { RequestInput, ResolvedRequest } from "./request";
 import { createRequestInput, extractIsinFromRequestInput } from "./request-building";
 import { looksLikeIsin } from "./request";
@@ -49,7 +49,7 @@ export interface ResolvePlanDependencies {
 function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
   const wrappedName = String((node && node.name) || "").trim();
 
-  return new ResolverPlan(wrappedName, [node], {
+  return new FirstSuccessPlan(wrappedName, [node], {
     routeClass(request) {
       return node && node.buildRuntimePlan
         ? node.buildRuntimePlan(request).routeClass

@@ -39,34 +39,22 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
   "DEFAULT-ATTRIBUTE:EQUITY": {
     resolverClass: "EquityAttributeResolutionPlan",
     nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
-    options: {
-      isRoutingNode: true,
-    },
   },
   "DEFAULT-ATTRIBUTE:FX": {
     resolverClass: "FxAttributeResolutionPlan",
     nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
   },
   "DEFAULT-ATTRIBUTE": {
-    resolverClass: "ResolverPlan",
+    resolverClass: "RoutingPlan",
     nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
-    options: {
-      isRoutingNode: true,
-    },
   },
   "IDENTIFIER-ROOT": {
-    resolverClass: "ResolverPlan",
+    resolverClass: "RoutingPlan",
     nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
-    options: {
-      isRoutingNode: true,
-    },
   },
   "ROOT": {
-    resolverClass: "ResolverPlan",
+    resolverClass: "RoutingPlan",
     nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
-    options: {
-      isRoutingNode: true,
-    },
   },
 };
 

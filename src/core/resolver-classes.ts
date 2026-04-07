@@ -19,7 +19,6 @@ import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
 export interface ResolverPlanOptions {
-  isRoutingNode?: boolean;
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
 }
@@ -193,15 +192,13 @@ export class RouteExecutionResolver extends AttributeResolver {
   }
 }
 
-export class ResolverPlan extends Resolver implements ResolverPlanNode {
-  readonly isRoutingNode: boolean;
+export abstract class ResolverPlan extends Resolver implements ResolverPlanNode {
   readonly nodes: ResolverNode[];
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
 
   constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
     super(name);
-    this.isRoutingNode = options.isRoutingNode === true;
     this.nodes = nodes || [];
     this.routeClass = options.routeClass || name;
     this.routePath = options.routePath || "";
@@ -241,9 +238,7 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
     return this.getHandleableNodesForRequest(request).length > 0;
   }
 
-  getRoutingNodeKind(): RoutingNodeKind {
-    return this.isRoutingNode ? "switch" : "try each";
-  }
+  abstract getRoutingNodeKind(): RoutingNodeKind;
 
   buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
@@ -363,7 +358,8 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
         ? resolverMap
         : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
 
-    return new this(
+    const Ctor = this as unknown as new (name: string, nodes: ResolverNode[], options: ResolverPlanOptions) => ResolverPlan;
+    return new Ctor(
       code,
       this.getSpecNodeCodes(spec).map((nodeCode) =>
         resolveNodeByCode(nodeCode),
@@ -373,7 +369,19 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   }
 }
 
-export class IdentifierResolutionPlan extends ResolverPlan {
+export class RoutingPlan extends ResolverPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return "switch";
+  }
+}
+
+export class FirstSuccessPlan extends ResolverPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return "try each";
+  }
+}
+
+export class IdentifierResolutionPlan extends RoutingPlan {
   nodeCodeByIsinCountry: Record<string, string> | null = null;
   defaultLookupNodeCodes: string[] = [];
   looksLikeIsin?: (value: string) => boolean;
@@ -432,10 +440,6 @@ export class IdentifierResolutionPlan extends ResolverPlan {
     return selectedNodes.slice(firstMatchingIndex);
   }
 
-  getRoutingNodeKind(): RoutingNodeKind {
-    return "switch";
-  }
-
   static fromSpec(
     code: string,
     spec: PlanSpec,
@@ -476,9 +480,13 @@ export class IdentifierResolutionPlan extends ResolverPlan {
   }
 }
 
-export class AttributeResolutionPlan extends ResolverPlan {}
+export class AttributeResolutionPlan extends FirstSuccessPlan {}
 
 export class EquityAttributeResolutionPlan extends AttributeResolutionPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return "switch";
+  }
+
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return request.classification === "equity" && super.canHandle(request);
   }
@@ -575,10 +583,11 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
 export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   AttributeResolutionPlan,
   EquityAttributeResolutionPlan,
+  FirstSuccessPlan,
   FxAttributeResolutionPlan,
   IdentifierResolutionPlan,
   PseQuoteResolutionPlan,
-  ResolverPlan,
+  RoutingPlan,
   TickerQuoteResolutionPlan,
 } as const;
 

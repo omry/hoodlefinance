@@ -7,7 +7,21 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(npm run check: ':*)",
-      "Bash(node --test ':*)"
+      "Bash(node --test ':*)",
+      "mcp__mempalace__mempalace_status"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"MEMPALACE PROTOCOL: Call mcp__mempalace__mempalace_status NOW before responding to the user. This loads the palace overview and AAAK spec required by the MemPalace memory protocol.\"}}'",
+            "statusMessage": "Loading MemPalace..."
+          }
+        ]
+      }
     ]
   }
 }
