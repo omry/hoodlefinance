@@ -18,7 +18,6 @@ export type ResolverClassName =
 export interface ResolverSpecOptions {
   routingDescription?: string;
   routingLabel?: string;
-  sourceName?: string;
 }
 
 export interface ResolverSpec {

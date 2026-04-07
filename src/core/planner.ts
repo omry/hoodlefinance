@@ -93,7 +93,7 @@ export interface ResolverLike {
   matchesSourceName?(source: string): boolean;
   name: string;
   routingLabel: string;
-  sourceName: string;
+  alias: string;
 }
 
 export interface ResolverNode extends ResolverLike {

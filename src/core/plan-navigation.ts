@@ -100,7 +100,7 @@ export function resolveRoutingNode<TNode extends ResolverNode>(
 }
 
 export function matchesResolverNodeName(
-  node: Pick<ResolverNode, "name" | "sourceName"> | null | undefined,
+  node: Pick<ResolverNode, "name" | "alias"> | null | undefined,
   name: string,
 ): boolean {
   const normalizedName = String(name || "")
@@ -113,7 +113,7 @@ export function matchesResolverNodeName(
     (String(node.name || "")
       .trim()
       .toUpperCase() === normalizedName ||
-      String(node.sourceName || "")
+      String(node.alias || "")
         .trim()
         .toUpperCase() === normalizedName)
   );

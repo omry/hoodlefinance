@@ -52,7 +52,6 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     options: {
       routingLabel: "PSE",
       routeStateBuilderRef: "PSE_QUOTE",
-      sourceName: "PSE",
     },
   },
   "QUOTE:TICKER": {

@@ -21,7 +21,6 @@ import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
 export interface ResolverOptions {
   routingLabel?: string;
-  sourceName?: string;
 }
 
 export interface RouteExecutionResolverOptions extends ResolverOptions {}
@@ -73,14 +72,14 @@ interface IdentifierResolutionPlanSpec extends PlanSpec {
 export class Resolver {
   readonly code: string;
   readonly name: string;
+  readonly alias: string;
   readonly routingLabel: string;
-  readonly sourceName: string;
 
-  constructor(code = "", sourceName?: string, options: ResolverOptions = {}) {
+  constructor(code = "", alias?: string, options: ResolverOptions = {}) {
     this.code = code || "";
     this.name = this.code;
     this.routingLabel = options.routingLabel || "";
-    this.sourceName = sourceName != null ? sourceName : this.code;
+    this.alias = alias != null ? alias : this.code;
   }
 
   getExampleInput(): string | null {
@@ -119,7 +118,7 @@ export class Resolver {
 
   matchesSourceName(source: string): boolean {
     return (
-      String(this.sourceName || "")
+      String(this.alias || "")
         .trim()
         .toUpperCase() ===
       String(source || "")
@@ -175,11 +174,11 @@ export class RouteExecutionResolver extends AttributeResolver {
   constructor(
     code: string,
     traceLabel?: string | RouteExecutionResolverOptions,
-    sourceName?: string | RouteExecutionResolverOptions,
+    alias?: string | RouteExecutionResolverOptions,
     options?: RouteExecutionResolverOptions,
   ) {
     let resolvedTraceLabel = traceLabel;
-    let resolvedSourceName = sourceName;
+    let resolvedAlias = alias;
     let config = options;
 
     if (
@@ -189,22 +188,22 @@ export class RouteExecutionResolver extends AttributeResolver {
     ) {
       config = resolvedTraceLabel;
       resolvedTraceLabel = "";
-      resolvedSourceName = "";
+      resolvedAlias = "";
     } else if (
-      resolvedSourceName &&
-      typeof resolvedSourceName === "object" &&
-      !Array.isArray(resolvedSourceName)
+      resolvedAlias &&
+      typeof resolvedAlias === "object" &&
+      !Array.isArray(resolvedAlias)
     ) {
-      config = resolvedSourceName;
-      resolvedSourceName = "";
+      config = resolvedAlias;
+      resolvedAlias = "";
     }
 
     const normalizedTraceLabel =
       (resolvedTraceLabel as string | undefined) || code;
-    const normalizedSourceName =
-      (resolvedSourceName as string | undefined) || normalizedTraceLabel || code;
+    const normalizedAlias =
+      (resolvedAlias as string | undefined) || normalizedTraceLabel || code;
 
-    super(code, normalizedSourceName, config);
+    super(code, normalizedAlias, config);
     this.traceLabel = normalizedTraceLabel;
   }
 
@@ -246,12 +245,8 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
   readonly routePath: string | RoutePathResolver;
   readonly routeStateBuilder: RouteStateBuilder | null;
 
-  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
-    const sourceName = Object.prototype.hasOwnProperty.call(options, "sourceName")
-      ? options.sourceName
-      : "";
-
-    super(name, sourceName, options);
+  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}, alias = "") {
+    super(name, alias, options);
     this.canHandlePredicate = options.canHandle || null;
     this.isRoutingNode = options.isRoutingNode === true;
     this.nodes = nodes || [];
@@ -341,7 +336,7 @@ export class ResolverPlan extends Resolver implements ResolverPlanNode {
 
       if (
         groupedName &&
-        groupedName !== String(this.sourceName || "").trim().toUpperCase() &&
+        groupedName !== String(this.alias || "").trim().toUpperCase() &&
         !groupedNames.includes(groupedName)
       ) {
         groupedNames.push(groupedName);
@@ -566,6 +561,8 @@ export class IdentifierResolutionPlan extends ResolverPlan {
 export class AttributeResolutionPlan extends ResolverPlan {}
 
 export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
+  override readonly alias = "PSE";
+
   getExampleInput(): string | null {
     return "PSE:BDO";
   }

@@ -69,8 +69,7 @@ function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
         : {};
     },
     routingLabel: node && node.routingLabel ? node.routingLabel : "",
-    sourceName: node && node.sourceName ? node.sourceName : "",
-  });
+  }, node && node.alias ? node.alias : "");
 }
 
 export function createDefaultResolvePlanBuilder(
