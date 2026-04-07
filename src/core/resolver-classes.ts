@@ -318,30 +318,20 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
   }
 
   static getSpecNodeCodes(spec: PlanSpec): string[] {
-    const nodeCodes: string[] = [];
-
-    function addNodeCode(nodeCode: string): void {
-      const normalizedCode = normalizeNodeCode(nodeCode);
-
-      if (normalizedCode && !nodeCodes.includes(normalizedCode)) {
-        nodeCodes.push(normalizedCode);
+    const result: string[] = [];
+    for (const code of spec.nodeCodes || []) {
+      const normalized = normalizeNodeCode(code);
+      if (normalized && !result.includes(normalized)) {
+        result.push(normalized);
       }
     }
-
-    (spec.defaultNodeCodes || []).forEach(addNodeCode);
-    (spec.nodeCodes || []).forEach(addNodeCode);
-
-    return nodeCodes;
+    return result;
   }
 
   static materializeOptions(
-    spec: PlanSpec,
     overrides: Record<string, unknown> | null | undefined,
-    _refs: PlanRuntimeRefs,
-    _deps?: PlanNodeBuilderDependencies,
   ): ResolverPlanOptions {
-    const sourceOptions = Object.assign({}, spec.options || {}, overrides || {});
-    return Object.assign({}, sourceOptions) as ResolverPlanOptions;
+    return Object.assign({}, overrides || {}) as ResolverPlanOptions;
   }
 
   static fromSpec(
@@ -351,7 +341,7 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
       | Record<string, ResolverNode>
       | ((nodeCode: string) => ResolverNode | null),
     overrides: Record<string, unknown> | null | undefined,
-    deps: PlanNodeBuilderDependencies,
+    _deps: PlanNodeBuilderDependencies,
   ): ResolverPlan {
     const resolveNodeByCode =
       typeof resolverMap === "function"
@@ -361,10 +351,10 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
     const Ctor = this as unknown as new (name: string, nodes: ResolverNode[], options: ResolverPlanOptions) => ResolverPlan;
     return new Ctor(
       code,
-      this.getSpecNodeCodes(spec).map((nodeCode) =>
+      this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
       ) as ResolverNode[],
-      this.materializeOptions(spec, overrides, deps.refs, deps),
+      this.materializeOptions(overrides),
     );
   }
 }
@@ -386,25 +376,22 @@ export class IdentifierResolutionPlan extends RoutingPlan {
   defaultLookupNodeCodes: string[] = [];
   looksLikeIsin?: (value: string) => boolean;
 
-  static getSpecNodeCodes(spec: PlanSpec): string[] {
-    const nodeCodes = super.getSpecNodeCodes(spec);
-    const nodeCodeByIsinCountry = (
-      spec as IdentifierResolutionPlanSpec
-    ).nodeCodeByIsinCountry || null;
+  static override getSpecNodeCodes(spec: PlanSpec): string[] {
+    const nodeCodes: string[] = [];
+    const nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
 
-    Object.entries(nodeCodeByIsinCountry || {}).forEach(([countryCode, nodeCode]) => {
-      if (countryCode === "_default_") return;
-      const normalizedCode = normalizeNodeCode(nodeCode || "");
-      if (normalizedCode && !nodeCodes.includes(normalizedCode)) {
-        nodeCodes.unshift(normalizedCode);
+    for (const [countryCode, nodeCode] of Object.entries(nodeCodeByIsinCountry || {})) {
+      if (countryCode === "_default_") continue;
+      const normalized = normalizeNodeCode(nodeCode);
+      if (normalized && !nodeCodes.includes(normalized)) {
+        nodeCodes.unshift(normalized);
       }
-    });
+    }
 
     const defaultCode = normalizeNodeCode((nodeCodeByIsinCountry || {})["_default_"] || "");
     if (defaultCode && !nodeCodes.includes(defaultCode)) {
       nodeCodes.push(defaultCode);
     }
-
     return nodeCodes;
   }
 
@@ -456,16 +443,16 @@ export class IdentifierResolutionPlan extends RoutingPlan {
 
     const plan = new this(
       code,
-      this.getSpecNodeCodes(spec).map((nodeCode) =>
+      this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
       ) as ResolverNode[],
-      this.materializeOptions(spec, overrides, deps.refs, deps),
+      this.materializeOptions(overrides),
     );
 
     const nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
     const defaultCode = normalizeNodeCode((nodeCodeByIsinCountry || {})["_default_"] || "");
     plan.nodeCodeByIsinCountry = nodeCodeByIsinCountry;
-    plan.defaultLookupNodeCodes = defaultCode ? [defaultCode] : (spec.defaultNodeCodes || []).map(normalizeNodeCode);
+    plan.defaultLookupNodeCodes = defaultCode ? [defaultCode] : [];
     plan.looksLikeIsin = deps.refs.looksLikeIsin;
 
     return plan;
@@ -532,10 +519,10 @@ export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {
 
     const plan = new this(
       code,
-      this.getSpecNodeCodes(spec).map((nodeCode) =>
+      this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
       ) as ResolverNode[],
-      this.materializeOptions(spec, overrides, deps.refs, deps),
+      this.materializeOptions(overrides),
     );
 
     plan.resolvePreferredYahooSymbol = deps.resolvePreferredYahooSymbol ?? null;
