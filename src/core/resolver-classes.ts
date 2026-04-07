@@ -20,7 +20,6 @@ import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 
 export interface ResolverOptions {
-  routingDescription?: string;
   routingLabel?: string;
   sourceName?: string;
 }
@@ -74,7 +73,6 @@ interface IdentifierResolutionPlanSpec extends PlanSpec {
 export class Resolver {
   readonly code: string;
   readonly name: string;
-  readonly routingDescription: string;
   readonly routingLabel: string;
   readonly sourceName: string;
 
@@ -82,11 +80,14 @@ export class Resolver {
     this.code = code || "";
     this.name = this.code;
     this.routingLabel = options.routingLabel || "";
-    this.routingDescription = options.routingDescription || "";
     this.sourceName = sourceName != null ? sourceName : this.code;
   }
 
   getExampleInput(): string | null {
+    return null;
+  }
+
+  getRoutingDescription(): string | null {
     return null;
   }
 
@@ -108,7 +109,7 @@ export class Resolver {
 
   describeRoutingNode(): string {
     const name = formatRoutingPlanTreeLabel(this.name);
-    const description = String(this.routingDescription || "").trim();
+    const description = String(this.getRoutingDescription() || "").trim();
     return description ? `${name} - ${description}` : name;
   }
 

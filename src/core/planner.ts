@@ -88,10 +88,10 @@ export interface ResolverLike {
     source: string,
     request: RequestInput | ResolvedRequest,
   ): string[];
+  getRoutingDescription(): string | null;
   getRoutingNodes?(): ResolverNode[];
   matchesSourceName?(source: string): boolean;
   name: string;
-  routingDescription: string;
   routingLabel: string;
   sourceName: string;
 }

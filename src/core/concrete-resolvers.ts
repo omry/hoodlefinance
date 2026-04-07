@@ -222,11 +222,13 @@ export class PseIsinMapResolver extends IdentifierResolver {
   readonly resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap;
 
   constructor(resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap) {
-    super("PSE-MAP", "PSE", {
-      routingDescription: "PSE ISIN map lookup",
-    });
+    super("PSE-MAP", "PSE");
     this.traceLabel = "pse-isin-map";
     this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
+  }
+
+  getRoutingDescription(): string | null {
+    return "PSE ISIN map lookup";
   }
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {
@@ -306,13 +308,15 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
   readonly putCachedString: YahooIsinSearchResolverDependencies["putCachedString"];
 
   constructor(deps: YahooIsinSearchResolverDependencies) {
-    super("YAHOO-ISIN", "YAHOO", {
-      routingDescription: "Yahoo search by ISIN",
-    });
+    super("YAHOO-ISIN", "YAHOO");
     this.traceLabel = "YAHOO-ISIN";
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedString = deps.getCachedString;
     this.putCachedString = deps.putCachedString;
+  }
+
+  getRoutingDescription(): string | null {
+    return "Yahoo search by ISIN";
   }
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {
@@ -437,9 +441,11 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
 export class LocalFxResolver extends RouteExecutionResolver {
   constructor() {
-    super("FX-IDENTITY", "FX-IDENTITY", {
-      routingDescription: "Same-currency FX identity rate",
-    });
+    super("FX-IDENTITY", "FX-IDENTITY");
+  }
+
+  getRoutingDescription(): string | null {
+    return "Same-currency FX identity rate";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -496,9 +502,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
   readonly putCachedJson: GoogleFxResolverDependencies["putCachedJson"];
 
   constructor(deps: GoogleFxResolverDependencies) {
-    super("GOOGLE-FX", "GOOGLE-FX", {
-      routingDescription: "Google Finance FX quote lookup",
-    });
+    super("GOOGLE-FX", "GOOGLE-FX");
     this.fetchText = deps.fetchText;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -506,6 +510,10 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
   getExampleInput(): string | null {
     return "EURUSD";
+  }
+
+  getRoutingDescription(): string | null {
+    return "Google Finance FX quote lookup";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -621,9 +629,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
   readonly putCachedJson: PseQuoteResolverDependencies["putCachedJson"];
 
   constructor(deps: PseQuoteResolverDependencies) {
-    super("PSE-FRAMES", {
-      routingDescription: "PSE frames quote lookup",
-    });
+    super("PSE-FRAMES");
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -631,6 +637,10 @@ export class PseFramesResolver extends RouteExecutionResolver {
 
   getExampleInput(): string | null {
     return "PSE:BDO";
+  }
+
+  getRoutingDescription(): string | null {
+    return "PSE frames quote lookup";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -767,9 +777,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
   readonly putCachedJson: PseQuoteResolverDependencies["putCachedJson"];
 
   constructor(deps: PseQuoteResolverDependencies) {
-    super("PSE-EDGE", {
-      routingDescription: "PSE edge quote lookup",
-    });
+    super("PSE-EDGE");
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -777,6 +785,10 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
   getExampleInput(): string | null {
     return "PSE:BDO";
+  }
+
+  getRoutingDescription(): string | null {
+    return "PSE edge quote lookup";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1010,9 +1022,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
   readonly putCachedJson: YahooQuoteResolverDependencies["putCachedJson"];
 
   constructor(deps: YahooQuoteResolverDependencies) {
-    super("YAHOO", "YAHOO", {
-      routingDescription: "Yahoo quote lookup",
-    });
+    super("YAHOO", "YAHOO");
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -1020,6 +1030,10 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 
   getExampleInput(): string | null {
     return "GOOG";
+  }
+
+  getRoutingDescription(): string | null {
+    return "Yahoo quote lookup";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1172,9 +1186,7 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
   readonly putCachedJson: TradingviewFundResolverDependencies["putCachedJson"];
 
   constructor(deps: TradingviewFundResolverDependencies) {
-    super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW", {
-      routingDescription: "TradingView fund quote lookup",
-    });
+    super("TRADINGVIEW-FUND", "TRADINGVIEW", "TRADINGVIEW");
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedJson = deps.getCachedJson;
     this.putCachedJson = deps.putCachedJson;
@@ -1182,6 +1194,10 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
   getExampleInput(): string | null {
     return "TLV:KSMF59";
+  }
+
+  getRoutingDescription(): string | null {
+    return "TradingView fund quote lookup";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {

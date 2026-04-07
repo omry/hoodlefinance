@@ -68,7 +68,6 @@ function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
         ? node.buildRuntimePlan(request).routeState || {}
         : {};
     },
-    routingDescription: node && node.routingDescription ? node.routingDescription : "",
     routingLabel: node && node.routingLabel ? node.routingLabel : "",
     sourceName: node && node.sourceName ? node.sourceName : "",
   });
