@@ -22,3 +22,6 @@ docs/demo-sheet/demo-sheet-staging.json
 # mempalace
 entities.json
 mempalace.yaml
+
+# forge
+.mcp.json
