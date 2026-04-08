@@ -72,7 +72,10 @@ import {
 import type { ResolverNode, RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
-import type { ResolverServices } from "./resolver-services";
+import {
+  loadStoredTextResource,
+  type ResolverServices,
+} from "./resolver-services";
 
 export class DirectIdentifierResolver extends IdentifierResolver {
   constructor() {
@@ -262,97 +265,25 @@ export class PseIsinMapResolver extends IdentifierResolver {
     this.putStoredTextResource = services.putStoredTextResource;
   }
 
-  getStoredPseIsinMapTextState(): {
-    fallbackText: string;
-    freshText: string;
-  } {
-    const storedResource =
-      typeof this.getStoredTextResource === "function"
-        ? this.getStoredTextResource(PSE_ISIN_MAP_STORED_KEY)
-        : null;
-    const storedText = String(storedResource?.text || "");
-    const validStoredText = tryParsePropertiesMap(storedText) ? storedText : "";
-    const fetchedAtMs = Number(storedResource?.fetchedAtMs);
-    const isFresh =
-      !!validStoredText &&
-      Number.isFinite(fetchedAtMs) &&
-      Date.now() - fetchedAtMs <= PSE_ISIN_MAP_REFRESH_INTERVAL_MS;
-
-    return {
-      fallbackText: validStoredText,
-      freshText: isFresh ? validStoredText : "",
-    };
-  }
-
   ensurePseIsinMap(): Record<string, string> {
     if (this.pseIsinMapByIsin) {
       return this.pseIsinMapByIsin;
     }
 
-    let rawMap = "";
-    let parsedMap: Record<string, string> | null = null;
-    const storedTextState = this.getStoredPseIsinMapTextState();
+    this.pseIsinMapByIsin = loadStoredTextResource({
+      cacheKey: PSE_ISIN_MAP_CACHE_KEY,
+      cacheTtlSeconds: PSE_ISIN_MAP_CACHE_TTL_SECONDS,
+      fetchText: () => this.httpFetch(PSE_ISIN_MAP_URL),
+      getCachedString: this.getCachedString,
+      getStoredTextResource: this.getStoredTextResource,
+      invalidPayloadMessage: "Invalid PSE ISIN map payload.",
+      putCachedString: this.putCachedString,
+      putStoredTextResource: this.putStoredTextResource,
+      refreshIntervalMs: PSE_ISIN_MAP_REFRESH_INTERVAL_MS,
+      storedResourceKey: PSE_ISIN_MAP_STORED_KEY,
+      tryParse: tryParsePropertiesMap,
+    }).parsed;
 
-    if (typeof this.getCachedString === "function") {
-      rawMap = String(this.getCachedString(PSE_ISIN_MAP_CACHE_KEY) || "");
-      parsedMap = tryParsePropertiesMap(rawMap);
-    }
-
-    if (!parsedMap && storedTextState.freshText) {
-      rawMap = storedTextState.freshText;
-      parsedMap = tryParsePropertiesMap(rawMap);
-
-      if (parsedMap && typeof this.putCachedString === "function") {
-        this.putCachedString(
-          PSE_ISIN_MAP_CACHE_KEY,
-          rawMap,
-          PSE_ISIN_MAP_CACHE_TTL_SECONDS,
-        );
-      }
-    }
-
-    if (!parsedMap) {
-      try {
-        rawMap = this.httpFetch(PSE_ISIN_MAP_URL);
-        parsedMap = tryParsePropertiesMap(rawMap);
-
-        if (!parsedMap) {
-          throw new Error("Invalid PSE ISIN map payload.");
-        }
-
-        if (typeof this.putCachedString === "function") {
-          this.putCachedString(
-            PSE_ISIN_MAP_CACHE_KEY,
-            rawMap,
-            PSE_ISIN_MAP_CACHE_TTL_SECONDS,
-          );
-        }
-        if (typeof this.putStoredTextResource === "function") {
-          this.putStoredTextResource(PSE_ISIN_MAP_STORED_KEY, rawMap, Date.now());
-        }
-      } catch (error) {
-        if (!storedTextState.fallbackText) {
-          throw error;
-        }
-
-        rawMap = storedTextState.fallbackText;
-        parsedMap = tryParsePropertiesMap(rawMap);
-
-        if (parsedMap && typeof this.putCachedString === "function") {
-          this.putCachedString(
-            PSE_ISIN_MAP_CACHE_KEY,
-            rawMap,
-            PSE_ISIN_MAP_CACHE_TTL_SECONDS,
-          );
-        }
-      }
-    }
-
-    if (!parsedMap) {
-      throw new Error("Failed to load the PSE ISIN map.");
-    }
-
-    this.pseIsinMapByIsin = parsedMap;
     return this.pseIsinMapByIsin;
   }
 
@@ -1224,116 +1155,26 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     );
   }
 
-  getStoredPreferredReitWhitelistTextState(): {
-    fallbackText: string;
-    freshText: string;
-  } {
-    const storedResource =
-      typeof this.getStoredTextResource === "function"
-        ? this.getStoredTextResource(PREFERRED_REIT_WHITELIST_STORED_KEY)
-        : null;
-    const storedText = String(storedResource?.text || "");
-    const validStoredText = tryParsePreferredReitTickerSet(storedText)
-      ? storedText
-      : "";
-    const fetchedAtMs = Number(storedResource?.fetchedAtMs);
-    const isFresh =
-      !!validStoredText &&
-      Number.isFinite(fetchedAtMs) &&
-      Date.now() - fetchedAtMs <= PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS;
-
-    return {
-      fallbackText: validStoredText,
-      freshText: isFresh ? validStoredText : "",
-    };
-  }
-
   ensurePreferredReitTickerSet(): ReadonlySet<string> {
     if (this.preferredReitTickerSet) {
       return this.preferredReitTickerSet;
     }
 
-    let preferredReitTickerSet: ReadonlySet<string> | null = null;
-    const storedTextState = this.getStoredPreferredReitWhitelistTextState();
-    const cachedText =
-      typeof this.getCachedString === "function"
-        ? String(this.getCachedString(PREFERRED_REIT_WHITELIST_CACHE_KEY) || "")
-        : "";
+    this.preferredReitTickerSet = loadStoredTextResource({
+      cacheKey: PREFERRED_REIT_WHITELIST_CACHE_KEY,
+      cacheTtlSeconds: PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+      fetchText: () => this.httpFetch(PREFERRED_REIT_WHITELIST_URL),
+      getCachedString: this.getCachedString,
+      getStoredTextResource: this.getStoredTextResource,
+      invalidPayloadMessage: "Invalid preferred REIT whitelist payload.",
+      putCachedString: this.putCachedString,
+      putStoredTextResource: this.putStoredTextResource,
+      refreshIntervalMs: PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS,
+      storedResourceKey: PREFERRED_REIT_WHITELIST_STORED_KEY,
+      tryParse: tryParsePreferredReitTickerSet,
+    }).parsed;
 
-    if (cachedText) {
-      preferredReitTickerSet = tryParsePreferredReitTickerSet(cachedText);
-    }
-
-    if (!preferredReitTickerSet && storedTextState.freshText) {
-      preferredReitTickerSet = tryParsePreferredReitTickerSet(
-        storedTextState.freshText,
-      );
-
-      if (
-        preferredReitTickerSet &&
-        typeof this.putCachedString === "function"
-      ) {
-        this.putCachedString(
-          PREFERRED_REIT_WHITELIST_CACHE_KEY,
-          storedTextState.freshText,
-          PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-        );
-      }
-    }
-
-    if (!preferredReitTickerSet) {
-      try {
-        const downloadedText = this.httpFetch(PREFERRED_REIT_WHITELIST_URL);
-
-        preferredReitTickerSet = tryParsePreferredReitTickerSet(downloadedText);
-
-        if (!preferredReitTickerSet) {
-          throw new Error("Invalid preferred REIT whitelist payload.");
-        }
-
-        if (typeof this.putCachedString === "function") {
-          this.putCachedString(
-            PREFERRED_REIT_WHITELIST_CACHE_KEY,
-            downloadedText,
-            PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-          );
-        }
-        if (typeof this.putStoredTextResource === "function") {
-          this.putStoredTextResource(
-            PREFERRED_REIT_WHITELIST_STORED_KEY,
-            downloadedText,
-            Date.now(),
-          );
-        }
-      } catch (error) {
-        if (!storedTextState.fallbackText) {
-          throw error;
-        }
-
-        preferredReitTickerSet = tryParsePreferredReitTickerSet(
-          storedTextState.fallbackText,
-        );
-
-        if (
-          preferredReitTickerSet &&
-          typeof this.putCachedString === "function"
-        ) {
-          this.putCachedString(
-            PREFERRED_REIT_WHITELIST_CACHE_KEY,
-            storedTextState.fallbackText,
-            PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-          );
-        }
-      }
-    }
-
-    if (!preferredReitTickerSet) {
-      throw new Error("Failed to load the preferred REIT whitelist.");
-    }
-
-    this.preferredReitTickerSet = preferredReitTickerSet;
-
-    return preferredReitTickerSet;
+    return this.preferredReitTickerSet;
   }
 
   buildPreferredYahooSymbol(yahooSymbol: string): string {

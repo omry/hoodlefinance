@@ -14,6 +14,12 @@ const DEFAULT_CURRENCY_CODES_PAYLOAD = JSON.stringify({
   canonicalCodes: ["EUR", "USD"],
   cryptoCodes: [],
 });
+function createStoredTextResourcePayload(text, fetchedAtMs = Date.now()) {
+  return JSON.stringify({
+    fetchedAtMs,
+    text,
+  });
+}
 
 function createServices(fetchByUrl = {}) {
   const resolvedFetchByUrl = {
@@ -99,11 +105,7 @@ test("HOODLEFINANCE reuses stored currency code data when the cache is cold", ()
   const services = createServices();
   services.propertiesState.set(
     "hoodlefinance.currencyCodes",
-    DEFAULT_CURRENCY_CODES_PAYLOAD,
-  );
-  services.propertiesState.set(
-    "hoodlefinance.currencyCodesFetchedAtMs",
-    String(Date.now()),
+    createStoredTextResourcePayload(DEFAULT_CURRENCY_CODES_PAYLOAD),
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
@@ -117,16 +119,13 @@ test("HOODLEFINANCE stores downloaded currency code data in script properties af
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE("USDUSD", "price"), 1);
-  assert.equal(
+
+  const storedPayload = JSON.parse(
     services.propertiesState.get("hoodlefinance.currencyCodes"),
-    DEFAULT_CURRENCY_CODES_PAYLOAD,
   );
-  assert.equal(
-    typeof Number(
-      services.propertiesState.get("hoodlefinance.currencyCodesFetchedAtMs"),
-    ),
-    "number",
-  );
+
+  assert.equal(storedPayload.text, DEFAULT_CURRENCY_CODES_PAYLOAD);
+  assert.equal(typeof storedPayload.fetchedAtMs, "number");
 });
 
 test("HOODLEFINANCE falls back to stored currency code data when the refresh payload is malformed", () => {
@@ -136,11 +135,10 @@ test("HOODLEFINANCE falls back to stored currency code data when the refresh pay
   const storedFetchedAtMs = Date.now() - 2 * 24 * 60 * 60 * 1000;
   services.propertiesState.set(
     "hoodlefinance.currencyCodes",
-    DEFAULT_CURRENCY_CODES_PAYLOAD,
-  );
-  services.propertiesState.set(
-    "hoodlefinance.currencyCodesFetchedAtMs",
-    String(storedFetchedAtMs),
+    createStoredTextResourcePayload(
+      DEFAULT_CURRENCY_CODES_PAYLOAD,
+      storedFetchedAtMs,
+    ),
   );
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
@@ -150,8 +148,11 @@ test("HOODLEFINANCE falls back to stored currency code data when the refresh pay
     DEFAULT_CURRENCY_CODES_PAYLOAD,
   );
   assert.equal(
-    services.propertiesState.get("hoodlefinance.currencyCodesFetchedAtMs"),
-    String(storedFetchedAtMs),
+    services.propertiesState.get("hoodlefinance.currencyCodes"),
+    createStoredTextResourcePayload(
+      DEFAULT_CURRENCY_CODES_PAYLOAD,
+      storedFetchedAtMs,
+    ),
   );
 });
 

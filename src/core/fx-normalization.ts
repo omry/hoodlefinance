@@ -1,4 +1,8 @@
 import type { FxPair } from "./request";
+import {
+  loadStoredTextResource,
+  type StoredTextResource,
+} from "./resolver-services";
 
 declare function require(path: string): unknown;
 
@@ -25,6 +29,25 @@ export interface CurrencyCodeDataPayload {
   canonicalCodes?: string[];
   cryptoCodes?: string[];
 }
+
+export interface CurrencyCodeResourceServices {
+  fetchText(url: string): string;
+  getCachedString?(cacheKey: string): string;
+  getStoredTextResource?(resourceKey: string): StoredTextResource | null;
+  putCachedString?(cacheKey: string, value: string, ttlSeconds: number): string;
+  putStoredTextResource?(
+    resourceKey: string,
+    text: string,
+    fetchedAtMs: number,
+  ): StoredTextResource | null;
+}
+
+export const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
+export const CURRENCY_CODES_CACHE_TTL_SECONDS = 6 * 60 * 60;
+export const CURRENCY_CODES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+export const CURRENCY_CODES_STORED_KEY = "hoodlefinance.currencyCodes";
+export const CURRENCY_CODES_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
 
 export function buildCurrencyUnits(
   payload: CurrencyCodePayload,
@@ -165,7 +188,9 @@ export function parseCurrencyCodeDataResource(
   }
 
   if (!Object.keys(unitsByCode).length) {
-    throw new Error("No canonical currency codes were found in the downloaded data.");
+    throw new Error(
+      "No canonical currency codes were found in the downloaded data.",
+    );
   }
 
   for (const aliasCode of Object.keys(aliasPayload)) {
@@ -258,7 +283,10 @@ function findCompactFxPairCandidatesWithUnits(
     const baseCode = pairText.slice(0, baseLength);
     const quoteCode = pairText.slice(baseLength);
 
-    if (!/^[A-Za-z]{3,4}$/.test(baseCode) || !/^[A-Za-z]{3,4}$/.test(quoteCode)) {
+    if (
+      !/^[A-Za-z]{3,4}$/.test(baseCode) ||
+      !/^[A-Za-z]{3,4}$/.test(quoteCode)
+    ) {
       continue;
     }
 
@@ -280,7 +308,7 @@ export function createFxTickerParser(
     const explicitMatch = value.match(/^([^:]+):(.*)$/);
     const exchange = explicitMatch?.[1]?.trim().toUpperCase() || "";
     let pairText = explicitMatch?.[2]?.trim() || value;
- 
+
     const dottedMatch = explicitMatch
       ? pairText.match(/^([A-Za-z]{3,4})\.([A-Za-z]{3,4})$/)
       : null;
@@ -315,9 +343,7 @@ export function createFxTickerParser(
     if (compactCandidates.length > 1) {
       const suggestions = compactCandidates
         .slice(0, 2)
-        .map(
-          (c) => `CURRENCY:${c.baseDisplayCode}.${c.displayQuoteCode}`,
-        )
+        .map((c) => `CURRENCY:${c.baseDisplayCode}.${c.displayQuoteCode}`)
         .join(" or ");
 
       throw new Error(
@@ -337,6 +363,39 @@ export function createFxTickerParser(
 
     return compactCandidates[0] || null;
   };
+}
+
+export function loadCurrencyCodeUnits(
+  services: CurrencyCodeResourceServices,
+): Record<string, CurrencyUnit> {
+  return parseCurrencyCodeDataResource(
+    loadStoredTextResource({
+      cacheKey: CURRENCY_CODES_CACHE_KEY,
+      cacheTtlSeconds: CURRENCY_CODES_CACHE_TTL_SECONDS,
+      fetchText: () => services.fetchText(CURRENCY_CODES_URL),
+      getCachedString: services.getCachedString,
+      getStoredTextResource: services.getStoredTextResource,
+      invalidPayloadMessage: `Invalid text resource payload for ${CURRENCY_CODES_URL}`,
+      putCachedString: services.putCachedString,
+      putStoredTextResource: services.putStoredTextResource,
+      refreshIntervalMs: CURRENCY_CODES_REFRESH_INTERVAL_MS,
+      storedResourceKey: CURRENCY_CODES_STORED_KEY,
+      tryParse(text) {
+        try {
+          parseCurrencyCodeDataResource(text);
+          return text;
+        } catch {
+          return null;
+        }
+      },
+    }).text,
+  );
+}
+
+export function createStoredFxTickerParser(
+  services: CurrencyCodeResourceServices,
+): (ticker: string) => FxPair | null {
+  return createFxTickerParser(loadCurrencyCodeUnits(services));
 }
 
 const DEFAULT_CURRENCY_UNITS = buildCurrencyUnits(
