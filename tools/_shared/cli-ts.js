@@ -3,9 +3,11 @@
 
 const {
   createHoodlefinanceRuntime,
+} = require("../../dist/ts/runtime/host-adapter.js");
+const {
   createPreferredYahooSymbolResolver,
   parsePreferredReitTickerSet,
-} = require("../../dist/ts/runtime/host-adapter.js");
+} = require("../../dist/ts/core/preferred-yahoo-symbols.js");
 const { createRequestInput } = require("../../dist/ts/core/request-building.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
 const {
@@ -85,9 +87,11 @@ function createCliEnvironment() {
     getCachedString: stringCache.getCachedString,
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
-    resolvePreferredYahooSymbol: createPreferredYahooSymbolResolver(
-      preferredReitTickerSet,
-    ),
+    routingPolicies: {
+      resolvePreferredYahooSymbol: createPreferredYahooSymbolResolver(
+        preferredReitTickerSet,
+      ),
+    },
   });
 
   return {

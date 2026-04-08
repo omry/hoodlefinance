@@ -1,4 +1,4 @@
-import { parsePreferredReitTickerSet } from "../runtime/host-adapter";
+import { parsePreferredReitTickerSet } from "../core/preferred-yahoo-symbols";
 
 export interface AppsScriptResponseLike {
   getContentText(): string;

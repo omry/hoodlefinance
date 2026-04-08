@@ -24,6 +24,10 @@ import {
 } from "../core/request-resolution";
 import type { ResolverPlanNode } from "../core/planner";
 
+interface HoodlefinanceRuntimeRoutingPolicies {
+  resolvePreferredYahooSymbol?(symbol: string): string;
+}
+
 interface HoodlefinanceRuntimeDependencies {
   httpFetch(url: string): string;
   getCachedJson(key: string): unknown;
@@ -31,74 +35,13 @@ interface HoodlefinanceRuntimeDependencies {
   parseFxTicker?(ticker: string): FxPair | null;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
-  resolvePreferredYahooSymbol?(symbol: string): string;
+  routingPolicies?: HoodlefinanceRuntimeRoutingPolicies;
 }
 
 interface HoodlefinanceRuntime {
   lookup(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult;
-}
-
-function normalizePreferredTickerKey(ticker: string): string {
-  const match = String(ticker || "")
-    .trim()
-    .toUpperCase()
-    .match(/^([A-Z0-9]+)-([A-Z])$/);
-
-  return match ? `${match[1]}-${match[2]}` : "";
-}
-
-function buildPreferredFallbackSymbol(ticker: string): string {
-  const normalized = normalizePreferredTickerKey(ticker);
-
-  return normalized ? normalized.replace(/-([A-Z])$/, "-P$1") : "";
-}
-
-export function parsePreferredReitTickerSet(text: string): Set<string> {
-  let payload: Record<string, unknown> | null = null;
-
-  try {
-    payload = JSON.parse(String(text || "")) as Record<string, unknown>;
-  } catch {
-    return new Set();
-  }
-
-  const entries = Array.isArray(payload?.preferredTickers)
-    ? payload.preferredTickers
-    : [];
-  const normalizedSet = new Set<string>();
-
-  for (const entry of entries) {
-    const normalized = String(entry || "")
-      .trim()
-      .toUpperCase();
-    const parts = normalized.split(/\s+/);
-
-    if (
-      parts.length === 2 &&
-      /^[A-Z0-9]+$/.test(parts[0] || "") &&
-      /^[A-Z]$/.test(parts[1] || "")
-    ) {
-      normalizedSet.add(`${parts[0]}-${parts[1]}`);
-    }
-  }
-
-  return normalizedSet;
-}
-
-export function createPreferredYahooSymbolResolver(
-  preferredTickerSet: ReadonlySet<string>,
-): (ticker: string) => string {
-  return function resolvePreferredYahooSymbol(ticker: string): string {
-    const normalizedKey = normalizePreferredTickerKey(ticker);
-
-    if (!normalizedKey || !preferredTickerSet.has(normalizedKey)) {
-      return "";
-    }
-
-    return buildPreferredFallbackSymbol(ticker);
-  };
 }
 
 export function createHoodlefinanceRuntime(
@@ -108,8 +51,8 @@ export function createHoodlefinanceRuntime(
     typeof createDefaultResolvePlanBuilder
   >[0]["directIdentifierResolver"];
   const resolvePreferredYahooSymbol = (symbol: string): string =>
-    typeof deps.resolvePreferredYahooSymbol === "function"
-      ? deps.resolvePreferredYahooSymbol(symbol)
+    typeof deps.routingPolicies?.resolvePreferredYahooSymbol === "function"
+      ? deps.routingPolicies.resolvePreferredYahooSymbol(symbol)
       : "";
 
   const resolverMaterializationDeps =
