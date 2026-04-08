@@ -154,6 +154,8 @@ interface SequentialFetchResponseLike {
 
 const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
 const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const PSE_ISIN_MAP_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const PSE_ISIN_MAP_STORED_KEY = "hoodlefinance.pseIsinMap";
 const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
 function createSequentialFetchResponse(
@@ -219,11 +221,27 @@ function parsePropertiesMap(text: string): Record<string, string> {
   return output;
 }
 
+function tryParsePropertiesMap(
+  text: string | null | undefined,
+): Record<string, string> | null {
+  const rawText = String(text || "");
+
+  if (!rawText.trim()) {
+    return null;
+  }
+
+  const parsed = parsePropertiesMap(rawText);
+
+  return Object.keys(parsed).length > 0 ? parsed : null;
+}
+
 export class PseIsinMapResolver extends IdentifierResolver {
   readonly traceLabel: string;
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedString?: ResolverServices["getCachedString"];
+  getStoredTextResource?: ResolverServices["getStoredTextResource"];
   putCachedString?: ResolverServices["putCachedString"];
+  putStoredTextResource?: ResolverServices["putStoredTextResource"];
   pseIsinMapByIsin: Record<string, string> | null;
 
   constructor() {
@@ -239,7 +257,31 @@ export class PseIsinMapResolver extends IdentifierResolver {
 
     this.httpFetch = services.httpFetch;
     this.getCachedString = services.getCachedString;
+    this.getStoredTextResource = services.getStoredTextResource;
     this.putCachedString = services.putCachedString;
+    this.putStoredTextResource = services.putStoredTextResource;
+  }
+
+  getStoredPseIsinMapTextState(): {
+    fallbackText: string;
+    freshText: string;
+  } {
+    const storedResource =
+      typeof this.getStoredTextResource === "function"
+        ? this.getStoredTextResource(PSE_ISIN_MAP_STORED_KEY)
+        : null;
+    const storedText = String(storedResource?.text || "");
+    const validStoredText = tryParsePropertiesMap(storedText) ? storedText : "";
+    const fetchedAtMs = Number(storedResource?.fetchedAtMs);
+    const isFresh =
+      !!validStoredText &&
+      Number.isFinite(fetchedAtMs) &&
+      Date.now() - fetchedAtMs <= PSE_ISIN_MAP_REFRESH_INTERVAL_MS;
+
+    return {
+      fallbackText: validStoredText,
+      freshText: isFresh ? validStoredText : "",
+    };
   }
 
   ensurePseIsinMap(): Record<string, string> {
@@ -248,15 +290,19 @@ export class PseIsinMapResolver extends IdentifierResolver {
     }
 
     let rawMap = "";
+    let parsedMap: Record<string, string> | null = null;
+    const storedTextState = this.getStoredPseIsinMapTextState();
 
     if (typeof this.getCachedString === "function") {
       rawMap = String(this.getCachedString(PSE_ISIN_MAP_CACHE_KEY) || "");
+      parsedMap = tryParsePropertiesMap(rawMap);
     }
 
-    if (!rawMap) {
-      rawMap = this.httpFetch(PSE_ISIN_MAP_URL);
+    if (!parsedMap && storedTextState.freshText) {
+      rawMap = storedTextState.freshText;
+      parsedMap = tryParsePropertiesMap(rawMap);
 
-      if (typeof this.putCachedString === "function") {
+      if (parsedMap && typeof this.putCachedString === "function") {
         this.putCachedString(
           PSE_ISIN_MAP_CACHE_KEY,
           rawMap,
@@ -265,7 +311,48 @@ export class PseIsinMapResolver extends IdentifierResolver {
       }
     }
 
-    this.pseIsinMapByIsin = parsePropertiesMap(rawMap);
+    if (!parsedMap) {
+      try {
+        rawMap = this.httpFetch(PSE_ISIN_MAP_URL);
+        parsedMap = tryParsePropertiesMap(rawMap);
+
+        if (!parsedMap) {
+          throw new Error("Invalid PSE ISIN map payload.");
+        }
+
+        if (typeof this.putCachedString === "function") {
+          this.putCachedString(
+            PSE_ISIN_MAP_CACHE_KEY,
+            rawMap,
+            PSE_ISIN_MAP_CACHE_TTL_SECONDS,
+          );
+        }
+        if (typeof this.putStoredTextResource === "function") {
+          this.putStoredTextResource(PSE_ISIN_MAP_STORED_KEY, rawMap, Date.now());
+        }
+      } catch (error) {
+        if (!storedTextState.fallbackText) {
+          throw error;
+        }
+
+        rawMap = storedTextState.fallbackText;
+        parsedMap = tryParsePropertiesMap(rawMap);
+
+        if (parsedMap && typeof this.putCachedString === "function") {
+          this.putCachedString(
+            PSE_ISIN_MAP_CACHE_KEY,
+            rawMap,
+            PSE_ISIN_MAP_CACHE_TTL_SECONDS,
+          );
+        }
+      }
+    }
+
+    if (!parsedMap) {
+      throw new Error("Failed to load the PSE ISIN map.");
+    }
+
+    this.pseIsinMapByIsin = parsedMap;
     return this.pseIsinMapByIsin;
   }
 

@@ -129,6 +129,32 @@ test("HOODLEFINANCE stores downloaded currency code data in script properties af
   );
 });
 
+test("HOODLEFINANCE falls back to stored currency code data when the refresh payload is malformed", () => {
+  const services = createServices({
+    [CURRENCY_CODES_URL]: "{not valid json",
+  });
+  const storedFetchedAtMs = Date.now() - 2 * 24 * 60 * 60 * 1000;
+  services.propertiesState.set(
+    "hoodlefinance.currencyCodes",
+    DEFAULT_CURRENCY_CODES_PAYLOAD,
+  );
+  services.propertiesState.set(
+    "hoodlefinance.currencyCodesFetchedAtMs",
+    String(storedFetchedAtMs),
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE("USDUSD", "price"), 1);
+  assert.equal(
+    services.cacheState.get("hoodlefinance:currencyCodes"),
+    DEFAULT_CURRENCY_CODES_PAYLOAD,
+  );
+  assert.equal(
+    services.propertiesState.get("hoodlefinance.currencyCodesFetchedAtMs"),
+    String(storedFetchedAtMs),
+  );
+});
+
 test("HOODLEFINANCE supports direct ISIN attribute lookups that only need fetchText", () => {
   const services = createServices({
     "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA": `

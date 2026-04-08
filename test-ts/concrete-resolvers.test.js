@@ -785,6 +785,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup", () => {
   let fetchCount = 0;
   let cachedWrite = null;
+  let storedWrite = null;
   const resolver = new PseIsinMapResolver();
   resolver.initEnv({
     httpFetch(url) {
@@ -801,6 +802,10 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
     putCachedString(cacheKey, value, ttlSeconds) {
       cachedWrite = { cacheKey, ttlSeconds, value };
       return value;
+    },
+    putStoredTextResource(resourceKey, text, fetchedAtMs) {
+      storedWrite = { fetchedAtMs, resourceKey, text };
+      return { fetchedAtMs, text };
     },
   });
   const requestInput = createRequestInput({
@@ -823,6 +828,9 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
     ttlSeconds: 21600,
     value: "PHY077751022=PSE:BDO\n",
   });
+  assert.equal(storedWrite?.resourceKey, "hoodlefinance.pseIsinMap");
+  assert.equal(storedWrite?.text, "PHY077751022=PSE:BDO\n");
+  assert.equal(typeof storedWrite?.fetchedAtMs, "number");
 
   const failure = resolver.resolve(
     createRequestInput({
@@ -835,6 +843,60 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
   );
   assert.equal(failure.status, "failure");
   assert.equal(fetchCount, 1);
+});
+
+test("PseIsinMapResolver falls back to stored map data when refresh fails", () => {
+  let cachedWrite = null;
+  let storedWrite = null;
+  const resolver = new PseIsinMapResolver();
+  resolver.initEnv({
+    httpFetch(url) {
+      assert.equal(
+        url,
+        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+      );
+      throw new Error("map refresh failed");
+    },
+    getCachedString(cacheKey) {
+      assert.equal(cacheKey, "hoodlefinance:ts:pseIsinMap");
+      return "";
+    },
+    getStoredTextResource(resourceKey) {
+      assert.equal(resourceKey, "hoodlefinance.pseIsinMap");
+      return {
+        fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
+        text: "PHY077751022=PSE:BDO\n",
+      };
+    },
+    putCachedString(cacheKey, value, ttlSeconds) {
+      cachedWrite = { cacheKey, ttlSeconds, value };
+      return value;
+    },
+    putStoredTextResource(resourceKey, text, fetchedAtMs) {
+      storedWrite = { fetchedAtMs, resourceKey, text };
+      return { fetchedAtMs, text };
+    },
+  });
+
+  const result = resolver.resolve(
+    createRequestInput({
+      attribute: "price",
+      attributeType: "quote",
+      classification: "isin",
+      identifier: "ISIN:PHY077751022",
+      ticker: "ISIN:PHY077751022",
+    }),
+  );
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value.exchange, "PSE");
+  assert.equal(result.value.symbol, "BDO");
+  assert.deepEqual(cachedWrite, {
+    cacheKey: "hoodlefinance:ts:pseIsinMap",
+    ttlSeconds: 21600,
+    value: "PHY077751022=PSE:BDO\n",
+  });
+  assert.equal(storedWrite, null);
 });
 
 test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", () => {

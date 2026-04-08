@@ -20,6 +20,7 @@ const CURRENCY_CODES_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const CURRENCY_CODES_FETCHED_AT_PROPERTY =
   "hoodlefinance.currencyCodesFetchedAtMs";
 const CURRENCY_CODES_PROPERTY = "hoodlefinance.currencyCodes";
+const CURRENCY_CODES_STORED_KEY = "hoodlefinance.currencyCodes";
 const CURRENCY_CODES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const CURRENCY_CODES_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
@@ -131,6 +132,127 @@ export function createHoodlefinanceAppScriptBindings(
     ? services.propertiesService.getScriptProperties()
     : null;
   const storedTextResourceStore = createStoredTextResourceStore(scriptProperties);
+  const getStoredTextResource = (key: string): StoredTextResource | null => {
+    if (key !== CURRENCY_CODES_STORED_KEY) {
+      return storedTextResourceStore.getStoredTextResource(key);
+    }
+
+    const text = scriptProperties
+      ? scriptProperties.getProperty(CURRENCY_CODES_PROPERTY)
+      : null;
+    const fetchedAtMs = scriptProperties
+      ? Number(scriptProperties.getProperty(CURRENCY_CODES_FETCHED_AT_PROPERTY))
+      : NaN;
+
+    return text
+      ? {
+          fetchedAtMs,
+          text,
+        }
+      : null;
+  };
+  const putStoredTextResource = (
+    key: string,
+    text: string,
+    fetchedAtMs: number,
+  ): StoredTextResource | null => {
+    if (key !== CURRENCY_CODES_STORED_KEY) {
+      return storedTextResourceStore.putStoredTextResource(
+        key,
+        text,
+        fetchedAtMs,
+      );
+    }
+
+    if (!scriptProperties) {
+      return null;
+    }
+
+    const resource = {
+      fetchedAtMs: Number.isFinite(fetchedAtMs) ? fetchedAtMs : Date.now(),
+      text: String(text || ""),
+    };
+
+    scriptProperties.setProperty(CURRENCY_CODES_PROPERTY, resource.text);
+    scriptProperties.setProperty(
+      CURRENCY_CODES_FETCHED_AT_PROPERTY,
+      String(resource.fetchedAtMs),
+    );
+
+    return resource;
+  };
+  const loadTextResource = ({
+    cacheKey,
+    cacheTtlSeconds,
+    fetchUrl,
+    isValidText,
+    refreshIntervalMs,
+    storedResourceKey,
+  }: {
+    cacheKey: string;
+    cacheTtlSeconds: number;
+    fetchUrl: string;
+    isValidText: (text: string) => boolean;
+    refreshIntervalMs: number;
+    storedResourceKey: string;
+  }): string => {
+    const cachedText = stringCache.getCachedString(cacheKey);
+
+    if (isValidText(cachedText)) {
+      return cachedText;
+    }
+
+    const storedResource = getStoredTextResource(storedResourceKey);
+    const storedTextState = createStoredTextState(
+      storedResource?.text,
+      Number(storedResource?.fetchedAtMs),
+      Date.now(),
+      refreshIntervalMs,
+    );
+    const fallbackStoredText = isValidText(storedTextState.fallbackText)
+      ? storedTextState.fallbackText
+      : "";
+    const freshStoredText = isValidText(storedTextState.freshText)
+      ? storedTextState.freshText
+      : "";
+
+    if (freshStoredText) {
+      cacheTextResource(
+        stringCache,
+        cacheKey,
+        cacheTtlSeconds,
+        freshStoredText,
+      );
+
+      return freshStoredText;
+    }
+
+    try {
+      const downloadedText = services.urlFetchApp.fetch(fetchUrl).getContentText();
+
+      if (!isValidText(downloadedText)) {
+        throw new Error(`Invalid text resource payload for ${fetchUrl}`);
+      }
+
+      cacheTextResource(stringCache, cacheKey, cacheTtlSeconds, downloadedText);
+      putStoredTextResource(storedResourceKey, downloadedText, Date.now());
+
+      return downloadedText;
+    } catch (error) {
+      if (!fallbackStoredText) {
+        throw error;
+      }
+
+      cacheTextResource(
+        stringCache,
+        cacheKey,
+        cacheTtlSeconds,
+        fallbackStoredText,
+      );
+
+      return fallbackStoredText;
+    }
+  };
   let fxTickerParser: ReturnType<typeof createFxTickerParser> | null = null;
   const runtime = createHoodlefinanceRuntime({
     httpFetch(url) {
@@ -139,89 +261,32 @@ export function createHoodlefinanceAppScriptBindings(
     getCachedJson: jsonCache.getCachedJson,
     getCachedString: stringCache.getCachedString,
     getStoredTextResource(key): StoredTextResource | null {
-      return storedTextResourceStore.getStoredTextResource(key);
+      return getStoredTextResource(key);
     },
     parseFxTicker(ticker) {
       if (!fxTickerParser) {
-        const nowMs = Date.now();
-        const storedTextState = createStoredTextState(
-          scriptProperties
-            ? scriptProperties.getProperty(CURRENCY_CODES_PROPERTY)
-            : null,
-          scriptProperties
-            ? Number(
-                scriptProperties.getProperty(
-                  CURRENCY_CODES_FETCHED_AT_PROPERTY,
-                ),
-              )
-            : NaN,
-          nowMs,
-          CURRENCY_CODES_REFRESH_INTERVAL_MS,
-        );
-        const cachedText = stringCache.getCachedString(
-          CURRENCY_CODES_CACHE_KEY,
-        );
-
-        if (cachedText) {
+        try {
           fxTickerParser = createFxTickerParser(
-            parseCurrencyCodeDataResource(cachedText),
+            parseCurrencyCodeDataResource(
+              loadTextResource({
+                cacheKey: CURRENCY_CODES_CACHE_KEY,
+                cacheTtlSeconds: CURRENCY_CODES_CACHE_TTL_SECONDS,
+                fetchUrl: CURRENCY_CODES_URL,
+                isValidText(text) {
+                  try {
+                    parseCurrencyCodeDataResource(text);
+                    return true;
+                  } catch {
+                    return false;
+                  }
+                },
+                refreshIntervalMs: CURRENCY_CODES_REFRESH_INTERVAL_MS,
+                storedResourceKey: CURRENCY_CODES_STORED_KEY,
+              }),
+            ),
           );
-        } else if (storedTextState.freshText) {
-          try {
-            fxTickerParser = createFxTickerParser(
-              parseCurrencyCodeDataResource(storedTextState.freshText),
-            );
-            cacheTextResource(
-              stringCache,
-              CURRENCY_CODES_CACHE_KEY,
-              CURRENCY_CODES_CACHE_TTL_SECONDS,
-              storedTextState.freshText,
-            );
-          } catch {
-            storedTextState.fallbackText = "";
-          }
-        }
-
-        if (!fxTickerParser) {
-          try {
-            const downloadedText = services.urlFetchApp
-              .fetch(CURRENCY_CODES_URL)
-              .getContentText();
-
-            cacheTextResource(
-              stringCache,
-              CURRENCY_CODES_CACHE_KEY,
-              CURRENCY_CODES_CACHE_TTL_SECONDS,
-              downloadedText,
-            );
-
-            if (scriptProperties) {
-              scriptProperties.setProperty(
-                CURRENCY_CODES_PROPERTY,
-                downloadedText,
-              );
-              scriptProperties.setProperty(
-                CURRENCY_CODES_FETCHED_AT_PROPERTY,
-                String(nowMs),
-              );
-            }
-
-            fxTickerParser = createFxTickerParser(
-              parseCurrencyCodeDataResource(downloadedText),
-            );
-          } catch {
-            if (storedTextState.fallbackText) {
-              cacheTextResource(
-                stringCache,
-                CURRENCY_CODES_CACHE_KEY,
-                CURRENCY_CODES_CACHE_TTL_SECONDS,
-                storedTextState.fallbackText,
-              );
-              fxTickerParser = createFxTickerParser(
-                parseCurrencyCodeDataResource(storedTextState.fallbackText),
-              );
-            }
-          }
+        } catch {
+          fxTickerParser = null;
         }
 
         if (!fxTickerParser) {
@@ -236,11 +301,7 @@ export function createHoodlefinanceAppScriptBindings(
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
     putStoredTextResource(key, text, fetchedAtMs): StoredTextResource | null {
-      return storedTextResourceStore.putStoredTextResource(
-        key,
-        text,
-        fetchedAtMs,
-      );
+      return putStoredTextResource(key, text, fetchedAtMs);
     },
   });
 
