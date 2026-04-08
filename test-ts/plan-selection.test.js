@@ -58,6 +58,9 @@ function createNode(name, extra = {}) {
     getNodesForRequest() {
       return this.nodes || [];
     },
+    getRoutingNodeKind() {
+      return extra.isRoutingNode ? "switch" : "leaf";
+    },
     isRoutingNode: extra.isRoutingNode === true,
     name,
     nodes: extra.nodes || [],
@@ -97,7 +100,7 @@ function createDeps() {
     listAllDefaultAttributePlans() {
       return [defaultLeaf];
     },
-    materializePlanFromSpec(code) {
+    getPlanNodeByCode(code) {
       if (code === "IDENTIFIER-ROOT") {
         return identifierRoot;
       }

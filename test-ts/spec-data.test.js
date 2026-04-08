@@ -2,18 +2,36 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  PLAN_SPECS_BY_CODE,
-  RESOLVER_SPECS_BY_CODE,
+  DagPlan,
+  deriveDagPlanLegacyExecutionSpecs,
 } = require("../dist/ts/core/index.js");
 
-test("extracted routing spec data matches the current production tables", () => {
+test("legacy execution specs are derived from DagPlan only through the legacy adapter", () => {
+  const derived = deriveDagPlanLegacyExecutionSpecs(DagPlan);
+
   assert.equal(
-    RESOLVER_SPECS_BY_CODE["RESOLVED-IDENTIFIER"],
+    derived.resolverSpecsByCode["RESOLVED-IDENTIFIER"],
     "DirectIdentifierResolver",
   );
   assert.equal(
-    PLAN_SPECS_BY_CODE["QUOTE:PSE"].resolverClass,
+    derived.planSpecsByCode["QUOTE:PSE"].resolverClass,
     "PseQuoteResolutionPlan",
   );
-  assert.equal(PLAN_SPECS_BY_CODE["ROOT"].resolverClass, "ResolverPlan");
+  assert.equal(derived.planSpecsByCode["ROOT"].resolverClass, "RoutingPlan");
+});
+
+test("deriveDagPlanLegacyExecutionSpecs validates DAG structure before projection", () => {
+  assert.throws(
+    () =>
+      deriveDagPlanLegacyExecutionSpecs({
+        ROOT: {
+          resolverClass: "RoutingPlan",
+          nodeCodes: ["MISSING"],
+        },
+        TERMINAL: {
+          resolverClass: "TerminalCollectorPlan",
+        },
+      }),
+    /missing child "MISSING"/i,
+  );
 });

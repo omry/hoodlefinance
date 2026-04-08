@@ -3,7 +3,7 @@ const test = require("node:test");
 
 const {
   AttributeResolutionPlan,
-  IdentifierResolutionPlan,
+  FirstSuccessPlan,
   RequestInput,
   PseQuoteResolutionPlan,
   ResolverPlan,
@@ -148,7 +148,7 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
     "ROOT",
     {
       nodeCodes: ["MISSING"],
-      resolverClass: "ResolverPlan",
+      resolverClass: "RoutingPlan",
     },
     () => null,
     null,
@@ -159,9 +159,17 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
   assert.equal(plan.nodes[0], null);
 });
 
-test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
-  const pseMap = createLeafResolver("PSE-MAP");
-  const yahooIsin = createLeafResolver("YAHOO-ISIN");
+test("FirstSuccessPlan can express ISIN-country fallback through child canHandle ordering", () => {
+  const pseMap = createLeafResolver("ISIN:PSE", {
+    canHandle(request) {
+      return /^PH[A-Z0-9]{10}$/i.test(String(request.ticker || ""));
+    },
+  });
+  const yahooIsin = createLeafResolver("ISIN:YAHOO", {
+    canHandle(request) {
+      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(request.ticker || ""));
+    },
+  });
   const refs = createPlanRuntimeRefs({
     looksLikeIsin(value) {
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
@@ -174,39 +182,34 @@ test("IdentifierResolutionPlan owns ISIN-country selection behavior", () => {
   const plan = buildPlanNodeFromSpec(
     "IDENTIFIER:ISIN",
     {
-      nodeCodeByIsinCountry: {
-        PH: "PSE-MAP",
-        _default_: "YAHOO-ISIN",
-      },
-      resolverClass: "IdentifierResolutionPlan",
+      nodeCodes: ["ISIN:PSE", "ISIN:YAHOO"],
+      resolverClass: "FirstSuccessPlan",
     },
     (nodeCode) =>
       ({
-        "PSE-MAP": pseMap,
-        "YAHOO-ISIN": yahooIsin,
+        "ISIN:PSE": pseMap,
+        "ISIN:YAHOO": yahooIsin,
       })[nodeCode],
     null,
     { refs },
   );
 
-  assert.equal(plan instanceof IdentifierResolutionPlan, true);
+  assert.equal(plan instanceof FirstSuccessPlan, true);
   assert.deepEqual(
     plan.nodes.map((node) => node && node.name),
-    ["PSE-MAP", "YAHOO-ISIN"],
+    ["ISIN:PSE", "ISIN:YAHOO"],
   );
-  assert.deepEqual(plan.nodeCodeByIsinCountry, { PH: "PSE-MAP", _default_: "YAHOO-ISIN" });
-  assert.deepEqual(plan.defaultLookupNodeCodes, ["YAHOO-ISIN"]);
   assert.deepEqual(
     plan.getNodesForRequest(createRequestInput({ ticker: "PHY077751022" })).map(
       (node) => node.name,
     ),
-    ["PSE-MAP", "YAHOO-ISIN"],
+    ["ISIN:PSE", "ISIN:YAHOO"],
   );
   assert.deepEqual(
     plan.getNodesForRequest(createRequestInput({ ticker: "US02079K1079" })).map(
       (node) => node.name,
     ),
-    ["YAHOO-ISIN"],
+    ["ISIN:YAHOO"],
   );
 });
 

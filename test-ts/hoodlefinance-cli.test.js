@@ -17,108 +17,123 @@ const { EquityRequest, FxRequest } = require("../dist/ts/core/request.js");
 
 function createFakeEnvironment() {
   const env = createCliEnvironment();
-
-  env.resolversByCode["RESOLVED-IDENTIFIER"].resolve = function resolve(request) {
-    const ticker = String((request && request.ticker) || "")
-      .trim()
-      .toUpperCase();
-
-    if (!request || ticker.startsWith("ISIN:") || /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(ticker)) {
-      return {
-        elapsedMs: 0,
-        error: "not found",
-        status: "failure",
-      };
+  const resolverRegistries = [env.resolversByCode];
+  const setResolverOverride = (code, applyOverride) => {
+    for (const resolverRegistry of resolverRegistries) {
+      const resolver = resolverRegistry[code];
+      if (resolver) {
+        applyOverride(resolver);
+      }
     }
-
-    if (ticker === "PSE:EDGE") {
-      return {
-        elapsedMs: 0,
-        status: "success",
-        value: new EquityRequest({
-          allowTradingviewFallback: false,
-          attribute: request.attribute,
-          exchange: "PSE",
-          identifier: request.identifier,
-          symbol: "EDGE",
-          yahooSymbol: "EDGE.PS",
-        }),
-      };
-    }
-
-    if (ticker === "PSE:BDO") {
-      return {
-        elapsedMs: 0,
-        status: "success",
-        value: new EquityRequest({
-          allowTradingviewFallback: false,
-          attribute: request.attribute,
-          exchange: "PSE",
-          identifier: request.identifier,
-          symbol: "BDO",
-          yahooSymbol: "BDO.PS",
-        }),
-      };
-    }
-
-    if (ticker === "TLV:KSMF59") {
-      return {
-        elapsedMs: 0,
-        status: "success",
-        value: new EquityRequest({
-          allowTradingviewFallback: true,
-          attribute: request.attribute,
-          identifier: request.identifier,
-          symbol: "KSMF59",
-          yahooSymbol: "KSM.F59.TA",
-        }),
-      };
-    }
-
-    if (ticker === "EURUSD") {
-      return {
-        elapsedMs: 0,
-        status: "success",
-        value: new FxRequest({
-          attribute: request.attribute,
-          fxPair: {
-            baseCanonicalCode: "EUR",
-            quoteCanonicalCode: "USD",
-            yahooChartSymbol: "EURUSD=X",
-          },
-          identifier: request.identifier,
-        }),
-      };
-    }
-
-    if (ticker === "USDUSD") {
-      return {
-        elapsedMs: 0,
-        status: "success",
-        value: new FxRequest({
-          attribute: request.attribute,
-          fxPair: {
-            baseCanonicalCode: "USD",
-            quoteCanonicalCode: "USD",
-            isSameCurrency: true,
-            yahooChartSymbol: "USDUSD=X",
-          },
-          identifier: request.identifier,
-        }),
-      };
-    }
-
-    return {
-      elapsedMs: 0,
-      status: "success",
-      value: new EquityRequest({
-        attribute: request.attribute,
-        identifier: request.identifier,
-        symbol: "GOOG",
-        yahooSymbol: "GOOG",
-      }),
-    };
   };
+
+  setResolverOverride("RESOLVED-IDENTIFIER", (resolver) => {
+    resolver.resolve = function resolve(request) {
+      const ticker = String((request && request.ticker) || "")
+        .trim()
+        .toUpperCase();
+
+      if (
+        !request ||
+        ticker.startsWith("ISIN:") ||
+        /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(ticker)
+      ) {
+        return {
+          elapsedMs: 0,
+          error: "not found",
+          status: "failure",
+        };
+      }
+
+      if (ticker === "PSE:EDGE") {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: new EquityRequest({
+            allowTradingviewFallback: false,
+            attribute: request.attribute,
+            exchange: "PSE",
+            identifier: request.identifier,
+            symbol: "EDGE",
+            yahooSymbol: "EDGE.PS",
+          }),
+        };
+      }
+
+      if (ticker === "PSE:BDO") {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: new EquityRequest({
+            allowTradingviewFallback: false,
+            attribute: request.attribute,
+            exchange: "PSE",
+            identifier: request.identifier,
+            symbol: "BDO",
+            yahooSymbol: "BDO.PS",
+          }),
+        };
+      }
+
+      if (ticker === "TLV:KSMF59") {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: new EquityRequest({
+            allowTradingviewFallback: true,
+            attribute: request.attribute,
+            identifier: request.identifier,
+            symbol: "KSMF59",
+            yahooSymbol: "KSM.F59.TA",
+          }),
+        };
+      }
+
+      if (ticker === "EURUSD") {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: new FxRequest({
+            attribute: request.attribute,
+            fxPair: {
+              baseCanonicalCode: "EUR",
+              quoteCanonicalCode: "USD",
+              yahooChartSymbol: "EURUSD=X",
+            },
+            identifier: request.identifier,
+          }),
+        };
+      }
+
+      if (ticker === "USDUSD") {
+        return {
+          elapsedMs: 0,
+          status: "success",
+          value: new FxRequest({
+            attribute: request.attribute,
+            fxPair: {
+              baseCanonicalCode: "USD",
+              quoteCanonicalCode: "USD",
+              isSameCurrency: true,
+              yahooChartSymbol: "USDUSD=X",
+            },
+            identifier: request.identifier,
+          }),
+        };
+      }
+
+      return {
+        elapsedMs: 0,
+        status: "success",
+        value: new EquityRequest({
+          attribute: request.attribute,
+          identifier: request.identifier,
+          symbol: "GOOG",
+          yahooSymbol: "GOOG",
+        }),
+      };
+    };
+  });
 
   env.fetchText = function fetchText(url) {
     if (String(url).includes("tradingview.com/symbols/NASDAQ-GOOG/")) {
@@ -131,134 +146,152 @@ function createFakeEnvironment() {
     throw new Error(`unexpected fetch: ${url}`);
   };
 
-  env.resolversByCode["GOOGLE-FX"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      quote: {
-        regularMarketPrice: 1.25,
-        shortName: "EURUSD",
-        symbol: "EURUSD",
-      },
-      status: "success",
-    }));
+  setResolverOverride("GOOGLE-FX", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map(() => ({
+        quote: {
+          regularMarketPrice: 1.25,
+          shortName: "EURUSD",
+          symbol: "EURUSD",
+        },
+        status: "success",
+      }));
+  });
 
-  env.resolversByCode["FX-IDENTITY"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      quote: {
-        regularMarketPrice: 1,
-        shortName: "USDUSD",
-        symbol: "USDUSD",
-      },
-      status: "success",
-    }));
+  setResolverOverride("FX-IDENTITY", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map(() => ({
+        quote: {
+          regularMarketPrice: 1,
+          shortName: "USDUSD",
+          symbol: "USDUSD",
+        },
+        status: "success",
+      }));
+  });
 
-  env.resolversByCode["PSE-FRAMES"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      quote: {
-        currency: "PHP",
-        regularMarketPrice: 9.87,
-        shortName: "BDO Unibank, Inc.",
-        symbol: "BDO",
-      },
-      status: "success",
-    }));
+  setResolverOverride("PSE-FRAMES", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map(() => ({
+        quote: {
+          currency: "PHP",
+          regularMarketPrice: 9.87,
+          shortName: "BDO Unibank, Inc.",
+          symbol: "BDO",
+        },
+        status: "success",
+      }));
+  });
 
-  env.resolversByCode["PSE-EDGE"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      quote: {
-        currency: "PHP",
-        regularMarketPrice: 8.88,
-        shortName: "Edge Corp",
-        symbol: "EDGE",
-      },
-      status: "success",
-    }));
+  setResolverOverride("PSE-EDGE", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map(() => ({
+        quote: {
+          currency: "PHP",
+          regularMarketPrice: 8.88,
+          shortName: "Edge Corp",
+          symbol: "EDGE",
+        },
+        status: "success",
+      }));
+  });
 
-  env.resolversByCode["PSE-MAP"].resolve = function resolve(request) {
-    const ticker = String((request && request.ticker) || "")
-      .trim()
-      .toUpperCase();
-
-    return ticker === "PHY077751022" || ticker === "ISIN:PHY077751022"
-      ? {
-          elapsedMs: 0,
-          status: "success",
-          value: {
-            requestType: "equity",
-            symbol: "BDO",
-            yahooSymbol: "BDO.PS",
-          },
-        }
-      : {
-          elapsedMs: 0,
-          error: "not found",
-          status: "failure",
-        };
-  };
-
-  env.resolversByCode["YAHOO-ISIN"].executeBatch = (jobs) =>
-    jobs.map((job) => {
-      const ticker = String(job && job.routeState && job.routeState.isin ? job.routeState.isin : "")
+  setResolverOverride("ISIN:PSE", (resolver) => {
+    resolver.resolve = function resolve(request) {
+      const ticker = String((request && request.ticker) || "")
         .trim()
         .toUpperCase();
 
-      return ticker === "US02079K1079"
+      return ticker === "PHY077751022" || ticker === "ISIN:PHY077751022"
         ? {
+            elapsedMs: 0,
             status: "success",
-            value: new EquityRequest({
-              attribute: job.routeState.input.attribute,
-              identifier: job.routeState.input.identifier,
-              symbol: "GOOG",
-              yahooSymbol: "GOOG",
-            }),
+            value: {
+              requestType: "equity",
+              symbol: "BDO",
+              yahooSymbol: "BDO.PS",
+            },
           }
         : {
+            elapsedMs: 0,
             error: "not found",
             status: "failure",
           };
-    });
+    };
+  });
 
-  env.resolversByCode["YAHOO"].executeBatch = (jobs) =>
-    jobs.map((job) => {
-      const yahooSymbol = String(
-        job && job.routeState && job.routeState.yahooSymbol
-          ? job.routeState.yahooSymbol
-          : "",
-      )
-        .trim()
-        .toUpperCase();
+  setResolverOverride("ISIN:YAHOO", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map((job) => {
+        const ticker = String(
+          job && job.routeState && job.routeState.isin ? job.routeState.isin : "",
+        )
+          .trim()
+          .toUpperCase();
 
-      if (yahooSymbol === "KSM.F59.TA") {
+        return ticker === "US02079K1079"
+          ? {
+              status: "success",
+              value: new EquityRequest({
+                attribute: job.routeState.input.attribute,
+                identifier: job.routeState.input.identifier,
+                symbol: "GOOG",
+                yahooSymbol: "GOOG",
+              }),
+            }
+          : {
+              error: "not found",
+              status: "failure",
+            };
+      });
+  });
+
+  setResolverOverride("YAHOO", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map((job) => {
+        const yahooSymbol = String(
+          job && job.routeState && job.routeState.yahooSymbol
+            ? job.routeState.yahooSymbol
+            : "",
+        )
+          .trim()
+          .toUpperCase();
+
+        if (yahooSymbol === "KSM.F59.TA") {
+          return {
+            error: "not found",
+            status: "lookup_failure",
+          };
+        }
+
         return {
-          error: "not found",
-          status: "lookup_failure",
+          quote: {
+            currency: "USD",
+            exchangeName: "NMS",
+            fullExchangeName: "NasdaqGS",
+            regularMarketPrice: 123.45,
+            symbol: "GOOG",
+          },
+          status: "success",
         };
-      }
+      });
+  });
 
-      return {
+  setResolverOverride("TRADINGVIEW-FUND", (resolver) => {
+    resolver.executeBatch = (jobs) =>
+      jobs.map(() => ({
         quote: {
-          currency: "USD",
-          exchangeName: "NMS",
-          fullExchangeName: "NasdaqGS",
-          regularMarketPrice: 123.45,
-          symbol: "GOOG",
+          currency: "ILS",
+          exchangeName: "TASE",
+          financialCurrency: "ILS",
+          longName: "KSM KSMF59",
+          regularMarketPrice: 17.25,
+          shortName: "KSMF59",
+          symbol: "KSMF59.TA",
         },
         status: "success",
-      };
-    });
-
-  env.resolversByCode["TRADINGVIEW-FUND"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      quote: {
-        currency: "ILS",
-        exchangeName: "TASE",
-        financialCurrency: "ILS",
-        longName: "KSM KSMF59",
-        regularMarketPrice: 17.25,
-        shortName: "KSMF59",
-        symbol: "KSMF59.TA",
-      },
-      status: "success",
-    }));
+      }));
+  });
 
   return env;
 }
@@ -332,29 +365,32 @@ test("lookupWithEnvironment resolves routed isin attributes", () => {
 
 test("lookupWithEnvironment falls through the real quote plan from PSE to ticker", () => {
   const env = createCliEnvironment();
+  const resolverRegistries = [env.resolversByCode];
 
-  env.resolversByCode["PSE-FRAMES"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      error: "not found",
-      status: "lookup_failure",
-    }));
-  env.resolversByCode["PSE-EDGE"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      error: "not found",
-      status: "lookup_failure",
-    }));
-  env.resolversByCode["YAHOO"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      status: "success",
-      quote: {
-        currency: "USD",
-        regularMarketPrice: 123.45,
-        symbol: "GOOG",
-      },
-    }));
-  env.resolversByCode["TRADINGVIEW-FUND"].executeBatch = () => {
-    throw new Error("unexpected tradingview fallback");
-  };
+  for (const resolverRegistry of resolverRegistries) {
+    resolverRegistry["PSE-FRAMES"].executeBatch = (jobs) =>
+      jobs.map(() => ({
+        error: "not found",
+        status: "lookup_failure",
+      }));
+    resolverRegistry["PSE-EDGE"].executeBatch = (jobs) =>
+      jobs.map(() => ({
+        error: "not found",
+        status: "lookup_failure",
+      }));
+    resolverRegistry["YAHOO"].executeBatch = (jobs) =>
+      jobs.map(() => ({
+        status: "success",
+        quote: {
+          currency: "USD",
+          regularMarketPrice: 123.45,
+          symbol: "GOOG",
+        },
+      }));
+    resolverRegistry["TRADINGVIEW-FUND"].executeBatch = () => {
+      throw new Error("unexpected tradingview fallback");
+    };
+  }
 
   const result = lookupWithEnvironment(env, {
     attribute: "price",
@@ -405,17 +441,20 @@ test("CLI prefers the local Yahoo fallback symbol for whitelisted REITs", () => 
 
 test("lookupWithEnvironment keeps the original Google-style symbol for preferred REITs", () => {
   const env = createCliEnvironment();
+  const resolverRegistries = [env.resolversByCode];
 
-  env.resolversByCode["YAHOO"].executeBatch = (jobs) =>
-    jobs.map(() => ({
-      status: "success",
-      quote: {
-        currency: "USD",
-        exchangeName: "NYSE",
-        regularMarketPrice: 24.78,
-        symbol: "NLY-PI",
-      },
-    }));
+  for (const resolverRegistry of resolverRegistries) {
+    resolverRegistry["YAHOO"].executeBatch = (jobs) =>
+      jobs.map(() => ({
+        status: "success",
+        quote: {
+          currency: "USD",
+          exchangeName: "NYSE",
+          regularMarketPrice: 24.78,
+          symbol: "NLY-PI",
+        },
+      }));
+  }
 
   assert.equal(
     lookupWithEnvironment(env, {

@@ -16,7 +16,7 @@ export interface PlanSelectionDependencies {
   ): ResolverPlanNode;
   extractIsinFromRequestInput(input: RequestInput): string;
   listAllDefaultAttributePlans(): ResolverPlanNode[];
-  materializePlanFromSpec(code: string): ResolverPlanNode;
+  getPlanNodeByCode(code: string): ResolverPlanNode;
 }
 
 function normalizeSourceOverride(
@@ -60,7 +60,7 @@ export function buildIdentifierResolutionPlan(
 ): ResolverPlanNode | null {
   const isinValue = deps.extractIsinFromRequestInput(input);
   const sourceOverride = normalizeSourceOverride(input);
-  const identifierRoot = deps.materializePlanFromSpec("IDENTIFIER-ROOT");
+  const identifierRoot = deps.getPlanNodeByCode("IDENTIFIER-ROOT");
   const identifierPlan = resolveRoutingNode(identifierRoot, input, {
     allowNone: true,
   }) as ResolverPlanNode | null;
@@ -86,10 +86,10 @@ export function buildIdentifierResolutionPlan(
 
 export function buildDefaultAttributePlanForResolvedRequest(
   request: ResolvedRequest,
-  deps: Pick<PlanSelectionDependencies, "materializePlanFromSpec">,
+  deps: Pick<PlanSelectionDependencies, "getPlanNodeByCode">,
 ): ResolverPlanNode {
   const defaultAttributeRoot =
-    deps.materializePlanFromSpec("DEFAULT-ATTRIBUTE") as ResolverPlanNode;
+    deps.getPlanNodeByCode("DEFAULT-ATTRIBUTE") as ResolverPlanNode;
   const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
     (plan) => !plan.canHandle || plan.canHandle(request),
   ) as ResolverPlanNode[];
@@ -110,7 +110,7 @@ export function buildForcedAttributePlanForResolvedRequest(
   request: ResolvedRequest,
   deps: Pick<
     PlanSelectionDependencies,
-    "buildForcedSelectedAttributePlan" | "materializePlanFromSpec"
+    "buildForcedSelectedAttributePlan" | "getPlanNodeByCode"
   >,
 ): ResolverPlanNode {
   const sourceOverride = normalizeSourceOverride(input);
@@ -141,7 +141,7 @@ export function buildQuoteRoutePlanForResolvedRequest(
   request: ResolvedRequest,
   deps: Pick<
     PlanSelectionDependencies,
-    "buildForcedSelectedAttributePlan" | "materializePlanFromSpec"
+    "buildForcedSelectedAttributePlan" | "getPlanNodeByCode"
   >,
 ): ResolverPlanNode {
   const sourceOverride = normalizeSourceOverride(input);

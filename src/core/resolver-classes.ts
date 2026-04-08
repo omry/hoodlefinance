@@ -1,4 +1,8 @@
-import type { PlanSpec } from "./plan-specs";
+import {
+  type PlanSpec,
+  getPlanSpecNodeCodes,
+  normalizePlanSpecCode,
+} from "./plan-specs";
 import type {
   ResolutionResult,
   ResolverNode,
@@ -11,9 +15,16 @@ import type {
 } from "./planner";
 import { RequestInput } from "./request";
 import type { ResolvedRequest } from "./request";
-import { buildIsinIdentifierRouteState, buildPseQuoteRouteState, buildFxQuoteRouteState, buildEquityYahooQuoteRouteState } from "./route-state";
-import { extractIsinFromRequestInput } from "./request-building";
-import { createResolutionFailure, createResolutionSuccess, describePlanSource } from "./route-results";
+import {
+  buildPseQuoteRouteState,
+  buildFxQuoteRouteState,
+  buildEquityYahooQuoteRouteState,
+} from "./route-state";
+import {
+  createResolutionFailure,
+  createResolutionSuccess,
+  describePlanSource,
+} from "./route-results";
 import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
@@ -30,33 +41,7 @@ function formatRoutingPlanTreeLabel(value: unknown): string {
 }
 
 function normalizeNodeCode(nodeCode: string): string {
-  return String(nodeCode || "")
-    .trim()
-    .toUpperCase();
-}
-
-function extractIsinCountryCodeFromPlanRequest(
-  request: RequestInput | ResolvedRequest | null,
-  looksLikeIsin: (value: string) => boolean,
-): string {
-  const ticker =
-    request && "ticker" in request
-      ? String(request.ticker ?? "").trim()
-      : request && "input" in request
-        ? String(request.input?.identifier ?? "").trim()
-        : "";
-  const upperTicker = ticker.toUpperCase();
-  const isin = looksLikeIsin(ticker)
-    ? upperTicker
-    : upperTicker.startsWith("ISIN:")
-      ? upperTicker.slice(5).trim()
-      : "";
-
-  return isin ? isin.slice(0, 2).toUpperCase() : "";
-}
-
-interface IdentifierResolutionPlanSpec extends PlanSpec {
-  nodeCodeByIsinCountry?: Record<string, string>;
+  return normalizePlanSpecCode(nodeCode);
 }
 
 export class Resolver {
@@ -81,7 +66,9 @@ export class Resolver {
   }
 
   buildRuntimePlan(_request: RequestInput | ResolvedRequest): RuntimePlan {
-    throw new Error(`Resolver "${this.name}" must implement buildRuntimePlan().`);
+    throw new Error(
+      `Resolver "${this.name}" must implement buildRuntimePlan().`,
+    );
   }
 
   describe(request: RequestInput | ResolvedRequest): string {
@@ -117,7 +104,9 @@ export class Resolver {
     source: string,
     request: RequestInput | ResolvedRequest,
   ): string[] {
-    return this.matchesSourceName(source) ? this.getGroupedSourceNames(request) : [];
+    return this.matchesSourceName(source)
+      ? this.getGroupedSourceNames(request)
+      : [];
   }
 
   resolve(request: RequestInput | ResolvedRequest): ResolutionResult<unknown> {
@@ -128,19 +117,31 @@ export class Resolver {
       const job = createResolverRouteJob(request);
       job.plan = plan;
       prepareRouteJob(job, plan);
-      executeRouteJobs([job], (error) => String(error instanceof Error ? error.message : error ?? ""));
+      executeRouteJobs([job], (error) =>
+        String(error instanceof Error ? error.message : (error ?? "")),
+      );
 
       if (job.error) {
-        return createResolutionFailure(job.error, Date.now() - startedAtMs, (error) =>
-          String(error instanceof Error ? error.message : error ?? ""),
+        return createResolutionFailure(
+          job.error,
+          Date.now() - startedAtMs,
+          (error) =>
+            String(error instanceof Error ? error.message : (error ?? "")),
         );
       }
 
       const value = job.valueResolved ? job.value : job.quote;
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
-      return createResolutionFailure(error, Date.now() - startedAtMs, (caughtError) =>
-        String(caughtError instanceof Error ? caughtError.message : caughtError ?? ""),
+      return createResolutionFailure(
+        error,
+        Date.now() - startedAtMs,
+        (caughtError) =>
+          String(
+            caughtError instanceof Error
+              ? caughtError.message
+              : (caughtError ?? ""),
+          ),
       );
     }
   }
@@ -162,7 +163,9 @@ export class RouteExecutionResolver extends AttributeResolver {
     this.traceLabel = traceLabel || code;
   }
 
-  buildRouteState(_request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    _request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     return {};
   }
 
@@ -192,12 +195,19 @@ export class RouteExecutionResolver extends AttributeResolver {
   }
 }
 
-export abstract class ResolverPlan extends Resolver implements ResolverPlanNode {
+export abstract class ResolverPlan
+  extends Resolver
+  implements ResolverPlanNode
+{
   readonly nodes: ResolverNode[];
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
 
-  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
+  constructor(
+    name: string,
+    nodes: ResolverNode[],
+    options: ResolverPlanOptions = {},
+  ) {
     super(name);
     this.nodes = nodes || [];
     this.routeClass = options.routeClass || name;
@@ -240,7 +250,9 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
 
   abstract getRoutingNodeKind(): RoutingNodeKind;
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
     if (singleNode && singleNode.buildRouteState) {
@@ -269,13 +281,18 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
     const groupedNames: string[] = [];
 
     this.nodes.forEach((node) => {
-      const groupedName = String((node && ("traceLabel" in node ? node.traceLabel : node.name)) || "")
+      const groupedName = String(
+        (node && ("traceLabel" in node ? node.traceLabel : node.name)) || "",
+      )
         .trim()
         .toUpperCase();
 
       if (
         groupedName &&
-        groupedName !== String(this.name || "").trim().toUpperCase() &&
+        groupedName !==
+          String(this.name || "")
+            .trim()
+            .toUpperCase() &&
         !groupedNames.includes(groupedName)
       ) {
         groupedNames.push(groupedName);
@@ -290,7 +307,9 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
     const nodes = this.getNodesForRequest(request);
 
     if (!nodes.length) {
-      throw new Error(`Resolver plan "${this.name}" cannot handle this request.`);
+      throw new Error(
+        `Resolver plan "${this.name}" cannot handle this request.`,
+      );
     }
 
     if (typeof routeClass === "function") {
@@ -318,14 +337,7 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
   }
 
   static getSpecNodeCodes(spec: PlanSpec): string[] {
-    const result: string[] = [];
-    for (const code of spec.nodeCodes || []) {
-      const normalized = normalizeNodeCode(code);
-      if (normalized && !result.includes(normalized)) {
-        result.push(normalized);
-      }
-    }
-    return result;
+    return getPlanSpecNodeCodes(spec);
   }
 
   static materializeOptions(
@@ -346,9 +358,14 @@ export abstract class ResolverPlan extends Resolver implements ResolverPlanNode 
     const resolveNodeByCode =
       typeof resolverMap === "function"
         ? resolverMap
-        : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
+        : (nodeCode: string) =>
+            resolverMap[normalizeNodeCode(nodeCode)] || null;
 
-    const Ctor = this as unknown as new (name: string, nodes: ResolverNode[], options: ResolverPlanOptions) => ResolverPlan;
+    const Ctor = this as unknown as new (
+      name: string,
+      nodes: ResolverNode[],
+      options: ResolverPlanOptions,
+    ) => ResolverPlan;
     return new Ctor(
       code,
       this.getSpecNodeCodes(spec).map((nodeCode: string) =>
@@ -371,102 +388,6 @@ export class FirstSuccessPlan extends ResolverPlan {
   }
 }
 
-export class IdentifierResolutionPlan extends RoutingPlan {
-  nodeCodeByIsinCountry: Record<string, string> | null = null;
-  defaultLookupNodeCodes: string[] = [];
-  looksLikeIsin?: (value: string) => boolean;
-
-  static override getSpecNodeCodes(spec: PlanSpec): string[] {
-    const nodeCodes: string[] = [];
-    const nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
-
-    for (const [countryCode, nodeCode] of Object.entries(nodeCodeByIsinCountry || {})) {
-      if (countryCode === "_default_") continue;
-      const normalized = normalizeNodeCode(nodeCode);
-      if (normalized && !nodeCodes.includes(normalized)) {
-        nodeCodes.unshift(normalized);
-      }
-    }
-
-    const defaultCode = normalizeNodeCode((nodeCodeByIsinCountry || {})["_default_"] || "");
-    if (defaultCode && !nodeCodes.includes(defaultCode)) {
-      nodeCodes.push(defaultCode);
-    }
-    return nodeCodes;
-  }
-
-  getNodesForRequest(request: RequestInput | ResolvedRequest): ResolverNode[] {
-    const nodeByCode: Record<string, ResolverNode> = {};
-    const selectedNodes: ResolverNode[] = [];
-    const countryCode = extractIsinCountryCodeFromPlanRequest(
-      request,
-      this.looksLikeIsin || (() => false),
-    );
-    const countryNodeCode = normalizeNodeCode(
-      (this.nodeCodeByIsinCountry || {})[countryCode] || "",
-    );
-
-    (this.nodes || []).forEach((node) => {
-      nodeByCode[normalizeNodeCode(node?.name || "")] = node;
-    });
-
-    [countryNodeCode].concat(this.defaultLookupNodeCodes).forEach((nodeCode) => {
-      if (nodeByCode[nodeCode] && !selectedNodes.includes(nodeByCode[nodeCode])) {
-        selectedNodes.push(nodeByCode[nodeCode]);
-      }
-    });
-
-    const firstMatchingIndex = selectedNodes.findIndex(
-      (node) => !node.canHandle || node.canHandle(request),
-    );
-
-    if (firstMatchingIndex < 0) {
-      return selectedNodes;
-    }
-
-    return selectedNodes.slice(firstMatchingIndex);
-  }
-
-  static fromSpec(
-    code: string,
-    spec: PlanSpec,
-    resolverMap:
-      | Record<string, ResolverNode>
-      | ((nodeCode: string) => ResolverNode | null),
-    overrides: Record<string, unknown> | null | undefined,
-    deps: PlanNodeBuilderDependencies,
-  ): IdentifierResolutionPlan {
-    const resolveNodeByCode =
-      typeof resolverMap === "function"
-        ? resolverMap
-        : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
-
-    const plan = new this(
-      code,
-      this.getSpecNodeCodes(spec).map((nodeCode: string) =>
-        resolveNodeByCode(nodeCode),
-      ) as ResolverNode[],
-      this.materializeOptions(overrides),
-    );
-
-    const nodeCodeByIsinCountry = (spec as IdentifierResolutionPlanSpec).nodeCodeByIsinCountry || null;
-    const defaultCode = normalizeNodeCode((nodeCodeByIsinCountry || {})["_default_"] || "");
-    plan.nodeCodeByIsinCountry = nodeCodeByIsinCountry;
-    plan.defaultLookupNodeCodes = defaultCode ? [defaultCode] : [];
-    plan.looksLikeIsin = deps.refs.looksLikeIsin;
-
-    return plan;
-  }
-
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
-    if (!(request instanceof RequestInput)) return {};
-    return buildIsinIdentifierRouteState(
-      request,
-      (input) => extractIsinFromRequestInput(input, this.looksLikeIsin || (() => false)),
-    );
-  }
-}
-
 export class AttributeResolutionPlan extends FirstSuccessPlan {}
 
 export class EquityAttributeResolutionPlan extends AttributeResolutionPlan {
@@ -484,7 +405,9 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
     return "PSE:BDO";
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!("symbol" in request)) return {};
     return buildPseQuoteRouteState(
       request as Extract<ResolvedRequest, { requestType: "equity" }>,
@@ -495,7 +418,9 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
 export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {
   resolvePreferredYahooSymbol?: ((symbol: string) => string) | null;
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!("yahooSymbol" in request)) return {};
     return buildEquityYahooQuoteRouteState(
       request as Extract<ResolvedRequest, { requestType: "equity" }>,
@@ -515,7 +440,8 @@ export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {
     const resolveNodeByCode =
       typeof resolverMap === "function"
         ? resolverMap
-        : (nodeCode: string) => resolverMap[normalizeNodeCode(nodeCode)] || null;
+        : (nodeCode: string) =>
+            resolverMap[normalizeNodeCode(nodeCode)] || null;
 
     const plan = new this(
       code,
@@ -532,7 +458,9 @@ export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {
 }
 
 export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!("fxPair" in request)) return {};
     return buildFxQuoteRouteState(
       request as Extract<ResolvedRequest, { requestType: "fx" }>,
@@ -543,10 +471,16 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
     return request.classification === "fx" && super.canHandle(request);
   }
 
-  constructor(name: string, nodes: ResolverNode[], options: ResolverPlanOptions = {}) {
+  constructor(
+    name: string,
+    nodes: ResolverNode[],
+    options: ResolverPlanOptions = {},
+  ) {
     super(name, nodes, options);
     if (this.nodes.length < 2) {
-      throw new Error(`FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`);
+      throw new Error(
+        `FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`,
+      );
     }
   }
 
@@ -572,7 +506,6 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   EquityAttributeResolutionPlan,
   FirstSuccessPlan,
   FxAttributeResolutionPlan,
-  IdentifierResolutionPlan,
   PseQuoteResolutionPlan,
   RoutingPlan,
   TickerQuoteResolutionPlan,
@@ -592,9 +525,8 @@ export function buildPlanNodeFromSpec(
   overrides: Record<string, unknown> | null | undefined,
   deps: PlanNodeBuilderDependencies,
 ): ResolverNode {
-  const PlanClass = PLAN_RESOLVER_CLASSES_BY_NAME[
-    spec.resolverClass as PlanResolverClassName
-  ];
+  const PlanClass =
+    PLAN_RESOLVER_CLASSES_BY_NAME[spec.resolverClass as PlanResolverClassName];
 
   if (!PlanClass) {
     throw new Error(

@@ -11,7 +11,7 @@
   },
   "packageManager": "npm@11.9.0",
   "scripts": {
-    "test": "npm run test:hoodlefinance && npm run test:tscore && npm run test:release && npm run test:sync-demo-sheet && npm run test:deploy-addon && npm run test:clasp-user-login && npm run test:validate-demo-credentials && npm run test:spdx-headers && npm run test:preferred-reit-whitelist",
+    "test": "npm run build:ts && node --test test/*.test.js test-ts/*.test.js",
     "test:hoodlefinance": "node --test test/hoodlefinance.test.js",
     "test:release": "node --test test/release.test.js",
     "test:sync-demo-sheet": "node --test test/sync-demo-sheet.test.js",
@@ -43,6 +43,7 @@
     "smoke": "node tools/_shared/cli.js",
     "hoodlefinance.ts": "npm run build:ts && node tools/_shared/cli-ts.js",
     "smoke.ts": "npm run build:ts && node tools/_shared/cli-ts.js",
+    "compare:modes": "npm run build:ts && node tools/compare-runtime-modes.js",
     "smoke:ts:appscript": "npm run build:ts:appscript && node tools/_shared/appscript-ts-smoke.js",
     "smoke:ts:appscript:min": "npm run build:ts:appscript:min && node tools/_shared/appscript-ts-smoke.js --minify",
     "pse:refresh": "node tools/generate-pse-isin-map.js",

@@ -1,10 +1,7 @@
 import {
   createConcreteResolverMaterializationDependencies,
 } from "../core/concrete-resolvers";
-import {
-  materializeResolversByCode,
-  getMaterializedResolverByCode,
-} from "../core/resolver-materialization";
+import { compileDagPlanForLegacyExecution } from "../core/dag-plan-legacy-execution";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
 import { createRequestInput } from "../core/request-building";
 import { extractAttributeValue } from "../core/attribute-extraction";
@@ -16,10 +13,8 @@ import {
 } from "../core/request";
 import { buildFxPairFromCodes } from "../core/fx-normalization";
 import {
-  createDefaultPlanMaterializationDependencies,
-  materializePlanFromSpec,
-} from "../core/plan-materialization";
-import { PLAN_SPECS_BY_CODE, RESOLVER_SPECS_BY_CODE } from "../core/spec-data";
+  DagPlan,
+} from "../core/spec-data";
 import {
   resolvePlannedQuoteEnvelope,
   resolveRequestEnvelope,
@@ -27,7 +22,7 @@ import {
   type LookupEnvelopeResult,
   type RequestResolutionDependencies,
 } from "../core/request-resolution";
-import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "../core/planner";
+import type { ResolverPlanNode } from "../core/planner";
 
 interface FetchTextResponseLike {
   getContentText(): string;
@@ -196,8 +191,15 @@ export function createHoodlefinanceRuntime(
 ): HoodlefinanceRuntime {
   const fetchAllInChunks =
     deps.fetchAllInChunks || createSequentialFetchAllInChunks(deps.fetchText);
-  const { byCode: resolversByCode } = materializeResolversByCode(
-    RESOLVER_SPECS_BY_CODE,
+  type DirectIdentifierResolverLike = Parameters<
+    typeof createDefaultResolvePlanBuilder
+  >[0]["directIdentifierResolver"];
+  const resolvePreferredYahooSymbol = (symbol: string): string =>
+    typeof deps.resolvePreferredYahooSymbol === "function"
+      ? deps.resolvePreferredYahooSymbol(symbol)
+      : "";
+
+  const resolverMaterializationDeps =
     createConcreteResolverMaterializationDependencies({
       googleFx: {
         fetchText: deps.fetchText,
@@ -225,76 +227,78 @@ export function createHoodlefinanceRuntime(
         getCachedJson: deps.getCachedJson,
         putCachedJson: deps.putCachedJson,
       },
-    }),
-  );
-  const directIdentifierResolver = getMaterializedResolverByCode(
-    { byCode: resolversByCode, byName: {} },
-    "RESOLVED-IDENTIFIER",
-  )!;
-  const planMaterializationDeps = createDefaultPlanMaterializationDependencies({
-    looksLikeIsin(value) {
-      return looksLikeIsin(value);
-    },
-    planSpecsByCode: PLAN_SPECS_BY_CODE,
-    resolvePreferredYahooSymbol(symbol) {
-      return typeof deps.resolvePreferredYahooSymbol === "function"
-        ? deps.resolvePreferredYahooSymbol(symbol)
-        : "";
-    },
-    resolversByCode,
-  });
-  const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: directIdentifierResolver as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"],
-    materializePlanFromSpec(code) {
-      return materializePlanFromSpec(
-        code,
-        null,
-        planMaterializationDeps,
-      ) as ResolverPlanNode;
-    },
-  });
-
-  // Hoist FX plan to construction time — materialize once, execute many
-  const fxPlan = materializePlanFromSpec(
-    "DEFAULT-ATTRIBUTE:FX",
-    null,
-    planMaterializationDeps,
-  ) as ResolverPlanNode;
-
-  // Forward declare resolveFxRate for circular reference in resolutionEnv
-  let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
-
-  // Hoist resolution environment to construction time
-  const resolutionEnv: RequestResolutionDependencies = {
-    buildResolvePlan,
-    fetchText: deps.fetchText,
-    getCachedString: deps.getCachedString,
-    looksLikeIsin,
-    putCachedString: deps.putCachedString,
-    resolveFxRate: (fxPair) => resolveFxRate(fxPair),
-  };
-
-  // Now define resolveFxRate using the hoisted fxPlan
-  resolveFxRate = (fxPair: FxPair): LookupEnvelopeResult => {
-    const fxRequest = new FxRequest({
-      attribute: "price",
-      fxPair,
-      identifier: fxPair.yahooSymbol,
     });
 
-    const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
+  function createResolutionPath(
+    dagPlan: typeof DagPlan,
+  ) {
+    const compiledDagPlan = compileDagPlanForLegacyExecution(dagPlan, {
+      ...resolverMaterializationDeps,
+      looksLikeIsin(value) {
+        return looksLikeIsin(value);
+      },
+      resolvePreferredYahooSymbol,
+    });
+    const directIdentifierResolver = compiledDagPlan.getNodeByCode(
+      "RESOLVED-IDENTIFIER",
+    )!;
+    const getPathPlanNodeByCode = (code: string): ResolverPlanNode =>
+      compiledDagPlan.getPlanNodeByCode(code);
+    const buildResolvePlan = createDefaultResolvePlanBuilder({
+      directIdentifierResolver:
+        directIdentifierResolver as DirectIdentifierResolverLike,
+      getPlanNodeByCode: getPathPlanNodeByCode,
+    });
+    const fxPlan = getPathPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
 
-    if (env.status === "success") {
-      const price = Number(
-        extractAttributeValue(env.value as Record<string, unknown>, "price"),
-      );
-      if (Number.isFinite(price)) {
-        return { ...env, value: price };
+    let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
+    const resolutionEnv: RequestResolutionDependencies = {
+      buildResolvePlan,
+      fetchText: deps.fetchText,
+      getCachedString: deps.getCachedString,
+      looksLikeIsin,
+      putCachedString: deps.putCachedString,
+      resolveFxRate: (fxPair) => resolveFxRate(fxPair),
+    };
+
+    resolveFxRate = (fxPair: FxPair): LookupEnvelopeResult => {
+      const fxRequest = new FxRequest({
+        attribute: "price",
+        fxPair,
+        identifier: fxPair.yahooSymbol,
+      });
+
+      const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
+
+      if (env.status === "success") {
+        const price = Number(
+          extractAttributeValue(env.value as Record<string, unknown>, "price"),
+        );
+        if (Number.isFinite(price)) {
+          return { ...env, value: price };
+        }
       }
-    }
 
-    return env;
-  };
+      return env;
+    };
+
+    return {
+      buildResolvePlan,
+      getPlanNodeByCode: getPathPlanNodeByCode,
+      resolutionEnv,
+      resolversByCode: compiledDagPlan.resolverNodesByCode,
+      resolveFxRate,
+    };
+  }
+
+  const dagResolutionPath = createResolutionPath(DagPlan);
+  const {
+    buildResolvePlan,
+    getPlanNodeByCode,
+    resolutionEnv,
+    resolversByCode,
+    resolveFxRate,
+  } = dagResolutionPath;
 
   // Helper to normalize request input parameters
   const normalizeRequestInput = (
@@ -324,12 +328,8 @@ export function createHoodlefinanceRuntime(
     buildResolvePlan,
     createRequestInput: normalizeRequestInput,
     fetchText: deps.fetchText,
-    materializePlanFromSpec(code: string) {
-      return materializePlanFromSpec(
-        code,
-        null,
-        planMaterializationDeps,
-      ) as ResolverPlanNode;
+    getPlanNodeByCode(code: string) {
+      return getPlanNodeByCode(code);
     },
     resolveFxRate,
     resolversByCode,

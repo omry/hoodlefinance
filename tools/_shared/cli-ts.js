@@ -141,6 +141,7 @@ function lookupWithGraphEnvironment(env, args) {
   );
 }
 
+
 function formatLookupResult(result) {
   if (result.status !== "success") {
     return null;
@@ -210,8 +211,8 @@ function formatRoutingTree(env = createCliEnvironment()) {
   const rootNode = buildRoutingPlanTreeNode({
     getRoutingNodes() {
       return [
-        env.materializePlanFromSpec("IDENTIFIER-ROOT"),
-        env.materializePlanFromSpec("DEFAULT-ATTRIBUTE"),
+        env.getPlanNodeByCode("IDENTIFIER-ROOT"),
+        env.getPlanNodeByCode("DEFAULT-ATTRIBUTE"),
       ];
     },
     getRoutingNodeKind() {
@@ -379,35 +380,37 @@ function formatTraceOutput(symbol, result) {
 
 function main(argv = process.argv.slice(2)) {
   const [firstArg, secondArg, thirdArg] = argv;
-  const env = createCliEnvironment();
+  let env = null;
+  function getEnv() {
+    if (!env) {
+      env = createCliEnvironment();
+    }
+
+    return env;
+  }
 
   if (!firstArg) {
     printUsage();
     process.exit(1);
   }
 
-  if (firstArg === "--routing-table" || firstArg === "routing-table") {
+  if (firstArg === "--routing-table") {
     console.log("NOT IMPLEMENTED");
     return;
   }
 
-  if (
-    firstArg === "--routing" ||
-    firstArg === "routing" ||
-    firstArg === "--routing-tree" ||
-    firstArg === "routing-tree"
-  ) {
-    console.log(formatRoutingTree());
+  if (firstArg === "--routing" || firstArg === "--routing-tree") {
+    console.log(formatRoutingTree(getEnv()));
     return;
   }
 
-  if (firstArg === "--envelope" || firstArg === "envelope") {
+  if (firstArg === "--envelope") {
     if (!secondArg) {
       printUsage();
       process.exit(1);
     }
 
-    const result = lookupEnvelopeWithEnvironment(env, {
+    const result = lookupEnvelopeWithEnvironment(getEnv(), {
       attribute: thirdArg || "price",
       ticker: secondArg,
     });
@@ -415,13 +418,13 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  if (firstArg === "--graph" || firstArg === "graph") {
+  if (firstArg === "--graph") {
     if (!secondArg) {
       printUsage();
       process.exit(1);
     }
 
-    const result = lookupWithGraphEnvironment(env, {
+    const result = lookupWithGraphEnvironment(getEnv(), {
       attribute: thirdArg || "price",
       ticker: secondArg,
     });
@@ -434,15 +437,15 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  if (firstArg === "--compare" || firstArg === "compare") {
+  if (firstArg === "--compare") {
     if (!secondArg) {
       printUsage();
       process.exit(1);
     }
 
     const requestArgs = { attribute: thirdArg || "price", ticker: secondArg };
-    const oldResult = lookupWithEnvironment(env, requestArgs);
-    const newResult = lookupWithGraphEnvironment(env, requestArgs);
+    const oldResult = lookupWithEnvironment(getEnv(), requestArgs);
+    const newResult = lookupWithGraphEnvironment(getEnv(), requestArgs);
 
     console.log(`ticker: ${secondArg}  attribute: ${requestArgs.attribute}`);
     console.log(`old: status=${oldResult.status}  route=${oldResult.route}  value=${oldResult.value}`);
@@ -462,8 +465,8 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  if (firstArg === "--smoke" || firstArg === "smoke") {
-    const smoke = runSmokeSuite(env);
+  if (firstArg === "--smoke") {
+    const smoke = runSmokeSuite(getEnv());
 
     for (const failure of smoke.failures) {
       console.error(failure);
@@ -473,13 +476,13 @@ function main(argv = process.argv.slice(2)) {
     process.exit(smoke.failures.length ? 1 : 0);
   }
 
-  if (firstArg === "--trace" || firstArg === "trace") {
+  if (firstArg === "--trace") {
     if (!secondArg) {
       printUsage();
       process.exit(1);
     }
 
-    const result = lookupWithEnvironment(env, {
+    const result = lookupWithEnvironment(getEnv(), {
       attribute: thirdArg || "price",
       ticker: secondArg,
     });
@@ -492,7 +495,7 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  const result = lookupWithEnvironment(env, {
+  const result = lookupWithEnvironment(getEnv(), {
     attribute: secondArg || "price",
     ticker: firstArg,
   });

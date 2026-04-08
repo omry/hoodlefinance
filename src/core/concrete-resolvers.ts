@@ -220,8 +220,8 @@ export class PseIsinMapResolver extends IdentifierResolver {
   readonly resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap;
 
   constructor(resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap) {
-    super("PSE-MAP");
-    this.traceLabel = "pse-isin-map";
+    super("ISIN:PSE");
+    this.traceLabel = "ISIN:PSE";
     this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
   }
 
@@ -305,8 +305,8 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
   readonly putCachedString: YahooIsinSearchResolverDependencies["putCachedString"];
 
   constructor(deps: YahooIsinSearchResolverDependencies) {
-    super("YAHOO-ISIN");
-    this.traceLabel = "YAHOO-ISIN";
+    super("ISIN:YAHOO");
+    this.traceLabel = "ISIN:YAHOO";
     this.fetchAllInChunks = deps.fetchAllInChunks;
     this.getCachedString = deps.getCachedString;
     this.putCachedString = deps.putCachedString;

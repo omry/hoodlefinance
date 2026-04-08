@@ -273,9 +273,10 @@ test("trace output includes the planned route and runtime trace summary", functi
       jobs[0].quote = { regularMarketPrice: 1 };
     },
   };
-  const output = formatTraceOutput("GOOG", fakeCtx);
+  const output = formatTraceOutput("GOOG", "price", fakeCtx);
 
   assert.match(output, /^symbol: GOOG/m);
+  assert.match(output, /^attribute: price$/m);
   assert.match(output, /planned route: TICKER -> YAHOO/);
   assert.match(output, /runtime trace: YAHOO \[success, 17ms\]/);
   assert.match(output, /result: success \(\d+ms total(?:, \d+ms slack)?\)/);

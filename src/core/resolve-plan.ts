@@ -17,7 +17,7 @@ export interface DefaultResolvePlanBuilderDependencies {
   directIdentifierResolver: {
     resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
   };
-  materializePlanFromSpec(code: string): ResolverPlanNode;
+  getPlanNodeByCode(code: string): ResolverPlanNode;
 }
 
 export interface ResolvePlanDependencies {
@@ -96,7 +96,7 @@ export function createDefaultResolvePlanBuilder(
       listAllDefaultAttributePlans() {
         return [];
       },
-      materializePlanFromSpec: deps.materializePlanFromSpec,
+      getPlanNodeByCode: deps.getPlanNodeByCode,
     };
 
     const resolvePlanDeps: ResolvePlanDependencies = {
@@ -104,7 +104,7 @@ export function createDefaultResolvePlanBuilder(
         return wrapSelectedResolverNode(
           buildForcedAttributePlanForResolvedRequest(input, request, {
             buildForcedSelectedAttributePlan,
-            materializePlanFromSpec: deps.materializePlanFromSpec,
+            getPlanNodeByCode: deps.getPlanNodeByCode,
           }),
         );
       },
@@ -115,7 +115,7 @@ export function createDefaultResolvePlanBuilder(
         return wrapSelectedResolverNode(
           buildQuoteRoutePlanForResolvedRequest(input, request, {
             buildForcedSelectedAttributePlan,
-            materializePlanFromSpec: deps.materializePlanFromSpec,
+            getPlanNodeByCode: deps.getPlanNodeByCode,
           }),
         );
       },

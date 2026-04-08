@@ -184,10 +184,11 @@ function printRoutingPlanTree() {
   console.log(formatRoutingPlanTree(getRoutingPlanTree()));
 }
 
-function traceRoutingForSymbol(symbol, ctx) {
+function traceRoutingForSymbol(symbol, attribute, ctx) {
   const runtime = ctx || loadHoodlefinance();
   const startedAtMs = Date.now();
   const ticker = String(symbol).trim();
+  const normalizedAttribute = String(attribute || "price").trim() || "price";
   const RequestInput = runtime.HOODLEFINANCE_ROUTING_TYPES_
     ? runtime.HOODLEFINANCE_ROUTING_TYPES_.RequestInput
     : null;
@@ -202,7 +203,7 @@ function traceRoutingForSymbol(symbol, ctx) {
   let plannedRoute;
   let resultValue;
   let resultError;
-  const job = runtime.hf_createQuoteRouteJob_(ticker, "price");
+  const job = runtime.hf_createQuoteRouteJob_(ticker, normalizedAttribute);
 
   if (
     RequestInput &&
@@ -212,7 +213,7 @@ function traceRoutingForSymbol(symbol, ctx) {
     runtime.hf_prepareResolverJob_
   ) {
     try {
-      requestInput = new RequestInput(ticker, "price");
+      requestInput = new RequestInput(ticker, normalizedAttribute);
       resolvePlan = buildResolvePlan(requestInput);
 
       if (resolvePlan.debugValue) {
@@ -322,7 +323,7 @@ function traceRoutingForSymbol(symbol, ctx) {
   }
 
   try {
-    job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, "price");
+    job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, normalizedAttribute);
   } catch (error) {
     return {
       error: error && error.message ? error.message : String(error),
@@ -423,10 +424,11 @@ function formatRoutingTrace(trace) {
     .join(" -> ");
 }
 
-function formatTraceOutput(symbol, ctx) {
-  const trace = traceRoutingForSymbol(symbol, ctx);
+function formatTraceOutput(symbol, attribute, ctx) {
+  const trace = traceRoutingForSymbol(symbol, attribute, ctx);
   const lines = [
     "symbol: " + symbol,
+    "attribute: " + String(attribute || "price"),
     "planned route: " + (trace.plannedRoute || "(none)"),
     "runtime trace: " + formatRoutingTrace(trace),
   ];
@@ -457,11 +459,11 @@ function main() {
 
   if (ticker === "--trace") {
     if (!process.argv[3]) {
-      console.error("Usage: node cli.js --trace <symbol>");
+      console.error("Usage: node cli.js --trace <symbol> [attribute]");
       process.exit(1);
     }
 
-    console.log(formatTraceOutput(process.argv[3]));
+    console.log(formatTraceOutput(process.argv[3], process.argv[4] || "price"));
     return;
   }
 
@@ -469,7 +471,7 @@ function main() {
     console.error("Usage: node cli.js <ticker> [attribute]");
     console.error("       node cli.js --routing");
     console.error("       node cli.js --routing-table");
-    console.error("       node cli.js --trace <symbol>");
+    console.error("       node cli.js --trace <symbol> [attribute]");
     process.exit(1);
   }
 

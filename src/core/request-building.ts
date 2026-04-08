@@ -68,6 +68,15 @@ export function extractIsinFromRequestInput(
   return upperTicker.startsWith("ISIN:") ? upperTicker.slice(5).trim() : "";
 }
 
+export function extractIsinCountryCode(
+  input: Pick<RequestInput, "ticker">,
+  looksLikeIsin?: (value: string) => boolean,
+): string {
+  const isin = extractIsinFromRequestInput(input, looksLikeIsin);
+
+  return isin ? isin.slice(0, 2).toUpperCase() : "";
+}
+
 export function createRequestInput(
   identifier: unknown,
   attribute: unknown,

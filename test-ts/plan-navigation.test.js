@@ -41,6 +41,9 @@ function createResolverNode(name, extra = {}) {
     describe() {
       return name;
     },
+    getRoutingNodeKind() {
+      return "leaf";
+    },
     name,
     routingDescription: "",
     routingLabel: name,
@@ -106,6 +109,9 @@ test("resolveRoutingNode unwraps routing plans until it reaches a concrete node"
       },
       getNodesForRequest() {
         return [yahoo];
+      },
+      getRoutingNodeKind() {
+        return "switch";
       },
       isRoutingNode: true,
       name: "ROOT",

@@ -59,6 +59,9 @@ function createPlan(name, routePath = name) {
     getNodesForRequest() {
       return [];
     },
+    getRoutingNodeKind() {
+      return "leaf";
+    },
     isRoutingNode: false,
     name,
     routingDescription: "",
@@ -79,7 +82,7 @@ function createResolvedRequest() {
   };
 }
 
-function createFactoryMaterializer() {
+function createPlanNodeLookupFactory() {
   const equityPlan = createPlan("EQUITY", "TICKER -> YAHOO");
   equityPlan.canHandle = (request) =>
     String((request && request.classification) || "")
@@ -92,7 +95,7 @@ function createFactoryMaterializer() {
       .trim()
       .toLowerCase() === "fx";
 
-  const identifierPlan = createPlan("IDENTIFIER:ISIN", "YAHOO-ISIN");
+  const identifierPlan = createPlan("IDENTIFIER:ISIN", "ISIN:YAHOO");
   identifierPlan.canHandle = (request) =>
     String((request && request.classification) || "")
       .trim()
@@ -100,6 +103,7 @@ function createFactoryMaterializer() {
 
   const defaultAttributeRoot = createPlan("DEFAULT-ATTRIBUTE", "");
   defaultAttributeRoot.isRoutingNode = true;
+  defaultAttributeRoot.getRoutingNodeKind = () => "switch";
   defaultAttributeRoot.nodes = [equityPlan, fxPlan];
   defaultAttributeRoot.getNodesForRequest = function getNodesForRequest() {
     return this.nodes || [];
@@ -107,12 +111,13 @@ function createFactoryMaterializer() {
 
   const identifierRoot = createPlan("IDENTIFIER-ROOT", "");
   identifierRoot.isRoutingNode = true;
+  identifierRoot.getRoutingNodeKind = () => "switch";
   identifierRoot.nodes = [identifierPlan];
   identifierRoot.getNodesForRequest = function getNodesForRequest() {
     return this.nodes || [];
   };
 
-  return function materializePlanFromSpec(code) {
+  return function getPlanNodeByCode(code) {
     if (code === "DEFAULT-ATTRIBUTE") {
       return defaultAttributeRoot;
     }
@@ -131,7 +136,7 @@ function createDeps(overrides = {}) {
       return createPlan("FORCED-YAHOO", "YAHOO");
     },
     buildIdentifierResolutionPlan() {
-      return createPlan("IDENTIFIER", "IDENTIFIER:ISIN -> YAHOO-ISIN");
+      return createPlan("IDENTIFIER", "IDENTIFIER:ISIN -> ISIN:YAHOO");
     },
     buildQuoteRoutePlanForResolvedRequest() {
       return createPlan("QUOTE", "EQUITY -> TICKER -> YAHOO");
@@ -203,7 +208,7 @@ test("buildResolvePlan falls back to the identifier plan when direct resolution 
   assert.equal(plan.resolvedRequest, null);
   assert.equal(
     plan.identifierPlan.describe(input),
-    "IDENTIFIER:ISIN -> YAHOO-ISIN",
+    "IDENTIFIER:ISIN -> ISIN:YAHOO",
   );
   assert.equal(
     plan
@@ -236,7 +241,7 @@ test("classifyTickerJob returns either debug plans or runtime plans from the res
     {
       nodes: [],
       routeClass: "IDENTIFIER",
-      routePath: "IDENTIFIER:ISIN -> YAHOO-ISIN",
+      routePath: "IDENTIFIER:ISIN -> ISIN:YAHOO",
       routeState: {},
     },
   );
@@ -245,7 +250,7 @@ test("classifyTickerJob returns either debug plans or runtime plans from the res
 test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", () => {
   const buildResolvePlanBuilder = createDefaultResolvePlanBuilder({
     directIdentifierResolver: new DirectIdentifierResolver(),
-    materializePlanFromSpec: createFactoryMaterializer(),
+    getPlanNodeByCode: createPlanNodeLookupFactory(),
   });
 
   const equityPlan = buildResolvePlanBuilder(
@@ -281,6 +286,6 @@ test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", ()
   assert.equal(isinPlan.resolvedRequest, null);
   assert.equal(
     isinPlan.identifierPlan.describe(isinPlan.requestInput),
-    "YAHOO-ISIN",
+    "ISIN:YAHOO",
   );
 });

@@ -4,26 +4,23 @@ function definePlanSpec<T extends PlanSpec>(spec: T): T {
   return spec;
 }
 
-export const RESOLVER_SPECS_BY_CODE: Record<string, string> = {
-  "RESOLVED-IDENTIFIER": "DirectIdentifierResolver",
-  "PSE-MAP": "PseIsinMapResolver",
-  "YAHOO-ISIN": "YahooIsinSearchResolver",
-  "FX-IDENTITY": "LocalFxResolver",
-  "GOOGLE-FX": "GoogleFxResolver",
-  YAHOO: "YahooQuoteResolver",
-  "TRADINGVIEW-FUND": "TradingviewFundResolver",
-  "PSE-FRAMES": "PSEFramesResolver",
-  "PSE-EDGE": "PSEEdgeResolver",
-};
-
-export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
-  "IDENTIFIER:ISIN": definePlanSpec({
-    resolverClass: "IdentifierResolutionPlan",
-    nodeCodeByIsinCountry: {
-      PH: "PSE-MAP",
-      _default_: "YAHOO-ISIN",
-    },
-  }),
+export const DagPlan: Record<string, PlanSpec> = {
+  ROOT: {
+    resolverClass: "RoutingPlan",
+    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+  },
+  "DEFAULT-ATTRIBUTE": {
+    resolverClass: "RoutingPlan",
+    nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
+  },
+  "DEFAULT-ATTRIBUTE:EQUITY": {
+    resolverClass: "EquityAttributeResolutionPlan",
+    nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
+  },
+  "DEFAULT-ATTRIBUTE:FX": {
+    resolverClass: "FxAttributeResolutionPlan",
+    nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
+  },
   "QUOTE:DEFAULT-FX": {
     resolverClass: "AttributeResolutionPlan",
     nodeCodes: ["GOOGLE-FX", "YAHOO"],
@@ -36,25 +33,51 @@ export const PLAN_SPECS_BY_CODE: Record<string, PlanSpec> = {
     resolverClass: "TickerQuoteResolutionPlan",
     nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
   },
-  "DEFAULT-ATTRIBUTE:EQUITY": {
-    resolverClass: "EquityAttributeResolutionPlan",
-    nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
-  },
-  "DEFAULT-ATTRIBUTE:FX": {
-    resolverClass: "FxAttributeResolutionPlan",
-    nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
-  },
-  "DEFAULT-ATTRIBUTE": {
-    resolverClass: "RoutingPlan",
-    nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
-  },
   "IDENTIFIER-ROOT": {
     resolverClass: "RoutingPlan",
     nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
   },
-  "ROOT": {
-    resolverClass: "RoutingPlan",
-    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+  "IDENTIFIER:ISIN": definePlanSpec({
+    resolverClass: "FirstSuccessPlan",
+    nodeCodes: ["ISIN:PSE", "ISIN:YAHOO"],
+  }),
+  "RESOLVED-IDENTIFIER": {
+    resolverClass: "DirectIdentifierResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "ISIN:PSE": {
+    resolverClass: "PseIsinMapResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "ISIN:YAHOO": {
+    resolverClass: "YahooIsinSearchResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "FX-IDENTITY": {
+    resolverClass: "LocalFxResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "GOOGLE-FX": {
+    resolverClass: "GoogleFxResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  YAHOO: {
+    resolverClass: "YahooQuoteResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "TRADINGVIEW-FUND": {
+    resolverClass: "TradingviewFundResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "PSE-FRAMES": {
+    resolverClass: "PSEFramesResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  "PSE-EDGE": {
+    resolverClass: "PSEEdgeResolver",
+    nodeCodes: ["TERMINAL"],
+  },
+  TERMINAL: {
+    resolverClass: "TerminalCollectorPlan",
   },
 };
-

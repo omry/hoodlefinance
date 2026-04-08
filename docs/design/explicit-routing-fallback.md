@@ -148,7 +148,7 @@ Notes:
 Route:
 
 - local PSE-map resolve when deterministic
-- otherwise `YAHOO-ISIN`
+- otherwise `ISIN:YAHOO`
 - on success, pivot into either:
   - `PSE`
   - `YAHOO -> TRADINGVIEW`
@@ -251,7 +251,7 @@ Examples:
 
 Where a later route depends on resolved intermediate data, grouped output is acceptable, for example:
 
-- `YAHOO-ISIN -> (PSE|YAHOO -> TRADINGVIEW)`
+- `ISIN:YAHOO -> (PSE|YAHOO -> TRADINGVIEW)`
 
 `@?` must not expose internal function names or implementation-specific resolver ids.
 
@@ -302,5 +302,5 @@ Add tests for:
 - `@?` is static in this pass.
 - A future live interface such as `@TRACE` may be added later.
 - Forced source overrides keep their current meaning: they disable fallback.
-- Public route labels may use stable stage names such as `YAHOO-ISIN`, but not internal resolver names.
+- Public route labels may use stable stage names such as `ISIN:YAHOO`, but not internal resolver names.
 - This design covers quote routing and `isin` routing first; error-message cleanup can follow once the framework exists.

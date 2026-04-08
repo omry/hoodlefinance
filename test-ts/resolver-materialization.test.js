@@ -77,8 +77,8 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     {
       "RESOLVED-IDENTIFIER": "DirectIdentifierResolver",
       LOCAL: "LocalFxResolver",
-      "PSE-MAP": "PseIsinMapResolver",
-      "YAHOO-ISIN": "YahooIsinSearchResolver",
+      "ISIN:PSE": "PseIsinMapResolver",
+      "ISIN:YAHOO": "YahooIsinSearchResolver",
       YAHOO: "YahooQuoteResolver",
       "TRADINGVIEW-FUND": "TradingviewFundResolver",
       GOOGLE: "GoogleFxResolver",
@@ -311,9 +311,9 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     registry.byCode["TRADINGVIEW-FUND"] instanceof TradingviewFundResolver,
     true,
   );
-  assert.equal(registry.byCode["PSE-MAP"] instanceof PseIsinMapResolver, true);
+  assert.equal(registry.byCode["ISIN:PSE"] instanceof PseIsinMapResolver, true);
   assert.equal(
-    registry.byCode["YAHOO-ISIN"] instanceof YahooIsinSearchResolver,
+    registry.byCode["ISIN:YAHOO"] instanceof YahooIsinSearchResolver,
     true,
   );
   const pseFramesResolved = registry.byCode["PSE-FRAMES"].resolve(
@@ -369,7 +369,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(resolved.status, "success");
   assert.equal(resolved.value.yahooSymbol, "GOOG");
 
-  const pseResolved = registry.byCode["PSE-MAP"].resolve(
+  const pseResolved = registry.byCode["ISIN:PSE"].resolve(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -392,7 +392,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(pseResolved.status, "success");
   assert.equal(pseResolved.value.exchange, "PSE");
 
-  const yahooResolved = registry.byCode["YAHOO-ISIN"].resolve(
+  const yahooResolved = registry.byCode["ISIN:YAHOO"].resolve(
     new RequestInput({
       attribute: "price",
       attributeRequest: {

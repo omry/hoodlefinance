@@ -11,18 +11,14 @@ const {
   YahooIsinSearchResolver,
   YahooQuoteResolver,
   TradingviewFundResolver,
+  DagPlan,
   RequestInput,
-  createConcreteResolverMaterializationDependencies,
-  materializeResolversByCode,
-  materializePlanFromSpec,
-  createDefaultPlanMaterializationDependencies,
-  PLAN_SPECS_BY_CODE,
-  RESOLVER_SPECS_BY_CODE,
+  compileDagPlanForLegacyExecution,
   createDefaultResolvePlanBuilder,
   getRoutingTableRows,
 } = require("../dist/ts/core/index.js");
 
-function createIntegratedResolverRegistry() {
+function createResolverMaterializationDependencies() {
   const commonDeps = {
     fetchAllInChunks: () => [],
     fetchText: () => "",
@@ -46,7 +42,7 @@ function createIntegratedResolverRegistry() {
     PSEEdgeResolver: commonDeps,
   };
 
-  return materializeResolversByCode(RESOLVER_SPECS_BY_CODE, {
+  return {
     resolverClassesByName: {
       DirectIdentifierResolver,
       GoogleFxResolver,
@@ -59,26 +55,21 @@ function createIntegratedResolverRegistry() {
       TradingviewFundResolver,
     },
     resolverClassDependenciesByName,
-  });
+  };
 }
 
-function createIntegratedPlanMaterializer(registry) {
-  const deps = createDefaultPlanMaterializationDependencies({
+function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
+  return compileDagPlanForLegacyExecution(planSpecsByCode, {
+    ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
-    planSpecsByCode: PLAN_SPECS_BY_CODE,
-    resolversByCode: registry.byCode,
   });
-
-  return (code, overrides) =>
-    materializePlanFromSpec(code, overrides, deps);
 }
 
 test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated results", () => {
-  const registry = createIntegratedResolverRegistry();
-  const materializePlanFromSpec = createIntegratedPlanMaterializer(registry);
+  const compiledDag = createIntegratedCompiledDag();
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: registry.byCode["RESOLVED-IDENTIFIER"],
-    materializePlanFromSpec,
+    directIdentifierResolver: compiledDag.getNodeByCode("RESOLVED-IDENTIFIER"),
+    getPlanNodeByCode: compiledDag.getPlanNodeByCode,
   });
 
   const deps = {
@@ -108,11 +99,10 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
 });
 
 test("forced PSE sub-sources use the requested individual provider in integrated mode", () => {
-  const registry = createIntegratedResolverRegistry();
-  const materializePlanFromSpec = createIntegratedPlanMaterializer(registry);
+  const compiledDag = createIntegratedCompiledDag();
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: registry.byCode["RESOLVED-IDENTIFIER"],
-    materializePlanFromSpec,
+    directIdentifierResolver: compiledDag.getNodeByCode("RESOLVED-IDENTIFIER"),
+    getPlanNodeByCode: compiledDag.getPlanNodeByCode,
   });
 
   const framesPlan = buildResolvePlan(new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
@@ -139,36 +129,23 @@ test("forced PSE sub-sources use the requested individual provider in integrated
 });
 
 test("integrated routing errors on ambiguous default attribute plans", () => {
-  const registry = createIntegratedResolverRegistry();
-  
   // Force ambiguity by adding a resolver that handles everything
   const ambiguousSpec = {
     "AMBIGUOUS-EXTRA": {
       nodeCodes: ["YAHOO"],
       resolverClass: "AttributeResolutionPlan",
-      options: {
-        routingLabel: "AMBIGUOUS-EXTRA",
-      }
-    }
+    },
   };
-  
+
   // We need to inject this into the DEFAULT-ATTRIBUTE node codes
-  const modifiedSpecs = JSON.parse(JSON.stringify(PLAN_SPECS_BY_CODE));
+  const modifiedSpecs = JSON.parse(JSON.stringify(DagPlan));
   modifiedSpecs["DEFAULT-ATTRIBUTE"].nodeCodes.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
-
-  const deps = createDefaultPlanMaterializationDependencies({
-    looksLikeIsin: () => false,
-    planSpecsByCode: modifiedSpecs,
-    resolversByCode: registry.byCode,
-  });
-
-  const materializePlanFromSpecLocal = (code, overrides) =>
-    materializePlanFromSpec(code, overrides, deps);
+  const compiledDag = createIntegratedCompiledDag(modifiedSpecs);
 
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: registry.byCode["RESOLVED-IDENTIFIER"],
-    materializePlanFromSpec: materializePlanFromSpecLocal,
+    directIdentifierResolver: compiledDag.getNodeByCode("RESOLVED-IDENTIFIER"),
+    getPlanNodeByCode: compiledDag.getPlanNodeByCode,
   });
 
   assert.throws(
