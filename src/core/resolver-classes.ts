@@ -28,6 +28,7 @@ import {
 import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
+import type { ResolverServices } from "./resolver-services";
 
 export interface ResolverPlanOptions {
   routeClass?: string | RouteClassResolver;
@@ -145,6 +146,8 @@ export class Resolver {
       );
     }
   }
+
+  initEnv(_services: ResolverServices): void {}
 
   static fromSpec(..._args: unknown[]): Resolver {
     return new this();

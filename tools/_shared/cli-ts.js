@@ -88,7 +88,7 @@ function createCliEnvironment() {
   const stringCache = createStringCache();
   const jsonCache = createJsonCache();
   const runtime = createHoodlefinanceRuntime({
-    fetchText: syncFetchText,
+    httpFetch: syncFetchText,
     getCachedJson: jsonCache.getCachedJson,
     getCachedString: stringCache.getCachedString,
     putCachedJson: jsonCache.putCachedJson,

@@ -6,16 +6,17 @@ import {
   type ResolverRegistryByCode,
   type ResolverRegistryByName,
 } from "./resolver-registry";
+import type { ResolverServices } from "./resolver-services";
 
 export interface ResolverClassLike {
-  fromSpec(code: string, deps?: unknown): ResolverNode;
+  fromSpec(code: string): ResolverNode;
 }
 
 export interface ResolverMaterializationDependencies {
   registryByCode?: ResolverRegistryByCode;
   registryByName?: ResolverRegistryByName;
-  resolverClassDependenciesByName?: Record<string, unknown>;
   resolverClassesByName: Record<string, ResolverClassLike | undefined>;
+  resolverServices?: ResolverServices;
 }
 
 function normalizeCode(code: string): string {
@@ -42,10 +43,11 @@ export function materializeResolversByCode(
       );
     }
 
-    const resolver = ResolverClass.fromSpec(
-      normalizedCode,
-      deps.resolverClassDependenciesByName?.[resolverClass],
-    );
+    const resolver = ResolverClass.fromSpec(normalizedCode);
+
+    if (deps.resolverServices && typeof resolver.initEnv === "function") {
+      resolver.initEnv(deps.resolverServices);
+    }
 
     registerResolver(byName, resolver);
     byCode[normalizedCode] = resolver;

@@ -7,7 +7,6 @@ import {
   type AppsScriptCacheLike,
   type AppsScriptUrlFetchLike,
   cacheTextResource,
-  createFetchAllInChunks,
   createJsonCache,
   createStoredTextState,
   createStringCache,
@@ -149,8 +148,7 @@ export function createHoodlefinanceAppScriptBindings(
   let pseIsinMap: Record<string, string> | null = null;
   let preferredReitTickerSet: Set<string> | null = null;
   const runtime = createHoodlefinanceRuntime({
-    fetchAllInChunks: createFetchAllInChunks(services.urlFetchApp),
-    fetchText(url) {
+    httpFetch(url) {
       return services.urlFetchApp.fetch(url).getContentText();
     },
     getCachedJson: jsonCache.getCachedJson,

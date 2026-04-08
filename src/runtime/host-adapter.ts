@@ -24,29 +24,8 @@ import {
 } from "../core/request-resolution";
 import type { ResolverPlanNode } from "../core/planner";
 
-interface FetchTextResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
-}
-
-interface FetchTextRequestLike {
-  url: string;
-}
-
-interface FetchTextBatchResult<TRequest extends FetchTextRequestLike> {
-  error?: unknown;
-  request: TRequest;
-  response?: FetchTextResponseLike;
-}
-
-type FetchAllInChunks = <TRequest extends FetchTextRequestLike>(
-  source: string,
-  requests: TRequest[],
-) => Array<FetchTextBatchResult<TRequest>>;
-
 interface HoodlefinanceRuntimeDependencies {
-  fetchAllInChunks?: FetchAllInChunks;
-  fetchText(url: string): string;
+  httpFetch(url: string): string;
   getCachedJson(key: string): unknown;
   getCachedString(key: string): string;
   parseFxTicker?(ticker: string): FxPair | null;
@@ -60,43 +39,6 @@ interface HoodlefinanceRuntime {
   lookup(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult;
-}
-
-function createInlineFetchResponse(
-  body: string,
-  responseCode = 200,
-): FetchTextResponseLike {
-  return {
-    getContentText() {
-      return body;
-    },
-    getResponseCode() {
-      return responseCode;
-    },
-  };
-}
-
-function createSequentialFetchAllInChunks(
-  fetchText: (url: string) => string,
-): FetchAllInChunks {
-  return function fetchAllInChunks<TRequest extends FetchTextRequestLike>(
-    _source: string,
-    requests: TRequest[],
-  ): Array<FetchTextBatchResult<TRequest>> {
-    return requests.map((request) => {
-      try {
-        return {
-          request,
-          response: createInlineFetchResponse(fetchText(request.url)),
-        };
-      } catch (error) {
-        return {
-          error,
-          request,
-        };
-      }
-    });
-  };
 }
 
 function normalizePreferredTickerKey(ticker: string): string {
@@ -189,8 +131,6 @@ export function parsePropertiesMap(text: string): Record<string, string> {
 export function createHoodlefinanceRuntime(
   deps: HoodlefinanceRuntimeDependencies,
 ): HoodlefinanceRuntime {
-  const fetchAllInChunks =
-    deps.fetchAllInChunks || createSequentialFetchAllInChunks(deps.fetchText);
   type DirectIdentifierResolverLike = Parameters<
     typeof createDefaultResolvePlanBuilder
   >[0]["directIdentifierResolver"];
@@ -201,32 +141,12 @@ export function createHoodlefinanceRuntime(
 
   const resolverMaterializationDeps =
     createConcreteResolverMaterializationDependencies({
-      googleFx: {
-        fetchText: deps.fetchText,
-        getCachedJson: deps.getCachedJson,
-        putCachedJson: deps.putCachedJson,
-      },
-      pseQuotes: {
-        fetchAllInChunks,
-        getCachedJson: deps.getCachedJson,
-        putCachedJson: deps.putCachedJson,
-      },
+      httpFetch: deps.httpFetch,
+      getCachedJson: deps.getCachedJson,
+      getCachedString: deps.getCachedString,
+      putCachedJson: deps.putCachedJson,
+      putCachedString: deps.putCachedString,
       resolvePseTickerFromIsinMap: (isin) => deps.resolvePseTickerFromIsinMap(isin),
-      yahooIsinSearch: {
-        fetchAllInChunks,
-        getCachedString: deps.getCachedString,
-        putCachedString: deps.putCachedString,
-      },
-      yahooQuote: {
-        fetchAllInChunks,
-        getCachedJson: deps.getCachedJson,
-        putCachedJson: deps.putCachedJson,
-      },
-      tradingviewFund: {
-        fetchAllInChunks,
-        getCachedJson: deps.getCachedJson,
-        putCachedJson: deps.putCachedJson,
-      },
     });
 
   function createResolutionPath(
@@ -254,7 +174,7 @@ export function createHoodlefinanceRuntime(
     let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
     const resolutionEnv: RequestResolutionDependencies = {
       buildResolvePlan,
-      fetchText: deps.fetchText,
+      httpFetch: deps.httpFetch,
       getCachedString: deps.getCachedString,
       looksLikeIsin,
       putCachedString: deps.putCachedString,
@@ -327,7 +247,7 @@ export function createHoodlefinanceRuntime(
     // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
     buildResolvePlan,
     createRequestInput: normalizeRequestInput,
-    fetchText: deps.fetchText,
+    httpFetch: deps.httpFetch,
     getPlanNodeByCode(code: string) {
       return getPlanNodeByCode(code);
     },

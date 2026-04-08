@@ -135,7 +135,7 @@ function createFakeEnvironment() {
     };
   });
 
-  env.fetchText = function fetchText(url) {
+  env.httpFetch = function httpFetch(url) {
     if (String(url).includes("tradingview.com/symbols/NASDAQ-GOOG/")) {
       return [
         '{"resolved_symbol":"NASDAQ:GOOG"}',

@@ -19,8 +19,7 @@ const {
 
 function createResolverMaterializationDependencies() {
   const commonDeps = {
-    fetchAllInChunks: () => [],
-    fetchText: () => "",
+    httpFetch: () => "",
     getCachedJson: () => null,
     getCachedString: () => "",
     putCachedJson: (_key, value) => value,
@@ -30,17 +29,6 @@ function createResolverMaterializationDependencies() {
     isin === "PHY077751022" ? "PSE:BDO" : "";
 
   return {
-    resolverClassDependenciesByName: {
-      DirectIdentifierResolver: {},
-      GoogleFxResolver: commonDeps,
-      LocalFxResolver: {},
-      PSEEdgeResolver: commonDeps,
-      PSEFramesResolver: commonDeps,
-      PseIsinMapResolver: resolvePseTickerFromIsinMap,
-      TradingviewFundResolver: commonDeps,
-      YahooIsinSearchResolver: commonDeps,
-      YahooQuoteResolver: commonDeps,
-    },
     resolverClassesByName: {
       DirectIdentifierResolver,
       GoogleFxResolver,
@@ -51,6 +39,10 @@ function createResolverMaterializationDependencies() {
       TradingviewFundResolver,
       YahooIsinSearchResolver,
       YahooQuoteResolver,
+    },
+    resolverServices: {
+      ...commonDeps,
+      resolvePseTickerFromIsinMap,
     },
   };
 }

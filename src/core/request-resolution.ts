@@ -41,7 +41,7 @@ interface RequestResolutionPlanLike {
 
 export interface RequestResolutionDependencies {
   buildResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan>;
-  fetchText(url: string): string;
+  httpFetch(url: string): string;
   getCachedString(cacheKey: string): string;
   looksLikeIsin(value: string): boolean;
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
@@ -249,7 +249,7 @@ function projectLookupValue(
               tickerInput: requestInput.ticker,
             },
             {
-              fetchText: env.fetchText,
+              fetchText: env.httpFetch,
               getCachedString: env.getCachedString,
               looksLikeIsin: env.looksLikeIsin,
               putCachedString: env.putCachedString,
@@ -338,7 +338,7 @@ export function resolveRequestValue(
           tickerInput: requestInput.ticker,
         },
         {
-          fetchText: env.fetchText,
+          fetchText: env.httpFetch,
           getCachedString: env.getCachedString,
           looksLikeIsin: env.looksLikeIsin,
           putCachedString: env.putCachedString,

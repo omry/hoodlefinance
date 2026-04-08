@@ -22,9 +22,9 @@ function createEnv(overrides = {}) {
       throw new Error("buildResolvePlan should not be called for this test");
     },
     counters,
-    fetchText(url) {
-      if (typeof overrides.fetchText === "function") {
-        return overrides.fetchText(url);
+    httpFetch(url) {
+      if (typeof overrides.httpFetch === "function") {
+        return overrides.httpFetch(url);
       }
 
       return "";
@@ -125,7 +125,7 @@ test("resolveRequestValue rejects deferred modes before direct isin fast paths",
 
 test("resolveRequestValue resolves explicit-source isin requests without quote planning", () => {
   const pseEnv = createEnv({
-    fetchText(url) {
+    httpFetch(url) {
       assert.equal(url, "https://frames.pse.com.ph/security/BDO");
       return `
         <html>
@@ -164,7 +164,7 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
   assert.equal(pseResult.value, "PHY077751022");
 
   const lonEnv = createEnv({
-    fetchText(url) {
+    httpFetch(url) {
       assert.equal(
         url,
         "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA",
@@ -226,7 +226,7 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
         },
       };
     },
-    fetchText(url) {
+    httpFetch(url) {
       assert.equal(url, "https://www.tradingview.com/symbols/NASDAQ-GOOG/");
       return `
         <html>
@@ -283,7 +283,7 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
         },
       };
     },
-    fetchText(url) {
+    httpFetch(url) {
       fetchCalls += 1;
       assert.equal(
         url,

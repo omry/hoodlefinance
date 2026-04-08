@@ -192,7 +192,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   ])},sideChannel:{}});</script>`;
   let cachedWrite = null;
   const resolver = new GoogleFxResolver({
-    fetchText(url) {
+    httpFetch(url) {
       assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
       return html;
     },
@@ -242,7 +242,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   });
 
   const cachedResolver = new GoogleFxResolver({
-    fetchText() {
+    httpFetch() {
       throw new Error("cache hit should not fetch Google Finance");
     },
     getCachedJson() {
@@ -269,18 +269,8 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   const frameHtml = createPseFrameHtml();
   let cachedWrite = null;
   const resolver = new PseFramesResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return frameHtml;
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
+    httpFetch() {
+      return frameHtml;
     },
     getCachedJson() {
       return null;
@@ -335,7 +325,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   });
 
   const cachedResolver = new PseFramesResolver({
-    fetchAllInChunks() {
+    httpFetch() {
       throw new Error("cache hit should not fetch PSE frames");
     },
     getCachedJson() {
@@ -357,32 +347,12 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   let listingCacheWrite = null;
   let quoteCacheWrite = null;
   const resolver = new PseEdgeResolver({
-    fetchAllInChunks(_source, requests) {
-      if (requests.length && requests[0].url.indexOf("companyDirectory/search.ax") >= 0) {
-        return requests.map((request) => ({
-          request,
-          response: {
-            getContentText() {
-              return createPseSearchHtml();
-            },
-            getResponseCode() {
-              return 200;
-            },
-          },
-        }));
+    httpFetch(url) {
+      if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
+        return createPseSearchHtml();
       }
 
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return stockHtml;
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
+      return stockHtml;
     },
     getCachedJson(cacheKey) {
       return cacheKey === "hoodlefinance:pse:listing:BDO" ? null : null;
@@ -454,9 +424,8 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
 
 test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
   const cachedResolver = new YahooQuoteResolver({
-    fetchAllInChunks(_source, requests) {
-      assert.deepEqual(requests, []);
-      return [];
+    httpFetch() {
+      throw new Error("cache hit should not fetch Yahoo quote");
     },
     getCachedJson(cacheKey) {
       return cacheKey === "hoodlefinance:GOOG"
@@ -488,29 +457,19 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
 
   let cachedWrite = null;
   const fetchedResolver = new YahooQuoteResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return JSON.stringify({
-              chart: {
-                result: [
-                  {
-                    meta: {
-                      regularMarketPrice: 99.5,
-                      symbol: "GOOG",
-                    },
-                  },
-                ],
+    httpFetch() {
+      return JSON.stringify({
+        chart: {
+          result: [
+            {
+              meta: {
+                regularMarketPrice: 99.5,
+                symbol: "GOOG",
               },
-            });
-          },
-          getResponseCode() {
-            return 200;
-          },
+            },
+          ],
         },
-      }));
+      });
     },
     getCachedJson() {
       return null;
@@ -552,9 +511,8 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   const cachedWrites = [];
   const cachedResolver = new TradingviewFundResolver({
-    fetchAllInChunks(_source, requests) {
-      assert.deepEqual(requests, []);
-      return [];
+    httpFetch() {
+      throw new Error("cache hit should not fetch TradingView");
     },
     getCachedJson(cacheKey) {
       return cacheKey === "hoodlefinance:tradingview:quote:KSMF59.TA"
@@ -611,18 +569,8 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   const fetchedWrites = [];
   const fetchedResolver = new TradingviewFundResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return html;
-          },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
+    httpFetch() {
+      return html;
     },
     getCachedJson() {
       return null;
@@ -702,9 +650,8 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
 
 test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", () => {
   const cachedResolver = new YahooIsinSearchResolver({
-    fetchAllInChunks(_source, requests) {
-      assert.deepEqual(requests, []);
-      return [];
+    httpFetch() {
+      throw new Error("cache hit should not fetch Yahoo ISIN search");
     },
     getCachedString(cacheKey) {
       return cacheKey === "hoodlefinance:isin:US02079K1079" ? "GOOG" : "";
@@ -729,27 +676,17 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
 
   let cachedWrite = null;
   const fetchedResolver = new YahooIsinSearchResolver({
-    fetchAllInChunks(_source, requests) {
-      return requests.map((request) => ({
-        request,
-        response: {
-          getContentText() {
-            return JSON.stringify({
-              quotes: [
-                {
-                  exchange: "NYSE",
-                  quoteType: "EQUITY",
-                  score: 10,
-                  symbol: "IBM",
-                },
-              ],
-            });
+    httpFetch() {
+      return JSON.stringify({
+        quotes: [
+          {
+            exchange: "NYSE",
+            quoteType: "EQUITY",
+            score: 10,
+            symbol: "IBM",
           },
-          getResponseCode() {
-            return 200;
-          },
-        },
-      }));
+        ],
+      });
     },
     getCachedString() {
       return "";

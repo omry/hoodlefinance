@@ -4,6 +4,7 @@ import type {
   RequestInput,
   ResolvedRequest,
 } from "./request";
+import type { ResolverServices } from "./resolver-services";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
 export type RoutingNodeKind = "leaf" | "switch" | "try each";
@@ -95,6 +96,7 @@ export interface ResolverNode extends ResolverLike {
   canHandle(request: RequestInput | ResolvedRequest): boolean;
   buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan;
   executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
+  initEnv?(services: ResolverServices): void;
   resolve?(request: RequestInput | ResolvedRequest): ResolutionResult<unknown>;
   traceLabel?: string;
 }

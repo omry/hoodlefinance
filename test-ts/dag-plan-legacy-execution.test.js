@@ -17,8 +17,7 @@ const {
 
 function createResolverMaterializationDependencies() {
   const commonDeps = {
-    fetchAllInChunks: () => [],
-    fetchText: () => "",
+    httpFetch: () => "",
     getCachedJson: () => null,
     getCachedString: () => "",
     putCachedJson: (_key, value) => value,
@@ -27,17 +26,6 @@ function createResolverMaterializationDependencies() {
 
   return {
     looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
-    resolverClassDependenciesByName: {
-      DirectIdentifierResolver: {},
-      GoogleFxResolver: commonDeps,
-      LocalFxResolver: {},
-      PSEEdgeResolver: commonDeps,
-      PSEFramesResolver: commonDeps,
-      PseIsinMapResolver: () => "",
-      TradingviewFundResolver: commonDeps,
-      YahooIsinSearchResolver: commonDeps,
-      YahooQuoteResolver: commonDeps,
-    },
     resolverClassesByName: {
       DirectIdentifierResolver,
       GoogleFxResolver,
@@ -48,6 +36,10 @@ function createResolverMaterializationDependencies() {
       TradingviewFundResolver,
       YahooIsinSearchResolver,
       YahooQuoteResolver,
+    },
+    resolverServices: {
+      ...commonDeps,
+      resolvePseTickerFromIsinMap: () => "",
     },
   };
 }

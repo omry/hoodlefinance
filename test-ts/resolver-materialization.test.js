@@ -73,6 +73,131 @@ test("materializeResolversByCode rejects unknown class names", () => {
 });
 
 test("materializeResolversByCode can instantiate concrete resolvers with class-specific dependencies", () => {
+  const services = {
+    httpFetch(url) {
+      if (String(url) === "https://www.google.com/finance/quote/EUR-USD") {
+        return `AF_initDataCallback({data:${JSON.stringify([
+          [
+            "EUR-USD",
+            null,
+            null,
+            null,
+            null,
+            [1.25, 0.01],
+            null,
+            1.24,
+            null,
+            null,
+            null,
+            [1700000000],
+            null,
+            null,
+            null,
+            ["EUR", "USD", "Euro"],
+          ],
+        ])},sideChannel:{}});</script>`;
+      }
+
+      if (String(url).includes("/v8/finance/chart/")) {
+        return JSON.stringify({
+          chart: {
+            result: [{ meta: { regularMarketPrice: 12, symbol: "IBM" } }],
+          },
+        });
+      }
+
+      if (String(url).includes("/v1/finance/search")) {
+        return JSON.stringify({
+          quotes: [{ symbol: "IBM", quoteType: "EQUITY", score: 1 }],
+        });
+      }
+
+      if (String(url).includes("tradingview.com")) {
+        return `\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `;
+      }
+
+      if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
+        return `
+            <html>
+              <table>
+                <tr>
+                  <td>
+                    <a href="#" onclick="cmDetail('1234','5678');return false;">BDO Unibank, Inc.</a>
+                  </td>
+                  <td class="alignC"><a href="#">BDO</a></td>
+                </tr>
+              </table>
+            </html>
+          `;
+      }
+
+      if (String(url).indexOf("frames.pse.com.ph/security/") >= 0) {
+        return `
+            <html>
+              <input
+                id="stock-json"
+                value="${JSON.stringify({
+                  full_name: "BDO Unibank, Inc.",
+                  name: "BDO",
+                }).replace(/"/g, "&quot;")}"
+              />
+              <input id="symbol-json" value="BDO" />
+              <h3>BDO</h3>
+              <div>BDO Unibank, Inc.</div>
+              <div>
+                <a href="companyDisclosures/form.do?cmpy_id=1234">company</a>
+              </div>
+              <table>
+                <tr><td>ISIN</td><td>PHY077751022</td></tr>
+                <tr><td>Prev Close</td><td>9.75</td></tr>
+                <tr><td>High</td><td>10.10</td></tr>
+                <tr><td>Low</td><td>9.60</td></tr>
+                <tr><td>Open</td><td>9.80</td></tr>
+                <tr><td>Volume</td><td>12345</td></tr>
+              </table>
+              <h3 class="last-price">9.87</h3>
+              As of Jan 2, 2024 3:00 PM
+            </html>
+          `;
+      }
+
+      return `
+          <html>
+            <div class="compInfo"><p>BDO Unibank, Inc.</p></div>
+            <select>
+              <option value="BDO" selected>BDO</option>
+            </select>
+            <table>
+              <tr><th>Previous Close and Date</th><td>9.75</td></tr>
+              <tr><th>Last Traded Price</th><td>9.87</td></tr>
+              <tr><th>Change(% Change)</th><td>up 0.12 (1.23%)</td></tr>
+              <tr><th>ISIN</th><td>PHY077751022</td></tr>
+              <tr><th>High</th><td>10.10</td></tr>
+              <tr><th>Low</th><td>9.60</td></tr>
+              <tr><th>Open</th><td>9.80</td></tr>
+              <tr><th>Volume</th><td>12345</td></tr>
+            </table>
+            As of Jan 2, 2024 3:00 PM
+          </html>
+        `;
+    },
+    getCachedJson() {
+      return null;
+    },
+    getCachedString() {
+      return "";
+    },
+    putCachedJson(_cacheKey, value) {
+      return value;
+    },
+    putCachedString(_cacheKey, value) {
+      return value;
+    },
+    resolvePseTickerFromIsinMap(isin) {
+      return isin === "PHY077751022" ? "PSE:BDO" : "";
+    },
+  };
+
   const registry = materializeResolversByCode(
     {
       "RESOLVED-IDENTIFIER": "DirectIdentifierResolver",
@@ -85,217 +210,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       "PSE-FRAMES": "PSEFramesResolver",
       "PSE-EDGE": "PSEEdgeResolver",
     },
-    createConcreteResolverMaterializationDependencies({
-      resolvePseTickerFromIsinMap(isin) {
-        return isin === "PHY077751022" ? "PSE:BDO" : "";
-      },
-      yahooIsinSearch: {
-        fetchAllInChunks(_source, requests) {
-          return requests.map((request) => ({
-            request,
-            response: {
-              getContentText() {
-                return JSON.stringify({
-                  quotes: [{ symbol: "IBM", quoteType: "EQUITY", score: 1 }],
-                });
-              },
-              getResponseCode() {
-                return 200;
-              },
-            },
-          }));
-        },
-        getCachedString() {
-          return "";
-        },
-        putCachedString(_cacheKey, value) {
-          return value;
-        },
-      },
-      yahooQuote: {
-        fetchAllInChunks(_source, requests) {
-          return requests.map((request) => ({
-            request,
-            response: {
-              getContentText() {
-                return JSON.stringify({
-                  chart: {
-                    result: [{ meta: { regularMarketPrice: 12, symbol: "IBM" } }],
-                  },
-                });
-              },
-              getResponseCode() {
-                return 200;
-              },
-            },
-          }));
-        },
-        getCachedJson() {
-          return null;
-        },
-        putCachedJson(_cacheKey, value) {
-          return value;
-        },
-      },
-      tradingviewFund: {
-        fetchAllInChunks(_source, requests) {
-          return requests.map((request) => ({
-            request,
-            response: {
-              getContentText() {
-                return `\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `;
-              },
-              getResponseCode() {
-                return 200;
-              },
-            },
-          }));
-        },
-        getCachedJson() {
-          return null;
-        },
-        putCachedJson(_cacheKey, value) {
-          return value;
-        },
-      },
-      googleFx: {
-        fetchText(url) {
-          assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
-          return `AF_initDataCallback({data:${JSON.stringify([
-            [
-              "EUR-USD",
-              null,
-              null,
-              null,
-              null,
-              [1.25, 0.01],
-              null,
-              1.24,
-              null,
-              null,
-              null,
-              [1700000000],
-              null,
-              null,
-              null,
-              ["EUR", "USD", "Euro"],
-            ],
-          ])},sideChannel:{}});</script>`;
-        },
-        getCachedJson() {
-          return null;
-        },
-        putCachedJson(_cacheKey, value) {
-          return value;
-        },
-      },
-      pseQuotes: {
-        fetchAllInChunks(_source, requests) {
-          return requests.map((request) => {
-            if (String(request.url).indexOf("companyDirectory/search.ax") >= 0) {
-              return {
-                request,
-                response: {
-                  getContentText() {
-                    return `
-                      <html>
-                        <table>
-                          <tr>
-                            <td>
-                              <a href="#" onclick="cmDetail('1234','5678');return false;">BDO Unibank, Inc.</a>
-                            </td>
-                            <td class="alignC"><a href="#">BDO</a></td>
-                          </tr>
-                        </table>
-                      </html>
-                    `;
-                  },
-                  getResponseCode() {
-                    return 200;
-                  },
-                },
-              };
-            }
-
-            if (String(request.url).indexOf("frames.pse.com.ph/security/") >= 0) {
-              return {
-                request,
-                response: {
-                  getContentText() {
-                    return `
-                      <html>
-                        <input
-                          id="stock-json"
-                          value="${JSON.stringify({
-                            full_name: "BDO Unibank, Inc.",
-                            name: "BDO",
-                          }).replace(/"/g, "&quot;")}"
-                        />
-                        <input id="symbol-json" value="BDO" />
-                        <h3>BDO</h3>
-                        <div>BDO Unibank, Inc.</div>
-                        <div>
-                          <a href="companyDisclosures/form.do?cmpy_id=1234">company</a>
-                        </div>
-                        <table>
-                          <tr><td>ISIN</td><td>PHY077751022</td></tr>
-                          <tr><td>Prev Close</td><td>9.75</td></tr>
-                          <tr><td>High</td><td>10.10</td></tr>
-                          <tr><td>Low</td><td>9.60</td></tr>
-                          <tr><td>Open</td><td>9.80</td></tr>
-                          <tr><td>Volume</td><td>12345</td></tr>
-                        </table>
-                        <h3 class="last-price">9.87</h3>
-                        As of Jan 2, 2024 3:00 PM
-                      </html>
-                    `;
-                  },
-                  getResponseCode() {
-                    return 200;
-                  },
-                },
-              };
-            }
-
-            return {
-              request,
-              response: {
-                getContentText() {
-                  return `
-                    <html>
-                      <div class="compInfo"><p>BDO Unibank, Inc.</p></div>
-                      <select>
-                        <option value="BDO" selected>BDO</option>
-                      </select>
-                      <table>
-                        <tr><th>Previous Close and Date</th><td>9.75</td></tr>
-                        <tr><th>Last Traded Price</th><td>9.87</td></tr>
-                        <tr><th>Change(% Change)</th><td>up 0.12 (1.23%)</td></tr>
-                        <tr><th>ISIN</th><td>PHY077751022</td></tr>
-                        <tr><th>High</th><td>10.10</td></tr>
-                        <tr><th>Low</th><td>9.60</td></tr>
-                        <tr><th>Open</th><td>9.80</td></tr>
-                        <tr><th>Volume</th><td>12345</td></tr>
-                      </table>
-                      As of Jan 2, 2024 3:00 PM
-                    </html>
-                  `;
-                },
-                getResponseCode() {
-                  return 200;
-                },
-              },
-            };
-          });
-        },
-        getCachedJson() {
-          return null;
-        },
-        putCachedJson(_cacheKey, value) {
-          return value;
-        },
-      },
-    }),
+    createConcreteResolverMaterializationDependencies(services),
   );
 
   assert.equal(

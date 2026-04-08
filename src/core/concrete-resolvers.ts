@@ -57,6 +57,7 @@ import {
 import type { RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
+import type { ResolverServices } from "./resolver-services";
 
 export class DirectIdentifierResolver extends IdentifierResolver {
   constructor() {
@@ -126,102 +127,102 @@ export interface YahooIsinSearchBatchResponse {
 }
 
 export interface YahooIsinSearchResolverDependencies {
-  fetchAllInChunks(
-    source: string,
-    requests: YahooIsinSearchRequest[],
-  ): YahooIsinSearchBatchResponse[];
+  httpFetch(url: string): string;
   getCachedString(cacheKey: string): string;
   putCachedString(cacheKey: string, value: string, ttlSeconds: number): string;
 }
 
 export interface GoogleFxResolverDependencies {
-  fetchText(url: string): string;
+  httpFetch(url: string): string;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
 
 export interface PseQuoteResolverDependencies {
-  fetchAllInChunks(
-    source: string,
-    requests: Array<{
-      cacheKey: string;
-      index: number;
-      listing?: PseListing | null;
-      symbol: string;
-      url: string;
-    }>,
-  ): Array<{
-    error?: unknown;
-    request: {
-      cacheKey: string;
-      index: number;
-      listing?: PseListing | null;
-      symbol: string;
-      url: string;
-    };
-    response?: PseQuoteResponseLike;
-  }>;
+  httpFetch(url: string): string;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
 
 export interface YahooQuoteResolverDependencies {
-  fetchAllInChunks(
-    source: string,
-    requests: Array<{
-      cacheKey: string;
-      index: number;
-      url: string;
-      yahooSymbol: string;
-    }>,
-  ): Array<{
-    error?: unknown;
-    request: {
-      cacheKey: string;
-      index: number;
-      url: string;
-      yahooSymbol: string;
-    };
-    response?: YahooQuoteResponseLike;
-  }>;
+  httpFetch(url: string): string;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
 
 export interface TradingviewFundResolverDependencies {
-  fetchAllInChunks(
-    source: string,
-    requests: Array<{
-      cacheKey: string;
-      expectedSymbol: string;
-      index: number;
-      primaryCacheKey: string;
-      url: string;
-      yahooSymbol: string;
-    }>,
-  ): Array<{
-    error?: unknown;
-    request: {
-      cacheKey: string;
-      expectedSymbol: string;
-      index: number;
-      primaryCacheKey: string;
-      url: string;
-      yahooSymbol: string;
-    };
-    response?: TradingviewQuoteResponseLike;
-  }>;
+  httpFetch(url: string): string;
   getCachedJson(cacheKey: string): unknown;
   putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
 }
 
+interface SequentialFetchRequestLike {
+  url: string;
+}
+
+interface SequentialFetchResponseLike {
+  getContentText(): string;
+  getResponseCode(): number;
+}
+
+function createSequentialFetchResponse(
+  body: string,
+  responseCode = 200,
+): SequentialFetchResponseLike {
+  return {
+    getContentText() {
+      return body;
+    },
+    getResponseCode() {
+      return responseCode;
+    },
+  };
+}
+
+function fetchRequestsSequentially<TRequest extends SequentialFetchRequestLike>(
+  httpFetch: (url: string) => string,
+  requests: TRequest[],
+): Array<{
+  error?: unknown;
+  request: TRequest;
+  response?: SequentialFetchResponseLike;
+}> {
+  return requests.map((request) => {
+    try {
+      return {
+        request,
+        response: createSequentialFetchResponse(httpFetch(request.url)),
+      };
+    } catch (error) {
+      return {
+        error,
+        request,
+      };
+    }
+  });
+}
+
 export class PseIsinMapResolver extends IdentifierResolver {
   readonly traceLabel: string;
-  readonly resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap;
+  resolvePseTickerFromIsinMap!: ResolvePseTickerFromIsinMap;
 
-  constructor(resolvePseTickerFromIsinMap: ResolvePseTickerFromIsinMap) {
+  constructor(resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap) {
     super("ISIN:PSE");
     this.traceLabel = "ISIN:PSE";
+    if (resolvePseTickerFromIsinMap) {
+      this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    const resolvePseTickerFromIsinMap = services.resolvePseTickerFromIsinMap;
+
+    if (typeof resolvePseTickerFromIsinMap !== "function") {
+      throw new Error(
+        "PseIsinMapResolver requires resolvePseTickerFromIsinMap.",
+      );
+    }
+
     this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
   }
 
@@ -286,30 +287,41 @@ export class PseIsinMapResolver extends IdentifierResolver {
 
   static fromSpec(
     _code: string,
-    resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap,
   ): PseIsinMapResolver {
-    if (typeof resolvePseTickerFromIsinMap !== "function") {
-      throw new Error(
-        "PseIsinMapResolver requires resolvePseTickerFromIsinMap.",
-      );
-    }
-
-    return new this(resolvePseTickerFromIsinMap);
+    return new this();
   }
 }
 
 export class YahooIsinSearchResolver extends IdentifierResolver {
   readonly traceLabel: string;
-  readonly fetchAllInChunks: YahooIsinSearchResolverDependencies["fetchAllInChunks"];
-  readonly getCachedString: YahooIsinSearchResolverDependencies["getCachedString"];
-  readonly putCachedString: YahooIsinSearchResolverDependencies["putCachedString"];
+  httpFetch!: YahooIsinSearchResolverDependencies["httpFetch"];
+  getCachedString!: YahooIsinSearchResolverDependencies["getCachedString"];
+  putCachedString!: YahooIsinSearchResolverDependencies["putCachedString"];
 
-  constructor(deps: YahooIsinSearchResolverDependencies) {
+  constructor(deps?: YahooIsinSearchResolverDependencies) {
     super("ISIN:YAHOO");
     this.traceLabel = "ISIN:YAHOO";
-    this.fetchAllInChunks = deps.fetchAllInChunks;
-    this.getCachedString = deps.getCachedString;
-    this.putCachedString = deps.putCachedString;
+    if (deps) {
+      this.httpFetch = deps.httpFetch;
+      this.getCachedString = deps.getCachedString;
+      this.putCachedString = deps.putCachedString;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (
+      typeof services.httpFetch !== "function" ||
+      typeof services.getCachedString !== "function" ||
+      typeof services.putCachedString !== "function"
+    ) {
+      throw new Error(
+        "YahooIsinSearchResolver requires httpFetch, getCachedString, and putCachedString.",
+      );
+    }
+
+    this.httpFetch = services.httpFetch;
+    this.getCachedString = services.getCachedString;
+    this.putCachedString = services.putCachedString;
   }
 
   getRoutingDescription(): string | null {
@@ -372,7 +384,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       });
     }
 
-    const responses = this.fetchAllInChunks("yahoo-isin-search", requests);
+    const responses = fetchRequestsSequentially(this.httpFetch, requests);
 
     for (const responseItem of responses) {
       if (responseItem.error) {
@@ -418,20 +430,8 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
   static fromSpec(
     _code: string,
-    deps?: YahooIsinSearchResolverDependencies,
   ): YahooIsinSearchResolver {
-    if (
-      !deps ||
-      typeof deps.fetchAllInChunks !== "function" ||
-      typeof deps.getCachedString !== "function" ||
-      typeof deps.putCachedString !== "function"
-    ) {
-      throw new Error(
-        "YahooIsinSearchResolver requires fetchAllInChunks, getCachedString, and putCachedString.",
-      );
-    }
-
-    return new this(deps);
+    return new this();
   }
 }
 
@@ -492,15 +492,33 @@ export class LocalFxResolver extends RouteExecutionResolver {
 }
 
 export class GoogleFxResolver extends RouteExecutionResolver {
-  readonly fetchText: GoogleFxResolverDependencies["fetchText"];
-  readonly getCachedJson: GoogleFxResolverDependencies["getCachedJson"];
-  readonly putCachedJson: GoogleFxResolverDependencies["putCachedJson"];
+  httpFetch!: GoogleFxResolverDependencies["httpFetch"];
+  getCachedJson!: GoogleFxResolverDependencies["getCachedJson"];
+  putCachedJson!: GoogleFxResolverDependencies["putCachedJson"];
 
-  constructor(deps: GoogleFxResolverDependencies) {
+  constructor(deps?: GoogleFxResolverDependencies) {
     super("GOOGLE-FX");
-    this.fetchText = deps.fetchText;
-    this.getCachedJson = deps.getCachedJson;
-    this.putCachedJson = deps.putCachedJson;
+    if (deps) {
+      this.httpFetch = deps.httpFetch;
+      this.getCachedJson = deps.getCachedJson;
+      this.putCachedJson = deps.putCachedJson;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (
+      typeof services.httpFetch !== "function" ||
+      typeof services.getCachedJson !== "function" ||
+      typeof services.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "GoogleFxResolver requires httpFetch, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    this.httpFetch = services.httpFetch;
+    this.getCachedJson = services.getCachedJson;
+    this.putCachedJson = services.putCachedJson;
   }
 
   getExampleInput(): string | null {
@@ -553,7 +571,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
         }
 
         const quote = extractGoogleFinanceFxPairQuote(
-          this.fetchText(buildGoogleFinanceQuoteUrl(pairSlug)),
+          this.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
           fxPair,
         );
         this.putCachedJson(cacheKey, quote, 60);
@@ -570,20 +588,8 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    deps?: GoogleFxResolverDependencies,
   ): GoogleFxResolver {
-    if (
-      !deps ||
-      typeof deps.fetchText !== "function" ||
-      typeof deps.getCachedJson !== "function" ||
-      typeof deps.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "GoogleFxResolver requires fetchText, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    return new this(deps);
+    return new this();
   }
 }
 
@@ -618,15 +624,33 @@ function buildPseQuoteCacheKey(symbol: string): string {
 }
 
 export class PseFramesResolver extends RouteExecutionResolver {
-  readonly fetchAllInChunks: PseQuoteResolverDependencies["fetchAllInChunks"];
-  readonly getCachedJson: PseQuoteResolverDependencies["getCachedJson"];
-  readonly putCachedJson: PseQuoteResolverDependencies["putCachedJson"];
+  httpFetch!: PseQuoteResolverDependencies["httpFetch"];
+  getCachedJson!: PseQuoteResolverDependencies["getCachedJson"];
+  putCachedJson!: PseQuoteResolverDependencies["putCachedJson"];
 
-  constructor(deps: PseQuoteResolverDependencies) {
+  constructor(deps?: PseQuoteResolverDependencies) {
     super("PSE-FRAMES");
-    this.fetchAllInChunks = deps.fetchAllInChunks;
-    this.getCachedJson = deps.getCachedJson;
-    this.putCachedJson = deps.putCachedJson;
+    if (deps) {
+      this.httpFetch = deps.httpFetch;
+      this.getCachedJson = deps.getCachedJson;
+      this.putCachedJson = deps.putCachedJson;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (
+      typeof services.httpFetch !== "function" ||
+      typeof services.getCachedJson !== "function" ||
+      typeof services.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "PseFramesResolver requires httpFetch, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    this.httpFetch = services.httpFetch;
+    this.getCachedJson = services.getCachedJson;
+    this.putCachedJson = services.putCachedJson;
   }
 
   getExampleInput(): string | null {
@@ -691,7 +715,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
       return results as unknown as Array<Record<string, unknown> | null>;
     }
 
-    const responses = this.fetchAllInChunks("pse", requests);
+    const responses = fetchRequestsSequentially(this.httpFetch, requests);
 
     for (const responseItem of responses) {
       if (responseItem.error) {
@@ -747,33 +771,39 @@ export class PseFramesResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    deps?: PseQuoteResolverDependencies,
   ): PseFramesResolver {
-    if (
-      !deps ||
-      typeof deps.fetchAllInChunks !== "function" ||
-      typeof deps.getCachedJson !== "function" ||
-      typeof deps.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "PseFramesResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    return new this(deps);
+    return new this();
   }
 }
 
 export class PseEdgeResolver extends RouteExecutionResolver {
-  readonly fetchAllInChunks: PseQuoteResolverDependencies["fetchAllInChunks"];
-  readonly getCachedJson: PseQuoteResolverDependencies["getCachedJson"];
-  readonly putCachedJson: PseQuoteResolverDependencies["putCachedJson"];
+  httpFetch!: PseQuoteResolverDependencies["httpFetch"];
+  getCachedJson!: PseQuoteResolverDependencies["getCachedJson"];
+  putCachedJson!: PseQuoteResolverDependencies["putCachedJson"];
 
-  constructor(deps: PseQuoteResolverDependencies) {
+  constructor(deps?: PseQuoteResolverDependencies) {
     super("PSE-EDGE");
-    this.fetchAllInChunks = deps.fetchAllInChunks;
-    this.getCachedJson = deps.getCachedJson;
-    this.putCachedJson = deps.putCachedJson;
+    if (deps) {
+      this.httpFetch = deps.httpFetch;
+      this.getCachedJson = deps.getCachedJson;
+      this.putCachedJson = deps.putCachedJson;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (
+      typeof services.httpFetch !== "function" ||
+      typeof services.getCachedJson !== "function" ||
+      typeof services.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "PseEdgeResolver requires httpFetch, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    this.httpFetch = services.httpFetch;
+    this.getCachedJson = services.getCachedJson;
+    this.putCachedJson = services.putCachedJson;
   }
 
   getExampleInput(): string | null {
@@ -861,7 +891,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
       return results as unknown as Array<Record<string, unknown> | null>;
     }
 
-    const searchResponses = this.fetchAllInChunks("pse", searchRequests);
+    const searchResponses = fetchRequestsSequentially(this.httpFetch, searchRequests);
 
     for (const responseItem of searchResponses) {
       if (responseItem.error) {
@@ -925,7 +955,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
       }
     }
 
-    const stockResponses = this.fetchAllInChunks("pse", stockRequests);
+    const stockResponses = fetchRequestsSequentially(this.httpFetch, stockRequests);
 
     for (const responseItem of stockResponses) {
       if (responseItem.error) {
@@ -991,33 +1021,39 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    deps?: PseQuoteResolverDependencies,
   ): PseEdgeResolver {
-    if (
-      !deps ||
-      typeof deps.fetchAllInChunks !== "function" ||
-      typeof deps.getCachedJson !== "function" ||
-      typeof deps.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "PseEdgeResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    return new this(deps);
+    return new this();
   }
 }
 
 export class YahooQuoteResolver extends RouteExecutionResolver {
-  readonly fetchAllInChunks: YahooQuoteResolverDependencies["fetchAllInChunks"];
-  readonly getCachedJson: YahooQuoteResolverDependencies["getCachedJson"];
-  readonly putCachedJson: YahooQuoteResolverDependencies["putCachedJson"];
+  httpFetch!: YahooQuoteResolverDependencies["httpFetch"];
+  getCachedJson!: YahooQuoteResolverDependencies["getCachedJson"];
+  putCachedJson!: YahooQuoteResolverDependencies["putCachedJson"];
 
-  constructor(deps: YahooQuoteResolverDependencies) {
+  constructor(deps?: YahooQuoteResolverDependencies) {
     super("YAHOO");
-    this.fetchAllInChunks = deps.fetchAllInChunks;
-    this.getCachedJson = deps.getCachedJson;
-    this.putCachedJson = deps.putCachedJson;
+    if (deps) {
+      this.httpFetch = deps.httpFetch;
+      this.getCachedJson = deps.getCachedJson;
+      this.putCachedJson = deps.putCachedJson;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (
+      typeof services.httpFetch !== "function" ||
+      typeof services.getCachedJson !== "function" ||
+      typeof services.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "YahooQuoteResolver requires httpFetch, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    this.httpFetch = services.httpFetch;
+    this.getCachedJson = services.getCachedJson;
+    this.putCachedJson = services.putCachedJson;
   }
 
   getExampleInput(): string | null {
@@ -1102,7 +1138,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
       });
     }
 
-    const responses = this.fetchAllInChunks("yahoo-chart", requests);
+    const responses = fetchRequestsSequentially(this.httpFetch, requests);
 
     for (const responseItem of responses) {
       let error: unknown = responseItem.error || null;
@@ -1153,34 +1189,39 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    deps?: YahooQuoteResolverDependencies,
   ): YahooQuoteResolver {
-    if (
-      !deps ||
-      typeof deps.fetchAllInChunks !== "function" ||
-      typeof deps.getCachedJson !== "function" ||
-      typeof deps.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "YahooQuoteResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    return new this(deps);
+    return new this();
   }
 }
 
 export class TradingviewFundResolver extends RouteExecutionResolver {
-  readonly fetchAllInChunks:
-    | TradingviewFundResolverDependencies["fetchAllInChunks"];
-  readonly getCachedJson: TradingviewFundResolverDependencies["getCachedJson"];
-  readonly putCachedJson: TradingviewFundResolverDependencies["putCachedJson"];
+  httpFetch!: TradingviewFundResolverDependencies["httpFetch"];
+  getCachedJson!: TradingviewFundResolverDependencies["getCachedJson"];
+  putCachedJson!: TradingviewFundResolverDependencies["putCachedJson"];
 
-  constructor(deps: TradingviewFundResolverDependencies) {
+  constructor(deps?: TradingviewFundResolverDependencies) {
     super("TRADINGVIEW-FUND", "TRADINGVIEW");
-    this.fetchAllInChunks = deps.fetchAllInChunks;
-    this.getCachedJson = deps.getCachedJson;
-    this.putCachedJson = deps.putCachedJson;
+    if (deps) {
+      this.httpFetch = deps.httpFetch;
+      this.getCachedJson = deps.getCachedJson;
+      this.putCachedJson = deps.putCachedJson;
+    }
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (
+      typeof services.httpFetch !== "function" ||
+      typeof services.getCachedJson !== "function" ||
+      typeof services.putCachedJson !== "function"
+    ) {
+      throw new Error(
+        "TradingviewFundResolver requires httpFetch, getCachedJson, and putCachedJson.",
+      );
+    }
+
+    this.httpFetch = services.httpFetch;
+    this.getCachedJson = services.getCachedJson;
+    this.putCachedJson = services.putCachedJson;
   }
 
   getExampleInput(): string | null {
@@ -1247,7 +1288,7 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
       });
     }
 
-    const responses = this.fetchAllInChunks("tradingview-quote", requests);
+    const responses = fetchRequestsSequentially(this.httpFetch, requests);
 
     for (const responseItem of responses) {
       if (responseItem.error) {
@@ -1280,20 +1321,8 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
   static fromSpec(
     _code: string,
-    deps?: TradingviewFundResolverDependencies,
   ): TradingviewFundResolver {
-    if (
-      !deps ||
-      typeof deps.fetchAllInChunks !== "function" ||
-      typeof deps.getCachedJson !== "function" ||
-      typeof deps.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "TradingviewFundResolver requires fetchAllInChunks, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    return new this(deps);
+    return new this();
   }
 }
 
@@ -1309,33 +1338,46 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   TradingviewFundResolver,
 } as const;
 
-export interface ConcreteResolverMaterializationDependencies {
-  googleFx?: GoogleFxResolverDependencies;
-  pseQuotes?: PseQuoteResolverDependencies;
-  resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap;
-  yahooIsinSearch?: YahooIsinSearchResolverDependencies;
-  yahooQuote?: YahooQuoteResolverDependencies;
-  tradingviewFund?: TradingviewFundResolverDependencies;
+export interface ConcreteResolverMaterializationDependencies
+  extends ResolverServices {}
+
+export function createConcreteResolverServices(
+  deps: ConcreteResolverMaterializationDependencies,
+): ResolverServices {
+  const services: ResolverServices = {};
+
+  if (deps.httpFetch) {
+    services.httpFetch = deps.httpFetch;
+  }
+  if (deps.getCachedJson) {
+    services.getCachedJson = deps.getCachedJson;
+  }
+  if (deps.getCachedString) {
+    services.getCachedString = deps.getCachedString;
+  }
+  if (deps.putCachedJson) {
+    services.putCachedJson = deps.putCachedJson;
+  }
+  if (deps.putCachedString) {
+    services.putCachedString = deps.putCachedString;
+  }
+  if (deps.resolvePseTickerFromIsinMap) {
+    services.resolvePseTickerFromIsinMap = deps.resolvePseTickerFromIsinMap;
+  }
+
+  return services;
 }
 
 export function createConcreteResolverMaterializationDependencies(
   deps: ConcreteResolverMaterializationDependencies,
 ): {
-  resolverClassDependenciesByName: Record<string, unknown>;
   resolverClassesByName: Record<string, ResolverClassLike>;
+  resolverServices: ResolverServices;
 } {
   return {
-    resolverClassDependenciesByName: {
-      GoogleFxResolver: deps.googleFx,
-      PSEFramesResolver: deps.pseQuotes,
-      PSEEdgeResolver: deps.pseQuotes,
-      PseIsinMapResolver: deps.resolvePseTickerFromIsinMap,
-      YahooIsinSearchResolver: deps.yahooIsinSearch,
-      YahooQuoteResolver: deps.yahooQuote,
-      TradingviewFundResolver: deps.tradingviewFund,
-    },
     resolverClassesByName: {
       ...CONCRETE_RESOLVER_CLASSES_BY_NAME,
     },
+    resolverServices: createConcreteResolverServices(deps),
   };
 }
