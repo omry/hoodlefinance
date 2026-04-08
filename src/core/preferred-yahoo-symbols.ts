@@ -1,3 +1,12 @@
+export const PREFERRED_REIT_WHITELIST_CACHE_KEY =
+  "hoodlefinance:ts:preferredReitWhitelist";
+export const PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS = 6 * 60 * 60;
+export const PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
+export const PREFERRED_REIT_WHITELIST_STORED_KEY =
+  "hoodlefinance.preferredReitWhitelist";
+export const PREFERRED_REIT_WHITELIST_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json";
+
 function normalizePreferredTickerKey(ticker: string): string {
   const match = String(ticker || "")
     .trim()

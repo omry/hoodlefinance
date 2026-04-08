@@ -24,9 +24,21 @@ interface HoodlefinanceRuntimeDependencies {
   httpFetch(url: string): string;
   getCachedJson(key: string): unknown;
   getCachedString(key: string): string;
+  getStoredTextResource?(key: string): {
+    fetchedAtMs: number;
+    text: string;
+  } | null;
   parseFxTicker?(ticker: string): FxPair | null;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
+  putStoredTextResource?(
+    key: string,
+    text: string,
+    fetchedAtMs: number,
+  ): {
+    fetchedAtMs: number;
+    text: string;
+  } | null;
 }
 
 interface HoodlefinanceRuntime {
@@ -49,6 +61,16 @@ export function createHoodlefinanceRuntime(
       getCachedString: deps.getCachedString,
       putCachedJson: deps.putCachedJson,
       putCachedString: deps.putCachedString,
+      ...(typeof deps.getStoredTextResource === "function"
+        ? {
+            getStoredTextResource: deps.getStoredTextResource,
+          }
+        : {}),
+      ...(typeof deps.putStoredTextResource === "function"
+        ? {
+            putStoredTextResource: deps.putStoredTextResource,
+          }
+        : {}),
     });
 
   function createResolutionPath(dagPlan: typeof DagPlan) {

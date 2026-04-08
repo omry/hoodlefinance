@@ -580,6 +580,84 @@ test("YahooQuoteResolver owns preferred equity fallback symbols without affectin
   });
 });
 
+test("YahooQuoteResolver falls back to stored preferred whitelist data when refresh fails", () => {
+  let cachedWhitelistWrite = null;
+  let storedWhitelistWrite = null;
+  const resolver = new YahooQuoteResolver();
+  resolver.initEnv({
+    httpFetch(url) {
+      if (
+        url ===
+        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json"
+      ) {
+        throw new Error("whitelist refresh failed");
+      }
+
+      return JSON.stringify({
+        chart: {
+          result: [
+            {
+              meta: {
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      });
+    },
+    getCachedJson() {
+      return null;
+    },
+    getCachedString(cacheKey) {
+      assert.equal(cacheKey, "hoodlefinance:ts:preferredReitWhitelist");
+      return "";
+    },
+    getStoredTextResource(resourceKey) {
+      assert.equal(resourceKey, "hoodlefinance.preferredReitWhitelist");
+      return {
+        fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
+        text: JSON.stringify({
+          preferredTickers: ["NLY I"],
+        }),
+      };
+    },
+    putCachedString(cacheKey, value, ttlSeconds) {
+      cachedWhitelistWrite = { cacheKey, ttlSeconds, value };
+      return value;
+    },
+    putStoredTextResource(resourceKey, text, fetchedAtMs) {
+      storedWhitelistWrite = { fetchedAtMs, resourceKey, text };
+      return { fetchedAtMs, text };
+    },
+    putCachedJson(cacheKey, value, ttlSeconds) {
+      return { cacheKey, ttlSeconds, value };
+    },
+  });
+
+  const routeState = resolver.buildRouteState(
+    new EquityRequest({
+      attribute: "price",
+      identifier: "NLY-I",
+      yahooSymbol: "NLY-I",
+    }),
+  );
+
+  assert.deepEqual(routeState, {
+    fxPair: null,
+    preferredYahooSymbol: "NLY-PI",
+    yahooSymbol: "NLY-I",
+  });
+  assert.deepEqual(cachedWhitelistWrite, {
+    cacheKey: "hoodlefinance:ts:preferredReitWhitelist",
+    ttlSeconds: 21600,
+    value: JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  });
+  assert.equal(storedWhitelistWrite, null);
+});
+
 test("TradingviewFundResolver resolves cached and fetched TradingView fund quotes", () => {
   const html = `
     <html>

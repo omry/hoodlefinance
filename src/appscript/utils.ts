@@ -1,4 +1,5 @@
 import { parsePreferredReitTickerSet } from "../core/preferred-yahoo-symbols";
+import type { StoredTextResource } from "../core/resolver-services";
 
 export interface AppsScriptResponseLike {
   getContentText(): string;
@@ -33,6 +34,15 @@ export interface JsonCacheAdapter {
 export interface StoredTextState {
   fallbackText: string;
   freshText: string;
+}
+
+export interface StoredTextResourceStore {
+  getStoredTextResource(key: string): StoredTextResource | null;
+  putStoredTextResource(
+    key: string,
+    text: string,
+    fetchedAtMs: number,
+  ): StoredTextResource | null;
 }
 
 export function createStringCache(
@@ -186,4 +196,46 @@ export function parseStoredTextResourcePayload(text: string | null | undefined) 
   } catch {
     return null;
   }
+}
+
+export function createStoredTextResourceStore(
+  properties: {
+    getProperty(key: string): string | null;
+    setProperty(key: string, value: string): void;
+  } | null,
+): StoredTextResourceStore {
+  return {
+    getStoredTextResource(key) {
+      if (!properties) {
+        return null;
+      }
+
+      const payload = parseStoredTextResourcePayload(properties.getProperty(key));
+      const text = String(payload?.text || "");
+      const fetchedAtMs = Number(payload?.fetchedAtMs);
+
+      if (!text) {
+        return null;
+      }
+
+      return {
+        fetchedAtMs,
+        text,
+      };
+    },
+    putStoredTextResource(key, text, fetchedAtMs) {
+      if (!properties) {
+        return null;
+      }
+
+      const resource = {
+        fetchedAtMs: Number.isFinite(fetchedAtMs) ? fetchedAtMs : Date.now(),
+        text: String(text || ""),
+      };
+
+      properties.setProperty(key, JSON.stringify(resource));
+
+      return resource;
+    },
+  };
 }

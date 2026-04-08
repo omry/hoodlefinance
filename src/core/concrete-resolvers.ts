@@ -51,6 +51,11 @@ import {
 } from "./yahoo-quote";
 import {
   createPreferredYahooSymbolResolver,
+  PREFERRED_REIT_WHITELIST_CACHE_KEY,
+  PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+  PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS,
+  PREFERRED_REIT_WHITELIST_STORED_KEY,
+  PREFERRED_REIT_WHITELIST_URL,
   tryParsePreferredReitTickerSet,
 } from "./preferred-yahoo-symbols";
 import {
@@ -151,12 +156,6 @@ const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
 const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
-const PREFERRED_REIT_WHITELIST_CACHE_KEY =
-  "hoodlefinance:ts:preferredReitWhitelist";
-const PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS = 6 * 60 * 60;
-const PREFERRED_REIT_WHITELIST_URL =
-  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json";
-
 function createSequentialFetchResponse(
   body: string,
   responseCode = 200,
@@ -1088,8 +1087,10 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedString?: ResolverServices["getCachedString"];
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  getStoredTextResource?: ResolverServices["getStoredTextResource"];
   putCachedString?: ResolverServices["putCachedString"];
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
+  putStoredTextResource?: ResolverServices["putStoredTextResource"];
   preferredReitTickerSet: ReadonlySet<string> | null;
 
   constructor() {
@@ -1111,8 +1112,10 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     this.httpFetch = services.httpFetch;
     this.getCachedString = services.getCachedString;
     this.getCachedJson = services.getCachedJson;
+    this.getStoredTextResource = services.getStoredTextResource;
     this.putCachedString = services.putCachedString;
     this.putCachedJson = services.putCachedJson;
+    this.putStoredTextResource = services.putStoredTextResource;
   }
 
   getExampleInput(): string | null {
@@ -1134,12 +1137,37 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     );
   }
 
+  getStoredPreferredReitWhitelistTextState(): {
+    fallbackText: string;
+    freshText: string;
+  } {
+    const storedResource =
+      typeof this.getStoredTextResource === "function"
+        ? this.getStoredTextResource(PREFERRED_REIT_WHITELIST_STORED_KEY)
+        : null;
+    const storedText = String(storedResource?.text || "");
+    const validStoredText = tryParsePreferredReitTickerSet(storedText)
+      ? storedText
+      : "";
+    const fetchedAtMs = Number(storedResource?.fetchedAtMs);
+    const isFresh =
+      !!validStoredText &&
+      Number.isFinite(fetchedAtMs) &&
+      Date.now() - fetchedAtMs <= PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS;
+
+    return {
+      fallbackText: validStoredText,
+      freshText: isFresh ? validStoredText : "",
+    };
+  }
+
   ensurePreferredReitTickerSet(): ReadonlySet<string> {
     if (this.preferredReitTickerSet) {
       return this.preferredReitTickerSet;
     }
 
     let preferredReitTickerSet: ReadonlySet<string> | null = null;
+    const storedTextState = this.getStoredPreferredReitWhitelistTextState();
     const cachedText =
       typeof this.getCachedString === "function"
         ? String(this.getCachedString(PREFERRED_REIT_WHITELIST_CACHE_KEY) || "")
@@ -1149,22 +1177,71 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
       preferredReitTickerSet = tryParsePreferredReitTickerSet(cachedText);
     }
 
-    if (!preferredReitTickerSet) {
-      const downloadedText = this.httpFetch(PREFERRED_REIT_WHITELIST_URL);
+    if (!preferredReitTickerSet && storedTextState.freshText) {
+      preferredReitTickerSet = tryParsePreferredReitTickerSet(
+        storedTextState.freshText,
+      );
 
-      preferredReitTickerSet = tryParsePreferredReitTickerSet(downloadedText);
-
-      if (!preferredReitTickerSet) {
-        throw new Error("Invalid preferred REIT whitelist payload.");
-      }
-
-      if (typeof this.putCachedString === "function") {
+      if (
+        preferredReitTickerSet &&
+        typeof this.putCachedString === "function"
+      ) {
         this.putCachedString(
           PREFERRED_REIT_WHITELIST_CACHE_KEY,
-          downloadedText,
+          storedTextState.freshText,
           PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
         );
       }
+    }
+
+    if (!preferredReitTickerSet) {
+      try {
+        const downloadedText = this.httpFetch(PREFERRED_REIT_WHITELIST_URL);
+
+        preferredReitTickerSet = tryParsePreferredReitTickerSet(downloadedText);
+
+        if (!preferredReitTickerSet) {
+          throw new Error("Invalid preferred REIT whitelist payload.");
+        }
+
+        if (typeof this.putCachedString === "function") {
+          this.putCachedString(
+            PREFERRED_REIT_WHITELIST_CACHE_KEY,
+            downloadedText,
+            PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+          );
+        }
+        if (typeof this.putStoredTextResource === "function") {
+          this.putStoredTextResource(
+            PREFERRED_REIT_WHITELIST_STORED_KEY,
+            downloadedText,
+            Date.now(),
+          );
+        }
+      } catch (error) {
+        if (!storedTextState.fallbackText) {
+          throw error;
+        }
+
+        preferredReitTickerSet = tryParsePreferredReitTickerSet(
+          storedTextState.fallbackText,
+        );
+
+        if (
+          preferredReitTickerSet &&
+          typeof this.putCachedString === "function"
+        ) {
+          this.putCachedString(
+            PREFERRED_REIT_WHITELIST_CACHE_KEY,
+            storedTextState.fallbackText,
+            PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+          );
+        }
+      }
+    }
+
+    if (!preferredReitTickerSet) {
+      throw new Error("Failed to load the preferred REIT whitelist.");
     }
 
     this.preferredReitTickerSet = preferredReitTickerSet;
@@ -1462,11 +1539,17 @@ export function createConcreteResolverServices(
   if (deps.getCachedString) {
     services.getCachedString = deps.getCachedString;
   }
+  if (deps.getStoredTextResource) {
+    services.getStoredTextResource = deps.getStoredTextResource;
+  }
   if (deps.putCachedJson) {
     services.putCachedJson = deps.putCachedJson;
   }
   if (deps.putCachedString) {
     services.putCachedString = deps.putCachedString;
+  }
+  if (deps.putStoredTextResource) {
+    services.putStoredTextResource = deps.putStoredTextResource;
   }
   return services;
 }
