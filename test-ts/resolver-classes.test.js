@@ -79,7 +79,7 @@ test("ResolverPlan maintains standard fallback sequence and full routing-tree vi
   assert.equal(plan.buildRoutePath(request), "YAHOO -> IBKR");
 });
 
-test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan with injected resolvePreferredYahooSymbol", () => {
+test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owned route state", () => {
   const yahoo = createLeafResolver("YAHOO");
   const tradingview = createLeafResolver("TRADINGVIEW-FUND", {
     sourceName: "TRADINGVIEW",
@@ -106,12 +106,7 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan with injected res
         YAHOO: yahoo,
       })[nodeCode],
     null,
-    {
-      refs,
-      resolvePreferredYahooSymbol(symbol) {
-        return `${symbol}:ALT`;
-      },
-    },
+    { refs },
   );
 
   assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
@@ -127,20 +122,13 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan with injected res
 
   assert.equal(runtimePlan.routeClass, "QUOTE:TICKER");
   assert.equal(runtimePlan.routePath, "YAHOO -> TRADINGVIEW-FUND");
-  assert.deepEqual(runtimePlan.routeState, {
-    fxPair: null,
-    preferredYahooSymbol: "GOOG:ALT",
-    yahooSymbol: "GOOG",
-  });
+  assert.deepEqual(runtimePlan.routeState, {});
 });
 
 test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime materializer", () => {
   const refs = createPlanRuntimeRefs({
     looksLikeIsin() {
       return false;
-    },
-    resolvePreferredYahooSymbol(symbol) {
-      return symbol;
     },
   });
 
@@ -174,9 +162,6 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
     looksLikeIsin(value) {
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
     },
-    resolvePreferredYahooSymbol(symbol) {
-      return symbol;
-    },
   });
 
   const plan = buildPlanNodeFromSpec(
@@ -200,15 +185,15 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
     ["ISIN:PSE", "ISIN:YAHOO"],
   );
   assert.deepEqual(
-    plan.getNodesForRequest(createRequestInput({ ticker: "PHY077751022" })).map(
-      (node) => node.name,
-    ),
+    plan
+      .getNodesForRequest(createRequestInput({ ticker: "PHY077751022" }))
+      .map((node) => node.name),
     ["ISIN:PSE", "ISIN:YAHOO"],
   );
   assert.deepEqual(
-    plan.getNodesForRequest(createRequestInput({ ticker: "US02079K1079" })).map(
-      (node) => node.name,
-    ),
+    plan
+      .getNodesForRequest(createRequestInput({ ticker: "US02079K1079" }))
+      .map((node) => node.name),
     ["ISIN:YAHOO"],
   );
 });
@@ -219,9 +204,6 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
   const refs = createPlanRuntimeRefs({
     looksLikeIsin(value) {
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
-    },
-    resolvePreferredYahooSymbol(symbol) {
-      return symbol;
     },
   });
 

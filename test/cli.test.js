@@ -314,6 +314,19 @@ test("CLI prefers the local Yahoo fallback symbol for whitelisted REITs", functi
   assert.equal(plan.routeState.yahooSymbol, "NLY-I");
 });
 
+test("CLI keeps FX Yahoo route state free of preferred equity fallback symbols", function () {
+  const ctx = loadHoodlefinance();
+  const plan = ctx.hf_classifyTickerJob_("EURUSD@YAHOO", "price");
+
+  assert.equal(plan.routeState.yahooSymbol, "EURUSD=X");
+  assert.ok(
+    !Object.prototype.hasOwnProperty.call(
+      plan.routeState,
+      "preferredYahooSymbol",
+    ),
+  );
+});
+
 test("trace uses the real planned route for source-list requests", function () {
   const ctx = loadHoodlefinance();
   const trace = traceRoutingForSymbol("PH0000056814@", ctx);

@@ -1,6 +1,5 @@
 export interface PlanRuntimeRefDependencies {
   looksLikeIsin(value: string): boolean;
-  resolvePreferredYahooSymbol?(symbol: string): string;
 }
 
 export function createPlanRuntimeRefs(

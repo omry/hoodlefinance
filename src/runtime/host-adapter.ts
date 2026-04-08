@@ -1,6 +1,4 @@
-import {
-  createConcreteResolverMaterializationDependencies,
-} from "../core/concrete-resolvers";
+import { createConcreteResolverMaterializationDependencies } from "../core/concrete-resolvers";
 import { compileDagPlanForLegacyExecution } from "../core/dag-plan-legacy-execution";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
 import { createRequestInput } from "../core/request-building";
@@ -12,9 +10,7 @@ import {
   type RequestInput,
 } from "../core/request";
 import { buildFxPairFromCodes } from "../core/fx-normalization";
-import {
-  DagPlan,
-} from "../core/spec-data";
+import { DagPlan } from "../core/spec-data";
 import {
   resolvePlannedQuoteEnvelope,
   resolveRequestEnvelope,
@@ -35,6 +31,7 @@ interface HoodlefinanceRuntimeDependencies {
   parseFxTicker?(ticker: string): FxPair | null;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
+  resolvePreferredYahooSymbol?(symbol: string): string;
   routingPolicies?: HoodlefinanceRuntimeRoutingPolicies;
 }
 
@@ -50,10 +47,14 @@ export function createHoodlefinanceRuntime(
   type DirectIdentifierResolverLike = Parameters<
     typeof createDefaultResolvePlanBuilder
   >[0]["directIdentifierResolver"];
+  const preferredYahooSymbolResolver =
+    typeof deps.resolvePreferredYahooSymbol === "function"
+      ? deps.resolvePreferredYahooSymbol
+      : typeof deps.routingPolicies?.resolvePreferredYahooSymbol === "function"
+        ? deps.routingPolicies.resolvePreferredYahooSymbol
+        : null;
   const resolvePreferredYahooSymbol = (symbol: string): string =>
-    typeof deps.routingPolicies?.resolvePreferredYahooSymbol === "function"
-      ? deps.routingPolicies.resolvePreferredYahooSymbol(symbol)
-      : "";
+    preferredYahooSymbolResolver ? preferredYahooSymbolResolver(symbol) : "";
 
   const resolverMaterializationDeps =
     createConcreteResolverMaterializationDependencies({
@@ -62,17 +63,15 @@ export function createHoodlefinanceRuntime(
       getCachedString: deps.getCachedString,
       putCachedJson: deps.putCachedJson,
       putCachedString: deps.putCachedString,
+      resolvePreferredYahooSymbol,
     });
 
-  function createResolutionPath(
-    dagPlan: typeof DagPlan,
-  ) {
+  function createResolutionPath(dagPlan: typeof DagPlan) {
     const compiledDagPlan = compileDagPlanForLegacyExecution(dagPlan, {
       ...resolverMaterializationDeps,
       looksLikeIsin(value) {
         return looksLikeIsin(value);
       },
-      resolvePreferredYahooSymbol,
     });
     const directIdentifierResolver = compiledDagPlan.getNodeByCode(
       "RESOLVED-IDENTIFIER",
@@ -145,19 +144,28 @@ export function createHoodlefinanceRuntime(
       String(attribute == null ? "price" : attribute).trim(),
       ...(typeof deps.parseFxTicker === "function"
         ? [
-          {
-            parseFxTicker: deps.parseFxTicker,
-          },
-        ]
+            {
+              parseFxTicker: deps.parseFxTicker,
+            },
+          ]
         : []),
     );
 
   const runtime = {
     lookup(identifier: string, attribute?: string): LookupEnvelopeResult {
-      return resolveRequestValue(resolutionEnv, normalizeRequestInput(identifier, attribute));
+      return resolveRequestValue(
+        resolutionEnv,
+        normalizeRequestInput(identifier, attribute),
+      );
     },
-    lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult {
-      return resolveRequestEnvelope(resolutionEnv, normalizeRequestInput(identifier, attribute));
+    lookupEnvelope(
+      identifier: string,
+      attribute?: string,
+    ): LookupEnvelopeResult {
+      return resolveRequestEnvelope(
+        resolutionEnv,
+        normalizeRequestInput(identifier, attribute),
+      );
     },
     // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
     buildResolvePlan,

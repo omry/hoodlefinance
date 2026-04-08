@@ -1,9 +1,15 @@
-import { EquityRequest, FxRequest, RequestInput, type ResolvedRequest } from "./request";
-import { buildIsinIdentifierRouteState, buildPseQuoteRouteState } from "./route-state";
 import {
-  IdentifierResolver,
-  RouteExecutionResolver,
-} from "./resolver-classes";
+  EquityRequest,
+  FxRequest,
+  RequestInput,
+  type ResolvedRequest,
+} from "./request";
+import {
+  buildEquityYahooQuoteRouteState,
+  buildIsinIdentifierRouteState,
+  buildPseQuoteRouteState,
+} from "./route-state";
+import { IdentifierResolver, RouteExecutionResolver } from "./resolver-classes";
 import {
   buildTypedRequestFromParsedInput,
   buildTypedRequestFromResolvedTicker,
@@ -76,7 +82,8 @@ export class DirectIdentifierResolver extends IdentifierResolver {
         return createResolutionFailure(
           "Identifier resolution requires a discovery resolver.",
           Date.now() - startedAtMs,
-          (error) => String(error instanceof Error ? error.message : error ?? ""),
+          (error) =>
+            String(error instanceof Error ? error.message : (error ?? "")),
         );
       }
 
@@ -100,14 +107,16 @@ export class DirectIdentifierResolver extends IdentifierResolver {
         error,
         Date.now() - startedAtMs,
         (caughtError) =>
-          String(caughtError instanceof Error ? caughtError.message : caughtError ?? ""),
+          String(
+            caughtError instanceof Error
+              ? caughtError.message
+              : (caughtError ?? ""),
+          ),
       );
     }
   }
 
-  static fromSpec(
-    _code: string,
-  ): DirectIdentifierResolver {
+  static fromSpec(_code: string): DirectIdentifierResolver {
     return new this();
   }
 }
@@ -294,7 +303,9 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return input instanceof RequestInput && isin.startsWith("PH");
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!(request instanceof RequestInput)) {
       return {};
     }
@@ -318,7 +329,11 @@ export class PseIsinMapResolver extends IdentifierResolver {
       try {
         const isin = String(job.routeState.isin || "").trim();
         const pseTicker =
-          this.ensurePseIsinMap()[String(isin || "").trim().toUpperCase()] || "";
+          this.ensurePseIsinMap()[
+            String(isin || "")
+              .trim()
+              .toUpperCase()
+          ] || "";
 
         if (!pseTicker) {
           results.push(createRouteResult("lookup_failure"));
@@ -328,7 +343,10 @@ export class PseIsinMapResolver extends IdentifierResolver {
         results.push(
           createRouteResult("success", {
             value: buildTypedRequestFromResolvedTicker(
-              job.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+              job.routeState.input as Pick<
+                RequestInput,
+                "attribute" | "identifier"
+              >,
               pseTicker,
               0,
             ),
@@ -342,9 +360,7 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): PseIsinMapResolver {
+  static fromSpec(_code: string): PseIsinMapResolver {
     return new this();
   }
 }
@@ -387,12 +403,13 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {
     return (
-      input instanceof RequestInput &&
-      !!extractIsinFromRequestInput(input)
+      input instanceof RequestInput && !!extractIsinFromRequestInput(input)
     );
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!(request instanceof RequestInput)) {
       return {};
     }
@@ -425,7 +442,10 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       if (cached) {
         results[i] = createRouteResult("success", {
           value: buildTypedRequestFromResolvedTicker(
-            job.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+            job.routeState.input as Pick<
+              RequestInput,
+              "attribute" | "identifier"
+            >,
             cached,
             0,
           ),
@@ -445,9 +465,12 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
     for (const responseItem of responses) {
       if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult("lookup_failure", {
-          error: responseItem.error,
-        });
+        results[responseItem.request.index] = createRouteResult(
+          "lookup_failure",
+          {
+            error: responseItem.error,
+          },
+        );
         continue;
       }
 
@@ -467,27 +490,35 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
           responseItem.response as YahooSearchResponseLike,
           responseItem.request.isin,
         );
-        this.putCachedString(responseItem.request.cacheKey, resolvedTicker, 21600);
+        this.putCachedString(
+          responseItem.request.cacheKey,
+          resolvedTicker,
+          21600,
+        );
         results[responseItem.request.index] = createRouteResult("success", {
           value: buildTypedRequestFromResolvedTicker(
-            job.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+            job.routeState.input as Pick<
+              RequestInput,
+              "attribute" | "identifier"
+            >,
             resolvedTicker,
             0,
           ),
         });
       } catch (error) {
-        results[responseItem.request.index] = createRouteResult("lookup_failure", {
-          error,
-        });
+        results[responseItem.request.index] = createRouteResult(
+          "lookup_failure",
+          {
+            error,
+          },
+        );
       }
     }
 
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): YahooIsinSearchResolver {
+  static fromSpec(_code: string): YahooIsinSearchResolver {
     return new this();
   }
 }
@@ -511,12 +542,17 @@ export class LocalFxResolver extends RouteExecutionResolver {
     );
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!this.canHandle(request)) {
       return {};
     }
 
-    const fxRequest = request as Extract<ResolvedRequest, { requestType: "fx" }>;
+    const fxRequest = request as Extract<
+      ResolvedRequest,
+      { requestType: "fx" }
+    >;
 
     return {
       fxPair: fxRequest.fxPair,
@@ -530,7 +566,9 @@ export class LocalFxResolver extends RouteExecutionResolver {
       try {
         results.push(
           createRouteResult("success", {
-            quote: buildSameCurrencyQuote(job.routeState.fxPair as import("./request").FxPair),
+            quote: buildSameCurrencyQuote(
+              job.routeState.fxPair as import("./request").FxPair,
+            ),
           }),
         );
       } catch (error) {
@@ -541,9 +579,7 @@ export class LocalFxResolver extends RouteExecutionResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): LocalFxResolver {
+  static fromSpec(_code: string): LocalFxResolver {
     return new this();
   }
 }
@@ -594,7 +630,9 @@ export class GoogleFxResolver extends RouteExecutionResolver {
     );
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!(request instanceof FxRequest)) {
       return {};
     }
@@ -619,10 +657,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
         if (cached) {
           results[i] = createRouteResult("success", {
-            quote: decorateFxQuote(
-              cached as Record<string, unknown>,
-              fxPair,
-            ),
+            quote: decorateFxQuote(cached as Record<string, unknown>, fxPair),
           });
           continue;
         }
@@ -643,9 +678,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): GoogleFxResolver {
+  static fromSpec(_code: string): GoogleFxResolver {
     return new this();
   }
 }
@@ -661,7 +694,9 @@ function normalizePseListing(value: unknown): PseListing | null {
   const listing = value as PseListing;
   const companyId = String(listing.companyId || "").trim();
   const securityId = String(listing.securityId || "").trim();
-  const symbol = String(listing.symbol || "").trim().toUpperCase();
+  const symbol = String(listing.symbol || "")
+    .trim()
+    .toUpperCase();
   const name = String(listing.name || "").trim();
 
   if (!companyId || !securityId || !symbol) {
@@ -677,7 +712,9 @@ function normalizePseListing(value: unknown): PseListing | null {
 }
 
 function buildPseQuoteCacheKey(symbol: string): string {
-  return `hoodlefinance:pse:${String(symbol || "").trim().toUpperCase()}`;
+  return `hoodlefinance:pse:${String(symbol || "")
+    .trim()
+    .toUpperCase()}`;
 }
 
 export class PseFramesResolver extends RouteExecutionResolver {
@@ -722,7 +759,9 @@ export class PseFramesResolver extends RouteExecutionResolver {
     return request instanceof EquityRequest && request.exchange === "PSE";
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!(request instanceof EquityRequest)) {
       return {};
     }
@@ -749,7 +788,9 @@ export class PseFramesResolver extends RouteExecutionResolver {
         continue;
       }
 
-      const symbol = String(job.routeState.symbol || "").trim().toUpperCase();
+      const symbol = String(job.routeState.symbol || "")
+        .trim()
+        .toUpperCase();
       const cacheKey = buildPseQuoteCacheKey(symbol);
       const cached = this.getCachedJson(cacheKey);
 
@@ -780,8 +821,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
           "lookup_failure",
           {
             error: buildPseUnavailableError(
-              responseItem.error instanceof Error &&
-                responseItem.error.message
+              responseItem.error instanceof Error && responseItem.error.message
                 ? responseItem.error.message
                 : responseItem.error,
             ),
@@ -826,9 +866,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): PseFramesResolver {
+  static fromSpec(_code: string): PseFramesResolver {
     return new this();
   }
 }
@@ -875,7 +913,9 @@ export class PseEdgeResolver extends RouteExecutionResolver {
     return request instanceof EquityRequest && request.exchange === "PSE";
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!(request instanceof EquityRequest)) {
       return {};
     }
@@ -909,7 +949,9 @@ export class PseEdgeResolver extends RouteExecutionResolver {
         continue;
       }
 
-      const symbol = String(job.routeState.symbol || "").trim().toUpperCase();
+      const symbol = String(job.routeState.symbol || "")
+        .trim()
+        .toUpperCase();
       const cacheKey = buildPseQuoteCacheKey(symbol);
       const cached = this.getCachedJson(cacheKey);
 
@@ -948,7 +990,10 @@ export class PseEdgeResolver extends RouteExecutionResolver {
       return results as unknown as Array<Record<string, unknown> | null>;
     }
 
-    const searchResponses = fetchRequestsSequentially(this.httpFetch, searchRequests);
+    const searchResponses = fetchRequestsSequentially(
+      this.httpFetch,
+      searchRequests,
+    );
 
     for (const responseItem of searchResponses) {
       if (responseItem.error) {
@@ -956,8 +1001,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
           "lookup_failure",
           {
             error: buildPseUnavailableError(
-              responseItem.error instanceof Error &&
-                responseItem.error.message
+              responseItem.error instanceof Error && responseItem.error.message
                 ? responseItem.error.message
                 : responseItem.error,
             ),
@@ -1012,7 +1056,10 @@ export class PseEdgeResolver extends RouteExecutionResolver {
       }
     }
 
-    const stockResponses = fetchRequestsSequentially(this.httpFetch, stockRequests);
+    const stockResponses = fetchRequestsSequentially(
+      this.httpFetch,
+      stockRequests,
+    );
 
     for (const responseItem of stockResponses) {
       if (responseItem.error) {
@@ -1020,8 +1067,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
           "lookup_failure",
           {
             error: buildPseUnavailableError(
-              responseItem.error instanceof Error &&
-                responseItem.error.message
+              responseItem.error instanceof Error && responseItem.error.message
                 ? responseItem.error.message
                 : responseItem.error,
             ),
@@ -1040,9 +1086,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
         if (!quote || !quote.symbol) {
           const tickerInput = stockJob ? stockJob.tickerInput : "";
-          throw new Error(
-            `No PSE quote data was found for ${tickerInput}.`,
-          );
+          throw new Error(`No PSE quote data was found for ${tickerInput}.`);
         }
 
         this.putCachedJson(
@@ -1076,9 +1120,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): PseEdgeResolver {
+  static fromSpec(_code: string): PseEdgeResolver {
     return new this();
   }
 }
@@ -1087,6 +1129,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
   httpFetch!: YahooQuoteResolverDependencies["httpFetch"];
   getCachedJson!: YahooQuoteResolverDependencies["getCachedJson"];
   putCachedJson!: YahooQuoteResolverDependencies["putCachedJson"];
+  resolvePreferredYahooSymbol?: ResolverServices["resolvePreferredYahooSymbol"];
 
   constructor(deps?: YahooQuoteResolverDependencies) {
     super("YAHOO");
@@ -1111,6 +1154,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     this.httpFetch = services.httpFetch;
     this.getCachedJson = services.getCachedJson;
     this.putCachedJson = services.putCachedJson;
+    this.resolvePreferredYahooSymbol = services.resolvePreferredYahooSymbol;
   }
 
   getExampleInput(): string | null {
@@ -1132,7 +1176,9 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     );
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (request instanceof FxRequest) {
       return {
         fxPair: request.fxPair,
@@ -1141,10 +1187,10 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     }
 
     if (request instanceof EquityRequest) {
-      return {
-        fxPair: null,
-        yahooSymbol: request.yahooSymbol,
-      };
+      return buildEquityYahooQuoteRouteState(
+        request,
+        this.resolvePreferredYahooSymbol,
+      );
     }
 
     return {};
@@ -1229,7 +1275,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
       }
 
       const errorMessage = String(
-        error instanceof Error ? error.message : error ?? "",
+        error instanceof Error ? error.message : (error ?? ""),
       );
       results[responseItem.request.index] = createRouteResult(
         /No quote data was found|Quote lookup failed/i.test(errorMessage)
@@ -1244,9 +1290,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): YahooQuoteResolver {
+  static fromSpec(_code: string): YahooQuoteResolver {
     return new this();
   }
 }
@@ -1293,7 +1337,9 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
     return request instanceof EquityRequest && request.allowTradingviewFallback;
   }
 
-  buildRouteState(request: RequestInput | ResolvedRequest): Record<string, unknown> {
+  buildRouteState(
+    request: RequestInput | ResolvedRequest,
+  ): Record<string, unknown> {
     if (!(request instanceof EquityRequest)) {
       return {};
     }
@@ -1349,9 +1395,12 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
     for (const responseItem of responses) {
       if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult("terminal_error", {
-          error: responseItem.error,
-        });
+        results[responseItem.request.index] = createRouteResult(
+          "terminal_error",
+          {
+            error: responseItem.error,
+          },
+        );
         continue;
       }
 
@@ -1367,18 +1416,19 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
           quote,
         });
       } catch (error) {
-        results[responseItem.request.index] = createRouteResult("terminal_error", {
-          error,
-        });
+        results[responseItem.request.index] = createRouteResult(
+          "terminal_error",
+          {
+            error,
+          },
+        );
       }
     }
 
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(
-    _code: string,
-  ): TradingviewFundResolver {
+  static fromSpec(_code: string): TradingviewFundResolver {
     return new this();
   }
 }
@@ -1395,8 +1445,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   TradingviewFundResolver,
 } as const;
 
-export interface ConcreteResolverMaterializationDependencies
-  extends ResolverServices {}
+export interface ConcreteResolverMaterializationDependencies extends ResolverServices {}
 
 export function createConcreteResolverServices(
   deps: ConcreteResolverMaterializationDependencies,
@@ -1417,6 +1466,9 @@ export function createConcreteResolverServices(
   }
   if (deps.putCachedString) {
     services.putCachedString = deps.putCachedString;
+  }
+  if (deps.resolvePreferredYahooSymbol) {
+    services.resolvePreferredYahooSymbol = deps.resolvePreferredYahooSymbol;
   }
   return services;
 }

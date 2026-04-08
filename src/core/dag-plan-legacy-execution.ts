@@ -1,8 +1,14 @@
 import { isResolverPlanNode } from "./plan-navigation";
-import { instantiateHoodleFinancePlanSpecDag, type HoodleFinancePlanSpecDag } from "./plan-spec-dag";
+import {
+  instantiateHoodleFinancePlanSpecDag,
+  type HoodleFinancePlanSpecDag,
+} from "./plan-spec-dag";
 import { normalizePlanSpecCode, type PlanSpec } from "./plan-specs";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
-import { createPlanRuntimeRefs, type PlanRuntimeRefDependencies } from "./plan-runtime-refs";
+import {
+  createPlanRuntimeRefs,
+  type PlanRuntimeRefDependencies,
+} from "./plan-runtime-refs";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -23,8 +29,7 @@ function normalizeCode(code: string): string {
 }
 
 export interface CompileDagPlanForLegacyExecutionDependencies
-  extends ResolverMaterializationDependencies,
-    PlanRuntimeRefDependencies {}
+  extends ResolverMaterializationDependencies, PlanRuntimeRefDependencies {}
 
 export interface LegacyExecutionSpecs {
   planSpecsByCode: Record<string, PlanSpec>;
@@ -149,7 +154,6 @@ export function compileDagPlanForLegacyExecution(
       null,
       {
         refs: runtimeRefs,
-        resolvePreferredYahooSymbol: deps.resolvePreferredYahooSymbol ?? null,
       },
     );
 

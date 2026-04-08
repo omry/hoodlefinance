@@ -3803,27 +3803,56 @@ test("direct Philippine preferred-share ISIN input resolves symbol attributes th
 test("preferred REIT Yahoo fallbacks keep the original Google-style symbol", () => {
   const ctx = loadHoodlefinance();
   primePreferredReitWhitelistData(ctx);
+  const requestedUrls = [];
 
   ctx.UrlFetchApp.fetch = function (url) {
+    requestedUrls.push(url);
+
     if (
       url ===
-        "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d" ||
-      url ===
-        "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d"
+      "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d"
     ) {
-      return createYahooChartResponse(
-        url.indexOf("NLY-PI") >= 0 ? "NLY-PI" : "NLY-I",
-        {
-          exchangeName: "NYSE",
-          regularMarketPrice: 24.78,
-        },
-      );
+      return createYahooChartResponse("NLY-PI", {
+        exchangeName: "NYSE",
+        regularMarketPrice: 24.78,
+      });
     }
 
     throw new Error("Unexpected URL " + url);
   };
 
   assert.equal(ctx.HOODLEFINANCE("NLY-I", "symbol:google"), "NLY-I");
+  assert.equal(ctx.HOODLEFINANCE("NLY-I", "price"), 24.78);
+  assert.deepEqual(requestedUrls, [
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d",
+  ]);
+});
+
+test("non-whitelisted Yahoo tickers keep their original symbol for fetch and cache", () => {
+  const ctx = loadHoodlefinance();
+  const requestedUrls = [];
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    requestedUrls.push(url);
+
+    if (
+      url ===
+      "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d"
+    ) {
+      return createYahooChartResponse("GOOG", {
+        exchangeName: "NMS",
+        regularMarketPrice: 306.93,
+      });
+    }
+
+    throw new Error("Unexpected URL " + url);
+  };
+
+  assert.equal(ctx.HOODLEFINANCE("GOOG", "price"), 306.93);
+  assert.equal(ctx.HOODLEFINANCE("GOOG", "price"), 306.93);
+  assert.deepEqual(requestedUrls, [
+    "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+  ]);
 });
 
 test("range calls abort with the first failing job in traversal order", () => {

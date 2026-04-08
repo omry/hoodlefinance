@@ -21,6 +21,7 @@ function createServices(fetchByUrl = {}) {
     ...fetchByUrl,
   };
   const cache = new Map();
+  const fetchCalls = [];
   const properties = new Map();
   const scriptCache = {
     get(key) {
@@ -32,6 +33,7 @@ function createServices(fetchByUrl = {}) {
   };
   const urlFetchApp = {
     fetch(url) {
+      fetchCalls.push(String(url));
       if (!Object.prototype.hasOwnProperty.call(resolvedFetchByUrl, url)) {
         throw new Error(`Unexpected fetch: ${url}`);
       }
@@ -59,6 +61,7 @@ function createServices(fetchByUrl = {}) {
       },
     },
     cacheState: cache,
+    fetchCalls,
     propertiesService: {
       getScriptProperties() {
         return {
@@ -149,13 +152,12 @@ test("HOODLEFINANCE supports direct ISIN attribute lookups that only need fetchT
 
 test("HOODLEFINANCE uses the preferred REIT Yahoo fallback symbol", () => {
   const services = createServices({
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
-      {
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      JSON.stringify({
         preferredTickers: ["NLY I"],
-      },
-    ),
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+      }),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -168,18 +170,23 @@ test("HOODLEFINANCE uses the preferred REIT Yahoo fallback symbol", () => {
             },
           ],
         },
-      },
-    ),
+      }),
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
+  assert.deepEqual(services.fetchCalls, [
+    CURRENCY_CODES_URL,
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json",
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d",
+  ]);
 });
 
 test("HOODLEFINANCE falls back to the original Yahoo symbol when the preferred REIT whitelist fetch fails", () => {
   const services = createServices({
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d": JSON.stringify(
-      {
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-I?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -192,8 +199,7 @@ test("HOODLEFINANCE falls back to the original Yahoo symbol when the preferred R
             },
           ],
         },
-      },
-    ),
+      }),
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
@@ -202,8 +208,8 @@ test("HOODLEFINANCE falls back to the original Yahoo symbol when the preferred R
 
 test("HOODLEFINANCE reuses the stored preferred REIT whitelist when the cache is cold", () => {
   const services = createServices({
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -216,8 +222,7 @@ test("HOODLEFINANCE reuses the stored preferred REIT whitelist when the cache is
             },
           ],
         },
-      },
-    ),
+      }),
   });
   services.propertiesState.set(
     "hoodlefinance.preferredReitWhitelist",
@@ -235,13 +240,12 @@ test("HOODLEFINANCE reuses the stored preferred REIT whitelist when the cache is
 
 test("HOODLEFINANCE stores the preferred REIT whitelist in script properties after downloading it", () => {
   const services = createServices({
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
-      {
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      JSON.stringify({
         preferredTickers: ["NLY I"],
-      },
-    ),
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+      }),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -254,8 +258,7 @@ test("HOODLEFINANCE stores the preferred REIT whitelist in script properties aft
             },
           ],
         },
-      },
-    ),
+      }),
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
@@ -276,13 +279,12 @@ test("HOODLEFINANCE stores the preferred REIT whitelist in script properties aft
 
 test("HOODLEFINANCE ignores malformed cached preferred REIT whitelist data and refreshes it", () => {
   const services = createServices({
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
-      {
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      JSON.stringify({
         preferredTickers: ["NLY I"],
-      },
-    ),
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+      }),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -295,8 +297,7 @@ test("HOODLEFINANCE ignores malformed cached preferred REIT whitelist data and r
             },
           ],
         },
-      },
-    ),
+      }),
   });
   services.cacheState.set(
     "hoodlefinance:ts:preferredReitWhitelist",
@@ -315,13 +316,12 @@ test("HOODLEFINANCE ignores malformed cached preferred REIT whitelist data and r
 
 test("HOODLEFINANCE ignores malformed stored preferred REIT whitelist data and refreshes it", () => {
   const services = createServices({
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
-      {
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      JSON.stringify({
         preferredTickers: ["NLY I"],
-      },
-    ),
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+      }),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -334,8 +334,7 @@ test("HOODLEFINANCE ignores malformed stored preferred REIT whitelist data and r
             },
           ],
         },
-      },
-    ),
+      }),
   });
   services.propertiesState.set(
     "hoodlefinance.preferredReitWhitelist",
@@ -362,9 +361,10 @@ test("HOODLEFINANCE ignores malformed stored preferred REIT whitelist data and r
 
 test("HOODLEFINANCE skips persisting malformed downloaded preferred REIT whitelist data and falls back to stored data", () => {
   const services = createServices({
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": "{not valid json",
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      "{not valid json",
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -377,8 +377,7 @@ test("HOODLEFINANCE skips persisting malformed downloaded preferred REIT whiteli
             },
           ],
         },
-      },
-    ),
+      }),
   });
   const storedPayloadText = JSON.stringify({
     fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
@@ -405,13 +404,12 @@ test("HOODLEFINANCE skips persisting malformed downloaded preferred REIT whiteli
 
 test("HOODLEFINANCE keeps the original Google-style symbol for preferred REITs", () => {
   const services = createServices({
-    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json": JSON.stringify(
-      {
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      JSON.stringify({
         preferredTickers: ["NLY I"],
-      },
-    ),
-    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d": JSON.stringify(
-      {
+      }),
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
         chart: {
           result: [
             {
@@ -424,13 +422,45 @@ test("HOODLEFINANCE keeps the original Google-style symbol for preferred REITs",
             },
           ],
         },
-      },
-    ),
+      }),
   });
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE("NLY-I", "symbol:google"), "NLY-I");
   assert.equal(bindings.HOODLEFINANCE("NLY-I", "symbol:yahoo"), "NLY-PI");
+});
+
+test("HOODLEFINANCE keeps non-whitelisted Yahoo tickers on their original fetch symbol", () => {
+  const services = createServices({
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
+      JSON.stringify({
+        preferredTickers: [],
+      }),
+    "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d":
+      JSON.stringify({
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NMS",
+                regularMarketPrice: 306.93,
+                symbol: "GOOG",
+              },
+            },
+          ],
+        },
+      }),
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE("GOOG", "price"), 306.93);
+  assert.equal(bindings.HOODLEFINANCE("GOOG", "price"), 306.93);
+  assert.deepEqual(services.fetchCalls, [
+    CURRENCY_CODES_URL,
+    "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json",
+    "https://query1.finance.yahoo.com/v8/finance/chart/GOOG?interval=1d&range=1d",
+  ]);
 });
 
 test("HOODLEFINANCE rejects range identifiers until the TS range surface exists", () => {
@@ -453,9 +483,6 @@ test("installHoodlefinanceAppScriptBindings publishes the formula functions onto
 
   assert.equal(typeof scope.HOODLEFINANCE, "function");
   assert.equal(typeof scope.HOODLEFINANCE_TS_ENVELOPE, "undefined");
-  assert.equal(
-    typeof scope.hoodlefinanceBuildSheetsAddOnHomepage,
-    "function",
-  );
+  assert.equal(typeof scope.hoodlefinanceBuildSheetsAddOnHomepage, "function");
   assert.equal(scope.HOODLEFINANCE("USDUSD", "price"), 1);
 });

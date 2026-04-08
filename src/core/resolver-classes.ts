@@ -15,11 +15,7 @@ import type {
 } from "./planner";
 import { RequestInput } from "./request";
 import type { ResolvedRequest } from "./request";
-import {
-  buildPseQuoteRouteState,
-  buildFxQuoteRouteState,
-  buildEquityYahooQuoteRouteState,
-} from "./route-state";
+import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
 import {
   createResolutionFailure,
   createResolutionSuccess,
@@ -418,47 +414,7 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
   }
 }
 
-export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {
-  resolvePreferredYahooSymbol?: ((symbol: string) => string) | null;
-
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!("yahooSymbol" in request)) return {};
-    return buildEquityYahooQuoteRouteState(
-      request as Extract<ResolvedRequest, { requestType: "equity" }>,
-      this.resolvePreferredYahooSymbol,
-    );
-  }
-
-  static fromSpec(
-    code: string,
-    spec: PlanSpec,
-    resolverMap:
-      | Record<string, ResolverNode>
-      | ((nodeCode: string) => ResolverNode | null),
-    overrides: Record<string, unknown> | null | undefined,
-    deps: PlanNodeBuilderDependencies,
-  ): TickerQuoteResolutionPlan {
-    const resolveNodeByCode =
-      typeof resolverMap === "function"
-        ? resolverMap
-        : (nodeCode: string) =>
-            resolverMap[normalizeNodeCode(nodeCode)] || null;
-
-    const plan = new this(
-      code,
-      this.getSpecNodeCodes(spec).map((nodeCode: string) =>
-        resolveNodeByCode(nodeCode),
-      ) as ResolverNode[],
-      this.materializeOptions(overrides),
-    );
-
-    plan.resolvePreferredYahooSymbol = deps.resolvePreferredYahooSymbol ?? null;
-
-    return plan;
-  }
-}
+export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {}
 
 export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
   buildRouteState(
@@ -518,7 +474,6 @@ export type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
 
 export interface PlanNodeBuilderDependencies {
   refs: PlanRuntimeRefs;
-  resolvePreferredYahooSymbol?: ((symbol: string) => string) | null;
 }
 
 export function buildPlanNodeFromSpec(

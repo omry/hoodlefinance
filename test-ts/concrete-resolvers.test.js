@@ -149,7 +149,9 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
     fxPair: request.fxPair,
   });
 
-  const results = resolver.executeBatch([{ routeState: { fxPair: request.fxPair } }]);
+  const results = resolver.executeBatch([
+    { routeState: { fxPair: request.fxPair } },
+  ]);
   assert.equal(results[0].status, "success");
   assert.equal(results[0].quote.regularMarketPrice, 1);
   assert.equal(results[0].quote.symbol, "USDUSD");
@@ -214,9 +216,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   assert.equal(resolver.canHandle(request), true);
   assert.deepEqual(resolver.buildRouteState(request), { fxPair });
 
-  const fetchedResults = resolver.executeBatch([
-    { routeState: { fxPair } },
-  ]);
+  const fetchedResults = resolver.executeBatch([{ routeState: { fxPair } }]);
   assert.equal(fetchedResults[0].status, "success");
   assert.equal(fetchedResults[0].quote.regularMarketPrice, 1.25);
   assert.equal(fetchedResults[0].quote.symbol, "EURUSD");
@@ -448,6 +448,7 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
   assert.deepEqual(cachedResolver.buildRouteState(cachedRequest), {
     fxPair: null,
+    preferredYahooSymbol: "",
     yahooSymbol: "GOOG",
   });
 
@@ -489,6 +490,81 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
     value: {
       regularMarketPrice: 99.5,
       symbol: "GOOG",
+    },
+  });
+});
+
+test("YahooQuoteResolver owns preferred equity fallback symbols without affecting FX route state", () => {
+  let lastFetchedUrl = null;
+  let cachedWrite = null;
+  const resolver = new YahooQuoteResolver();
+  resolver.initEnv({
+    httpFetch(url) {
+      lastFetchedUrl = url;
+      return JSON.stringify({
+        chart: {
+          result: [
+            {
+              meta: {
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      });
+    },
+    getCachedJson() {
+      return null;
+    },
+    putCachedJson(cacheKey, value, ttlSeconds) {
+      cachedWrite = { cacheKey, ttlSeconds, value };
+      return value;
+    },
+    resolvePreferredYahooSymbol(symbol) {
+      return symbol === "NLY-I" ? "NLY-PI" : "";
+    },
+  });
+
+  const equityRequest = new EquityRequest({
+    attribute: "price",
+    identifier: "NLY-I",
+    yahooSymbol: "NLY-I",
+  });
+  const fxPair = {
+    baseCanonicalCode: "EUR",
+    canonicalPair: "EURUSD",
+    quoteCanonicalCode: "USD",
+    yahooChartSymbol: "EURUSD=X",
+  };
+  const fxRequest = new FxRequest({
+    attribute: "price",
+    fxPair,
+    identifier: "EURUSD",
+  });
+
+  assert.deepEqual(resolver.buildRouteState(equityRequest), {
+    fxPair: null,
+    preferredYahooSymbol: "NLY-PI",
+    yahooSymbol: "NLY-I",
+  });
+  assert.deepEqual(resolver.buildRouteState(fxRequest), {
+    fxPair,
+    yahooSymbol: "EURUSD=X",
+  });
+
+  const result = resolver.resolve(equityRequest);
+  assert.equal(result.status, "success");
+  assert.equal(
+    lastFetchedUrl,
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d",
+  );
+  assert.deepEqual(cachedWrite, {
+    cacheKey: "hoodlefinance:NLY-PI",
+    ttlSeconds: 60,
+    value: {
+      regularMarketPrice: 24.78,
+      symbol: "NLY-PI",
     },
   });
 });
