@@ -1,3 +1,5 @@
+> Historical note: this document is an older routing-graph implementation plan and is kept for context only. It does not describe the current `DagPlan`-driven TS runtime path.
+
 # Routing Graph Implementation Plan
 
 This document is a step-by-step implementation guide for the routing graph

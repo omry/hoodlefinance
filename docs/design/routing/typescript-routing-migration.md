@@ -113,7 +113,7 @@ transition can preserve runtime behavior first.
 - Revisit runtime execution concepts such as `RouteJob` once the migrated core
   is more complete, to see whether the mutable execution record can become
   smaller and easier to reason about.
-- Do a naming pass against `docs/design/hoodlefinance-routing-design.md` so the
+- Do a naming pass against `docs/design/routing/hoodlefinance-routing-design.md` so the
   code reads more like the routing design and less like the legacy runtime table
   names.
 - Do a test-driven parity pass between the legacy runtime and the TypeScript
@@ -125,7 +125,7 @@ transition can preserve runtime behavior first.
     handling, source-specific fallbacks, and Apps Script-specific wiring.
 - Normalize identity resolution plan. right now its half hard-coded
 - Transition `src/core/fx-normalization.ts` to fetch `currency-codes.json` from GitHub at runtime instead of inlining it in the bundle, similar to other data files.
-- ~~Evaluate converting to a real execution plan DAG representation that is then executed by the engine.~~ **Resolved:** the graph builder will be a compiler over `buildResolvePlan` — see `docs/design/routing-graph.md` for the updated design. The plan is the map; the graph builder reads it rather than restating routing decisions.
+- ~~Evaluate converting to a real execution plan DAG representation that is then executed by the engine.~~ **Resolved:** the graph builder will be a compiler over `buildResolvePlan` — see `docs/design/routing/routing-graph.md` for the updated design. The plan is the map; the graph builder reads it rather than restating routing decisions.
 
 ## Open/Closed Principle Violations in TS Core
 

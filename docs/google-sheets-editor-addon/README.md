@@ -42,7 +42,7 @@ This answered the main product question that unpublished Apps Script™ test dep
 - Google's current Editor add-on docs say unpublished test deployments run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons run `onOpen()` in `AuthMode.NONE`. That means the unpublished manual test does not fully validate publish-time menu behavior.
 - The current add-on code uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
 - Listing assets, policy pages, and support links now exist, and the remaining notes in this folder focus on rollout history, maintenance, and add-on-specific follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) for the actual execution checklist.
-- The runtime behavior of the custom functions is still subject to the same Apps Script™ execution and fetch limits described in [`docs/design/google-sheets-deployment-strategy.md`](../design/google-sheets-deployment-strategy.md).
+- The runtime behavior of the custom functions is still subject to the same Apps Script™ execution and fetch limits described in [`docs/design/deployment/google-sheets-deployment-strategy.md`](../design/deployment/google-sheets-deployment-strategy.md).
 
 ## Next Steps
 

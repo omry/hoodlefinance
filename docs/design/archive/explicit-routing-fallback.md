@@ -1,3 +1,5 @@
+> Historical note: this document describes an earlier routing/fallback design and is kept for context only. It does not describe the current `DagPlan`-driven TS runtime architecture.
+
 # Explicit Routing And Fallback Framework
 
 ## Summary

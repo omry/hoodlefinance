@@ -98,7 +98,7 @@ Live smoke checks should cover:
 
 ## Assumptions
 
-- The filename for this note is `docs/design/bare-fx-support.md`.
+- The filename for this note is `docs/design/identifiers/bare-fx-support.md`.
 - This is a design / implementation note, not a user-facing API reference.
 - Supported canonical currencies come from a bundled ISO 4217 alphabetic-code list.
 - Supported non-ISO units come from an explicit repo-owned alias table.

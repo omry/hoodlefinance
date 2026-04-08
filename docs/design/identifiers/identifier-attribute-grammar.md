@@ -9,7 +9,7 @@ It focuses on two things:
 
 It is intentionally not a change log.
 
-The narrower note at `docs/design/symbol-exchange-attributes.md` remains useful background for symbol/exchange output behavior. This document is the broader grammar note for identifiers, attributes, style qualifiers, and source overrides.
+The narrower note at `docs/design/identifiers/symbol-exchange-attributes.md` remains useful background for symbol/exchange output behavior. This document is the broader grammar note for identifiers, attributes, style qualifiers, and source overrides.
 
 ## Design Summary
 
