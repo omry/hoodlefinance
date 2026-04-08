@@ -3,7 +3,12 @@ import type {
   ResolutionResult,
   ResolverPlanNode,
 } from "./planner";
-import type { FxPair, RequestInput, ResolvedRequest } from "./request";
+import {
+  RawRequestInput,
+  type FxPair,
+  type RequestInput,
+  type ResolvedRequest,
+} from "./request";
 import { buildFxPairFromCodes } from "./fx-normalization";
 import {
   resolveDirectIsinAttributeValue,
@@ -15,7 +20,6 @@ import {
   extractCurrencyValue,
 } from "./attribute-extraction";
 import { buildSourceOverrideUnavailableError } from "./plan-selection";
-import { createRequestInput } from "./request-building";
 
 interface QuotePlanOutcome {
   error?: unknown;
@@ -40,7 +44,10 @@ interface RequestResolutionPlanLike {
 }
 
 export interface RequestResolutionDependencies {
-  buildResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan>;
+  buildResolvePlan(
+    requestInput: RawRequestInput | RequestInput,
+  ): Readonly<ResolvePlan>;
+  classifyRawRequest?(requestInput: RawRequestInput): RequestInput;
   httpFetch(url: string): string;
   getCachedString(cacheKey: string): string;
   looksLikeIsin(value: string): boolean;
@@ -122,6 +129,21 @@ function validateDeferredLookupModes(requestInput: RequestInput): void {
   if (sourceOverride) {
     throw buildSourceOverrideUnavailableError(sourceOverride);
   }
+}
+
+function normalizeRequestInput(
+  env: RequestResolutionDependencies,
+  requestInput: RawRequestInput | RequestInput,
+): RequestInput {
+  if (!(requestInput instanceof RawRequestInput)) {
+    return requestInput;
+  }
+
+  if (typeof env.classifyRawRequest === "function") {
+    return env.classifyRawRequest(requestInput);
+  }
+
+  return env.buildResolvePlan(requestInput).requestInput;
 }
 
 export function resolvePlannedQuoteEnvelope(
@@ -285,13 +307,14 @@ function projectLookupValue(
 
 export function resolveRequestEnvelope(
   env: RequestResolutionDependencies,
-  requestInput: RequestInput,
+  requestInput: RawRequestInput | RequestInput,
 ): LookupEnvelopeResult {
+  const normalizedRequestInput = normalizeRequestInput(env, requestInput);
   let resolvePlan: Readonly<ResolvePlan>;
 
   try {
-    validateDeferredLookupModes(requestInput);
-    resolvePlan = env.buildResolvePlan(requestInput);
+    validateDeferredLookupModes(normalizedRequestInput);
+    resolvePlan = env.buildResolvePlan(normalizedRequestInput);
   } catch (error) {
     return failureResult("(none)", [], error);
   }
@@ -315,7 +338,7 @@ export function resolveRequestEnvelope(
   }
 
   if (resolvePlan.identifierPlan) {
-    return resolveIdentifierPlanEnvelope(requestInput, resolvePlan);
+    return resolveIdentifierPlanEnvelope(normalizedRequestInput, resolvePlan);
   }
 
   return failureResult(
@@ -327,15 +350,17 @@ export function resolveRequestEnvelope(
 
 export function resolveRequestValue(
   env: RequestResolutionDependencies,
-  requestInput: RequestInput,
+  requestInput: RawRequestInput | RequestInput,
 ): LookupEnvelopeResult {
-  if (requestInput.attributeType === "isin") {
+  const normalizedRequestInput = normalizeRequestInput(env, requestInput);
+
+  if (normalizedRequestInput.attributeType === "isin") {
     try {
-      validateDeferredLookupModes(requestInput);
+      validateDeferredLookupModes(normalizedRequestInput);
 
       const directResolution = resolveDirectIsinAttributeValue(
         {
-          tickerInput: requestInput.ticker,
+          tickerInput: normalizedRequestInput.ticker,
         },
         {
           fetchText: env.httpFetch,
@@ -362,8 +387,8 @@ export function resolveRequestValue(
   let resolvePlan: Readonly<ResolvePlan> | null = null;
 
   try {
-    validateDeferredLookupModes(requestInput);
-    resolvePlan = env.buildResolvePlan(requestInput);
+    validateDeferredLookupModes(normalizedRequestInput);
+    resolvePlan = env.buildResolvePlan(normalizedRequestInput);
   } catch (error) {
     return failureResult("(none)", [], error);
   }
@@ -380,18 +405,23 @@ export function resolveRequestValue(
 
   const envelope =
     resolvePlan.attributePlan && resolvePlan.resolvedRequest
-      ? resolvePlannedQuoteEnvelope(
-          resolvePlan.attributePlan,
-          resolvePlan.resolvedRequest,
-          [],
-        )
+        ? resolvePlannedQuoteEnvelope(
+            resolvePlan.attributePlan,
+            resolvePlan.resolvedRequest,
+            [],
+          )
       : resolvePlan.identifierPlan
-        ? resolveIdentifierPlanEnvelope(requestInput, resolvePlan)
+        ? resolveIdentifierPlanEnvelope(normalizedRequestInput, resolvePlan)
         : failureResult(
             resolvePlan.plannedRoute || "(none)",
             [],
             "Identifier resolution failed.",
           );
 
-  return projectLookupValue(env, requestInput, envelope, resolvePlan);
+  return projectLookupValue(
+    env,
+    normalizedRequestInput,
+    envelope,
+    resolvePlan,
+  );
 }

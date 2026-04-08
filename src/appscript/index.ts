@@ -6,7 +6,6 @@ import {
   createStoredTextResourceStore,
   createStringCache,
 } from "./utils";
-import { createStoredFxTickerParser } from "../core/fx-normalization";
 import { type StoredTextResource } from "../core/resolver-services";
 
 const DEFAULT_ATTRIBUTE = "price";
@@ -119,8 +118,6 @@ export function createHoodlefinanceAppScriptBindings(
     : null;
   const storedTextResourceStore =
     createStoredTextResourceStore(scriptProperties);
-  let fxTickerParser: ReturnType<typeof createStoredFxTickerParser> | null =
-    null;
   const runtime = createHoodlefinanceRuntime({
     httpFetch(url) {
       return services.urlFetchApp.fetch(url).getContentText();
@@ -129,33 +126,6 @@ export function createHoodlefinanceAppScriptBindings(
     getCachedString: stringCache.getCachedString,
     getStoredTextResource(key): StoredTextResource | null {
       return storedTextResourceStore.getStoredTextResource(key);
-    },
-    parseFxTicker(ticker) {
-      if (!fxTickerParser) {
-        try {
-          fxTickerParser = createStoredFxTickerParser({
-            fetchText(url) {
-              return services.urlFetchApp.fetch(url).getContentText();
-            },
-            getCachedString: stringCache.getCachedString,
-            getStoredTextResource:
-              storedTextResourceStore.getStoredTextResource,
-            putCachedString: stringCache.putCachedString,
-            putStoredTextResource:
-              storedTextResourceStore.putStoredTextResource,
-          });
-        } catch {
-          fxTickerParser = null;
-        }
-
-        if (!fxTickerParser) {
-          throw new Error(
-            "Failed to download the currency code data from GitHub.",
-          );
-        }
-      }
-
-      return fxTickerParser(ticker);
     },
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,

@@ -6,8 +6,16 @@ function definePlanSpec<T extends PlanSpec>(spec: T): T {
 
 export const DagPlan: Record<string, PlanSpec> = {
   ROOT: {
+    resolverClass: "RequestClassificationPlan",
+    nodeCodes: ["CLASSIFY-REQUEST", "REQUEST-ROOT"],
+  },
+  "REQUEST-ROOT": {
     resolverClass: "RoutingPlan",
     nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+  },
+  "CLASSIFY-REQUEST": {
+    resolverClass: "RequestClassifierResolver",
+    nodeCodes: ["TERMINAL"],
   },
   "DEFAULT-ATTRIBUTE": {
     resolverClass: "RoutingPlan",

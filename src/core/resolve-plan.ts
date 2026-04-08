@@ -6,8 +6,13 @@ import {
   buildSourceOverrideUnavailableError,
   type PlanSelectionDependencies,
 } from "./plan-selection";
+import { resolveRoutingNode } from "./plan-navigation";
 import { FirstSuccessPlan } from "./resolver-classes";
-import type { RequestInput, ResolvedRequest } from "./request";
+import {
+  RawRequestInput,
+  RequestInput,
+  type ResolvedRequest,
+} from "./request";
 import { createRequestInput, extractIsinFromRequestInput } from "./request-building";
 import { looksLikeIsin } from "./request";
 import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "./planner";
@@ -37,6 +42,7 @@ export interface ResolvePlanDependencies {
     sourceOverride: string,
     contextLabel?: string,
   ): Error;
+  classifyRawRequest(input: RawRequestInput): RequestInput;
   createRequestInput(identifier: string, attribute: string): RequestInput;
   listSupportedSourcesForRequest(input: RequestInput): string;
   resolveIdentifierDirect(input: RequestInput): ResolvedRequest | null;
@@ -65,7 +71,7 @@ function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
 
 export function createDefaultResolvePlanBuilder(
   deps: DefaultResolvePlanBuilderDependencies,
-): (requestInput: RequestInput) => Readonly<ResolvePlan> {
+): (requestInput: RawRequestInput | RequestInput) => Readonly<ResolvePlan> {
   function resolveIdentifierDirect(
     requestInput: RequestInput,
   ): ResolvedRequest | null {
@@ -123,6 +129,24 @@ export function createDefaultResolvePlanBuilder(
         return resolveIdentifierDirect(input);
       },
       buildSourceOverrideUnavailableError,
+      classifyRawRequest(input) {
+        const resolvedNode = resolveRoutingNode(
+          deps.getPlanNodeByCode("ROOT"),
+          input,
+        );
+
+        if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
+          throw new Error("Request classification failed.");
+        }
+
+        const outcome = resolvedNode.resolve(input);
+
+        if (outcome.status !== "success") {
+          throw new Error(outcome.error || "Request classification failed.");
+        }
+
+        return outcome.value as RequestInput;
+      },
       createRequestInput,
       listSupportedSourcesForRequest() {
         return "";
@@ -134,7 +158,9 @@ export function createDefaultResolvePlanBuilder(
     return resolvePlanDeps;
   }
 
-  return function buildDefaultResolvePlan(requestInput: RequestInput): Readonly<ResolvePlan> {
+  return function buildDefaultResolvePlan(
+    requestInput: RawRequestInput | RequestInput,
+  ): Readonly<ResolvePlan> {
     return buildResolvePlan(requestInput, buildResolvePlanDependencies());
   };
 }
@@ -146,40 +172,51 @@ function normalizeSourceOverride(requestInput: RequestInput): string {
 }
 
 export function buildResolvePlan(
-  requestInput: RequestInput,
+  requestInput: RawRequestInput | RequestInput,
   deps: ResolvePlanDependencies,
 ): Readonly<ResolvePlan> {
-  const nonInfoRequestInput = requestInput.infoMode
-    ? deps.createRequestInput(requestInput.ticker, requestInput.attribute)
-    : requestInput;
-  const infoMode = requestInput.infoMode;
-  const sourceOverride = normalizeSourceOverride(requestInput);
+  const normalizedRequestInput =
+    requestInput instanceof RawRequestInput
+      ? deps.classifyRawRequest(requestInput)
+      : requestInput;
+  const nonInfoRequestInput = normalizedRequestInput.infoMode
+    ? deps.createRequestInput(
+        normalizedRequestInput.ticker,
+        normalizedRequestInput.attribute,
+      )
+    : normalizedRequestInput;
+  const infoMode = normalizedRequestInput.infoMode;
+  const sourceOverride = normalizeSourceOverride(normalizedRequestInput);
   const hasForcedQuoteSource =
-    requestInput.attributeType === "quote" && !!requestInput.sourceOverride;
-  const resolvedRequest = deps.resolveIdentifierDirect(requestInput);
+    normalizedRequestInput.attributeType === "quote" &&
+    !!normalizedRequestInput.sourceOverride;
+  const resolvedRequest = deps.resolveIdentifierDirect(normalizedRequestInput);
   const representativeForcedAttributeRequest = hasForcedQuoteSource
-    ? deps.buildRepresentativeForcedAttributeRequest(requestInput)
+    ? deps.buildRepresentativeForcedAttributeRequest(normalizedRequestInput)
     : null;
 
   if (infoMode === "source-list") {
     return createResolvePlan({
       debugValue: deps.listSupportedSourcesForRequest(nonInfoRequestInput),
       plannedRoute: buildResolvePlan(nonInfoRequestInput, deps).plannedRoute,
-      requestInput,
+      requestInput: normalizedRequestInput,
     });
   }
 
   if (infoMode === "source-name") {
     return createResolvePlan({
       debugValue: buildResolvePlan(
-        deps.createRequestInput(requestInput.ticker, requestInput.attribute),
+        deps.createRequestInput(
+          normalizedRequestInput.ticker,
+          normalizedRequestInput.attribute,
+        ),
         deps,
       ).plannedRoute,
-      requestInput,
+      requestInput: normalizedRequestInput,
     });
   }
 
-  deps.validateNonQuoteSourceOverride(requestInput, resolvedRequest);
+  deps.validateNonQuoteSourceOverride(normalizedRequestInput, resolvedRequest);
 
   if (
     hasForcedQuoteSource &&
@@ -191,19 +228,20 @@ export function buildResolvePlan(
 
   if (resolvedRequest) {
     const attributePlan = deps.buildQuoteRoutePlanForResolvedRequest(
-      requestInput,
+      normalizedRequestInput,
       resolvedRequest,
     );
 
     return createResolvePlan({
       attributePlan,
       plannedRoute: attributePlan.describe(resolvedRequest),
-      requestInput,
+      requestInput: normalizedRequestInput,
       resolvedRequest,
     });
   }
 
-  const identifierPlan = deps.buildIdentifierResolutionPlan(requestInput);
+  const identifierPlan =
+    deps.buildIdentifierResolutionPlan(normalizedRequestInput);
 
   if (!identifierPlan) {
     throw new Error("Identifier resolution failed.");
@@ -212,22 +250,22 @@ export function buildResolvePlan(
   return createResolvePlan({
     buildAttributePlan(resolvedIdentifierRequest) {
       return deps.buildQuoteRoutePlanForResolvedRequest(
-        requestInput,
+        normalizedRequestInput,
         resolvedIdentifierRequest,
       );
     },
     identifierPlan,
     plannedRoute: hasForcedQuoteSource
       ? representativeForcedAttributeRequest
-        ? `${identifierPlan.describe(requestInput)} => ${deps
+        ? `${identifierPlan.describe(normalizedRequestInput)} => ${deps
             .buildForcedAttributePlanForResolvedRequest(
-              requestInput,
+              normalizedRequestInput,
               representativeForcedAttributeRequest,
             )
             .describe(representativeForcedAttributeRequest)}`
-        : identifierPlan.describe(requestInput)
-      : identifierPlan.describe(requestInput),
-    requestInput,
+        : identifierPlan.describe(normalizedRequestInput)
+      : identifierPlan.describe(normalizedRequestInput),
+    requestInput: normalizedRequestInput,
   });
 }
 

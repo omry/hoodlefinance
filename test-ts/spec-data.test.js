@@ -10,6 +10,10 @@ test("legacy execution specs are derived from DagPlan only through the legacy ad
   const derived = deriveDagPlanLegacyExecutionSpecs(DagPlan);
 
   assert.equal(
+    derived.resolverSpecsByCode["CLASSIFY-REQUEST"],
+    "RequestClassifierResolver",
+  );
+  assert.equal(
     derived.resolverSpecsByCode["RESOLVED-IDENTIFIER"],
     "DirectIdentifierResolver",
   );
@@ -17,7 +21,10 @@ test("legacy execution specs are derived from DagPlan only through the legacy ad
     derived.planSpecsByCode["QUOTE:PSE"].resolverClass,
     "PseQuoteResolutionPlan",
   );
-  assert.equal(derived.planSpecsByCode["ROOT"].resolverClass, "RoutingPlan");
+  assert.equal(
+    derived.planSpecsByCode["ROOT"].resolverClass,
+    "RequestClassificationPlan",
+  );
 });
 
 test("deriveDagPlanLegacyExecutionSpecs validates DAG structure before projection", () => {

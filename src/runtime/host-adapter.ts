@@ -1,11 +1,12 @@
 import { createConcreteResolverMaterializationDependencies } from "../core/concrete-resolvers";
 import { compileDagPlanForLegacyExecution } from "../core/dag-plan-legacy-execution";
+import { resolveRoutingNode } from "../core/plan-navigation";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
-import { createRequestInput } from "../core/request-building";
 import { extractAttributeValue } from "../core/attribute-extraction";
 import {
   looksLikeIsin,
   FxRequest,
+  RawRequestInput,
   type FxPair,
   type RequestInput,
 } from "../core/request";
@@ -28,7 +29,6 @@ interface HoodlefinanceRuntimeDependencies {
     fetchedAtMs: number;
     text: string;
   } | null;
-  parseFxTicker?(ticker: string): FxPair | null;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
   putStoredTextResource?(
@@ -91,10 +91,27 @@ export function createHoodlefinanceRuntime(
       getPlanNodeByCode: getPathPlanNodeByCode,
     });
     const fxPlan = getPathPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
+    const rootPlan = getPathPlanNodeByCode("ROOT");
 
     let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
+    const classifyRawRequest = (requestInput: RawRequestInput): RequestInput => {
+      const resolvedNode = resolveRoutingNode(rootPlan, requestInput);
+
+      if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
+        throw new Error("Request classification failed.");
+      }
+
+      const outcome = resolvedNode.resolve(requestInput);
+
+      if (outcome.status !== "success") {
+        throw new Error(outcome.error || "Request classification failed.");
+      }
+
+      return outcome.value as RequestInput;
+    };
     const resolutionEnv: RequestResolutionDependencies = {
       buildResolvePlan,
+      classifyRawRequest,
       httpFetch: deps.httpFetch,
       getCachedString: deps.getCachedString,
       looksLikeIsin,
@@ -146,16 +163,9 @@ export function createHoodlefinanceRuntime(
     identifier: string,
     attribute: string | undefined,
   ) =>
-    createRequestInput(
+    new RawRequestInput(
       identifier,
       String(attribute == null ? "price" : attribute).trim(),
-      ...(typeof deps.parseFxTicker === "function"
-        ? [
-            {
-              parseFxTicker: deps.parseFxTicker,
-            },
-          ]
-        : []),
     );
 
   const runtime = {
@@ -176,7 +186,11 @@ export function createHoodlefinanceRuntime(
     },
     // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
     buildResolvePlan,
-    createRequestInput: normalizeRequestInput,
+    createRequestInput(identifier: string, attribute?: string) {
+      return resolutionEnv.classifyRawRequest!(
+        normalizeRequestInput(identifier, attribute),
+      );
+    },
     httpFetch: deps.httpFetch,
     getPlanNodeByCode(code: string) {
       return getPlanNodeByCode(code);

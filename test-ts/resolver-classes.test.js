@@ -4,6 +4,8 @@ const test = require("node:test");
 const {
   AttributeResolutionPlan,
   FirstSuccessPlan,
+  RawRequestInput,
+  RequestClassificationPlan,
   RequestInput,
   PseQuoteResolutionPlan,
   ResolverPlan,
@@ -77,6 +79,23 @@ test("ResolverPlan maintains standard fallback sequence and full routing-tree vi
     ["YAHOO", "IBKR"],
   );
   assert.equal(plan.buildRoutePath(request), "YAHOO -> IBKR");
+});
+
+test("RequestClassificationPlan routes raw inputs to the classifier node", () => {
+  const classifier = createLeafResolver("CLASSIFY-REQUEST");
+  const requestRoot = createLeafResolver("REQUEST-ROOT");
+  const plan = new RequestClassificationPlan("ROOT", [classifier, requestRoot]);
+
+  assert.deepEqual(
+    plan
+      .getNodesForRequest(new RawRequestInput("GOOG", "price"))
+      .map((node) => node.name),
+    ["CLASSIFY-REQUEST"],
+  );
+  assert.deepEqual(
+    plan.getNodesForRequest(createRequestInput()).map((node) => node.name),
+    ["REQUEST-ROOT"],
+  );
 });
 
 test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owned route state", () => {

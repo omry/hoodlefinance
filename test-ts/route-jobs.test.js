@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
   EquityRequest,
+  RawRequestInput,
   RequestInput,
   buildTickerJobKey,
   createAttributeRouteJob,
@@ -62,6 +63,12 @@ test("createAttributeRouteJob and createResolverRouteJob build the expected rout
   );
   assert.equal(identifierJob.routeKind, "identifier");
   assert.equal(identifierJob.tickerInput, "US02079K1079");
+
+  const rawIdentifierJob = createResolverRouteJob(
+    new RawRequestInput("GOOG", "price"),
+  );
+  assert.equal(rawIdentifierJob.routeKind, "identifier");
+  assert.equal(rawIdentifierJob.tickerInput, "GOOG");
 
   const resolvedJob = createResolverRouteJob(
     new EquityRequest({

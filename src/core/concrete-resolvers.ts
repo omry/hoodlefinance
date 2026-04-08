@@ -1,6 +1,7 @@
 import {
   EquityRequest,
   FxRequest,
+  RawRequestInput,
   RequestInput,
   type ResolvedRequest,
 } from "./request";
@@ -11,6 +12,7 @@ import {
 } from "./route-state";
 import { IdentifierResolver, RouteExecutionResolver } from "./resolver-classes";
 import {
+  createRequestInput,
   buildTypedRequestFromParsedInput,
   buildTypedRequestFromResolvedTicker,
   extractIsinFromRequestInput,
@@ -25,6 +27,7 @@ import {
   buildGoogleFinanceQuoteUrl,
   extractGoogleFinanceFxPairQuote,
 } from "./google-fx";
+import { createStoredFxTickerParser } from "./fx-normalization";
 import {
   buildPseListingCacheKey,
   buildPseSearchUrl,
@@ -129,6 +132,117 @@ export class DirectIdentifierResolver extends IdentifierResolver {
   }
 
   static fromSpec(_code: string): DirectIdentifierResolver {
+    return new this();
+  }
+}
+
+export class RequestClassifierResolver extends IdentifierResolver {
+  private fxTickerParser:
+    | ((ticker: string) => ReturnType<typeof createRequestInput>["fxPair"])
+    | null
+    | undefined;
+  private services: ResolverServices = {};
+
+  constructor() {
+    super("CLASSIFY-REQUEST");
+  }
+
+  canHandle(input: RequestInput | RawRequestInput | ResolvedRequest): boolean {
+    return input instanceof RawRequestInput;
+  }
+
+  buildRuntimePlan(
+    _input: RequestInput | RawRequestInput | ResolvedRequest,
+  ): RuntimePlan {
+    return {
+      nodes: [this],
+      routeClass: this.name,
+      routePath: this.name,
+      routeState: {},
+    };
+  }
+
+  initEnv(services: ResolverServices): void {
+    this.services = services;
+    this.fxTickerParser = undefined;
+  }
+
+  private getFxTickerParser():
+    | ((ticker: string) => ReturnType<typeof createRequestInput>["fxPair"])
+    | null {
+    if (this.fxTickerParser !== undefined) {
+      return this.fxTickerParser;
+    }
+
+    if (typeof this.services.httpFetch !== "function") {
+      this.fxTickerParser = null;
+      return this.fxTickerParser;
+    }
+
+    this.fxTickerParser = createStoredFxTickerParser({
+      fetchText: this.services.httpFetch,
+      ...(typeof this.services.getCachedString === "function"
+        ? {
+            getCachedString: this.services.getCachedString,
+          }
+        : {}),
+      ...(typeof this.services.getStoredTextResource === "function"
+        ? {
+            getStoredTextResource: this.services.getStoredTextResource,
+          }
+        : {}),
+      ...(typeof this.services.putCachedString === "function"
+        ? {
+            putCachedString: this.services.putCachedString,
+          }
+        : {}),
+      ...(typeof this.services.putStoredTextResource === "function"
+        ? {
+            putStoredTextResource: this.services.putStoredTextResource,
+          }
+        : {}),
+    });
+
+    return this.fxTickerParser;
+  }
+
+  resolve(input: RequestInput | RawRequestInput | ResolvedRequest) {
+    const startedAtMs = Date.now();
+
+    try {
+      if (!this.canHandle(input)) {
+        return createResolutionFailure(
+          "Request classification requires raw input.",
+          Date.now() - startedAtMs,
+          (error) =>
+            String(error instanceof Error ? error.message : (error ?? "")),
+        );
+      }
+
+      const rawInput = input as RawRequestInput;
+      const fxTickerParser = this.getFxTickerParser();
+      const requestInput = fxTickerParser
+        ? createRequestInput(rawInput.identifier, rawInput.attribute, {
+            parseFxTicker: fxTickerParser,
+          })
+        : createRequestInput(rawInput.identifier, rawInput.attribute);
+
+      return createResolutionSuccess(requestInput, Date.now() - startedAtMs);
+    } catch (error) {
+      return createResolutionFailure(
+        error,
+        Date.now() - startedAtMs,
+        (caughtError) =>
+          String(
+            caughtError instanceof Error
+              ? caughtError.message
+              : (caughtError ?? ""),
+          ),
+      );
+    }
+  }
+
+  static fromSpec(_code: string): RequestClassifierResolver {
     return new this();
   }
 }
@@ -1446,6 +1560,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   PSEFramesResolver: PseFramesResolver,
   PSEEdgeResolver: PseEdgeResolver,
   PseIsinMapResolver,
+  RequestClassifierResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
   TradingviewFundResolver,

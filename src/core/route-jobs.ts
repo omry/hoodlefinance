@@ -5,7 +5,11 @@ import type {
   RouteKind,
   RuntimePlan,
 } from "./planner";
-import { RequestInput, type ResolvedRequest } from "./request";
+import {
+  RawRequestInput,
+  RequestInput,
+  type ResolvedRequest,
+} from "./request";
 
 export interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
   attribute?: string;
@@ -87,9 +91,9 @@ export function createAttributeRouteJob(
 }
 
 export function createResolverRouteJob(
-  request: RequestInput | ResolvedRequest,
+  request: RawRequestInput | RequestInput | ResolvedRequest,
 ): RouteJob<Record<string, unknown>> {
-  if (request instanceof RequestInput) {
+  if (request instanceof RawRequestInput || request instanceof RequestInput) {
     return createRouteJob({
       attribute: request.attribute,
       routeKind: "identifier",

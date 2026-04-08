@@ -4,12 +4,7 @@
 const {
   createHoodlefinanceRuntime,
 } = require("../../dist/ts/runtime/host-adapter.js");
-const { createRequestInput } = require("../../dist/ts/core/request-building.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
-const {
-  resolveRequestEnvelope,
-  resolveRequestValue,
-} = require("../../dist/ts/core/request-resolution.js");
 const { describePlanSource } = require("../../dist/ts/core/route-results.js");
 const {
   buildRoutingPlanTreeNode,
@@ -17,6 +12,7 @@ const {
 } = require("../../dist/ts/core/routing-introspection.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
+const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
 const PREFERRED_REIT_WHITELIST_CACHE_KEY =
   "hoodlefinance:ts:preferredReitWhitelist";
 
@@ -26,6 +22,12 @@ function loadTextFile(path) {
 
 function loadPreferredReitWhitelistText() {
   const dataPath = `${__dirname}/../../data/preferred-reit-whitelist.json`;
+
+  return loadTextFile(dataPath);
+}
+
+function loadCurrencyCodesText() {
+  const dataPath = `${__dirname}/../../data/currency-codes.json`;
 
   return loadTextFile(dataPath);
 }
@@ -78,26 +80,44 @@ function createCliEnvironment() {
   const syncFetchText = createSyncFetcher();
   const stringCache = createStringCache();
   const jsonCache = createJsonCache();
+  const env = {
+    getCachedString: stringCache.getCachedString,
+    httpFetch(url) {
+      return syncFetchText(url);
+    },
+    looksLikeIsin,
+    putCachedString: stringCache.putCachedString,
+  };
 
   stringCache.putCachedString(
     PREFERRED_REIT_WHITELIST_CACHE_KEY,
     loadPreferredReitWhitelistText(),
   );
+  stringCache.putCachedString(
+    CURRENCY_CODES_CACHE_KEY,
+    loadCurrencyCodesText(),
+  );
 
   const runtime = createHoodlefinanceRuntime({
-    httpFetch: syncFetchText,
+    httpFetch(url) {
+      return env.httpFetch(url);
+    },
     getCachedJson: jsonCache.getCachedJson,
     getCachedString: stringCache.getCachedString,
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
   });
 
-  return {
-    ...runtime,
-    getCachedString: stringCache.getCachedString,
-    looksLikeIsin,
-    putCachedString: stringCache.putCachedString,
-  };
+  env.buildResolvePlan = runtime.buildResolvePlan;
+  env.createRequestInput = runtime.createRequestInput;
+  env.getPlanNodeByCode = runtime.getPlanNodeByCode;
+  env.lookup = runtime.lookup;
+  env.lookupEnvelope = runtime.lookupEnvelope;
+  env.lookupViaGraph = runtime.lookupViaGraph;
+  env.resolveFxRate = runtime.resolveFxRate;
+  env.resolversByCode = runtime.resolversByCode;
+
+  return env;
 }
 
 function routeLabelFromPlan(routeClass, routePath) {
@@ -112,17 +132,14 @@ function routeLabelFromLookup(result) {
 }
 
 function lookupEnvelopeWithEnvironment(env, args) {
-  return resolveRequestEnvelope(
-    env,
-    createRequestInput(args.ticker, String(args.attribute || "price").trim()),
+  return env.lookupEnvelope(
+    args.ticker,
+    String(args.attribute || "price").trim(),
   );
 }
 
 function lookupWithEnvironment(env, args) {
-  return resolveRequestValue(
-    env,
-    createRequestInput(args.ticker, String(args.attribute || "price").trim()),
-  );
+  return env.lookup(args.ticker, String(args.attribute || "price").trim());
 }
 
 function lookupWithGraphEnvironment(env, args) {
@@ -170,7 +187,7 @@ function formatEnvelopeResult(result) {
 function formatRoutingTable(env = createCliEnvironment()) {
   const grid = buildRoutingTableGrid({
     buildResolvePlan: env.buildResolvePlan,
-    createRequestInput,
+    createRequestInput: env.createRequestInput,
   }).map((row, index) =>
     index === 0 ? ["classification", "example", "route"] : row,
   );
@@ -199,19 +216,7 @@ function formatRoutingTreeNode(node, prefix = "", isLast = true, isRoot = false)
 }
 
 function formatRoutingTree(env = createCliEnvironment()) {
-  const rootNode = buildRoutingPlanTreeNode({
-    getRoutingNodes() {
-      return [
-        env.getPlanNodeByCode("IDENTIFIER-ROOT"),
-        env.getPlanNodeByCode("DEFAULT-ATTRIBUTE"),
-      ];
-    },
-    getRoutingNodeKind() {
-      return "switch";
-    },
-    name: "ROOT",
-    routingLabel: "ROOT",
-  });
+  const rootNode = buildRoutingPlanTreeNode(env.getPlanNodeByCode("ROOT"));
   return formatRoutingTreeNode(rootNode, "", true, true);
 }
 

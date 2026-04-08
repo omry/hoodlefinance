@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
   DirectIdentifierResolver,
+  RawRequestInput,
   RequestInput,
   buildResolvePlan,
   classifyTickerJob,
@@ -117,7 +118,43 @@ function createPlanNodeLookupFactory() {
     return this.nodes || [];
   };
 
+  const requestRoot = createPlan("REQUEST-ROOT", "");
+  requestRoot.isRoutingNode = true;
+  requestRoot.getRoutingNodeKind = () => "switch";
+  requestRoot.nodes = [defaultAttributeRoot, identifierRoot];
+  requestRoot.getNodesForRequest = function getNodesForRequest() {
+    return this.nodes || [];
+  };
+
+  const classifierNode = createPlan("CLASSIFY-REQUEST", "CLASSIFY-REQUEST");
+  classifierNode.resolve = function resolve(request) {
+    return {
+      elapsedMs: 0,
+      status: "success",
+      value: createRequestInput({
+        attribute: request.attribute,
+        identifier: request.identifier,
+        ticker: request.identifier,
+      }),
+    };
+  };
+
+  const rootPlan = createPlan("ROOT", "");
+  rootPlan.isRoutingNode = true;
+  rootPlan.getRoutingNodeKind = () => "switch";
+  rootPlan.getNodesForRequest = function getNodesForRequest(request) {
+    return request instanceof RawRequestInput ? [classifierNode] : [requestRoot];
+  };
+
   return function getPlanNodeByCode(code) {
+    if (code === "ROOT") {
+      return rootPlan;
+    }
+
+    if (code === "REQUEST-ROOT") {
+      return requestRoot;
+    }
+
     if (code === "DEFAULT-ATTRIBUTE") {
       return defaultAttributeRoot;
     }
@@ -149,6 +186,13 @@ function createDeps(overrides = {}) {
         `"@${sourceOverride}" is not available for this request.`,
       );
     },
+    classifyRawRequest(input) {
+      return createRequestInput({
+        attribute: input.attribute,
+        identifier: input.identifier,
+        ticker: input.identifier,
+      });
+    },
     createRequestInput(identifier, attribute) {
       return createRequestInput({ attribute, identifier, ticker: identifier });
     },
@@ -174,6 +218,14 @@ test("buildResolvePlan returns a direct attribute plan when the identifier resol
     plan.attributePlan.describe(plan.resolvedRequest),
     "EQUITY -> TICKER -> YAHOO",
   );
+});
+
+test("buildResolvePlan classifies raw requests before selecting a route", () => {
+  const plan = buildResolvePlan(new RawRequestInput("GOOG", "price"), createDeps());
+
+  assert.equal(plan.requestInput.identifier, "GOOG");
+  assert.equal(plan.requestInput.classification, "equity");
+  assert.equal(plan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
 });
 
 test("buildResolvePlan returns source-list and source-name debug views", () => {
@@ -262,6 +314,10 @@ test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", ()
     equityPlan.attributePlan.describe(equityPlan.resolvedRequest),
     "EQUITY -> TICKER -> YAHOO",
   );
+
+  const rawPlan = buildResolvePlanBuilder(new RawRequestInput("GOOG", "price"));
+  assert.equal(rawPlan.requestInput.identifier, "GOOG");
+  assert.equal(rawPlan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
 
   const fxPlan = buildResolvePlanBuilder(
     createRequestInput({

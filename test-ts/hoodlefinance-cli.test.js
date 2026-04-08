@@ -435,6 +435,7 @@ test("lookup formatting and routing views stay readable", () => {
   assert.match(formatRoutingTable(), /classification\texample\troute/);
   assert.match(formatRoutingTable(), /PSE:BDO/);
   assert.match(formatRoutingTree(), /^ROOT \[switch\]$/m);
+  assert.match(formatRoutingTree(), /CLASSIFY-REQUEST/m);
   assert.match(formatRoutingTree(), /PSE-FRAMES - PSE frames quote lookup/);
 });
 

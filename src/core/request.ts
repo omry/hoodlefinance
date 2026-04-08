@@ -51,6 +51,20 @@ export interface RequestInputRuntimeDependencies {
   parseTickerRequest(ticker: string): ParsedTickerRequest;
 }
 
+export class RawRequestInput {
+  readonly attribute: string;
+  readonly identifier: string;
+
+  constructor(identifier: unknown, attribute?: unknown) {
+    const normalizedAttribute = String(
+      attribute == null ? "price" : attribute,
+    ).trim();
+
+    this.attribute = normalizedAttribute || "price";
+    this.identifier = String(identifier == null ? "" : identifier).trim();
+  }
+}
+
 export function looksLikeIsin(value: string): boolean {
   return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value || "").trim());
 }
@@ -247,3 +261,4 @@ export class FxRequest extends BaseRequest {
 }
 
 export type ResolvedRequest = EquityRequest | FxRequest;
+export type PlannerRequest = RawRequestInput | RequestInput | ResolvedRequest;

@@ -1,4 +1,4 @@
-import type { RequestInput, ResolvedRequest } from "./request";
+import type { PlannerRequest } from "./request";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
 
 export interface SelectSinglePlanNodeOptions<TNode extends ResolverNode> {
@@ -33,7 +33,7 @@ export function selectSinglePlanNode<TNode extends ResolverNode>(
     | Pick<ResolverPlanNode, "getNodesForRequest" | "name">
     | null
     | undefined,
-  request: RequestInput | ResolvedRequest,
+  request: PlannerRequest,
   options: SelectSinglePlanNodeOptions<TNode> = {},
 ): TNode | null {
   const selectedNodes = plan
@@ -67,7 +67,7 @@ export function selectSinglePlanNode<TNode extends ResolverNode>(
 
 export function resolveRoutingNode<TNode extends ResolverNode>(
   node: ResolverNode | null | undefined,
-  request: RequestInput | ResolvedRequest,
+  request: PlannerRequest,
   options: ResolveRoutingNodeOptions<TNode> = {},
 ): TNode | ResolverNode | null {
   let currentNode = node;
@@ -118,7 +118,7 @@ export function matchesResolverNodeName(
 
 export function listSearchablePlanNodes(
   node: ResolverPlanNode | null | undefined,
-  request: RequestInput | ResolvedRequest | null,
+  request: PlannerRequest | null,
 ): ResolverNode[] {
   if (!node) {
     return [];
@@ -136,7 +136,7 @@ export function listSearchablePlanNodes(
 export function findNamedResolverNode(
   node: ResolverNode | null | undefined,
   name: string,
-  request: RequestInput | ResolvedRequest | null,
+  request: PlannerRequest | null,
   options: FindNamedResolverNodeOptions = {},
 ): ResolverNode | null {
   const requireCanHandle = options.requireCanHandle !== false;
