@@ -134,36 +134,6 @@ export interface YahooIsinSearchBatchResponse {
   response?: YahooSearchResponseLike;
 }
 
-export interface YahooIsinSearchResolverDependencies {
-  httpFetch(url: string): string;
-  getCachedString(cacheKey: string): string;
-  putCachedString(cacheKey: string, value: string, ttlSeconds: number): string;
-}
-
-export interface GoogleFxResolverDependencies {
-  httpFetch(url: string): string;
-  getCachedJson(cacheKey: string): unknown;
-  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
-}
-
-export interface PseQuoteResolverDependencies {
-  httpFetch(url: string): string;
-  getCachedJson(cacheKey: string): unknown;
-  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
-}
-
-export interface YahooQuoteResolverDependencies {
-  httpFetch(url: string): string;
-  getCachedJson(cacheKey: string): unknown;
-  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
-}
-
-export interface TradingviewFundResolverDependencies {
-  httpFetch(url: string): string;
-  getCachedJson(cacheKey: string): unknown;
-  putCachedJson(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
-}
-
 interface SequentialFetchRequestLike {
   url: string;
 }
@@ -367,18 +337,13 @@ export class PseIsinMapResolver extends IdentifierResolver {
 
 export class YahooIsinSearchResolver extends IdentifierResolver {
   readonly traceLabel: string;
-  httpFetch!: YahooIsinSearchResolverDependencies["httpFetch"];
-  getCachedString!: YahooIsinSearchResolverDependencies["getCachedString"];
-  putCachedString!: YahooIsinSearchResolverDependencies["putCachedString"];
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedString!: NonNullable<ResolverServices["getCachedString"]>;
+  putCachedString!: NonNullable<ResolverServices["putCachedString"]>;
 
-  constructor(deps?: YahooIsinSearchResolverDependencies) {
+  constructor() {
     super("ISIN:YAHOO");
     this.traceLabel = "ISIN:YAHOO";
-    if (deps) {
-      this.httpFetch = deps.httpFetch;
-      this.getCachedString = deps.getCachedString;
-      this.putCachedString = deps.putCachedString;
-    }
   }
 
   initEnv(services: ResolverServices): void {
@@ -585,17 +550,12 @@ export class LocalFxResolver extends RouteExecutionResolver {
 }
 
 export class GoogleFxResolver extends RouteExecutionResolver {
-  httpFetch!: GoogleFxResolverDependencies["httpFetch"];
-  getCachedJson!: GoogleFxResolverDependencies["getCachedJson"];
-  putCachedJson!: GoogleFxResolverDependencies["putCachedJson"];
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor(deps?: GoogleFxResolverDependencies) {
+  constructor() {
     super("GOOGLE-FX");
-    if (deps) {
-      this.httpFetch = deps.httpFetch;
-      this.getCachedJson = deps.getCachedJson;
-      this.putCachedJson = deps.putCachedJson;
-    }
   }
 
   initEnv(services: ResolverServices): void {
@@ -718,17 +678,12 @@ function buildPseQuoteCacheKey(symbol: string): string {
 }
 
 export class PseFramesResolver extends RouteExecutionResolver {
-  httpFetch!: PseQuoteResolverDependencies["httpFetch"];
-  getCachedJson!: PseQuoteResolverDependencies["getCachedJson"];
-  putCachedJson!: PseQuoteResolverDependencies["putCachedJson"];
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor(deps?: PseQuoteResolverDependencies) {
+  constructor() {
     super("PSE-FRAMES");
-    if (deps) {
-      this.httpFetch = deps.httpFetch;
-      this.getCachedJson = deps.getCachedJson;
-      this.putCachedJson = deps.putCachedJson;
-    }
   }
 
   initEnv(services: ResolverServices): void {
@@ -872,17 +827,12 @@ export class PseFramesResolver extends RouteExecutionResolver {
 }
 
 export class PseEdgeResolver extends RouteExecutionResolver {
-  httpFetch!: PseQuoteResolverDependencies["httpFetch"];
-  getCachedJson!: PseQuoteResolverDependencies["getCachedJson"];
-  putCachedJson!: PseQuoteResolverDependencies["putCachedJson"];
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor(deps?: PseQuoteResolverDependencies) {
+  constructor() {
     super("PSE-EDGE");
-    if (deps) {
-      this.httpFetch = deps.httpFetch;
-      this.getCachedJson = deps.getCachedJson;
-      this.putCachedJson = deps.putCachedJson;
-    }
   }
 
   initEnv(services: ResolverServices): void {
@@ -1126,18 +1076,13 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 }
 
 export class YahooQuoteResolver extends RouteExecutionResolver {
-  httpFetch!: YahooQuoteResolverDependencies["httpFetch"];
-  getCachedJson!: YahooQuoteResolverDependencies["getCachedJson"];
-  putCachedJson!: YahooQuoteResolverDependencies["putCachedJson"];
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
   resolvePreferredYahooSymbol?: ResolverServices["resolvePreferredYahooSymbol"];
 
-  constructor(deps?: YahooQuoteResolverDependencies) {
+  constructor() {
     super("YAHOO");
-    if (deps) {
-      this.httpFetch = deps.httpFetch;
-      this.getCachedJson = deps.getCachedJson;
-      this.putCachedJson = deps.putCachedJson;
-    }
   }
 
   initEnv(services: ResolverServices): void {
@@ -1296,17 +1241,12 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 }
 
 export class TradingviewFundResolver extends RouteExecutionResolver {
-  httpFetch!: TradingviewFundResolverDependencies["httpFetch"];
-  getCachedJson!: TradingviewFundResolverDependencies["getCachedJson"];
-  putCachedJson!: TradingviewFundResolverDependencies["putCachedJson"];
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor(deps?: TradingviewFundResolverDependencies) {
+  constructor() {
     super("TRADINGVIEW-FUND", "TRADINGVIEW");
-    if (deps) {
-      this.httpFetch = deps.httpFetch;
-      this.getCachedJson = deps.getCachedJson;
-      this.putCachedJson = deps.putCachedJson;
-    }
   }
 
   initEnv(services: ResolverServices): void {

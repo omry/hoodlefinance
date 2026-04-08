@@ -40,6 +40,11 @@ function createRequestInput(overrides = {}) {
   });
 }
 
+function initResolver(resolver, services) {
+  resolver.initEnv(services);
+  return resolver;
+}
+
 function createPseFrameHtml() {
   return `
     <html>
@@ -193,7 +198,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     ],
   ])},sideChannel:{}});</script>`;
   let cachedWrite = null;
-  const resolver = new GoogleFxResolver({
+  const resolver = initResolver(new GoogleFxResolver(), {
     httpFetch(url) {
       assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
       return html;
@@ -241,7 +246,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     },
   });
 
-  const cachedResolver = new GoogleFxResolver({
+  const cachedResolver = initResolver(new GoogleFxResolver(), {
     httpFetch() {
       throw new Error("cache hit should not fetch Google Finance");
     },
@@ -268,7 +273,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
 test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   const frameHtml = createPseFrameHtml();
   let cachedWrite = null;
-  const resolver = new PseFramesResolver({
+  const resolver = initResolver(new PseFramesResolver(), {
     httpFetch() {
       return frameHtml;
     },
@@ -324,7 +329,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
     },
   });
 
-  const cachedResolver = new PseFramesResolver({
+  const cachedResolver = initResolver(new PseFramesResolver(), {
     httpFetch() {
       throw new Error("cache hit should not fetch PSE frames");
     },
@@ -346,7 +351,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   const stockHtml = createPseStockHtml();
   let listingCacheWrite = null;
   let quoteCacheWrite = null;
-  const resolver = new PseEdgeResolver({
+  const resolver = initResolver(new PseEdgeResolver(), {
     httpFetch(url) {
       if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
         return createPseSearchHtml();
@@ -423,7 +428,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
 });
 
 test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
-  const cachedResolver = new YahooQuoteResolver({
+  const cachedResolver = initResolver(new YahooQuoteResolver(), {
     httpFetch() {
       throw new Error("cache hit should not fetch Yahoo quote");
     },
@@ -457,7 +462,7 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
   assert.equal(cachedResult.value.regularMarketPrice, 123.45);
 
   let cachedWrite = null;
-  const fetchedResolver = new YahooQuoteResolver({
+  const fetchedResolver = initResolver(new YahooQuoteResolver(), {
     httpFetch() {
       return JSON.stringify({
         chart: {
@@ -586,7 +591,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
   `;
 
   const cachedWrites = [];
-  const cachedResolver = new TradingviewFundResolver({
+  const cachedResolver = initResolver(new TradingviewFundResolver(), {
     httpFetch() {
       throw new Error("cache hit should not fetch TradingView");
     },
@@ -644,7 +649,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
   ]);
 
   const fetchedWrites = [];
-  const fetchedResolver = new TradingviewFundResolver({
+  const fetchedResolver = initResolver(new TradingviewFundResolver(), {
     httpFetch() {
       return html;
     },
@@ -749,7 +754,7 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
 });
 
 test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", () => {
-  const cachedResolver = new YahooIsinSearchResolver({
+  const cachedResolver = initResolver(new YahooIsinSearchResolver(), {
     httpFetch() {
       throw new Error("cache hit should not fetch Yahoo ISIN search");
     },
@@ -775,7 +780,7 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
   assert.equal(cachedResult.value.yahooSymbol, "GOOG");
 
   let cachedWrite = null;
-  const fetchedResolver = new YahooIsinSearchResolver({
+  const fetchedResolver = initResolver(new YahooIsinSearchResolver(), {
     httpFetch() {
       return JSON.stringify({
         quotes: [
