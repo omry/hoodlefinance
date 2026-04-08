@@ -1,7 +1,6 @@
 import {
   createHoodlefinanceRuntime,
   createPreferredYahooSymbolResolver,
-  parsePropertiesMap,
 } from "../runtime/host-adapter";
 import {
   type AppsScriptCacheLike,
@@ -27,10 +26,6 @@ const CURRENCY_CODES_PROPERTY = "hoodlefinance.currencyCodes";
 const CURRENCY_CODES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const CURRENCY_CODES_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
-const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
-const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
-const PSE_ISIN_MAP_URL =
-  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
 const PREFERRED_REIT_WHITELIST_CACHE_KEY = "hoodlefinance:ts:preferredReitWhitelist";
 const PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const PREFERRED_REIT_WHITELIST_PROPERTY = "hoodlefinance.preferredReitWhitelist";
@@ -145,7 +140,6 @@ export function createHoodlefinanceAppScriptBindings(
     ? services.propertiesService.getScriptProperties()
     : null;
   let fxTickerParser: ReturnType<typeof createFxTickerParser> | null = null;
-  let pseIsinMap: Record<string, string> | null = null;
   let preferredReitTickerSet: Set<string> | null = null;
   const runtime = createHoodlefinanceRuntime({
     httpFetch(url) {
@@ -324,25 +318,6 @@ export function createHoodlefinanceAppScriptBindings(
       }
 
       return createPreferredYahooSymbolResolver(preferredReitTickerSet)(ticker);
-    },
-    resolvePseTickerFromIsinMap(isin) {
-      if (!pseIsinMap) {
-        let rawMap = stringCache.getCachedString(PSE_ISIN_MAP_CACHE_KEY);
-
-        if (!rawMap) {
-          rawMap = services.urlFetchApp.fetch(PSE_ISIN_MAP_URL).getContentText();
-          cacheTextResource(
-            stringCache,
-            PSE_ISIN_MAP_CACHE_KEY,
-            PSE_ISIN_MAP_CACHE_TTL_SECONDS,
-            rawMap,
-          );
-        }
-
-        pseIsinMap = parsePropertiesMap(rawMap);
-      }
-
-      return pseIsinMap[String(isin || "").trim().toUpperCase()] || "";
     },
   });
 

@@ -32,7 +32,6 @@ interface HoodlefinanceRuntimeDependencies {
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
   resolvePreferredYahooSymbol?(symbol: string): string;
-  resolvePseTickerFromIsinMap(isin: string): string;
 }
 
 interface HoodlefinanceRuntime {
@@ -102,32 +101,6 @@ export function createPreferredYahooSymbolResolver(
   };
 }
 
-export function parsePropertiesMap(text: string): Record<string, string> {
-  const output: Record<string, string> = {};
-
-  for (const line of String(text || "").split(/\r?\n/)) {
-    const trimmed = line.trim();
-
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = trimmed.indexOf("=");
-    if (separatorIndex < 0) {
-      continue;
-    }
-
-    const key = trimmed.slice(0, separatorIndex).trim().toUpperCase();
-    const value = trimmed.slice(separatorIndex + 1).trim();
-
-    if (key) {
-      output[key] = value;
-    }
-  }
-
-  return output;
-}
-
 export function createHoodlefinanceRuntime(
   deps: HoodlefinanceRuntimeDependencies,
 ): HoodlefinanceRuntime {
@@ -146,7 +119,6 @@ export function createHoodlefinanceRuntime(
       getCachedString: deps.getCachedString,
       putCachedJson: deps.putCachedJson,
       putCachedString: deps.putCachedString,
-      resolvePseTickerFromIsinMap: (isin) => deps.resolvePseTickerFromIsinMap(isin),
     });
 
   function createResolutionPath(

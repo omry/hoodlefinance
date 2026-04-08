@@ -136,6 +136,13 @@ function createFakeEnvironment() {
   });
 
   env.httpFetch = function httpFetch(url) {
+    if (
+      String(url) ===
+      "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
+    ) {
+      return "PHY077751022=PSE:BDO\n";
+    }
+
     if (String(url).includes("tradingview.com/symbols/NASDAQ-GOOG/")) {
       return [
         '{"resolved_symbol":"NASDAQ:GOOG"}',
@@ -197,27 +204,31 @@ function createFakeEnvironment() {
   });
 
   setResolverOverride("ISIN:PSE", (resolver) => {
-    resolver.resolve = function resolve(request) {
-      const ticker = String((request && request.ticker) || "")
-        .trim()
-        .toUpperCase();
+    resolver.executeBatch = (jobs) =>
+      jobs.map((job) => {
+        const isin = String(
+          job && job.routeState && job.routeState.isin ? job.routeState.isin : "",
+        )
+          .trim()
+          .toUpperCase();
 
-      return ticker === "PHY077751022" || ticker === "ISIN:PHY077751022"
-        ? {
-            elapsedMs: 0,
-            status: "success",
-            value: {
-              requestType: "equity",
-              symbol: "BDO",
-              yahooSymbol: "BDO.PS",
-            },
-          }
-        : {
-            elapsedMs: 0,
-            error: "not found",
-            status: "failure",
-          };
-    };
+        return isin === "PHY077751022"
+          ? {
+              status: "success",
+              value: new EquityRequest({
+                allowTradingviewFallback: false,
+                attribute: job.routeState.input.attribute,
+                exchange: "PSE",
+                identifier: job.routeState.input.identifier,
+                symbol: "BDO",
+                yahooSymbol: "BDO.PS",
+              }),
+            }
+          : {
+              error: "not found",
+              status: "failure",
+            };
+      });
   });
 
   setResolverOverride("ISIN:YAHOO", (resolver) => {

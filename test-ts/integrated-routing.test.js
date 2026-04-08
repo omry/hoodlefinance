@@ -20,14 +20,16 @@ const {
 
 function createResolverMaterializationDependencies() {
   const commonDeps = {
-    httpFetch: () => "",
+    httpFetch: (url) =>
+      String(url) ===
+      "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
+        ? "PHY077751022=PSE:BDO\n"
+        : "",
     getCachedString: () => "",
     putCachedString: (k, v) => v,
     getCachedJson: () => null,
     putCachedJson: (k, v) => v,
   };
-
-  const resolvePseTickerFromIsinMap = (isin) => (isin === "PHY077751022" ? "PSE:BDO" : "");
 
   return {
     resolverClassesByName: {
@@ -43,7 +45,6 @@ function createResolverMaterializationDependencies() {
     },
     resolverServices: {
       ...commonDeps,
-      resolvePseTickerFromIsinMap,
     },
   };
 }

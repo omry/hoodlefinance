@@ -54,7 +54,7 @@ import {
   createRouteResult,
   type RouteResult,
 } from "./route-results";
-import type { RouteJob, RuntimePlan } from "./planner";
+import type { ResolverNode, RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClassLike } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
 import type { ResolverServices } from "./resolver-services";
@@ -112,7 +112,6 @@ export class DirectIdentifierResolver extends IdentifierResolver {
   }
 }
 
-export type ResolvePseTickerFromIsinMap = (isin: string) => string;
 export interface YahooIsinSearchRequest {
   cacheKey: string;
   index: number;
@@ -165,6 +164,11 @@ interface SequentialFetchResponseLike {
   getResponseCode(): number;
 }
 
+const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
+const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const PSE_ISIN_MAP_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
+
 function createSequentialFetchResponse(
   body: string,
   responseCode = 200,
@@ -202,28 +206,80 @@ function fetchRequestsSequentially<TRequest extends SequentialFetchRequestLike>(
   });
 }
 
-export class PseIsinMapResolver extends IdentifierResolver {
-  readonly traceLabel: string;
-  resolvePseTickerFromIsinMap!: ResolvePseTickerFromIsinMap;
+function parsePropertiesMap(text: string): Record<string, string> {
+  const output: Record<string, string> = {};
 
-  constructor(resolvePseTickerFromIsinMap?: ResolvePseTickerFromIsinMap) {
-    super("ISIN:PSE");
-    this.traceLabel = "ISIN:PSE";
-    if (resolvePseTickerFromIsinMap) {
-      this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
+  for (const line of String(text || "").split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim().toUpperCase();
+    const value = trimmed.slice(separatorIndex + 1).trim();
+
+    if (key) {
+      output[key] = value;
     }
   }
 
-  initEnv(services: ResolverServices): void {
-    const resolvePseTickerFromIsinMap = services.resolvePseTickerFromIsinMap;
+  return output;
+}
 
-    if (typeof resolvePseTickerFromIsinMap !== "function") {
-      throw new Error(
-        "PseIsinMapResolver requires resolvePseTickerFromIsinMap.",
-      );
+export class PseIsinMapResolver extends IdentifierResolver {
+  readonly traceLabel: string;
+  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedString?: ResolverServices["getCachedString"];
+  putCachedString?: ResolverServices["putCachedString"];
+  pseIsinMapByIsin: Record<string, string> | null;
+
+  constructor() {
+    super("ISIN:PSE");
+    this.traceLabel = "ISIN:PSE";
+    this.pseIsinMapByIsin = null;
+  }
+
+  initEnv(services: ResolverServices): void {
+    if (typeof services.httpFetch !== "function") {
+      throw new Error("PseIsinMapResolver requires httpFetch.");
     }
 
-    this.resolvePseTickerFromIsinMap = resolvePseTickerFromIsinMap;
+    this.httpFetch = services.httpFetch;
+    this.getCachedString = services.getCachedString;
+    this.putCachedString = services.putCachedString;
+  }
+
+  ensurePseIsinMap(): Record<string, string> {
+    if (this.pseIsinMapByIsin) {
+      return this.pseIsinMapByIsin;
+    }
+
+    let rawMap = "";
+
+    if (typeof this.getCachedString === "function") {
+      rawMap = String(this.getCachedString(PSE_ISIN_MAP_CACHE_KEY) || "");
+    }
+
+    if (!rawMap) {
+      rawMap = this.httpFetch(PSE_ISIN_MAP_URL);
+
+      if (typeof this.putCachedString === "function") {
+        this.putCachedString(
+          PSE_ISIN_MAP_CACHE_KEY,
+          rawMap,
+          PSE_ISIN_MAP_CACHE_TTL_SECONDS,
+        );
+      }
+    }
+
+    this.pseIsinMapByIsin = parsePropertiesMap(rawMap);
+    return this.pseIsinMapByIsin;
   }
 
   getRoutingDescription(): string | null {
@@ -261,7 +317,8 @@ export class PseIsinMapResolver extends IdentifierResolver {
     for (const job of jobs) {
       try {
         const isin = String(job.routeState.isin || "").trim();
-        const pseTicker = this.resolvePseTickerFromIsinMap(isin);
+        const pseTicker =
+          this.ensurePseIsinMap()[String(isin || "").trim().toUpperCase()] || "";
 
         if (!pseTicker) {
           results.push(createRouteResult("lookup_failure"));
@@ -1361,10 +1418,6 @@ export function createConcreteResolverServices(
   if (deps.putCachedString) {
     services.putCachedString = deps.putCachedString;
   }
-  if (deps.resolvePseTickerFromIsinMap) {
-    services.resolvePseTickerFromIsinMap = deps.resolvePseTickerFromIsinMap;
-  }
-
   return services;
 }
 

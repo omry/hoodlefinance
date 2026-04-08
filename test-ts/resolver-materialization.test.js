@@ -131,6 +131,13 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
           `;
       }
 
+      if (
+        String(url) ===
+        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
+      ) {
+        return "PHY077751022=PSE:BDO\n";
+      }
+
       if (String(url).indexOf("frames.pse.com.ph/security/") >= 0) {
         return `
             <html>
@@ -192,9 +199,6 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     },
     putCachedString(_cacheKey, value) {
       return value;
-    },
-    resolvePseTickerFromIsinMap(isin) {
-      return isin === "PHY077751022" ? "PSE:BDO" : "";
     },
   };
 
