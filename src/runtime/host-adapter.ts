@@ -20,10 +20,6 @@ import {
 } from "../core/request-resolution";
 import type { ResolverPlanNode } from "../core/planner";
 
-interface HoodlefinanceRuntimeRoutingPolicies {
-  resolvePreferredYahooSymbol?(symbol: string): string;
-}
-
 interface HoodlefinanceRuntimeDependencies {
   httpFetch(url: string): string;
   getCachedJson(key: string): unknown;
@@ -31,8 +27,6 @@ interface HoodlefinanceRuntimeDependencies {
   parseFxTicker?(ticker: string): FxPair | null;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
-  resolvePreferredYahooSymbol?(symbol: string): string;
-  routingPolicies?: HoodlefinanceRuntimeRoutingPolicies;
 }
 
 interface HoodlefinanceRuntime {
@@ -47,14 +41,6 @@ export function createHoodlefinanceRuntime(
   type DirectIdentifierResolverLike = Parameters<
     typeof createDefaultResolvePlanBuilder
   >[0]["directIdentifierResolver"];
-  const preferredYahooSymbolResolver =
-    typeof deps.resolvePreferredYahooSymbol === "function"
-      ? deps.resolvePreferredYahooSymbol
-      : typeof deps.routingPolicies?.resolvePreferredYahooSymbol === "function"
-        ? deps.routingPolicies.resolvePreferredYahooSymbol
-        : null;
-  const resolvePreferredYahooSymbol = (symbol: string): string =>
-    preferredYahooSymbolResolver ? preferredYahooSymbolResolver(symbol) : "";
 
   const resolverMaterializationDeps =
     createConcreteResolverMaterializationDependencies({
@@ -63,7 +49,6 @@ export function createHoodlefinanceRuntime(
       getCachedString: deps.getCachedString,
       putCachedJson: deps.putCachedJson,
       putCachedString: deps.putCachedString,
-      resolvePreferredYahooSymbol,
     });
 
   function createResolutionPath(dagPlan: typeof DagPlan) {

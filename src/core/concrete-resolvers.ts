@@ -50,6 +50,10 @@ import {
   type YahooQuoteResponseLike,
 } from "./yahoo-quote";
 import {
+  createPreferredYahooSymbolResolver,
+  tryParsePreferredReitTickerSet,
+} from "./preferred-yahoo-symbols";
+import {
   buildIsraeliFundTradingviewFallbackInfo,
   extractTradingviewFundQuoteFromResponse,
   type TradingviewQuoteResponseLike,
@@ -147,6 +151,11 @@ const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
 const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
+const PREFERRED_REIT_WHITELIST_CACHE_KEY =
+  "hoodlefinance:ts:preferredReitWhitelist";
+const PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const PREFERRED_REIT_WHITELIST_URL =
+  "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json";
 
 function createSequentialFetchResponse(
   body: string,
@@ -1077,12 +1086,15 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
 export class YahooQuoteResolver extends RouteExecutionResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  getCachedString?: ResolverServices["getCachedString"];
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
+  putCachedString?: ResolverServices["putCachedString"];
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
-  resolvePreferredYahooSymbol?: ResolverServices["resolvePreferredYahooSymbol"];
+  preferredReitTickerSet: ReadonlySet<string> | null;
 
   constructor() {
     super("YAHOO");
+    this.preferredReitTickerSet = null;
   }
 
   initEnv(services: ResolverServices): void {
@@ -1097,9 +1109,10 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     }
 
     this.httpFetch = services.httpFetch;
+    this.getCachedString = services.getCachedString;
     this.getCachedJson = services.getCachedJson;
+    this.putCachedString = services.putCachedString;
     this.putCachedJson = services.putCachedJson;
-    this.resolvePreferredYahooSymbol = services.resolvePreferredYahooSymbol;
   }
 
   getExampleInput(): string | null {
@@ -1121,6 +1134,54 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     );
   }
 
+  ensurePreferredReitTickerSet(): ReadonlySet<string> {
+    if (this.preferredReitTickerSet) {
+      return this.preferredReitTickerSet;
+    }
+
+    let preferredReitTickerSet: ReadonlySet<string> | null = null;
+    const cachedText =
+      typeof this.getCachedString === "function"
+        ? String(this.getCachedString(PREFERRED_REIT_WHITELIST_CACHE_KEY) || "")
+        : "";
+
+    if (cachedText) {
+      preferredReitTickerSet = tryParsePreferredReitTickerSet(cachedText);
+    }
+
+    if (!preferredReitTickerSet) {
+      const downloadedText = this.httpFetch(PREFERRED_REIT_WHITELIST_URL);
+
+      preferredReitTickerSet = tryParsePreferredReitTickerSet(downloadedText);
+
+      if (!preferredReitTickerSet) {
+        throw new Error("Invalid preferred REIT whitelist payload.");
+      }
+
+      if (typeof this.putCachedString === "function") {
+        this.putCachedString(
+          PREFERRED_REIT_WHITELIST_CACHE_KEY,
+          downloadedText,
+          PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+        );
+      }
+    }
+
+    this.preferredReitTickerSet = preferredReitTickerSet;
+
+    return preferredReitTickerSet;
+  }
+
+  buildPreferredYahooSymbol(yahooSymbol: string): string {
+    try {
+      return createPreferredYahooSymbolResolver(
+        this.ensurePreferredReitTickerSet(),
+      )(yahooSymbol);
+    } catch {
+      return "";
+    }
+  }
+
   buildRouteState(
     request: RequestInput | ResolvedRequest,
   ): Record<string, unknown> {
@@ -1134,7 +1195,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     if (request instanceof EquityRequest) {
       return buildEquityYahooQuoteRouteState(
         request,
-        this.resolvePreferredYahooSymbol,
+        this.buildPreferredYahooSymbol(request.yahooSymbol),
       );
     }
 
@@ -1406,9 +1467,6 @@ export function createConcreteResolverServices(
   }
   if (deps.putCachedString) {
     services.putCachedString = deps.putCachedString;
-  }
-  if (deps.resolvePreferredYahooSymbol) {
-    services.resolvePreferredYahooSymbol = deps.resolvePreferredYahooSymbol;
   }
   return services;
 }

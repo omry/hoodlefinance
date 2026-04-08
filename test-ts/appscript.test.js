@@ -206,6 +206,39 @@ test("HOODLEFINANCE falls back to the original Yahoo symbol when the preferred R
   assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.11);
 });
 
+test("HOODLEFINANCE reuses the cached preferred REIT whitelist when it is already present", () => {
+  const services = createServices({
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
+      JSON.stringify({
+        chart: {
+          result: [
+            {
+              meta: {
+                currency: "USD",
+                exchangeName: "NYSE",
+                regularMarketPrice: 24.78,
+                symbol: "NLY-PI",
+              },
+            },
+          ],
+        },
+      }),
+  });
+  services.cacheState.set(
+    "hoodlefinance:ts:preferredReitWhitelist",
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  );
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
+  assert.deepEqual(services.fetchCalls, [
+    CURRENCY_CODES_URL,
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d",
+  ]);
+});
+
 test("HOODLEFINANCE reuses the stored preferred REIT whitelist when the cache is cold", () => {
   const services = createServices({
     "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d":
@@ -236,9 +269,19 @@ test("HOODLEFINANCE reuses the stored preferred REIT whitelist when the cache is
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
+  assert.equal(
+    services.cacheState.get("hoodlefinance:ts:preferredReitWhitelist"),
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  );
+  assert.deepEqual(services.fetchCalls, [
+    CURRENCY_CODES_URL,
+    "https://query1.finance.yahoo.com/v8/finance/chart/NLY-PI?interval=1d&range=1d",
+  ]);
 });
 
-test("HOODLEFINANCE stores the preferred REIT whitelist in script properties after downloading it", () => {
+test("HOODLEFINANCE caches and stores the preferred REIT whitelist after downloading it", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
       JSON.stringify({
@@ -263,6 +306,12 @@ test("HOODLEFINANCE stores the preferred REIT whitelist in script properties aft
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE("NLY-I", "price"), 24.78);
+  assert.equal(
+    services.cacheState.get("hoodlefinance:ts:preferredReitWhitelist"),
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
+  );
 
   const storedPayload = JSON.parse(
     services.propertiesState.get("hoodlefinance.preferredReitWhitelist"),
@@ -359,7 +408,7 @@ test("HOODLEFINANCE ignores malformed stored preferred REIT whitelist data and r
   );
 });
 
-test("HOODLEFINANCE skips persisting malformed downloaded preferred REIT whitelist data and falls back to stored data", () => {
+test("HOODLEFINANCE falls back to stored preferred REIT whitelist data when the downloaded payload is malformed", () => {
   const services = createServices({
     "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json":
       "{not valid json",
@@ -397,8 +446,10 @@ test("HOODLEFINANCE skips persisting malformed downloaded preferred REIT whiteli
     storedPayloadText,
   );
   assert.equal(
-    services.cacheState.has("hoodlefinance:ts:preferredReitWhitelist"),
-    false,
+    services.cacheState.get("hoodlefinance:ts:preferredReitWhitelist"),
+    JSON.stringify({
+      preferredTickers: ["NLY I"],
+    }),
   );
 });
 

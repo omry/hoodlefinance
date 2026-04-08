@@ -46,14 +46,11 @@ export function buildEquityYahooQuoteRouteState(
     Extract<ResolvedRequest, { requestType: "equity" }>,
     "yahooSymbol"
   >,
-  resolvePreferredYahooSymbol?: ((symbol: string) => string) | null,
+  preferredYahooSymbol = "",
 ): EquityYahooQuoteRouteState {
   return {
     fxPair: null,
     yahooSymbol: request.yahooSymbol,
-    preferredYahooSymbol:
-      typeof resolvePreferredYahooSymbol === "function"
-        ? resolvePreferredYahooSymbol(request.yahooSymbol)
-        : "",
+    preferredYahooSymbol: String(preferredYahooSymbol || ""),
   };
 }

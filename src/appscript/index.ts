@@ -1,15 +1,13 @@
 import { createHoodlefinanceRuntime } from "../runtime/host-adapter";
-import { createPreferredYahooSymbolResolver } from "../core/preferred-yahoo-symbols";
 import {
   type AppsScriptCacheLike,
   type AppsScriptUrlFetchLike,
   cacheTextResource,
   createJsonCache,
+  parsePreferredReitTickerSetIfValid,
+  parseStoredTextResourcePayload,
   createStoredTextState,
   createStringCache,
-  parsePreferredReitTickerSetIfValid,
-  parsePreferredReitTickerSetOrThrow,
-  parseStoredTextResourcePayload,
 } from "./utils";
 import {
   createFxTickerParser,
@@ -141,13 +139,102 @@ export function createHoodlefinanceAppScriptBindings(
     ? services.propertiesService.getScriptProperties()
     : null;
   let fxTickerParser: ReturnType<typeof createFxTickerParser> | null = null;
-  let preferredReitTickerSet: Set<string> | null = null;
+  let suppressPreferredReitWhitelistStoreWrite = false;
+  const readStoredPreferredReitWhitelist = () => {
+    const storedPayload = parseStoredTextResourcePayload(
+      scriptProperties
+        ? scriptProperties.getProperty(PREFERRED_REIT_WHITELIST_PROPERTY)
+        : null,
+    );
+    const storedTextState = createStoredTextState(
+      storedPayload && storedPayload.text,
+      Number(storedPayload && storedPayload.fetchedAtMs),
+      Date.now(),
+      PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS,
+    );
+
+    return {
+      fallbackText: parsePreferredReitTickerSetIfValid(
+        storedTextState.fallbackText,
+      )
+        ? storedTextState.fallbackText
+        : "",
+      freshText: parsePreferredReitTickerSetIfValid(storedTextState.freshText)
+        ? storedTextState.freshText
+        : "",
+    };
+  };
+  const rememberPreferredReitWhitelist = (text: string) => {
+    if (!scriptProperties || !parsePreferredReitTickerSetIfValid(text)) {
+      return;
+    }
+
+    scriptProperties.setProperty(
+      PREFERRED_REIT_WHITELIST_PROPERTY,
+      JSON.stringify({
+        fetchedAtMs: Date.now(),
+        text,
+      }),
+    );
+  };
   const runtime = createHoodlefinanceRuntime({
     httpFetch(url) {
-      return services.urlFetchApp.fetch(url).getContentText();
+      if (url !== PREFERRED_REIT_WHITELIST_URL) {
+        return services.urlFetchApp.fetch(url).getContentText();
+      }
+
+      const storedTextState = readStoredPreferredReitWhitelist();
+
+      try {
+        const downloadedText = services.urlFetchApp.fetch(url).getContentText();
+
+        if (parsePreferredReitTickerSetIfValid(downloadedText)) {
+          rememberPreferredReitWhitelist(downloadedText);
+          return downloadedText;
+        }
+
+        if (storedTextState.fallbackText) {
+          suppressPreferredReitWhitelistStoreWrite = true;
+          return storedTextState.fallbackText;
+        }
+
+        return downloadedText;
+      } catch (error) {
+        if (storedTextState.fallbackText) {
+          suppressPreferredReitWhitelistStoreWrite = true;
+          return storedTextState.fallbackText;
+        }
+
+        throw error;
+      }
     },
     getCachedJson: jsonCache.getCachedJson,
-    getCachedString: stringCache.getCachedString,
+    getCachedString(key) {
+      const cachedText = stringCache.getCachedString(key);
+
+      if (key !== PREFERRED_REIT_WHITELIST_CACHE_KEY) {
+        return cachedText;
+      }
+
+      if (parsePreferredReitTickerSetIfValid(cachedText)) {
+        return cachedText;
+      }
+
+      const storedTextState = readStoredPreferredReitWhitelist();
+
+      if (storedTextState.freshText) {
+        cacheTextResource(
+          stringCache,
+          PREFERRED_REIT_WHITELIST_CACHE_KEY,
+          PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
+          storedTextState.freshText,
+        );
+
+        return storedTextState.freshText;
+      }
+
+      return "";
+    },
     parseFxTicker(ticker) {
       if (!fxTickerParser) {
         const nowMs = Date.now();
@@ -241,91 +328,18 @@ export function createHoodlefinanceAppScriptBindings(
       return fxTickerParser(ticker);
     },
     putCachedJson: jsonCache.putCachedJson,
-    putCachedString: stringCache.putCachedString,
-    resolvePreferredYahooSymbol(ticker) {
-      try {
-        if (!preferredReitTickerSet) {
-          const nowMs = Date.now();
-          const storedPayload = parseStoredTextResourcePayload(
-            scriptProperties
-              ? scriptProperties.getProperty(PREFERRED_REIT_WHITELIST_PROPERTY)
-              : null,
-          );
-          const storedTextState = createStoredTextState(
-            storedPayload && storedPayload.text,
-            Number(storedPayload && storedPayload.fetchedAtMs),
-            nowMs,
-            PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS,
-          );
-          const cachedText = stringCache.getCachedString(
-            PREFERRED_REIT_WHITELIST_CACHE_KEY,
-          );
-          const cachedTickerSet =
-            parsePreferredReitTickerSetIfValid(cachedText);
-          let resolvedTickerSet = cachedTickerSet;
+    putCachedString(key, value, ttlSeconds) {
+      const normalized = stringCache.putCachedString(key, value, ttlSeconds);
 
-          if (!resolvedTickerSet && storedTextState.freshText) {
-            const storedTickerSet = parsePreferredReitTickerSetIfValid(
-              storedTextState.freshText,
-            );
-
-            if (storedTickerSet) {
-              resolvedTickerSet = storedTickerSet;
-              cacheTextResource(
-                stringCache,
-                PREFERRED_REIT_WHITELIST_CACHE_KEY,
-                PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-                storedTextState.freshText,
-              );
-            }
-          }
-
-          if (!resolvedTickerSet) {
-            try {
-              const downloadedText = services.urlFetchApp
-                .fetch(PREFERRED_REIT_WHITELIST_URL)
-                .getContentText();
-              const preferredTickerSet =
-                parsePreferredReitTickerSetOrThrow(downloadedText);
-
-              cacheTextResource(
-                stringCache,
-                PREFERRED_REIT_WHITELIST_CACHE_KEY,
-                PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-                downloadedText,
-              );
-
-              if (scriptProperties) {
-                scriptProperties.setProperty(
-                  PREFERRED_REIT_WHITELIST_PROPERTY,
-                  JSON.stringify({
-                    fetchedAtMs: nowMs,
-                    text: downloadedText,
-                  }),
-                );
-              }
-
-              resolvedTickerSet = preferredTickerSet;
-            } catch {
-              if (storedTextState.fallbackText) {
-                resolvedTickerSet = parsePreferredReitTickerSetOrThrow(
-                  storedTextState.fallbackText,
-                );
-              }
-            }
-          }
-
-          if (!resolvedTickerSet) {
-            throw new Error("Failed to load the preferred REIT whitelist.");
-          }
-
-          preferredReitTickerSet = resolvedTickerSet;
+      if (key === PREFERRED_REIT_WHITELIST_CACHE_KEY) {
+        if (suppressPreferredReitWhitelistStoreWrite) {
+          suppressPreferredReitWhitelistStoreWrite = false;
+        } else {
+          rememberPreferredReitWhitelist(normalized);
         }
-      } catch {
-        return "";
       }
 
-      return createPreferredYahooSymbolResolver(preferredReitTickerSet)(ticker);
+      return normalized;
     },
   });
 

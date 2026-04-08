@@ -45,6 +45,24 @@ export function parsePreferredReitTickerSet(text: string): Set<string> {
   return normalizedSet;
 }
 
+export function tryParsePreferredReitTickerSet(
+  text: string | null | undefined,
+): Set<string> | null {
+  const rawText = String(text || "");
+
+  if (!rawText) {
+    return null;
+  }
+
+  try {
+    JSON.parse(rawText);
+  } catch {
+    return null;
+  }
+
+  return parsePreferredReitTickerSet(rawText);
+}
+
 export function createPreferredYahooSymbolResolver(
   preferredTickerSet: ReadonlySet<string>,
 ): (ticker: string) => string {

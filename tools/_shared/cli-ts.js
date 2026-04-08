@@ -4,10 +4,6 @@
 const {
   createHoodlefinanceRuntime,
 } = require("../../dist/ts/runtime/host-adapter.js");
-const {
-  createPreferredYahooSymbolResolver,
-  parsePreferredReitTickerSet,
-} = require("../../dist/ts/core/preferred-yahoo-symbols.js");
 const { createRequestInput } = require("../../dist/ts/core/request-building.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
 const {
@@ -21,15 +17,17 @@ const {
 } = require("../../dist/ts/core/routing-introspection.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
+const PREFERRED_REIT_WHITELIST_CACHE_KEY =
+  "hoodlefinance:ts:preferredReitWhitelist";
 
 function loadTextFile(path) {
   return fs.readFileSync(path, "utf8");
 }
 
-function loadPreferredReitTickerSet() {
+function loadPreferredReitWhitelistText() {
   const dataPath = `${__dirname}/../../data/preferred-reit-whitelist.json`;
 
-  return parsePreferredReitTickerSet(loadTextFile(dataPath));
+  return loadTextFile(dataPath);
 }
 
 function createSyncFetcher() {
@@ -78,20 +76,20 @@ function createJsonCache() {
 
 function createCliEnvironment() {
   const syncFetchText = createSyncFetcher();
-  const preferredReitTickerSet = loadPreferredReitTickerSet();
   const stringCache = createStringCache();
   const jsonCache = createJsonCache();
+
+  stringCache.putCachedString(
+    PREFERRED_REIT_WHITELIST_CACHE_KEY,
+    loadPreferredReitWhitelistText(),
+  );
+
   const runtime = createHoodlefinanceRuntime({
     httpFetch: syncFetchText,
     getCachedJson: jsonCache.getCachedJson,
     getCachedString: stringCache.getCachedString,
     putCachedJson: jsonCache.putCachedJson,
     putCachedString: stringCache.putCachedString,
-    routingPolicies: {
-      resolvePreferredYahooSymbol: createPreferredYahooSymbolResolver(
-        preferredReitTickerSet,
-      ),
-    },
   });
 
   return {

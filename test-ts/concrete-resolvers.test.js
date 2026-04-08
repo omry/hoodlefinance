@@ -526,8 +526,14 @@ test("YahooQuoteResolver owns preferred equity fallback symbols without affectin
       cachedWrite = { cacheKey, ttlSeconds, value };
       return value;
     },
-    resolvePreferredYahooSymbol(symbol) {
-      return symbol === "NLY-I" ? "NLY-PI" : "";
+    getCachedString(cacheKey) {
+      assert.equal(cacheKey, "hoodlefinance:ts:preferredReitWhitelist");
+      return JSON.stringify({
+        preferredTickers: ["NLY I"],
+      });
+    },
+    putCachedString() {
+      throw new Error("valid cached whitelist should not be rewritten");
     },
   });
 
