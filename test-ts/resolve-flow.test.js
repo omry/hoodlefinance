@@ -59,11 +59,11 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
   assert.equal(resolveFlow.dag.terminal.code, "TERMINAL");
   assert.equal(
     resolveFlow.getNodeByCode("YAHOO"),
-    resolveFlow.resolverNodesByCode.YAHOO,
+    resolveFlow.nodesByCode.YAHOO,
   );
   assert.equal(
     resolveFlow.getPlanNodeByCode("DEFAULT-ATTRIBUTE"),
-    resolveFlow.planNodesByCode["DEFAULT-ATTRIBUTE"],
+    resolveFlow.getNodeByCode("DEFAULT-ATTRIBUTE"),
   );
   assert.equal(
     resolveFlow

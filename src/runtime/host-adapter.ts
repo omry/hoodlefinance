@@ -1,7 +1,7 @@
 import { createConcreteResolverMaterializationDependencies } from "../core/concrete-resolvers";
 import { resolveRoutingNode } from "../core/plan-navigation";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
-import { ResolveFlow } from "../core/resolve-flow";
+import { collectResolverNodesByCode, ResolveFlow } from "../core/resolve-flow";
 import { extractAttributeValue } from "../core/attribute-extraction";
 import {
   looksLikeIsin,
@@ -144,7 +144,7 @@ export function createHoodlefinanceRuntime(
       buildResolvePlan,
       getPlanNodeByCode: getPathPlanNodeByCode,
       resolutionEnv,
-      resolversByCode: resolveFlow.resolverNodesByCode,
+      resolversByCode: collectResolverNodesByCode(resolveFlow),
       resolveFxRate,
     };
   }

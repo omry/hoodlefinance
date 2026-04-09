@@ -99,23 +99,18 @@ function requireDagNodeSpec(
 export interface ResolveFlowOptions {
   dag: HoodleFinancePlanSpecDag;
   nodesByCode: Record<string, ResolverNode>;
-  planNodesByCode: Record<string, ResolverPlanNode>;
-  resolverNodesByCode: Record<string, ResolverNode>;
+  // TODO: Runtime refs are left over from the DI implementation. we should strive to eliminate it.
   runtimeRefs: ReturnType<typeof createPlanRuntimeRefs>;
 }
 
 export class ResolveFlow {
   readonly dag: HoodleFinancePlanSpecDag;
   readonly nodesByCode: Record<string, ResolverNode>;
-  readonly planNodesByCode: Record<string, ResolverPlanNode>;
-  readonly resolverNodesByCode: Record<string, ResolverNode>;
   private readonly runtimeRefs: ReturnType<typeof createPlanRuntimeRefs>;
 
   constructor(options: ResolveFlowOptions) {
     this.dag = options.dag;
     this.nodesByCode = options.nodesByCode;
-    this.planNodesByCode = options.planNodesByCode;
-    this.resolverNodesByCode = options.resolverNodesByCode;
     this.runtimeRefs = options.runtimeRefs;
   }
 
@@ -152,9 +147,6 @@ export class ResolveFlow {
     );
 
     this.nodesByCode[normalizedCode] = compiledNode;
-    if (isResolverPlanNode(compiledNode)) {
-      this.planNodesByCode[normalizedCode] = compiledNode;
-    }
 
     return compiledNode;
   };
@@ -183,11 +175,6 @@ export class ResolveFlow {
     const flow = new ResolveFlow({
       dag,
       nodesByCode: Object.assign(Object.create(null), resolverRegistry.byCode),
-      planNodesByCode: Object.create(null),
-      resolverNodesByCode: Object.assign(
-        Object.create(null),
-        resolverRegistry.byCode,
-      ),
       runtimeRefs: createPlanRuntimeRefs(deps),
     });
 
@@ -206,4 +193,20 @@ export function compileResolveFlow(
   deps: ResolveFlowDependencies,
 ): ResolveFlow {
   return ResolveFlow.fromPlanSpecs(planSpecsByCode, deps);
+}
+
+export function collectResolverNodesByCode(
+  resolveFlow: ResolveFlow,
+): Record<string, ResolverNode> {
+  const resolverNodesByCode: Record<string, ResolverNode> = Object.create(null);
+
+  for (const [code, node] of Object.entries(resolveFlow.nodesByCode)) {
+    if (isResolverPlanNode(node)) {
+      continue;
+    }
+
+    resolverNodesByCode[code] = node;
+  }
+
+  return resolverNodesByCode;
 }
