@@ -10,10 +10,10 @@ const {
   PseFramesResolver,
   PseIsinMapResolver,
   RequestClassifierResolver,
+  ResolveFlow,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
   TradingviewFundResolver,
-  compileDagPlanForLegacyExecution,
 } = require("../dist/ts/core/index.js");
 
 function createResolverMaterializationDependencies() {
@@ -49,35 +49,38 @@ function createResolverMaterializationDependencies() {
   };
 }
 
-test("compileDagPlanForLegacyExecution builds executable nodes directly from DagPlan", () => {
-  const compiled = compileDagPlanForLegacyExecution(
+test("ResolveFlow builds executable nodes directly from DagPlan", () => {
+  const resolveFlow = ResolveFlow.fromPlanSpecs(
     DagPlan,
     createResolverMaterializationDependencies(),
   );
 
-  assert.equal(compiled.dag.root.code, "ROOT");
-  assert.equal(compiled.dag.terminal.code, "TERMINAL");
-  assert.equal(compiled.getNodeByCode("YAHOO"), compiled.resolverNodesByCode.YAHOO);
+  assert.equal(resolveFlow.dag.root.code, "ROOT");
+  assert.equal(resolveFlow.dag.terminal.code, "TERMINAL");
   assert.equal(
-    compiled.getPlanNodeByCode("DEFAULT-ATTRIBUTE"),
-    compiled.planNodesByCode["DEFAULT-ATTRIBUTE"],
+    resolveFlow.getNodeByCode("YAHOO"),
+    resolveFlow.resolverNodesByCode.YAHOO,
   );
   assert.equal(
-    compiled
+    resolveFlow.getPlanNodeByCode("DEFAULT-ATTRIBUTE"),
+    resolveFlow.planNodesByCode["DEFAULT-ATTRIBUTE"],
+  );
+  assert.equal(
+    resolveFlow
       .getPlanNodeByCode("IDENTIFIER:ISIN")
       .describe({ attribute: "price", ticker: "PHY077751022" }),
     "IDENTIFIER:ISIN -> ISIN:PSE -> ISIN:YAHOO",
   );
 });
 
-test("compileDagPlanForLegacyExecution rejects terminal nodes as executable plan lookups", () => {
-  const compiled = compileDagPlanForLegacyExecution(
+test("ResolveFlow rejects terminal nodes as executable plan lookups", () => {
+  const resolveFlow = ResolveFlow.fromPlanSpecs(
     DagPlan,
     createResolverMaterializationDependencies(),
   );
 
   assert.throws(
-    () => compiled.getNodeByCode("TERMINAL"),
+    () => resolveFlow.getNodeByCode("TERMINAL"),
     /terminal node "TERMINAL" is not executable/i,
   );
 });

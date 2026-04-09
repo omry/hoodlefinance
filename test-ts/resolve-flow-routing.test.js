@@ -11,8 +11,8 @@ const {
   PseIsinMapResolver,
   RequestClassifierResolver,
   RequestInput,
+  ResolveFlow,
   TradingviewFundResolver,
-  compileDagPlanForLegacyExecution,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
   createDefaultResolvePlanBuilder,
@@ -90,7 +90,7 @@ function createRequestInput(identifier, attribute = "price") {
 }
 
 function createBuildResolvePlanFromCompiledDag() {
-  const compiledDagPlan = compileDagPlanForLegacyExecution(
+  const resolveFlow = ResolveFlow.fromPlanSpecs(
     DagPlan,
     {
       ...createResolverMaterializationDependencies(),
@@ -99,9 +99,9 @@ function createBuildResolvePlanFromCompiledDag() {
   );
 
   return createDefaultResolvePlanBuilder({
-    directIdentifierResolver: compiledDagPlan.getNodeByCode("RESOLVED-IDENTIFIER"),
+    directIdentifierResolver: resolveFlow.getNodeByCode("RESOLVED-IDENTIFIER"),
     getPlanNodeByCode(code) {
-      return compiledDagPlan.getPlanNodeByCode(code);
+      return resolveFlow.getPlanNodeByCode(code);
     },
   });
 }

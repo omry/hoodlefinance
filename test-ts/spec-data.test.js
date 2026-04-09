@@ -3,11 +3,11 @@ const test = require("node:test");
 
 const {
   DagPlan,
-  deriveDagPlanLegacyExecutionSpecs,
+  deriveResolveFlowSpecs,
 } = require("../dist/ts/core/index.js");
 
-test("legacy execution specs are derived from DagPlan only through the legacy adapter", () => {
-  const derived = deriveDagPlanLegacyExecutionSpecs(DagPlan);
+test("resolve flow specs are derived from DagPlan through the flow compiler", () => {
+  const derived = deriveResolveFlowSpecs(DagPlan);
 
   assert.equal(
     derived.resolverSpecsByCode["CLASSIFY-REQUEST"],
@@ -27,10 +27,10 @@ test("legacy execution specs are derived from DagPlan only through the legacy ad
   );
 });
 
-test("deriveDagPlanLegacyExecutionSpecs validates DAG structure before projection", () => {
+test("deriveResolveFlowSpecs validates DAG structure before projection", () => {
   assert.throws(
     () =>
-      deriveDagPlanLegacyExecutionSpecs({
+      deriveResolveFlowSpecs({
         ROOT: {
           resolverClass: "RoutingPlan",
           nodeCodes: ["MISSING"],

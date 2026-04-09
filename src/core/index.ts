@@ -1,6 +1,6 @@
 export * from "./plan-spec-dag";
 export * from "./plan-specs";
-export * from "./dag-plan-legacy-execution";
+export * from "./resolve-flow";
 export * from "./attribute-extraction";
 export * from "./plan-runtime-refs";
 export * from "./plan-navigation";

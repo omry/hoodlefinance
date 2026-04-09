@@ -14,9 +14,9 @@ const {
   TradingviewFundResolver,
   DagPlan,
   RequestInput,
-  compileDagPlanForLegacyExecution,
   createDefaultResolvePlanBuilder,
   getRoutingTableRows,
+  ResolveFlow,
 } = require("../dist/ts/core/index.js");
 
 function createResolverMaterializationDependencies() {
@@ -52,7 +52,7 @@ function createResolverMaterializationDependencies() {
 }
 
 function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
-  return compileDagPlanForLegacyExecution(planSpecsByCode, {
+  return ResolveFlow.fromPlanSpecs(planSpecsByCode, {
     ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
   });

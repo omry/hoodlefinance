@@ -1,7 +1,7 @@
 import { createConcreteResolverMaterializationDependencies } from "../core/concrete-resolvers";
-import { compileDagPlanForLegacyExecution } from "../core/dag-plan-legacy-execution";
 import { resolveRoutingNode } from "../core/plan-navigation";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
+import { ResolveFlow } from "../core/resolve-flow";
 import { extractAttributeValue } from "../core/attribute-extraction";
 import {
   looksLikeIsin,
@@ -74,17 +74,17 @@ export function createHoodlefinanceRuntime(
     });
 
   function createResolutionPath(dagPlan: typeof DagPlan) {
-    const compiledDagPlan = compileDagPlanForLegacyExecution(dagPlan, {
+    const resolveFlow = ResolveFlow.fromPlanSpecs(dagPlan, {
       ...resolverMaterializationDeps,
       looksLikeIsin(value) {
         return looksLikeIsin(value);
       },
     });
-    const directIdentifierResolver = compiledDagPlan.getNodeByCode(
+    const directIdentifierResolver = resolveFlow.getNodeByCode(
       "RESOLVED-IDENTIFIER",
     )!;
     const getPathPlanNodeByCode = (code: string): ResolverPlanNode =>
-      compiledDagPlan.getPlanNodeByCode(code);
+      resolveFlow.getPlanNodeByCode(code);
     const buildResolvePlan = createDefaultResolvePlanBuilder({
       directIdentifierResolver:
         directIdentifierResolver as DirectIdentifierResolverLike,
@@ -144,7 +144,7 @@ export function createHoodlefinanceRuntime(
       buildResolvePlan,
       getPlanNodeByCode: getPathPlanNodeByCode,
       resolutionEnv,
-      resolversByCode: compiledDagPlan.resolverNodesByCode,
+      resolversByCode: resolveFlow.resolverNodesByCode,
       resolveFxRate,
     };
   }
