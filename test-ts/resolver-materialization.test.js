@@ -19,6 +19,7 @@ const {
   getRegisteredResolverByName,
   materializeResolversByCode,
 } = require("../dist/ts/core/index.js");
+const { createTestResolverServices } = require("./resolver-service-fixtures.js");
 
 class FakeResolver {
   constructor(code) {
@@ -73,7 +74,7 @@ test("materializeResolversByCode rejects unknown class names", () => {
 });
 
 test("materializeResolversByCode can instantiate concrete resolvers with class-specific dependencies", () => {
-  const services = {
+  const services = createTestResolverServices({
     httpFetch(url) {
       if (String(url) === "https://www.google.com/finance/quote/EUR-USD") {
         return `AF_initDataCallback({data:${JSON.stringify([
@@ -200,7 +201,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     putCachedString(_cacheKey, value) {
       return value;
     },
-  };
+  });
 
   const registry = materializeResolversByCode(
     {

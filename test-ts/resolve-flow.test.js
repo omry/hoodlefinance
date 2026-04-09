@@ -15,17 +15,9 @@ const {
   YahooQuoteResolver,
   TradingviewFundResolver,
 } = require("../dist/ts/core/index.js");
-const { createStaticResourceHttpFetch } = require("./resource-fixtures.js");
+const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
 function createResolverMaterializationDependencies() {
-  const commonDeps = {
-    httpFetch: createStaticResourceHttpFetch(),
-    getCachedJson: () => null,
-    getCachedString: () => "",
-    putCachedJson: (_key, value) => value,
-    putCachedString: (_key, value) => value,
-  };
-
   return {
     looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
     resolverClassesByName: {
@@ -40,9 +32,7 @@ function createResolverMaterializationDependencies() {
       YahooIsinSearchResolver,
       YahooQuoteResolver,
     },
-    resolverServices: {
-      ...commonDeps,
-    },
+    resolverServices: createStaticResolverServices(),
   };
 }
 

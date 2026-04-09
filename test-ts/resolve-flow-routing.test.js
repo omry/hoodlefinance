@@ -17,17 +17,9 @@ const {
   YahooQuoteResolver,
   createDefaultResolvePlanBuilder,
 } = require("../dist/ts/core/index.js");
-const { createStaticResourceHttpFetch } = require("./resource-fixtures.js");
+const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
 function createResolverMaterializationDependencies() {
-  const commonDeps = {
-    httpFetch: createStaticResourceHttpFetch(),
-    getCachedJson: () => null,
-    getCachedString: () => "",
-    putCachedJson: (_key, value) => value,
-    putCachedString: (_key, value) => value,
-  };
-
   return {
     resolverClassesByName: {
       DirectIdentifierResolver,
@@ -41,9 +33,7 @@ function createResolverMaterializationDependencies() {
       YahooIsinSearchResolver,
       YahooQuoteResolver,
     },
-    resolverServices: {
-      ...commonDeps,
-    },
+    resolverServices: createStaticResolverServices(),
   };
 }
 

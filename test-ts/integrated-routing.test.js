@@ -18,17 +18,9 @@ const {
   getRoutingTableRows,
   ResolveFlow,
 } = require("../dist/ts/core/index.js");
-const { createStaticResourceHttpFetch } = require("./resource-fixtures.js");
+const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
 function createResolverMaterializationDependencies() {
-  const commonDeps = {
-    httpFetch: createStaticResourceHttpFetch(),
-    getCachedString: () => "",
-    putCachedString: (k, v) => v,
-    getCachedJson: () => null,
-    putCachedJson: (k, v) => v,
-  };
-
   return {
     resolverClassesByName: {
       DirectIdentifierResolver,
@@ -42,9 +34,7 @@ function createResolverMaterializationDependencies() {
       YahooQuoteResolver,
       TradingviewFundResolver,
     },
-    resolverServices: {
-      ...commonDeps,
-    },
+    resolverServices: createStaticResolverServices(),
   };
 }
 

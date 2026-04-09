@@ -5,11 +5,35 @@ const {
   resolveRequestEnvelope,
   resolveRequestValue,
 } = require("../dist/ts/core/index.js");
+const { createTestResolverServices } = require("./resolver-service-fixtures.js");
 
 function createEnv(overrides = {}) {
   const counters = {
     buildResolvePlan: 0,
   };
+  const resolverServices = createTestResolverServices({
+    getCachedString(key) {
+      if (typeof overrides.getCachedString === "function") {
+        return overrides.getCachedString(key);
+      }
+
+      return "";
+    },
+    httpFetch(url) {
+      if (typeof overrides.httpFetch === "function") {
+        return overrides.httpFetch(url);
+      }
+
+      return "";
+    },
+    putCachedString(key, value, _ttlSeconds) {
+      if (typeof overrides.putCachedString === "function") {
+        return overrides.putCachedString(key, value);
+      }
+
+      return String(value || "");
+    },
+  });
 
   return {
     buildResolvePlan() {
@@ -22,30 +46,12 @@ function createEnv(overrides = {}) {
       throw new Error("buildResolvePlan should not be called for this test");
     },
     counters,
-    httpFetch(url) {
-      if (typeof overrides.httpFetch === "function") {
-        return overrides.httpFetch(url);
-      }
-
-      return "";
-    },
-    getCachedString(key) {
-      if (typeof overrides.getCachedString === "function") {
-        return overrides.getCachedString(key);
-      }
-
-      return "";
-    },
+    getCachedString: resolverServices.getCachedString,
+    httpFetch: resolverServices.httpFetch,
     looksLikeIsin() {
       return false;
     },
-    putCachedString(key, value) {
-      if (typeof overrides.putCachedString === "function") {
-        return overrides.putCachedString(key, value);
-      }
-
-      return String(value || "");
-    },
+    putCachedString: resolverServices.putCachedString,
   };
 }
 
