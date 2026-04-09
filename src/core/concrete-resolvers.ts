@@ -141,7 +141,6 @@ export class RequestClassifierResolver extends IdentifierResolver {
     | ((ticker: string) => ReturnType<typeof createRequestInput>["fxPair"])
     | null
     | undefined;
-  private services: ResolverServices = {};
 
   constructor() {
     super("CLASSIFY-REQUEST");
@@ -163,47 +162,7 @@ export class RequestClassifierResolver extends IdentifierResolver {
   }
 
   initEnv(services: ResolverServices): void {
-    this.services = services;
-    this.fxTickerParser = undefined;
-  }
-
-  private getFxTickerParser():
-    | ((ticker: string) => ReturnType<typeof createRequestInput>["fxPair"])
-    | null {
-    if (this.fxTickerParser !== undefined) {
-      return this.fxTickerParser;
-    }
-
-    if (typeof this.services.httpFetch !== "function") {
-      this.fxTickerParser = null;
-      return this.fxTickerParser;
-    }
-
-    this.fxTickerParser = createStoredFxTickerParser({
-      fetchText: this.services.httpFetch,
-      ...(typeof this.services.getCachedString === "function"
-        ? {
-            getCachedString: this.services.getCachedString,
-          }
-        : {}),
-      ...(typeof this.services.getStoredTextResource === "function"
-        ? {
-            getStoredTextResource: this.services.getStoredTextResource,
-          }
-        : {}),
-      ...(typeof this.services.putCachedString === "function"
-        ? {
-            putCachedString: this.services.putCachedString,
-          }
-        : {}),
-      ...(typeof this.services.putStoredTextResource === "function"
-        ? {
-            putStoredTextResource: this.services.putStoredTextResource,
-          }
-        : {}),
-    });
-
-    return this.fxTickerParser;
+    this.fxTickerParser = createStoredFxTickerParser(services);
   }
 
   resolve(input: RequestInput | RawRequestInput | ResolvedRequest) {
@@ -220,10 +179,9 @@ export class RequestClassifierResolver extends IdentifierResolver {
       }
 
       const rawInput = input as RawRequestInput;
-      const fxTickerParser = this.getFxTickerParser();
-      const requestInput = fxTickerParser
+      const requestInput = this.fxTickerParser
         ? createRequestInput(rawInput.identifier, rawInput.attribute, {
-            parseFxTicker: fxTickerParser,
+            parseFxTicker: this.fxTickerParser,
           })
         : createRequestInput(rawInput.identifier, rawInput.attribute);
 

@@ -1,6 +1,7 @@
 import type { FxPair } from "./request";
 import {
   loadStoredTextResource,
+  type ResolverServices,
   type StoredTextResource,
 } from "./resolver-services";
 
@@ -28,18 +29,6 @@ export interface CurrencyCodeDataPayload {
   aliases?: Record<string, CurrencyCodeAliasEntry>;
   canonicalCodes?: string[];
   cryptoCodes?: string[];
-}
-
-export interface CurrencyCodeResourceServices {
-  fetchText(url: string): string;
-  getCachedString?(cacheKey: string): string;
-  getStoredTextResource?(resourceKey: string): StoredTextResource | null;
-  putCachedString?(cacheKey: string, value: string, ttlSeconds: number): string;
-  putStoredTextResource?(
-    resourceKey: string,
-    text: string,
-    fetchedAtMs: number,
-  ): StoredTextResource | null;
 }
 
 export const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
@@ -366,13 +355,19 @@ export function createFxTickerParser(
 }
 
 export function loadCurrencyCodeUnits(
-  services: CurrencyCodeResourceServices,
+  services: ResolverServices,
 ): Record<string, CurrencyUnit> {
+  if (typeof services.httpFetch !== "function") {
+    throw new Error(
+      `Currency code loading requires resolverServices.httpFetch to fetch "${CURRENCY_CODES_URL}".`,
+    );
+  }
+
   return parseCurrencyCodeDataResource(
     loadStoredTextResource({
       cacheKey: CURRENCY_CODES_CACHE_KEY,
       cacheTtlSeconds: CURRENCY_CODES_CACHE_TTL_SECONDS,
-      fetchText: () => services.fetchText(CURRENCY_CODES_URL),
+      fetchText: () => services.httpFetch!(CURRENCY_CODES_URL),
       getCachedString: services.getCachedString,
       getStoredTextResource: services.getStoredTextResource,
       invalidPayloadMessage: `Invalid text resource payload for ${CURRENCY_CODES_URL}`,
@@ -393,7 +388,7 @@ export function loadCurrencyCodeUnits(
 }
 
 export function createStoredFxTickerParser(
-  services: CurrencyCodeResourceServices,
+  services: ResolverServices,
 ): (ticker: string) => FxPair | null {
   return createFxTickerParser(loadCurrencyCodeUnits(services));
 }

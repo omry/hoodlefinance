@@ -17,14 +17,11 @@ const {
   YahooQuoteResolver,
   createDefaultResolvePlanBuilder,
 } = require("../dist/ts/core/index.js");
+const { createStaticResourceHttpFetch } = require("./resource-fixtures.js");
 
 function createResolverMaterializationDependencies() {
   const commonDeps = {
-    httpFetch: (url) =>
-      String(url) ===
-      "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
-        ? "PHY077751022=PSE:BDO\n"
-        : "",
+    httpFetch: createStaticResourceHttpFetch(),
     getCachedJson: () => null,
     getCachedString: () => "",
     putCachedJson: (_key, value) => value,
