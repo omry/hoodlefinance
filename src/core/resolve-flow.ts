@@ -1,7 +1,7 @@
-import { isResolverPlanNode, resolveRoutingNode } from "./plan-navigation";
+import { isResolverPlanNode } from "./plan-navigation";
 import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
-import { RawRequestInput, type FxPair, FxRequest } from "./request";
+import { RawRequestInput } from "./request";
 import {
   createPlanRuntimeRefs,
   type PlanRuntimeRefDependencies,
@@ -14,15 +14,13 @@ import {
   materializeResolversByCode,
   type ResolverMaterializationDependencies,
 } from "./resolver-materialization";
-import { createDefaultResolvePlanBuilder } from "./resolve-plan";
 import {
-  resolvePlannedQuoteEnvelope,
   resolveRequestEnvelope,
   resolveRequestValue,
   type LookupEnvelopeResult,
   type RequestResolutionDependencies,
 } from "./request-resolution";
-import { extractAttributeValue } from "./attribute-extraction";
+import { createRequestResolutionEnvHelpers } from "./request-resolution-env";
 
 function isPlanResolverClass(nodeType: string): boolean {
   return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
@@ -386,83 +384,12 @@ export class ResolveFlow {
       return;
     }
 
-    const directIdentifierResolver = this.getNodeByCode(
-      "RESOLVED-IDENTIFIER",
-    ) as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"];
-    const fxPlan = this.getPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
-    const resolverServices = deps.resolverServices || {};
-    const buildResolvePlan = createDefaultResolvePlanBuilder({
-      directIdentifierResolver,
-      getPlanNodeByCode: (code) => this.getPlanNodeByCode(code),
-    });
-    let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
-
-    resolveFxRate = (fxPair: FxPair): LookupEnvelopeResult => {
-      const fxRequest = new FxRequest({
-        attribute: "price",
-        fxPair,
-        identifier: fxPair.yahooChartSymbol,
-      });
-      const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
-
-      if (env.status === "success") {
-        const price = Number(
-          extractAttributeValue(env.value as Record<string, unknown>, "price"),
-        );
-        if (Number.isFinite(price)) {
-          return { ...env, value: price };
-        }
-      }
-
-      return env;
-    };
-
-    this.resolutionEnv = {
-      buildResolvePlan,
-      classifyRawRequest: (requestInput) => {
-        const resolvedNode = resolveRoutingNode(
-          this.getPlanNodeByCode("ROOT"),
-          requestInput,
-        );
-
-        if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
-          throw new Error("Request classification failed.");
-        }
-
-        const outcome = resolvedNode.resolve(requestInput);
-
-        if (outcome.status !== "success") {
-          throw new Error(outcome.error || "Request classification failed.");
-        }
-
-        return outcome.value as ReturnType<
-          NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
-        >;
-      },
-      getCachedString: (cacheKey) =>
-        typeof resolverServices.getCachedString === "function"
-          ? resolverServices.getCachedString(cacheKey)
-          : "",
-      httpFetch: (url) => {
-        if (typeof resolverServices.httpFetch !== "function") {
-          throw new Error(
-            `ResolveFlow requires resolverServices.httpFetch to fetch "${url}".`,
-          );
-        }
-
-        return resolverServices.httpFetch(url);
-      },
+    this.resolutionEnv = createRequestResolutionEnvHelpers(this, {
       looksLikeIsin: deps.looksLikeIsin,
-      putCachedString: (cacheKey, value, ttlSeconds) =>
-        typeof resolverServices.putCachedString === "function"
-          ? resolverServices.putCachedString(
-              cacheKey,
-              value,
-              Number.isFinite(ttlSeconds) ? Number(ttlSeconds) : 0,
-            )
-          : String(value || ""),
-      resolveFxRate,
-    };
+      ...(deps.resolverServices
+        ? { resolverServices: deps.resolverServices }
+        : {}),
+    }).resolutionEnv;
   }
 
   getGraph(): Graph.View {
