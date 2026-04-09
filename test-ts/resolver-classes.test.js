@@ -112,12 +112,13 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
   const plan = buildPlanNodeFromSpec(
     "QUOTE:TICKER",
     {
-      nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
+      id: "QUOTE:TICKER",
+      next: ["YAHOO", "TRADINGVIEW-FUND"],
       options: {
         routeClassRef: "EQUITY_TICKER_CLASS",
         routePathRef: "EQUITY_TICKER_PATH",
       },
-      resolverClass: "TickerQuoteResolutionPlan",
+      type: "TickerQuoteResolutionPlan",
     },
     (nodeCode) =>
       ({
@@ -154,8 +155,9 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
   const plan = buildPlanNodeFromSpec(
     "ROOT",
     {
-      nodeCodes: ["MISSING"],
-      resolverClass: "RoutingPlan",
+      id: "ROOT",
+      next: ["MISSING"],
+      type: "RoutingPlan",
     },
     () => null,
     null,
@@ -186,8 +188,9 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
   const plan = buildPlanNodeFromSpec(
     "IDENTIFIER:ISIN",
     {
-      nodeCodes: ["ISIN:PSE", "ISIN:YAHOO"],
-      resolverClass: "FirstSuccessPlan",
+      id: "IDENTIFIER:ISIN",
+      next: ["ISIN:PSE", "ISIN:YAHOO"],
+      type: "FirstSuccessPlan",
     },
     (nodeCode) =>
       ({
@@ -229,8 +232,9 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
   const plan = buildPlanNodeFromSpec(
     "QUOTE:PSE",
     {
-      nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
-      resolverClass: "PseQuoteResolutionPlan",
+      id: "QUOTE:PSE",
+      next: ["PSE-FRAMES", "PSE-EDGE"],
+      type: "PseQuoteResolutionPlan",
     },
     (nodeCode) =>
       ({

@@ -1,10 +1,7 @@
-import { isResolverPlanNode } from "./plan-navigation";
-import {
-  instantiateHoodleFinancePlanSpecDag,
-  type HoodleFinancePlanSpecDag,
-} from "./plan-spec-dag";
-import { normalizePlanSpecCode, type PlanSpec } from "./plan-specs";
+import { isResolverPlanNode, resolveRoutingNode } from "./plan-navigation";
+import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
+import { RawRequestInput, type FxPair, FxRequest } from "./request";
 import {
   createPlanRuntimeRefs,
   type PlanRuntimeRefDependencies,
@@ -17,101 +14,485 @@ import {
   materializeResolversByCode,
   type ResolverMaterializationDependencies,
 } from "./resolver-materialization";
+import { createDefaultResolvePlanBuilder } from "./resolve-plan";
+import {
+  resolvePlannedQuoteEnvelope,
+  resolveRequestEnvelope,
+  resolveRequestValue,
+  type LookupEnvelopeResult,
+  type RequestResolutionDependencies,
+} from "./request-resolution";
+import { extractAttributeValue } from "./attribute-extraction";
 
-function isPlanResolverClass(resolverClass: string): boolean {
+function isPlanResolverClass(nodeType: string): boolean {
   return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
-    String(resolverClass || "")
+    String(nodeType || "")
   ];
 }
 
 function normalizeCode(code: string): string {
-  return normalizePlanSpecCode(code);
+  return normalizeGraphNodeId(code);
+}
+
+function formatCodeList(codes: string[]): string {
+  return codes.join(", ");
+}
+
+interface GraphTopologyNode {
+  node: Graph.Node;
+  parentIds: string[];
+}
+
+function normalizeDefinitionEntries(
+  definition: Graph.Definition,
+): Array<[string, Graph.Node]> {
+  const normalizedEntries: Array<[string, Graph.Node]> = [];
+  const originalKeyByNormalizedKey: Record<string, string> = Object.create(null);
+
+  for (const [key, rawNode] of Object.entries(definition || {})) {
+    const normalizedKey = normalizeCode(key);
+
+    if (!normalizedKey) {
+      throw new Error(
+        `Graph definition contains an empty node id from key ${JSON.stringify(key)}.`,
+      );
+    }
+
+    const existingKey = originalKeyByNormalizedKey[normalizedKey];
+    if (existingKey) {
+      throw new Error(
+        `Graph definition contains duplicate normalized code "${normalizedKey}" from keys ${JSON.stringify(existingKey)} and ${JSON.stringify(key)}.`,
+      );
+    }
+
+    const normalizedId = normalizeCode(rawNode?.id || "");
+    if (!normalizedId) {
+      throw new Error(
+        `Graph definition node "${normalizedKey}" must declare a non-empty id.`,
+      );
+    }
+
+    if (normalizedId !== normalizedKey) {
+      throw new Error(
+        `Graph definition key "${normalizedKey}" must match node.id "${normalizedId}".`,
+      );
+    }
+
+    const normalizedType = String(rawNode?.type || "").trim();
+    if (!normalizedType) {
+      throw new Error(
+        `Graph definition node "${normalizedKey}" must declare a non-empty type.`,
+      );
+    }
+
+    const normalizedNode: Graph.Node = {
+      id: normalizedId,
+      type: normalizedType,
+    };
+    const nextIds = getGraphNodeNextIds(rawNode as Graph.Node);
+
+    if (nextIds.length > 0) {
+      normalizedNode.next = nextIds;
+    }
+
+    originalKeyByNormalizedKey[normalizedKey] = key;
+    normalizedEntries.push([normalizedKey, normalizedNode]);
+  }
+
+  if (normalizedEntries.length === 0) {
+    throw new Error("Graph definition must contain at least one node.");
+  }
+
+  return normalizedEntries;
+}
+
+function buildTopologicalOrder(
+  nodes: Graph.Node[],
+  nodesById: Record<string, GraphTopologyNode>,
+): Graph.Node[] {
+  const topologicalOrder: Graph.Node[] = [];
+  const queue = nodes.filter((node) => {
+    const entry = nodesById[node.id];
+
+    return !!entry && entry.parentIds.length === 0;
+  });
+  const remainingParentCount: Record<string, number> = Object.create(null);
+
+  for (const node of nodes) {
+    remainingParentCount[node.id] = nodesById[node.id]?.parentIds.length || 0;
+  }
+
+  while (queue.length > 0) {
+    const node = queue.shift();
+    if (!node) {
+      continue;
+    }
+
+    topologicalOrder.push(node);
+    for (const childId of node.next || []) {
+      const childEntry = nodesById[childId];
+      if (!childEntry) {
+        continue;
+      }
+      const nextParentCount = (remainingParentCount[childId] || 0) - 1;
+      remainingParentCount[childId] = nextParentCount;
+      if (nextParentCount === 0) {
+        queue.push(childEntry.node);
+      }
+    }
+  }
+
+  if (topologicalOrder.length !== nodes.length) {
+    const orderedIds = new Set(topologicalOrder.map((node) => node.id));
+    const cycleIds = nodes
+      .map((node) => node.id)
+      .filter((id) => !orderedIds.has(id));
+    throw new Error(
+      `Graph definition contains a cycle involving: ${formatCodeList(cycleIds)}.`,
+    );
+  }
+
+  return topologicalOrder;
+}
+
+function requireSingleBoundaryNode(
+  kind: "root" | "terminal",
+  nodes: Graph.Node[],
+): Graph.Node {
+  if (nodes.length !== 1) {
+    const description =
+      nodes.length > 0
+        ? `: ${formatCodeList(nodes.map((node) => node.id))}`
+        : "";
+    throw new Error(
+      `Graph definition must have exactly one ${kind}; found ${nodes.length}${description}.`,
+    );
+  }
+
+  const firstNode = nodes[0] as Graph.Node;
+  const requiredId = kind === "root" ? "ROOT" : "TERMINAL";
+
+  if (firstNode.id !== requiredId) {
+    throw new Error(
+      `Graph ${kind} node must have id "${requiredId}"; found "${firstNode.id}".`,
+    );
+  }
+
+  return firstNode;
+}
+
+function collectReachableIds(
+  startId: string,
+  nodesById: Record<string, GraphTopologyNode>,
+  relation: "next" | "parentIds",
+): Set<string> {
+  const visited = new Set<string>();
+  const queue = [startId];
+
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (!id || visited.has(id)) {
+      continue;
+    }
+
+    visited.add(id);
+    const entry = nodesById[id];
+    if (!entry) {
+      continue;
+    }
+
+    const relatedIds =
+      relation === "next" ? (entry.node.next || []) : entry.parentIds;
+    for (const relatedId of relatedIds) {
+      if (!visited.has(relatedId)) {
+        queue.push(relatedId);
+      }
+    }
+  }
+
+  return visited;
+}
+
+function createGraphView(
+  definition: Graph.Definition,
+  nodesById: Record<string, GraphTopologyNode>,
+  topologicalOrder: Graph.Node[],
+): Graph.View {
+  return {
+    definition,
+    getChildren(id: string): Graph.Node[] {
+      const node = this.getNode(id);
+      if (!node) {
+        return [];
+      }
+
+      return (node.next || [])
+        .map((childId) => this.getNode(childId))
+        .filter((childNode): childNode is Graph.Node => !!childNode);
+    },
+    getNode(id: string): Graph.Node | null {
+      const normalizedId = normalizeCode(id);
+
+      return definition[normalizedId] || null;
+    },
+    getParents(id: string): Graph.Node[] {
+      const normalizedId = normalizeCode(id);
+      const entry = nodesById[normalizedId];
+
+      return entry
+        ? entry.parentIds
+            .map((parentId) => definition[parentId] || null)
+            .filter((parentNode): parentNode is Graph.Node => !!parentNode)
+        : [];
+    },
+    getRoot(): Graph.Node | null {
+      return definition.ROOT || null;
+    },
+    getTerminal(): Graph.Node | null {
+      return definition.TERMINAL || null;
+    },
+    getTopologicalOrder(): Graph.Node[] {
+      return topologicalOrder.slice();
+    },
+  };
+}
+
+function buildGraphView(definition: Graph.Definition): Graph.View {
+  const normalizedEntries = normalizeDefinitionEntries(definition);
+  const normalizedDefinition: Graph.Definition = Object.create(null);
+  const nodesById: Record<string, GraphTopologyNode> = Object.create(null);
+  const nodes = normalizedEntries.map(([id, node]) => {
+    normalizedDefinition[id] = node;
+    nodesById[id] = {
+      node,
+      parentIds: [],
+    };
+
+    return node;
+  });
+
+  for (const node of nodes) {
+    for (const childId of node.next || []) {
+      const childEntry = nodesById[childId];
+      if (!childEntry) {
+        throw new Error(
+          `Graph node "${node.id}" references missing child "${childId}".`,
+        );
+      }
+
+      if (!childEntry.parentIds.includes(node.id)) {
+        childEntry.parentIds.push(node.id);
+      }
+    }
+  }
+
+  const topologicalOrder = buildTopologicalOrder(nodes, nodesById);
+  const root = requireSingleBoundaryNode(
+    "root",
+    nodes.filter((node) => (nodesById[node.id]?.parentIds.length || 0) === 0),
+  );
+  const terminal = requireSingleBoundaryNode(
+    "terminal",
+    nodes.filter((node) => (node.next || []).length === 0),
+  );
+
+  const reachableFromRoot = collectReachableIds(root.id, nodesById, "next");
+  if (reachableFromRoot.size !== nodes.length) {
+    const unreachableIds = nodes
+      .map((node) => node.id)
+      .filter((id) => !reachableFromRoot.has(id));
+    throw new Error(
+      `Graph has nodes unreachable from the root "${root.id}": ${formatCodeList(unreachableIds)}.`,
+    );
+  }
+
+  const idsReachingTerminal = collectReachableIds(
+    terminal.id,
+    nodesById,
+    "parentIds",
+  );
+  if (idsReachingTerminal.size !== nodes.length) {
+    const deadEndIds = nodes
+      .map((node) => node.id)
+      .filter((id) => !idsReachingTerminal.has(id));
+    throw new Error(
+      `Graph has nodes that cannot reach the terminal "${terminal.id}": ${formatCodeList(deadEndIds)}.`,
+    );
+  }
+
+  return createGraphView(normalizedDefinition, nodesById, topologicalOrder);
+}
+
+function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
+  const normalizedCode = normalizeCode(code);
+  const graphNode = graph.getNode(normalizedCode);
+
+  if (!graphNode) {
+    throw new Error(`Unknown compiled graph node "${normalizedCode}".`);
+  }
+
+  return graphNode;
+}
+
+function isTerminalNodeId(code: string): boolean {
+  return normalizeCode(code) === "TERMINAL";
 }
 
 export interface ResolveFlowDependencies
   extends ResolverMaterializationDependencies, PlanRuntimeRefDependencies {}
 
-export interface ResolveFlowSpecs {
-  planSpecsByCode: Record<string, PlanSpec>;
-  resolverSpecsByCode: Record<string, string>;
-}
-
-export function collectResolveFlowResolverSpecs(
-  dag: HoodleFinancePlanSpecDag,
-): Record<string, string> {
-  const resolverSpecsByCode: Record<string, string> = Object.create(null);
-
-  for (const node of dag.nodes) {
-    if (
-      isPlanResolverClass(node.spec.resolverClass) ||
-      node.spec.resolverClass === "TerminalCollectorPlan"
-    ) {
-      continue;
-    }
-
-    resolverSpecsByCode[node.code] = node.spec.resolverClass;
-  }
-
-  return resolverSpecsByCode;
-}
-
-export function collectResolveFlowPlanSpecs(
-  dag: HoodleFinancePlanSpecDag,
-): Record<string, PlanSpec> {
-  const planSpecsByCode: Record<string, PlanSpec> = Object.create(null);
-
-  for (const node of dag.nodes) {
-    if (!isPlanResolverClass(node.spec.resolverClass)) {
-      continue;
-    }
-
-    planSpecsByCode[node.code] = node.spec;
-  }
-
-  return planSpecsByCode;
-}
-
-export function deriveResolveFlowSpecs(
-  planSpecsByCode: Record<string, PlanSpec>,
-): ResolveFlowSpecs {
-  const dag = instantiateHoodleFinancePlanSpecDag(planSpecsByCode);
-
-  return {
-    planSpecsByCode: collectResolveFlowPlanSpecs(dag),
-    resolverSpecsByCode: collectResolveFlowResolverSpecs(dag),
-  };
-}
-
-function requireDagNodeSpec(
-  dag: HoodleFinancePlanSpecDag,
-  code: string,
-): PlanSpec {
-  const normalizedCode = normalizeCode(code);
-  const dagNode = dag.nodesByCode[normalizedCode];
-
-  if (!dagNode) {
-    throw new Error(`Unknown compiled DAG node "${normalizedCode}".`);
-  }
-
-  return dagNode.spec;
-}
-
-export interface ResolveFlowOptions {
-  dag: HoodleFinancePlanSpecDag;
-  nodesByCode: Record<string, ResolverNode>;
-  // TODO: Runtime refs are left over from the DI implementation. we should strive to eliminate it.
-  runtimeRefs: ReturnType<typeof createPlanRuntimeRefs>;
-}
-
 export class ResolveFlow {
-  readonly dag: HoodleFinancePlanSpecDag;
+  readonly graph: Graph.View;
   readonly nodesByCode: Record<string, ResolverNode>;
   private readonly runtimeRefs: ReturnType<typeof createPlanRuntimeRefs>;
+  private readonly resolutionEnv: RequestResolutionDependencies | null;
 
-  constructor(options: ResolveFlowOptions) {
-    this.dag = options.dag;
-    this.nodesByCode = options.nodesByCode;
-    this.runtimeRefs = options.runtimeRefs;
+  constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
+    this.graph = buildGraphView(definition);
+    this.nodesByCode = Object.create(null);
+    this.runtimeRefs = createPlanRuntimeRefs(deps);
+
+    const resolverSpecsByCode: Record<string, string> = Object.create(null);
+    for (const node of this.graph.getTopologicalOrder()) {
+      if (
+        isPlanResolverClass(node.type) ||
+        node.type === "TerminalCollectorPlan"
+      ) {
+        continue;
+      }
+
+      resolverSpecsByCode[node.id] = node.type;
+    }
+
+    const resolverRegistry = materializeResolversByCode(
+      resolverSpecsByCode,
+      deps,
+    );
+    Object.assign(this.nodesByCode, resolverRegistry.byCode);
+
+    for (const node of this.graph.getTopologicalOrder()) {
+      if (isPlanResolverClass(node.type)) {
+        this.getNodeByCode(node.id);
+      }
+    }
+
+    const supportsRuntimeLookup =
+      !!this.graph.getNode("ROOT") &&
+      !!this.graph.getNode("RESOLVED-IDENTIFIER") &&
+      !!this.graph.getNode("DEFAULT-ATTRIBUTE:FX");
+
+    if (!supportsRuntimeLookup) {
+      this.resolutionEnv = null;
+      return;
+    }
+
+    const directIdentifierResolver = this.getNodeByCode(
+      "RESOLVED-IDENTIFIER",
+    ) as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"];
+    const fxPlan = this.getPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
+    const resolverServices = deps.resolverServices || {};
+    const buildResolvePlan = createDefaultResolvePlanBuilder({
+      directIdentifierResolver,
+      getPlanNodeByCode: (code) => this.getPlanNodeByCode(code),
+    });
+    let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
+
+    resolveFxRate = (fxPair: FxPair): LookupEnvelopeResult => {
+      const fxRequest = new FxRequest({
+        attribute: "price",
+        fxPair,
+        identifier: fxPair.yahooChartSymbol,
+      });
+      const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
+
+      if (env.status === "success") {
+        const price = Number(
+          extractAttributeValue(env.value as Record<string, unknown>, "price"),
+        );
+        if (Number.isFinite(price)) {
+          return { ...env, value: price };
+        }
+      }
+
+      return env;
+    };
+
+    this.resolutionEnv = {
+      buildResolvePlan,
+      classifyRawRequest: (requestInput) => {
+        const resolvedNode = resolveRoutingNode(
+          this.getPlanNodeByCode("ROOT"),
+          requestInput,
+        );
+
+        if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
+          throw new Error("Request classification failed.");
+        }
+
+        const outcome = resolvedNode.resolve(requestInput);
+
+        if (outcome.status !== "success") {
+          throw new Error(outcome.error || "Request classification failed.");
+        }
+
+        return outcome.value as ReturnType<
+          NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
+        >;
+      },
+      getCachedString: (cacheKey) =>
+        typeof resolverServices.getCachedString === "function"
+          ? resolverServices.getCachedString(cacheKey)
+          : "",
+      httpFetch: (url) => {
+        if (typeof resolverServices.httpFetch !== "function") {
+          throw new Error(
+            `ResolveFlow requires resolverServices.httpFetch to fetch "${url}".`,
+          );
+        }
+
+        return resolverServices.httpFetch(url);
+      },
+      looksLikeIsin: deps.looksLikeIsin,
+      putCachedString: (cacheKey, value, ttlSeconds) =>
+        typeof resolverServices.putCachedString === "function"
+          ? resolverServices.putCachedString(
+              cacheKey,
+              value,
+              Number.isFinite(ttlSeconds) ? Number(ttlSeconds) : 0,
+            )
+          : String(value || ""),
+      resolveFxRate,
+    };
+  }
+
+  getGraph(): Graph.View {
+    return this.graph;
+  }
+
+  private requireResolutionEnv(): RequestResolutionDependencies {
+    if (!this.resolutionEnv) {
+      throw new Error(
+        "ResolveFlow does not include the HOODLEFINANCE runtime entry nodes required for lookup.",
+      );
+    }
+
+    return this.resolutionEnv;
+  }
+
+  resolveAttribute(identifier: string, attribute = "price"): unknown {
+    const result = resolveRequestValue(
+      this.requireResolutionEnv(),
+      new RawRequestInput(
+        String(identifier || ""),
+        String(attribute == null ? "price" : attribute).trim(),
+      ),
+    );
+
+    if (result.status !== "success") {
+      throw new Error(result.error || "Lookup failed.");
+    }
+
+    return result.value;
   }
 
   readonly getNodeByCode = (code: string): ResolverNode => {
@@ -122,24 +503,25 @@ export class ResolveFlow {
       return existingNode;
     }
 
-    const spec = requireDagNodeSpec(this.dag, normalizedCode);
+    const spec = requireGraphNodeSpec(this.graph, normalizedCode);
 
-    if (spec.resolverClass === "TerminalCollectorPlan") {
+    if (spec.type === "TerminalCollectorPlan") {
       throw new Error(
-        `Compiled DAG terminal node "${normalizedCode}" is not executable.`,
+        `Compiled graph terminal node "${normalizedCode}" is not executable.`,
       );
     }
 
-    if (!isPlanResolverClass(spec.resolverClass)) {
+    if (!isPlanResolverClass(spec.type)) {
       throw new Error(
-        `Resolver node "${normalizedCode}" was not materialized during DAG compilation.`,
+        `Resolver node "${normalizedCode}" was not materialized during graph compilation.`,
       );
     }
 
     const compiledNode = buildPlanNodeFromSpec(
       normalizedCode,
       spec,
-      (nodeCode) => this.getNodeByCode(nodeCode),
+      (nodeCode) =>
+        isTerminalNodeId(nodeCode) ? null : this.getNodeByCode(nodeCode),
       null,
       {
         refs: this.runtimeRefs,
@@ -156,43 +538,36 @@ export class ResolveFlow {
 
     if (!isResolverPlanNode(node)) {
       throw new Error(
-        `Compiled DAG node "${normalizeCode(code)}" is not a resolver plan node.`,
+        `Compiled graph node "${normalizeCode(code)}" is not a resolver plan node.`,
       );
     }
 
     return node;
   };
 
-  static fromPlanSpecs(
-    planSpecsByCode: Record<string, PlanSpec>,
-    deps: ResolveFlowDependencies,
-  ): ResolveFlow {
-    const dag = instantiateHoodleFinancePlanSpecDag(planSpecsByCode);
-    const resolverRegistry = materializeResolversByCode(
-      collectResolveFlowResolverSpecs(dag),
-      deps,
+  readonly lookup = (
+    identifier: string,
+    attribute?: string,
+  ): LookupEnvelopeResult =>
+    resolveRequestValue(
+      this.requireResolutionEnv(),
+      new RawRequestInput(
+        identifier,
+        String(attribute == null ? "price" : attribute).trim(),
+      ),
     );
-    const flow = new ResolveFlow({
-      dag,
-      nodesByCode: Object.assign(Object.create(null), resolverRegistry.byCode),
-      runtimeRefs: createPlanRuntimeRefs(deps),
-    });
 
-    for (const node of dag.topologicalOrder) {
-      if (isPlanResolverClass(node.spec.resolverClass)) {
-        flow.getNodeByCode(node.code);
-      }
-    }
-
-    return flow;
-  }
-}
-
-export function compileResolveFlow(
-  planSpecsByCode: Record<string, PlanSpec>,
-  deps: ResolveFlowDependencies,
-): ResolveFlow {
-  return ResolveFlow.fromPlanSpecs(planSpecsByCode, deps);
+  readonly lookupEnvelope = (
+    identifier: string,
+    attribute?: string,
+  ): LookupEnvelopeResult =>
+    resolveRequestEnvelope(
+      this.requireResolutionEnv(),
+      new RawRequestInput(
+        identifier,
+        String(attribute == null ? "price" : attribute).trim(),
+      ),
+    );
 }
 
 export function collectResolverNodesByCode(

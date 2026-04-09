@@ -3,42 +3,82 @@ const test = require("node:test");
 
 const {
   DagPlan,
-  deriveResolveFlowSpecs,
+  DirectIdentifierResolver,
+  GoogleFxResolver,
+  LocalFxResolver,
+  PseEdgeResolver,
+  PseFramesResolver,
+  PseIsinMapResolver,
+  RequestClassifierResolver,
+  ResolveFlow,
+  TradingviewFundResolver,
+  YahooIsinSearchResolver,
+  YahooQuoteResolver,
 } = require("../dist/ts/core/index.js");
 
-test("resolve flow specs are derived from DagPlan through the flow compiler", () => {
-  const derived = deriveResolveFlowSpecs(DagPlan);
+function createResolverMaterializationDependencies() {
+  return {
+    looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
+    resolverClassesByName: {
+      DirectIdentifierResolver,
+      GoogleFxResolver,
+      LocalFxResolver,
+      PSEEdgeResolver: PseEdgeResolver,
+      PSEFramesResolver: PseFramesResolver,
+      PseIsinMapResolver,
+      RequestClassifierResolver,
+      TradingviewFundResolver,
+      YahooIsinSearchResolver,
+      YahooQuoteResolver,
+    },
+    resolverServices: {
+      httpFetch: (url) =>
+        String(url) ===
+        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
+          ? "PHY077751022=PSE:BDO\n"
+          : "",
+      getCachedJson: () => null,
+      getCachedString: () => "",
+      putCachedJson: (_key, value) => value,
+      putCachedString: (_key, value) => value,
+    },
+  };
+}
 
-  assert.equal(
-    derived.resolverSpecsByCode["CLASSIFY-REQUEST"],
-    "RequestClassifierResolver",
-  );
-  assert.equal(
-    derived.resolverSpecsByCode["RESOLVED-IDENTIFIER"],
-    "DirectIdentifierResolver",
-  );
-  assert.equal(
-    derived.planSpecsByCode["QUOTE:PSE"].resolverClass,
-    "PseQuoteResolutionPlan",
-  );
-  assert.equal(
-    derived.planSpecsByCode["ROOT"].resolverClass,
-    "RequestClassificationPlan",
-  );
+test("DagPlan uses the final graph node shape", () => {
+  assert.equal(DagPlan.ROOT.id, "ROOT");
+  assert.equal(DagPlan.ROOT.type, "RequestClassificationPlan");
+  assert.deepEqual(DagPlan.ROOT.next, ["CLASSIFY-REQUEST", "REQUEST-ROOT"]);
+  assert.equal(DagPlan["QUOTE:PSE"].type, "PseQuoteResolutionPlan");
+  assert.deepEqual(DagPlan["QUOTE:PSE"].next, ["PSE-FRAMES", "PSE-EDGE"]);
 });
 
-test("deriveResolveFlowSpecs validates DAG structure before projection", () => {
-  assert.throws(
-    () =>
-      deriveResolveFlowSpecs({
+test("ResolveFlow builds and validates DagPlan directly from the authored graph", () => {
+  const resolveFlow = new ResolveFlow(
+    DagPlan,
+    createResolverMaterializationDependencies(),
+  );
+
+  assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
+  assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
+  assert.equal(resolveFlow.getGraph().getNode("QUOTE:PSE").type, "PseQuoteResolutionPlan");
+});
+
+test("ResolveFlow validates DAG structure during construction", () => {
+  assert.throws(() => {
+    new ResolveFlow(
+      {
         ROOT: {
-          resolverClass: "RoutingPlan",
-          nodeCodes: ["MISSING"],
+          id: "ROOT",
+          next: ["MISSING"],
+          type: "RoutingPlan",
         },
         TERMINAL: {
-          resolverClass: "TerminalCollectorPlan",
+          id: "TERMINAL",
+          type: "TerminalCollectorPlan",
         },
-      }),
-    /missing child "MISSING"/i,
-  );
+      },
+      createResolverMaterializationDependencies(),
+    );
+  }, /missing child "MISSING"/i);
 });

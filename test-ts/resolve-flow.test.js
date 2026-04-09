@@ -22,7 +22,10 @@ function createResolverMaterializationDependencies() {
       String(url) ===
       "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
         ? "PHY077751022=PSE:BDO\n"
-        : "",
+        : String(url) ===
+            "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json"
+          ? '{"aliases":{},"canonicalCodes":["USD","EUR"],"cryptoCodes":[]}'
+          : "",
     getCachedJson: () => null,
     getCachedString: () => "",
     putCachedJson: (_key, value) => value,
@@ -50,13 +53,13 @@ function createResolverMaterializationDependencies() {
 }
 
 test("ResolveFlow builds executable nodes directly from DagPlan", () => {
-  const resolveFlow = ResolveFlow.fromPlanSpecs(
+  const resolveFlow = new ResolveFlow(
     DagPlan,
     createResolverMaterializationDependencies(),
   );
 
-  assert.equal(resolveFlow.dag.root.code, "ROOT");
-  assert.equal(resolveFlow.dag.terminal.code, "TERMINAL");
+  assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
+  assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
   assert.equal(
     resolveFlow.getNodeByCode("YAHOO"),
     resolveFlow.nodesByCode.YAHOO,
@@ -71,14 +74,46 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
       .describe({ attribute: "price", ticker: "PHY077751022" }),
     "IDENTIFIER:ISIN -> ISIN:PSE -> ISIN:YAHOO",
   );
+  assert.equal(resolveFlow.resolveAttribute("USDUSD", "price"), 1);
 });
 
 test("ResolveFlow rejects terminal nodes as executable plan lookups", () => {
-  const resolveFlow = ResolveFlow.fromPlanSpecs(
+  const resolveFlow = new ResolveFlow(
     DagPlan,
     createResolverMaterializationDependencies(),
   );
 
+  assert.throws(
+    () => resolveFlow.getNodeByCode("TERMINAL"),
+    /terminal node "TERMINAL" is not executable/i,
+  );
+});
+
+test("ResolveFlow allows plan nodes to reference TERMINAL without making it executable", () => {
+  const resolveFlow = new ResolveFlow(
+    {
+      ROOT: {
+        id: "ROOT",
+        next: ["DONE"],
+        type: "RoutingPlan",
+      },
+      DONE: {
+        id: "DONE",
+        next: ["TERMINAL"],
+        type: "RoutingPlan",
+      },
+      TERMINAL: {
+        id: "TERMINAL",
+        type: "TerminalCollectorPlan",
+      },
+    },
+    createResolverMaterializationDependencies(),
+  );
+
+  const donePlan = resolveFlow.getPlanNodeByCode("DONE");
+
+  assert.equal(donePlan.nodes.length, 1);
+  assert.equal(donePlan.nodes[0], null);
   assert.throws(
     () => resolveFlow.getNodeByCode("TERMINAL"),
     /terminal node "TERMINAL" is not executable/i,

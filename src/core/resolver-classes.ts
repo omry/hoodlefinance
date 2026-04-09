@@ -510,11 +510,11 @@ export function buildPlanNodeFromSpec(
   deps: PlanNodeBuilderDependencies,
 ): ResolverNode {
   const PlanClass =
-    PLAN_RESOLVER_CLASSES_BY_NAME[spec.resolverClass as PlanResolverClassName];
+    PLAN_RESOLVER_CLASSES_BY_NAME[spec.type as PlanResolverClassName];
 
   if (!PlanClass) {
     throw new Error(
-      `Unknown plan resolver class "${String(spec.resolverClass || "")}" for "${code}".`,
+      `Unknown plan resolver class "${String(spec.type || "")}" for "${code}".`,
     );
   }
 

@@ -74,7 +74,7 @@ export function createHoodlefinanceRuntime(
     });
 
   function createResolutionPath(dagPlan: typeof DagPlan) {
-    const resolveFlow = ResolveFlow.fromPlanSpecs(dagPlan, {
+    const resolveFlow = new ResolveFlow(dagPlan, {
       ...resolverMaterializationDeps,
       looksLikeIsin(value) {
         return looksLikeIsin(value);
@@ -180,6 +180,12 @@ export function createHoodlefinanceRuntime(
       attribute?: string,
     ): LookupEnvelopeResult {
       return resolveRequestEnvelope(
+        resolutionEnv,
+        normalizeRequestInput(identifier, attribute),
+      );
+    },
+    lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult {
+      return resolveRequestValue(
         resolutionEnv,
         normalizeRequestInput(identifier, attribute),
       );

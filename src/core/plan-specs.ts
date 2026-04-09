@@ -1,25 +1,11 @@
-export interface PlanSpec {
-  resolverClass: string;
-  nodeCodes?: string[];
-}
+import {
+  getGraphNodeNextIds,
+  normalizeGraphNodeId,
+  type Graph,
+} from "./graph";
 
-export function normalizePlanSpecCode(code: string): string {
-  return String(code || "")
-    .trim()
-    .toUpperCase();
-}
+export type PlanSpec = Graph.Node;
 
-function addNormalizedCode(result: string[], code: string): void {
-  const normalizedCode = normalizePlanSpecCode(code);
-  if (normalizedCode && !result.includes(normalizedCode)) {
-    result.push(normalizedCode);
-  }
-}
+export const normalizePlanSpecCode = normalizeGraphNodeId;
 
-export function getPlanSpecNodeCodes(spec: PlanSpec): string[] {
-  const result: string[] = [];
-  for (const code of spec.nodeCodes || []) {
-    addNormalizedCode(result, code);
-  }
-  return result;
-}
+export const getPlanSpecNodeCodes = getGraphNodeNextIds;

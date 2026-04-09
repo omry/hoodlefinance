@@ -90,7 +90,7 @@ function createRequestInput(identifier, attribute = "price") {
 }
 
 function createBuildResolvePlanFromCompiledDag() {
-  const resolveFlow = ResolveFlow.fromPlanSpecs(
+  const resolveFlow = new ResolveFlow(
     DagPlan,
     {
       ...createResolverMaterializationDependencies(),

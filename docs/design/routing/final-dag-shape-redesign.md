@@ -298,3 +298,41 @@ These are intentionally deferred:
 - changing routing semantics
 
 Those may happen later, but they are not part of this redesign.
+
+## Follow-Up On Initial Implementation
+
+The first implementation of this redesign may still leave transitional gaps
+even after the old structural DAG layer is removed.
+
+Two follow-up items are expected immediately after the initial migration:
+
+1. Runtime-lookup duplication
+   - `ResolveFlow` should become the single owner of runtime lookup setup.
+   - If the host adapter or CLI still rebuild request-classification,
+     `buildResolvePlan`, FX helper wiring, or similar runtime plumbing outside
+     `ResolveFlow`, that remains an architectural gap.
+   - The follow-up should collapse those duplicated runtime paths so lookup
+     behavior is owned in one place.
+
+2. Public exposure of internal resolver helpers
+   - The initial migration may temporarily keep helper surfaces such as
+     `getNodeByCode(...)`, `getPlanNodeByCode(...)`, internal resolver maps, or
+     exported compatibility helpers for the sake of CLI and test continuity.
+   - That is acceptable only as a transitional step.
+   - The follow-up should remove or internalize those surfaces so the intended
+     public runtime shape stays centered on:
+
+```ts
+class ResolveFlow {
+  readonly graph: Graph.View;
+
+  constructor(definition: Graph.Definition, deps);
+
+  getGraph(): Graph.View;
+  resolveAttribute(identifier: string, attribute?: string): unknown;
+}
+```
+
+The goal of this follow-up is not to redesign routing semantics.
+It is to finish collapsing the remaining compatibility scaffolding after the
+structural migration is proven stable.

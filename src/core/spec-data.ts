@@ -1,91 +1,112 @@
-import type { PlanSpec } from "./plan-specs";
+import type { Graph } from "./graph";
 
-function definePlanSpec<T extends PlanSpec>(spec: T): T {
-  return spec;
+function defineGraphNode<T extends Graph.Node>(node: T): T {
+  return node;
 }
 
-export const DagPlan: Record<string, PlanSpec> = {
+export const DagPlan: Graph.Definition = {
   ROOT: {
-    resolverClass: "RequestClassificationPlan",
-    nodeCodes: ["CLASSIFY-REQUEST", "REQUEST-ROOT"],
+    id: "ROOT",
+    next: ["CLASSIFY-REQUEST", "REQUEST-ROOT"],
+    type: "RequestClassificationPlan",
   },
   "REQUEST-ROOT": {
-    resolverClass: "RoutingPlan",
-    nodeCodes: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+    id: "REQUEST-ROOT",
+    next: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+    type: "RoutingPlan",
   },
   "CLASSIFY-REQUEST": {
-    resolverClass: "RequestClassifierResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "CLASSIFY-REQUEST",
+    next: ["TERMINAL"],
+    type: "RequestClassifierResolver",
   },
   "DEFAULT-ATTRIBUTE": {
-    resolverClass: "RoutingPlan",
-    nodeCodes: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
+    id: "DEFAULT-ATTRIBUTE",
+    next: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
+    type: "RoutingPlan",
   },
   "DEFAULT-ATTRIBUTE:EQUITY": {
-    resolverClass: "EquityAttributeResolutionPlan",
-    nodeCodes: ["QUOTE:PSE", "QUOTE:TICKER"],
+    id: "DEFAULT-ATTRIBUTE:EQUITY",
+    next: ["QUOTE:PSE", "QUOTE:TICKER"],
+    type: "EquityAttributeResolutionPlan",
   },
   "DEFAULT-ATTRIBUTE:FX": {
-    resolverClass: "FxAttributeResolutionPlan",
-    nodeCodes: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
+    id: "DEFAULT-ATTRIBUTE:FX",
+    next: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
+    type: "FxAttributeResolutionPlan",
   },
   "QUOTE:DEFAULT-FX": {
-    resolverClass: "AttributeResolutionPlan",
-    nodeCodes: ["GOOGLE-FX", "YAHOO"],
+    id: "QUOTE:DEFAULT-FX",
+    next: ["GOOGLE-FX", "YAHOO"],
+    type: "AttributeResolutionPlan",
   },
   "QUOTE:PSE": {
-    resolverClass: "PseQuoteResolutionPlan",
-    nodeCodes: ["PSE-FRAMES", "PSE-EDGE"],
+    id: "QUOTE:PSE",
+    next: ["PSE-FRAMES", "PSE-EDGE"],
+    type: "PseQuoteResolutionPlan",
   },
   "QUOTE:TICKER": {
-    resolverClass: "TickerQuoteResolutionPlan",
-    nodeCodes: ["YAHOO", "TRADINGVIEW-FUND"],
+    id: "QUOTE:TICKER",
+    next: ["YAHOO", "TRADINGVIEW-FUND"],
+    type: "TickerQuoteResolutionPlan",
   },
   "IDENTIFIER-ROOT": {
-    resolverClass: "RoutingPlan",
-    nodeCodes: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
+    id: "IDENTIFIER-ROOT",
+    next: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
+    type: "RoutingPlan",
   },
-  "IDENTIFIER:ISIN": definePlanSpec({
-    resolverClass: "FirstSuccessPlan",
-    nodeCodes: ["ISIN:PSE", "ISIN:YAHOO"],
+  "IDENTIFIER:ISIN": defineGraphNode({
+    id: "IDENTIFIER:ISIN",
+    next: ["ISIN:PSE", "ISIN:YAHOO"],
+    type: "FirstSuccessPlan",
   }),
   "RESOLVED-IDENTIFIER": {
-    resolverClass: "DirectIdentifierResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "RESOLVED-IDENTIFIER",
+    next: ["TERMINAL"],
+    type: "DirectIdentifierResolver",
   },
   "ISIN:PSE": {
-    resolverClass: "PseIsinMapResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "ISIN:PSE",
+    next: ["TERMINAL"],
+    type: "PseIsinMapResolver",
   },
   "ISIN:YAHOO": {
-    resolverClass: "YahooIsinSearchResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "ISIN:YAHOO",
+    next: ["TERMINAL"],
+    type: "YahooIsinSearchResolver",
   },
   "FX-IDENTITY": {
-    resolverClass: "LocalFxResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "FX-IDENTITY",
+    next: ["TERMINAL"],
+    type: "LocalFxResolver",
   },
   "GOOGLE-FX": {
-    resolverClass: "GoogleFxResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "GOOGLE-FX",
+    next: ["TERMINAL"],
+    type: "GoogleFxResolver",
   },
   YAHOO: {
-    resolverClass: "YahooQuoteResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "YAHOO",
+    next: ["TERMINAL"],
+    type: "YahooQuoteResolver",
   },
   "TRADINGVIEW-FUND": {
-    resolverClass: "TradingviewFundResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "TRADINGVIEW-FUND",
+    next: ["TERMINAL"],
+    type: "TradingviewFundResolver",
   },
   "PSE-FRAMES": {
-    resolverClass: "PSEFramesResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "PSE-FRAMES",
+    next: ["TERMINAL"],
+    type: "PSEFramesResolver",
   },
   "PSE-EDGE": {
-    resolverClass: "PSEEdgeResolver",
-    nodeCodes: ["TERMINAL"],
+    id: "PSE-EDGE",
+    next: ["TERMINAL"],
+    type: "PSEEdgeResolver",
   },
   TERMINAL: {
-    resolverClass: "TerminalCollectorPlan",
+    id: "TERMINAL",
+    type: "TerminalCollectorPlan",
   },
 };

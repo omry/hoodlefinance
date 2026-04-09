@@ -52,7 +52,7 @@ function createResolverMaterializationDependencies() {
 }
 
 function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
-  return ResolveFlow.fromPlanSpecs(planSpecsByCode, {
+  return new ResolveFlow(planSpecsByCode, {
     ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
   });
@@ -125,14 +125,15 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
   // Force ambiguity by adding a resolver that handles everything
   const ambiguousSpec = {
     "AMBIGUOUS-EXTRA": {
-      nodeCodes: ["YAHOO"],
-      resolverClass: "AttributeResolutionPlan",
+      id: "AMBIGUOUS-EXTRA",
+      next: ["YAHOO"],
+      type: "AttributeResolutionPlan",
     },
   };
 
   // We need to inject this into the DEFAULT-ATTRIBUTE node codes
   const modifiedSpecs = JSON.parse(JSON.stringify(DagPlan));
-  modifiedSpecs["DEFAULT-ATTRIBUTE"].nodeCodes.push("AMBIGUOUS-EXTRA");
+  modifiedSpecs["DEFAULT-ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
   const compiledDag = createIntegratedCompiledDag(modifiedSpecs);
 
