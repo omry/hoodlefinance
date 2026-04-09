@@ -1,4 +1,4 @@
-export * from "./plan-spec-dag";
+export * from "./graph";
 export * from "./plan-specs";
 export * from "./resolve-flow";
 export * from "./attribute-extraction";
