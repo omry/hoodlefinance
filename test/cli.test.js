@@ -319,12 +319,7 @@ test("CLI keeps FX Yahoo route state free of preferred equity fallback symbols",
   const plan = ctx.hf_classifyTickerJob_("EURUSD@YAHOO", "price");
 
   assert.equal(plan.routeState.yahooSymbol, "EURUSD=X");
-  assert.ok(
-    !Object.prototype.hasOwnProperty.call(
-      plan.routeState,
-      "preferredYahooSymbol",
-    ),
-  );
+  assert.equal(plan.routeState.preferredYahooSymbol, "");
 });
 
 test("trace uses the real planned route for source-list requests", function () {
