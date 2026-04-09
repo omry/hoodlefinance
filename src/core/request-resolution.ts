@@ -5,19 +5,15 @@ import type {
 } from "./planner";
 import {
   RawRequestInput,
-  type FxPair,
   type RequestInput,
   type ResolvedRequest,
 } from "./request";
-import { buildFxPairFromCodes } from "./fx-normalization";
 import {
   resolveDirectIsinAttributeValue,
   resolveIsinAttributeValue,
 } from "./isin-lookup";
 import {
   extractAttributeValue,
-  parseAttributeRequest,
-  extractCurrencyValue,
 } from "./attribute-extraction";
 import { buildSourceOverrideUnavailableError } from "./plan-selection";
 
@@ -43,6 +39,12 @@ interface RequestResolutionPlanLike {
   resolvedRequest: ResolvedRequest | null;
 }
 
+interface ResolvedQuoteLookup {
+  attributePlan: ResolverPlanNode | null;
+  envelope: LookupEnvelopeResult;
+  resolvedRequest: ResolvedRequest | null;
+}
+
 export interface RequestResolutionDependencies {
   buildResolvePlan(
     requestInput: RawRequestInput | RequestInput,
@@ -52,7 +54,6 @@ export interface RequestResolutionDependencies {
   getCachedString(cacheKey: string): string;
   looksLikeIsin(value: string): boolean;
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
-  resolveFxRate(fxPair: FxPair): LookupEnvelopeResult;
 }
 
 export interface LookupEnvelopeResult {
@@ -169,10 +170,21 @@ function resolveIdentifierPlanEnvelope(
   requestInput: RequestInput,
   resolvePlan: RequestResolutionPlanLike,
 ): LookupEnvelopeResult {
+  return resolveIdentifierPlanLookup(requestInput, resolvePlan).envelope;
+}
+
+function resolveIdentifierPlanLookup(
+  requestInput: RequestInput,
+  resolvePlan: RequestResolutionPlanLike,
+): ResolvedQuoteLookup {
   const identifierPlan = resolvePlan.identifierPlan;
 
   if (!identifierPlan) {
-    return failureResult("(none)", [], "Identifier resolution failed.");
+    return {
+      attributePlan: null,
+      envelope: failureResult("(none)", [], "Identifier resolution failed."),
+      resolvedRequest: null,
+    };
   }
 
   const resolvableIdentifierPlan = requireResolvablePlan<
@@ -185,11 +197,15 @@ function resolveIdentifierPlanEnvelope(
   );
 
   if (identifierOutcome.status !== "success") {
-    return failureResult(
-      identifierRoute,
-      [identifierRoute],
-      identifierOutcome.error,
-    );
+    return {
+      attributePlan: null,
+      envelope: failureResult(
+        identifierRoute,
+        [identifierRoute],
+        identifierOutcome.error,
+      ),
+      resolvedRequest: null,
+    };
   }
 
   const attributePlan = resolvePlan.buildAttributePlan
@@ -197,26 +213,35 @@ function resolveIdentifierPlanEnvelope(
     : null;
 
   if (!attributePlan) {
-    return failureResult(
-      identifierRoute,
-      [identifierRoute],
-      "No attribute route is available for this request.",
-    );
+    return {
+      attributePlan: null,
+      envelope: failureResult(
+        identifierRoute,
+        [identifierRoute],
+        "No attribute route is available for this request.",
+      ),
+      resolvedRequest: identifierOutcome.value,
+    };
   }
 
-  return resolvePlannedQuoteEnvelope(
+  return {
     attributePlan,
-    identifierOutcome.value,
-    [identifierRoute],
-  );
+    envelope: resolvePlannedQuoteEnvelope(
+      attributePlan,
+      identifierOutcome.value,
+      [identifierRoute],
+    ),
+    resolvedRequest: identifierOutcome.value,
+  };
 }
 
  
-function projectLookupValue(
+function finalizeLookupValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
   envelope: LookupEnvelopeResult,
-  resolvePlan?: Readonly<ResolvePlan> | null,
+  attributePlan?: ResolverPlanNode | null,
+  resolvedRequest?: ResolvedRequest | null,
 ): LookupEnvelopeResult {
   if (envelope.status !== "success") {
     return envelope;
@@ -225,39 +250,34 @@ function projectLookupValue(
   const quote = (envelope.value || {}) as Record<string, unknown>;
  
   try {
-    const attributeRequest = parseAttributeRequest(requestInput.attribute);
- 
-    if (
-      requestInput.attributeType === "quote" &&
-      attributeRequest.wantsOutputCurrency &&
-      attributeRequest.baseAttribute === "price"
-    ) {
-      const sourceCurrency = extractCurrencyValue(quote);
-      const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
- 
-      if (
-        sourceCurrency &&
-        targetCurrency &&
-        sourceCurrency !== targetCurrency &&
-        (quote.hoodlefinanceFxUnitScale == null ||
-          !Number.isFinite(Number(quote.hoodlefinanceFxUnitScale)))
-      ) {
-        const fxPair = buildFxPairFromCodes(sourceCurrency, targetCurrency);
-        if (!fxPair) {
-          throw new Error(
-            `Output-currency conversion from "${sourceCurrency}" to "${targetCurrency}" is not supported. Use recognized 3- or 4-character currency codes.`,
-          );
+    const fxEnvelope =
+      attributePlan &&
+      typeof (
+        attributePlan as ResolverPlanNode & {
+          resolveOutputCurrencyEnvelope?: (
+            request: RequestInput,
+            value: Record<string, unknown>,
+          ) => LookupEnvelopeResult | null;
         }
+      ).resolveOutputCurrencyEnvelope === "function"
+        ? (
+            attributePlan as ResolverPlanNode & {
+              resolveOutputCurrencyEnvelope(
+                request: RequestInput,
+                value: Record<string, unknown>,
+              ): LookupEnvelopeResult | null;
+            }
+          ).resolveOutputCurrencyEnvelope(requestInput, quote)
+        : null;
 
-        const fxEnvelope = env.resolveFxRate(fxPair);
+    if (fxEnvelope) {
         envelope.attemptedRoutes = envelope.attemptedRoutes.concat(
           fxEnvelope.attemptedRoutes,
         );
-        if (fxEnvelope.status === "success") {
-          const rate = Number(fxEnvelope.value);
-          if (Number.isFinite(rate)) {
-            quote.hoodlefinanceFxUnitScale = rate;
-          }
+      if (fxEnvelope.status === "success") {
+        const rate = Number(fxEnvelope.value);
+        if (Number.isFinite(rate)) {
+          quote.hoodlefinanceFxUnitScale = rate;
         }
       }
     }
@@ -280,15 +300,13 @@ function projectLookupValue(
         : extractAttributeValue(
             quote,
             requestInput.attribute,
-            resolvePlan &&
-              resolvePlan.attributePlan &&
-              resolvePlan.resolvedRequest &&
-              typeof resolvePlan.attributePlan.buildRuntimePlan === "function"
+            attributePlan &&
+              resolvedRequest &&
+              typeof attributePlan.buildRuntimePlan === "function"
               ? {
                   routeState:
-                    resolvePlan.attributePlan.buildRuntimePlan(
-                      resolvePlan.resolvedRequest,
-                    ).routeState || null,
+                    attributePlan.buildRuntimePlan(resolvedRequest).routeState ||
+                    null,
                   tickerInput: requestInput.ticker,
                 }
               : {
@@ -403,25 +421,36 @@ export function resolveRequestValue(
     };
   }
 
+  let effectiveAttributePlan = resolvePlan.attributePlan || null;
+  let effectiveResolvedRequest = resolvePlan.resolvedRequest || null;
   const envelope =
-    resolvePlan.attributePlan && resolvePlan.resolvedRequest
-        ? resolvePlannedQuoteEnvelope(
-            resolvePlan.attributePlan,
-            resolvePlan.resolvedRequest,
-            [],
-          )
+    effectiveAttributePlan && effectiveResolvedRequest
+      ? resolvePlannedQuoteEnvelope(
+          effectiveAttributePlan,
+          effectiveResolvedRequest,
+          [],
+        )
       : resolvePlan.identifierPlan
-        ? resolveIdentifierPlanEnvelope(normalizedRequestInput, resolvePlan)
+        ? (() => {
+            const identifierLookup = resolveIdentifierPlanLookup(
+              normalizedRequestInput,
+              resolvePlan,
+            );
+            effectiveAttributePlan = identifierLookup.attributePlan;
+            effectiveResolvedRequest = identifierLookup.resolvedRequest;
+            return identifierLookup.envelope;
+          })()
         : failureResult(
             resolvePlan.plannedRoute || "(none)",
             [],
             "Identifier resolution failed.",
           );
 
-  return projectLookupValue(
+  return finalizeLookupValue(
     env,
     normalizedRequestInput,
     envelope,
-    resolvePlan,
+    effectiveAttributePlan,
+    effectiveResolvedRequest,
   );
 }

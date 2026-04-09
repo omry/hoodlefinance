@@ -9,10 +9,12 @@ export interface PlanSelectionDependencies {
   buildSelectedIdentifierPlan(
     resolverOrPlan: ResolverNode,
     request: RequestInput,
+    parentPlan?: ResolverPlanNode | null,
   ): ResolverPlanNode;
   buildForcedSelectedAttributePlan(
     resolverOrPlan: ResolverNode,
     request: ResolvedRequest,
+    parentPlan?: ResolverPlanNode | null,
   ): ResolverPlanNode;
   extractIsinFromRequestInput(input: RequestInput): string;
   listAllDefaultAttributePlans(): ResolverPlanNode[];
@@ -74,7 +76,7 @@ export function buildIdentifierResolutionPlan(
   }
 
   if (selectedNode) {
-    return deps.buildSelectedIdentifierPlan(selectedNode, input);
+    return deps.buildSelectedIdentifierPlan(selectedNode, input, identifierPlan);
   }
 
   if (sourceOverride) {
@@ -130,7 +132,7 @@ export function buildForcedAttributePlanForResolvedRequest(
   );
 
   if (selectedNode) {
-    return deps.buildForcedSelectedAttributePlan(selectedNode, request);
+    return deps.buildForcedSelectedAttributePlan(selectedNode, request, defaultPlan);
   }
 
   throw buildSourceOverrideUnavailableError(sourceOverride);

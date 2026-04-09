@@ -7,7 +7,8 @@ import {
   type PlanSelectionDependencies,
 } from "./plan-selection";
 import { resolveRoutingNode } from "./plan-navigation";
-import { FirstSuccessPlan } from "./resolver-classes";
+import { FirstSuccessPlan, type ResolverPlanOptions } from "./resolver-classes";
+import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
   RawRequestInput,
   RequestInput,
@@ -52,10 +53,25 @@ export interface ResolvePlanDependencies {
   ): void;
 }
 
-function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
+function wrapSelectedResolverNode(
+  node: ResolverNode,
+  parentPlan?: ResolverPlanNode | null,
+): ResolverPlanNode {
   const wrappedName = String((node && node.name) || "").trim();
-
-  return new FirstSuccessPlan(wrappedName, [node], {
+  const refs =
+    parentPlan &&
+    typeof parentPlan === "object" &&
+    "refs" in parentPlan &&
+    (parentPlan as { refs?: PlanRuntimeRefs | null }).refs
+      ? ((parentPlan as { refs?: PlanRuntimeRefs | null }).refs as PlanRuntimeRefs)
+      :
+    node &&
+    typeof node === "object" &&
+    "refs" in node &&
+    (node as { refs?: PlanRuntimeRefs | null }).refs
+      ? ((node as { refs?: PlanRuntimeRefs | null }).refs as PlanRuntimeRefs)
+      : null;
+  const options: ResolverPlanOptions = {
     routeClass(request) {
       return node && node.buildRuntimePlan
         ? node.buildRuntimePlan(request).routeClass
@@ -66,7 +82,11 @@ function wrapSelectedResolverNode(node: ResolverNode): ResolverPlanNode {
         ? node.buildRuntimePlan(request).routePath
         : wrappedName;
     },
-  });
+  };
+
+  return refs
+    ? new FirstSuccessPlan(wrappedName, [node], refs, options)
+    : new FirstSuccessPlan(wrappedName, [node], options);
 }
 
 export function createDefaultResolvePlanBuilder(
@@ -82,14 +102,18 @@ export function createDefaultResolvePlanBuilder(
 
   function buildSelectedIdentifierPlan(
     resolverOrPlan: ResolverNode,
+    _request: RequestInput,
+    parentPlan?: ResolverPlanNode | null,
   ): ResolverPlanNode {
-    return wrapSelectedResolverNode(resolverOrPlan);
+    return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
   }
 
   function buildForcedSelectedAttributePlan(
     resolverOrPlan: ResolverNode,
+    _request: ResolvedRequest,
+    parentPlan?: ResolverPlanNode | null,
   ): ResolverPlanNode {
-    return wrapSelectedResolverNode(resolverOrPlan);
+    return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
   }
 
   function buildResolvePlanDependencies() {

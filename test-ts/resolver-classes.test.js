@@ -243,3 +243,68 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
     ["PSE-FRAMES", "PSE-EDGE"],
   );
 });
+
+test("ResolverPlan can resolve output-currency conversion through ResolveFlow", () => {
+  const refs = {
+    resolveFlow: {
+      getPlanNodeByCode(code) {
+        assert.equal(code, "DEFAULT-ATTRIBUTE:FX");
+        return {
+          describe() {
+            return "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX";
+          },
+          resolve(request) {
+            assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
+            return {
+              status: "success",
+              value: {
+                currency: "USD",
+                regularMarketPrice: 0.02,
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const plan = buildPlanNodeFromSpec(
+    "QUOTE:TICKER",
+    {
+      id: "QUOTE:TICKER",
+      next: ["YAHOO"],
+      type: "TickerQuoteResolutionPlan",
+    },
+    () => createLeafResolver("YAHOO"),
+    null,
+    { refs },
+  );
+  const request = new RequestInput({
+    attribute: "price@USD",
+    attributeRequest: {
+      baseAttribute: "price",
+      outputCode: "USD",
+      rawAttribute: "price@USD",
+      wantsOutputCurrency: true,
+    },
+    attributeType: "quote",
+    classification: "equity",
+    fxPair: null,
+    identifier: "BDO",
+    infoMode: "",
+    sourceOverride: "",
+    ticker: "PSE:BDO",
+  });
+
+  const env = plan.resolveOutputCurrencyEnvelope(request, {
+    currency: "PHP",
+    regularMarketPrice: 100,
+  });
+
+  assert.deepEqual(env, {
+    attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
+    kind: "quote",
+    route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+    status: "success",
+    value: 0.02,
+  });
+});

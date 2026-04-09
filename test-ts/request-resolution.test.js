@@ -329,3 +329,142 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
   assert.equal(repeatedResult.status, "success");
   assert.equal(repeatedResult.value, "GB00BH4HKS39");
 });
+
+test("resolveRequestValue uses the attribute plan for output-currency conversion", () => {
+  let conversionCalls = 0;
+  const env = createEnv({
+    buildResolvePlan() {
+      return {
+        attributePlan: {
+          describe() {
+            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
+          },
+          resolve() {
+            return {
+              status: "success",
+              value: {
+                currency: "PHP",
+                regularMarketPrice: 100,
+              },
+            };
+          },
+          resolveOutputCurrencyEnvelope(requestInput, quote) {
+            conversionCalls += 1;
+            assert.equal(requestInput.attribute, "price@USD");
+            assert.equal(quote.currency, "PHP");
+            return {
+              attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
+              kind: "quote",
+              route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+              status: "success",
+              value: 0.02,
+            };
+          },
+        },
+        debugValue: "",
+        identifierPlan: null,
+        plannedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
+        requestInput: null,
+        resolvedRequest: {
+          attribute: "price@USD",
+          identifier: "BDO",
+        },
+      };
+    },
+  });
+
+  const result = resolveRequestValue(
+    env,
+    createRequestInput({ attribute: "price@USD", ticker: "PSE:BDO" }),
+  );
+
+  assert.equal(conversionCalls, 1);
+  assert.equal(result.status, "success");
+  assert.equal(result.value, 2);
+  assert.deepEqual(result.attemptedRoutes, [
+    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
+    "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+  ]);
+});
+
+test("resolveRequestValue uses buildAttributePlan for identifier-first output-currency conversion", () => {
+  let conversionCalls = 0;
+  const env = createEnv({
+    buildResolvePlan() {
+      return {
+        buildAttributePlan() {
+          return {
+            describe() {
+              return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
+            },
+            resolve() {
+              return {
+                status: "success",
+                value: {
+                  currency: "PHP",
+                  regularMarketPrice: 100,
+                },
+              };
+            },
+            resolveOutputCurrencyEnvelope(requestInput, quote) {
+              conversionCalls += 1;
+              assert.equal(requestInput.attribute, "price@USD");
+              assert.equal(quote.currency, "PHP");
+              return {
+                attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
+                kind: "quote",
+                route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+                status: "success",
+                value: 0.02,
+              };
+            },
+          };
+        },
+        debugValue: "",
+        identifierPlan: {
+          describe() {
+            return "IDENTIFIER:ISIN -> ISIN:YAHOO";
+          },
+          resolve() {
+            return {
+              status: "success",
+              value: {
+                attribute: "price@USD",
+                classification: "equity",
+                exchange: "PSE",
+                input: {
+                  attribute: "price@USD",
+                  identifier: "PHY077751022",
+                },
+                requestType: "equity",
+                symbol: "BDO",
+                yahooSymbol: "BDO.PS",
+              },
+            };
+          },
+        },
+        plannedRoute: "IDENTIFIER:ISIN -> ISIN:YAHOO",
+        requestInput: null,
+        resolvedRequest: null,
+      };
+    },
+  });
+
+  const result = resolveRequestValue(
+    env,
+    createRequestInput({
+      attribute: "price@USD",
+      classification: "isin",
+      ticker: "PHY077751022",
+    }),
+  );
+
+  assert.equal(conversionCalls, 1);
+  assert.equal(result.status, "success");
+  assert.equal(result.value, 2);
+  assert.deepEqual(result.attemptedRoutes, [
+    "IDENTIFIER:ISIN -> ISIN:YAHOO",
+    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
+    "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+  ]);
+});

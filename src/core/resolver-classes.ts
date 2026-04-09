@@ -14,8 +14,14 @@ import type {
   RuntimePlan,
 } from "./planner";
 import type { PlannerRequest, ResolvedRequest } from "./request";
-import { RawRequestInput, RequestInput } from "./request";
+import { FxRequest, RawRequestInput, RequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
+import {
+  extractAttributeValue,
+  extractCurrencyValue,
+  parseAttributeRequest,
+} from "./attribute-extraction";
+import { buildFxPairFromCodes } from "./fx-normalization";
 import {
   createResolutionFailure,
   createResolutionSuccess,
@@ -24,6 +30,10 @@ import {
 import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
+import {
+  resolvePlannedQuoteEnvelope,
+  type LookupEnvelopeResult,
+} from "./request-resolution";
 import type { ResolverServices } from "./resolver-services";
 
 export interface ResolverPlanOptions {
@@ -350,6 +360,87 @@ export abstract class ResolverPlan
       routePath: this.buildRoutePath(request),
       routeState,
     };
+  }
+
+  resolveOutputCurrencyEnvelope(
+    requestInput: RequestInput,
+    quote: Record<string, unknown>,
+  ): LookupEnvelopeResult | null {
+    const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
+
+    if (!this.refs && singleNode) {
+      const nestedResolver = singleNode as ResolverNode & {
+        resolveOutputCurrencyEnvelope?: (
+          request: RequestInput,
+          value: Record<string, unknown>,
+        ) => LookupEnvelopeResult | null;
+      };
+
+      if (typeof nestedResolver.resolveOutputCurrencyEnvelope === "function") {
+        return nestedResolver.resolveOutputCurrencyEnvelope(requestInput, quote);
+      }
+    }
+
+    if (!this.refs) {
+      return null;
+    }
+
+    const attributeRequest = parseAttributeRequest(requestInput.attribute);
+    if (
+      requestInput.attributeType !== "quote" ||
+      !attributeRequest.wantsOutputCurrency ||
+      attributeRequest.baseAttribute !== "price"
+    ) {
+      return null;
+    }
+
+    const sourceCurrency = extractCurrencyValue(quote);
+    const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
+
+    if (
+      !sourceCurrency ||
+      !targetCurrency ||
+      sourceCurrency === targetCurrency ||
+      (quote.hoodlefinanceFxUnitScale != null &&
+        Number.isFinite(Number(quote.hoodlefinanceFxUnitScale)))
+    ) {
+      return null;
+    }
+
+    const fxPair = buildFxPairFromCodes(sourceCurrency, targetCurrency);
+    if (!fxPair) {
+      throw new Error(
+        `Output-currency conversion from "${sourceCurrency}" to "${targetCurrency}" is not supported. Use recognized 3- or 4-character currency codes.`,
+      );
+    }
+
+    const fxPlan = this.refs.resolveFlow.getPlanNodeByCode(
+      "DEFAULT-ATTRIBUTE:FX",
+    );
+    const fxEnvelope = resolvePlannedQuoteEnvelope(
+      fxPlan,
+      new FxRequest({
+        attribute: "price",
+        fxPair,
+        identifier: fxPair.yahooChartSymbol,
+      }),
+      [],
+    );
+
+    if (fxEnvelope.status === "success") {
+      const rate = Number(
+        extractAttributeValue(
+          fxEnvelope.value as Record<string, unknown>,
+          "price",
+        ),
+      );
+
+      if (Number.isFinite(rate)) {
+        return { ...fxEnvelope, value: rate };
+      }
+    }
+
+    return fxEnvelope;
   }
 
   static getSpecNodeCodes(spec: PlanSpec): string[] {

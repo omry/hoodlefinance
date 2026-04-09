@@ -1,13 +1,8 @@
-import { extractAttributeValue } from "./attribute-extraction";
 import { resolveRoutingNode } from "./plan-navigation";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
-import { type FxPair, FxRequest, RawRequestInput } from "./request";
+import { RawRequestInput } from "./request";
 import { createDefaultResolvePlanBuilder } from "./resolve-plan";
-import {
-  resolvePlannedQuoteEnvelope,
-  type LookupEnvelopeResult,
-  type RequestResolutionDependencies,
-} from "./request-resolution";
+import { type RequestResolutionDependencies } from "./request-resolution";
 import type { ResolverServices } from "./resolver-services";
 
 export interface RequestResolutionNodeLookup {
@@ -26,7 +21,6 @@ export interface RequestResolutionEnvHelpers {
     identifier: string,
     attribute?: string,
   ): ReturnType<NonNullable<RequestResolutionDependencies["classifyRawRequest"]>>;
-  resolveFxRate(fxPair: FxPair): LookupEnvelopeResult;
   resolutionEnv: RequestResolutionDependencies;
 }
 
@@ -41,7 +35,6 @@ export function createRequestResolutionEnvHelpers(
   const directIdentifierResolver = nodeLookup.getNodeByCode(
     "RESOLVED-IDENTIFIER",
   ) as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"];
-  const fxPlan = nodeLookup.getPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
   const resolverServices = deps.resolverServices || {};
   const buildResolvePlan = createDefaultResolvePlanBuilder({
     directIdentifierResolver,
@@ -78,26 +71,6 @@ export function createRequestResolutionEnvHelpers(
     return classifyRawRequest(new RawRequestInput(identifier, normalizeAttribute(attribute)));
   }
 
-  function resolveFxRate(fxPair: FxPair): LookupEnvelopeResult {
-    const fxRequest = new FxRequest({
-      attribute: "price",
-      fxPair,
-      identifier: fxPair.yahooChartSymbol,
-    });
-    const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
-
-    if (env.status === "success") {
-      const price = Number(
-        extractAttributeValue(env.value as Record<string, unknown>, "price"),
-      );
-      if (Number.isFinite(price)) {
-        return { ...env, value: price };
-      }
-    }
-
-    return env;
-  }
-
   const resolutionEnv: RequestResolutionDependencies = {
     buildResolvePlan,
     classifyRawRequest,
@@ -123,13 +96,11 @@ export function createRequestResolutionEnvHelpers(
             Number.isFinite(ttlSeconds) ? Number(ttlSeconds) : 0,
           )
         : String(value || ""),
-    resolveFxRate,
   };
 
   return {
     buildResolvePlan,
     createRequestInput,
-    resolveFxRate,
     resolutionEnv,
   };
 }

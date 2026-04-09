@@ -220,6 +220,64 @@ test("buildResolvePlan returns a direct attribute plan when the identifier resol
   );
 });
 
+test("buildResolvePlan preserves parent refs when wrapping a forced source selection", () => {
+  const forcedLeaf = createPlan("YAHOO", "YAHOO");
+  const parentPlan = createPlan("EQUITY", "EQUITY -> YAHOO");
+  const defaultAttributeRoot = createPlan("DEFAULT-ATTRIBUTE", "");
+  const rootPlan = createPlan("ROOT", "");
+  const requestRoot = createPlan("REQUEST-ROOT", "");
+  const refs = { resolveFlow: { marker: "resolve-flow" } };
+
+  forcedLeaf.matchesSourceName = (source) =>
+    String(source || "").trim().toUpperCase() === "YAHOO";
+  parentPlan.canHandle = (request) =>
+    String((request && request.classification) || "")
+      .trim()
+      .toLowerCase() === "equity";
+  parentPlan.nodes = [forcedLeaf];
+  parentPlan.refs = refs;
+  defaultAttributeRoot.isRoutingNode = true;
+  defaultAttributeRoot.getRoutingNodeKind = () => "switch";
+  defaultAttributeRoot.nodes = [parentPlan];
+  defaultAttributeRoot.getNodesForRequest = function getNodesForRequest() {
+    return this.nodes || [];
+  };
+  requestRoot.isRoutingNode = true;
+  requestRoot.getRoutingNodeKind = () => "switch";
+  requestRoot.getNodesForRequest = function getNodesForRequest() {
+    return [defaultAttributeRoot];
+  };
+  rootPlan.isRoutingNode = true;
+  rootPlan.getRoutingNodeKind = () => "switch";
+  rootPlan.getNodesForRequest = function getNodesForRequest() {
+    return [requestRoot];
+  };
+
+  const buildResolvePlanBuilder = createDefaultResolvePlanBuilder({
+    directIdentifierResolver: new DirectIdentifierResolver(),
+    getPlanNodeByCode(code) {
+      if (code === "ROOT") {
+        return rootPlan;
+      }
+
+      if (code === "REQUEST-ROOT") {
+        return requestRoot;
+      }
+
+      if (code === "DEFAULT-ATTRIBUTE") {
+        return defaultAttributeRoot;
+      }
+
+      throw new Error(`Unexpected spec ${code}`);
+    },
+  });
+  const plan = buildResolvePlanBuilder(
+    createRequestInput({ sourceOverride: "YAHOO" }),
+  );
+
+  assert.equal(plan.attributePlan.refs, refs);
+});
+
 test("buildResolvePlan classifies raw requests before selecting a route", () => {
   const plan = buildResolvePlan(new RawRequestInput("GOOG", "price"), createDeps());
 
