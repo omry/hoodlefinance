@@ -307,13 +307,14 @@ even after the old structural DAG layer is removed.
 Two follow-up items are expected immediately after the initial migration:
 
 1. Public exposure of internal resolver helpers
-   - The initial migration may temporarily keep helper surfaces such as
-     `getNodeByCode(...)`, `getPlanNodeByCode(...)`, internal resolver maps, or
-     exported compatibility helpers such as `resolveFxRate(...)` for the sake of
-     CLI and test continuity.
-   - That is acceptable only as a transitional step.
-   - The follow-up should remove or internalize those surfaces so the intended
-     public runtime shape stays centered on:
+   - `getNodeByCode(...)`, `getPlanNodeByCode(...)`, and public resolver maps
+     such as `nodesByCode` still exist.
+   - Those are compiler/materialization-oriented helper surfaces, not the
+     intended public runtime API.
+   - They still remain because internal request-resolution plumbing, temporary
+     FX coupling, and tests still reach into compiled nodes directly.
+   - The follow-up should remove or internalize those remaining surfaces so the
+     intended public runtime shape stays centered on:
 
 ```ts
 class ResolveFlow {
