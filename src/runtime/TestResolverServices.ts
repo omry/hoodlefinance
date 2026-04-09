@@ -2,13 +2,15 @@ import {
   ResolverServices,
   type StoredTextResource,
 } from "./ResolverServices";
+import type { TextHttpResponse } from "../core/text-http-response";
 import {
   StandAloneResolverServices,
   type StandAloneResolverServicesOptions,
 } from "./StandAloneResolverServices";
 
 export interface TestResolverServicesOptions
-  extends Partial<StandAloneResolverServicesOptions> {
+  extends Omit<Partial<StandAloneResolverServicesOptions>, "httpFetch"> {
+  httpFetch?(url: string): TextHttpResponse;
   getCachedJson?(cacheKey: string): unknown;
   getCachedString?(cacheKey: string): string;
   getStoredTextResource?(resourceKey: string): StoredTextResource | null;
@@ -28,7 +30,7 @@ export class TestResolverServices extends ResolverServices {
   constructor(options: TestResolverServicesOptions = {}) {
     super();
     this.fallback = new StandAloneResolverServices({
-      httpFetch(url: string): string {
+      httpFetch(url: string): TextHttpResponse {
         if (typeof options.httpFetch !== "function") {
           throw new Error(`TestResolverServices missing httpFetch for "${url}".`);
         }
@@ -39,7 +41,7 @@ export class TestResolverServices extends ResolverServices {
     this.options = options;
   }
 
-  override httpFetch = (url: string): string => this.fallback.httpFetch(url);
+  override httpFetch = (url: string): TextHttpResponse => this.fallback.httpFetch(url);
 
   override getCachedJson = (cacheKey: string): unknown => {
     return typeof this.options.getCachedJson === "function"

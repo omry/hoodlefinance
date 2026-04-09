@@ -35,7 +35,7 @@ function createSyncFetcher() {
 
   return (url) => {
     try {
-      return urlFetchApp.fetch(url).getContentText();
+      return urlFetchApp.fetch(url);
     } catch (error) {
       throw new Error(
         `Failed to fetch "${url}": ${

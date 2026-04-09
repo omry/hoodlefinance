@@ -1,3 +1,5 @@
+import type { TextHttpResponse } from "./text-http-response";
+
 const PSE_SEARCH_URL = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const PSE_STOCK_DATA_URL = "https://edge.pse.com.ph/companyPage/stockData.do";
 const PSE_SECURITY_FRAME_URL = "https://frames.pse.com.ph/security/";
@@ -8,11 +10,6 @@ export interface PseListing {
   name: string;
   securityId: string;
   symbol: string;
-}
-
-export interface PseQuoteResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
 }
 
 function normalizeText(value: unknown): string {
@@ -306,7 +303,7 @@ function extractPseQuote(
 }
 
 export function extractPseQuoteFromResponse(
-  response: PseQuoteResponseLike,
+  response: TextHttpResponse,
   listing: Pick<PseListing, "name" | "symbol"> | null | undefined,
 ): Record<string, unknown> {
   if (response.getResponseCode() !== 200) {
@@ -377,7 +374,7 @@ export function extractPseFrameQuote(
 }
 
 export function extractPseFrameQuoteFromResponse(
-  response: PseQuoteResponseLike,
+  response: TextHttpResponse,
   symbol: string,
 ): Record<string, unknown> {
   if (response.getResponseCode() !== 200) {

@@ -15,7 +15,12 @@ const {
   FxRequest,
   EquityRequest,
 } = require("../dist/ts/core/index.js");
+const { createTextHttpResponse } = require("./resource-fixtures.js");
 const { createTestResolverServices } = require("./resolver-service-fixtures.js");
+
+function textResponse(text) {
+  return createTextHttpResponse(text);
+}
 
 function createRequestInput(overrides = {}) {
   return new RequestInput({
@@ -202,7 +207,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   const resolver = initResolver(new GoogleFxResolver(), createTestResolverServices({
     httpFetch(url) {
       assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
-      return html;
+      return textResponse(html);
     },
     getCachedJson() {
       return null;
@@ -276,7 +281,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   let cachedWrite = null;
   const resolver = initResolver(new PseFramesResolver(), createTestResolverServices({
     httpFetch() {
-      return frameHtml;
+      return textResponse(frameHtml);
     },
     getCachedJson() {
       return null;
@@ -355,10 +360,10 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   const resolver = initResolver(new PseEdgeResolver(), createTestResolverServices({
     httpFetch(url) {
       if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
-        return createPseSearchHtml();
+        return textResponse(createPseSearchHtml());
       }
 
-      return stockHtml;
+      return textResponse(stockHtml);
     },
     getCachedJson(cacheKey) {
       return cacheKey === "hoodlefinance:pse:listing:BDO" ? null : null;
@@ -465,7 +470,7 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
   let cachedWrite = null;
   const fetchedResolver = initResolver(new YahooQuoteResolver(), createTestResolverServices({
     httpFetch() {
-      return JSON.stringify({
+      return textResponse(JSON.stringify({
         chart: {
           result: [
             {
@@ -476,7 +481,7 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
             },
           ],
         },
-      });
+      }));
     },
     getCachedJson() {
       return null;
@@ -507,7 +512,7 @@ test("YahooQuoteResolver owns preferred equity fallback symbols without affectin
   resolver.initEnv(createTestResolverServices({
     httpFetch(url) {
       lastFetchedUrl = url;
-      return JSON.stringify({
+      return textResponse(JSON.stringify({
         chart: {
           result: [
             {
@@ -518,7 +523,7 @@ test("YahooQuoteResolver owns preferred equity fallback symbols without affectin
             },
           ],
         },
-      });
+      }));
     },
     getCachedJson() {
       return null;
@@ -594,7 +599,7 @@ test("YahooQuoteResolver falls back to stored preferred whitelist data when refr
         throw new Error("whitelist refresh failed");
       }
 
-      return JSON.stringify({
+      return textResponse(JSON.stringify({
         chart: {
           result: [
             {
@@ -605,7 +610,7 @@ test("YahooQuoteResolver falls back to stored preferred whitelist data when refr
             },
           ],
         },
-      });
+      }));
     },
     getCachedJson() {
       return null;
@@ -736,7 +741,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
   const fetchedWrites = [];
   const fetchedResolver = initResolver(new TradingviewFundResolver(), createTestResolverServices({
     httpFetch() {
-      return html;
+      return textResponse(html);
     },
     getCachedJson() {
       return null;
@@ -795,7 +800,7 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
         url,
         "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
       );
-      return "PHY077751022=PSE:BDO\n";
+      return textResponse("PHY077751022=PSE:BDO\n");
     },
     getCachedString() {
       return "";
@@ -929,7 +934,7 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
   let cachedWrite = null;
   const fetchedResolver = initResolver(new YahooIsinSearchResolver(), createTestResolverServices({
     httpFetch() {
-      return JSON.stringify({
+      return textResponse(JSON.stringify({
         quotes: [
           {
             exchange: "NYSE",
@@ -938,7 +943,7 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
             symbol: "IBM",
           },
         ],
-      });
+      }));
     },
     getCachedString() {
       return "";

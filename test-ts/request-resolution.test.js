@@ -5,6 +5,7 @@ const {
   resolveRequestEnvelope,
   resolveRequestValue,
 } = require("../dist/ts/core/index.js");
+const { createTextHttpResponse } = require("./resource-fixtures.js");
 const { createTestResolverServices } = require("./resolver-service-fixtures.js");
 
 function createEnv(overrides = {}) {
@@ -24,7 +25,7 @@ function createEnv(overrides = {}) {
         return overrides.httpFetch(url);
       }
 
-      return "";
+      return createTextHttpResponse("");
     },
     putCachedString(key, value, _ttlSeconds) {
       if (typeof overrides.putCachedString === "function") {
@@ -133,7 +134,7 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
   const pseEnv = createEnv({
     httpFetch(url) {
       assert.equal(url, "https://frames.pse.com.ph/security/BDO");
-      return `
+      return createTextHttpResponse(`
         <html>
           <input
             id="stock-json"
@@ -156,7 +157,7 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
           <h3 class="last-price">9.87</h3>
           As of Jan 2, 2024 3:00 PM
         </html>
-      `;
+      `);
     },
   });
 
@@ -175,7 +176,7 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
         url,
         "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA",
       );
-      return `
+      return createTextHttpResponse(`
         <html>
           <table>
             <tr>
@@ -187,7 +188,7 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
             </tr>
           </table>
         </html>
-      `;
+      `);
     },
   });
 
@@ -234,7 +235,7 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
     },
     httpFetch(url) {
       assert.equal(url, "https://www.tradingview.com/symbols/NASDAQ-GOOG/");
-      return `
+      return createTextHttpResponse(`
         <html>
           <script>
             window.initData.symbolInfo = {
@@ -243,7 +244,7 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
             };
           </script>
         </html>
-      `;
+      `);
     },
   });
 
@@ -295,7 +296,7 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
         url,
         "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=VOD",
       );
-      return `
+      return createTextHttpResponse(`
         <html>
           <table>
             <tr>
@@ -307,7 +308,7 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
             </tr>
           </table>
         </html>
-      `;
+      `);
     },
     getCachedString(key) {
       return cache.get(key) || "";

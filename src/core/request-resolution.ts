@@ -16,6 +16,7 @@ import {
   extractAttributeValue,
 } from "./attribute-extraction";
 import { buildSourceOverrideUnavailableError } from "./plan-selection";
+import type { TextHttpResponse } from "./text-http-response";
 
 interface QuotePlanOutcome {
   error?: unknown;
@@ -23,21 +24,20 @@ interface QuotePlanOutcome {
   value?: unknown;
 }
 
-interface ResolvablePlanLike<TRequest, TValue> {
+interface ResolvablePlan<TRequest, TValue> {
   describe(request: TRequest): string;
   resolve(request: TRequest): ResolutionResult<TValue>;
 }
 
-interface RequestResolutionPlanLike {
-  buildAttributePlan:
-    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlanNode | null)
-    | null;
-  debugValue: string;
-  identifierPlan: ResolverPlanNode | null;
-  plannedRoute: string;
-  requestInput: RequestInput;
-  resolvedRequest: ResolvedRequest | null;
-}
+type RequestResolutionPlan = Pick<
+  ResolvePlan,
+  | "buildAttributePlan"
+  | "debugValue"
+  | "identifierPlan"
+  | "plannedRoute"
+  | "requestInput"
+  | "resolvedRequest"
+>;
 
 interface ResolvedQuoteLookup {
   attributePlan: ResolverPlanNode | null;
@@ -50,7 +50,7 @@ export interface RequestResolutionDependencies {
     requestInput: RawRequestInput | RequestInput,
   ): Readonly<ResolvePlan>;
   classifyRawRequest?(requestInput: RawRequestInput): RequestInput;
-  httpFetch(url: string): string;
+  httpFetch(url: string): TextHttpResponse;
   getCachedString(cacheKey: string): string;
   looksLikeIsin(value: string): boolean;
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
@@ -109,12 +109,12 @@ function normalizePlanOutcome(
 function requireResolvablePlan<TRequest, TValue>(
   plan: ResolverPlanNode | null | undefined,
   errorMessage: string,
-): ResolvablePlanLike<TRequest, TValue> {
+): ResolvablePlan<TRequest, TValue> {
   if (!plan || typeof plan.resolve !== "function") {
     throw new Error(errorMessage);
   }
 
-  return plan as ResolvablePlanLike<TRequest, TValue>;
+  return plan as ResolvablePlan<TRequest, TValue>;
 }
 
 function validateDeferredLookupModes(requestInput: RequestInput): void {
@@ -168,14 +168,14 @@ export function resolvePlannedQuoteEnvelope(
 
 function resolveIdentifierPlanEnvelope(
   requestInput: RequestInput,
-  resolvePlan: RequestResolutionPlanLike,
+  resolvePlan: RequestResolutionPlan,
 ): LookupEnvelopeResult {
   return resolveIdentifierPlanLookup(requestInput, resolvePlan).envelope;
 }
 
 function resolveIdentifierPlanLookup(
   requestInput: RequestInput,
-  resolvePlan: RequestResolutionPlanLike,
+  resolvePlan: RequestResolutionPlan,
 ): ResolvedQuoteLookup {
   const identifierPlan = resolvePlan.identifierPlan;
 
@@ -291,7 +291,7 @@ function finalizeLookupValue(
               tickerInput: requestInput.ticker,
             },
             {
-              fetchText: env.httpFetch,
+              fetchText: (url) => env.httpFetch(url).getContentText(),
               getCachedString: env.getCachedString,
               looksLikeIsin: env.looksLikeIsin,
               putCachedString: env.putCachedString,
@@ -381,7 +381,7 @@ export function resolveRequestValue(
           tickerInput: normalizedRequestInput.ticker,
         },
         {
-          fetchText: env.httpFetch,
+          fetchText: (url) => env.httpFetch(url).getContentText(),
           getCachedString: env.getCachedString,
           looksLikeIsin: env.looksLikeIsin,
           putCachedString: env.putCachedString,

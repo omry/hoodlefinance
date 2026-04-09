@@ -2,40 +2,22 @@ import {
   createJsonCache,
   createStoredTextResourceStore,
   createStringCache,
-  type AppsScriptCacheLike,
-  type AppsScriptUrlFetchLike,
 } from "../appscript/utils";
+import type {
+  AppScriptHostServices,
+} from "../appscript/host-types";
 import {
   ResolverServices,
   type StoredTextResource,
 } from "./ResolverServices";
 
-export interface AppsScriptCacheServiceLike {
-  getScriptCache(): AppsScriptCacheLike;
-}
-
-export interface AppsScriptPropertiesLike {
-  getProperty(key: string): string | null;
-  setProperty(key: string, value: string): void;
-}
-
-export interface AppsScriptPropertiesServiceLike {
-  getScriptProperties(): AppsScriptPropertiesLike;
-}
-
-export interface AppScriptResolverServicesOptions {
-  cacheService: AppsScriptCacheServiceLike;
-  propertiesService?: AppsScriptPropertiesServiceLike;
-  urlFetchApp: AppsScriptUrlFetchLike;
-}
-
 export class AppScriptResolverServices extends ResolverServices {
   private readonly jsonCache;
   private readonly storedTextResourceStore;
   private readonly stringCache;
-  private readonly urlFetchApp: AppsScriptUrlFetchLike;
+  private readonly urlFetchApp: AppScriptHostServices["urlFetchApp"];
 
-  constructor(options: AppScriptResolverServicesOptions) {
+  constructor(options: AppScriptHostServices) {
     super();
     const scriptCache = options.cacheService.getScriptCache();
     const scriptProperties = options.propertiesService
@@ -48,8 +30,7 @@ export class AppScriptResolverServices extends ResolverServices {
     this.urlFetchApp = options.urlFetchApp;
   }
 
-  override httpFetch = (url: string): string =>
-    this.urlFetchApp.fetch(url).getContentText();
+  override httpFetch = (url: string) => this.urlFetchApp.fetch(url);
 
   override getCachedJson = (cacheKey: string): unknown =>
     this.jsonCache.getCachedJson(cacheKey);

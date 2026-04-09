@@ -1,40 +1,17 @@
 import { createHoodlefinanceRuntime } from "../runtime/host-adapter";
 import {
   AppScriptResolverServices,
-  type AppScriptResolverServicesOptions,
-  type AppsScriptCacheServiceLike,
-  type AppsScriptPropertiesServiceLike,
 } from "../runtime/AppScriptResolverServices";
-import {
-  type AppsScriptUrlFetchLike,
-} from "./utils";
+import type { AppScriptGlobals, AppScriptHostServices } from "./host-types";
 
 const DEFAULT_ATTRIBUTE = "price";
 
-type HoodlefinanceAppScriptServices = AppScriptResolverServicesOptions;
+type HoodlefinanceAppScriptServices = AppScriptHostServices;
 
 interface HoodlefinanceAppScriptBindings {
   HOODLEFINANCE(identifier: unknown, attribute?: unknown): unknown;
   hoodlefinanceDebugEnvelope(identifier: unknown, attribute?: unknown): string;
   hoodlefinanceBuildSheetsAddOnHomepage(): unknown;
-}
-
-interface HoodlefinanceAppScriptGlobals {
-  CacheService: AppsScriptCacheServiceLike;
-  CardService?: {
-    newCardBuilder(): {
-      addSection(section: unknown): unknown;
-      build(): unknown;
-    };
-    newCardSection(): {
-      addWidget(widget: unknown): unknown;
-    };
-    newTextParagraph(): {
-      setText(text: string): unknown;
-    };
-  };
-  PropertiesService?: AppsScriptPropertiesServiceLike;
-  UrlFetchApp: AppsScriptUrlFetchLike;
 }
 
 function assertScalarIdentifier(identifier: unknown): void {
@@ -48,7 +25,7 @@ function assertScalarIdentifier(identifier: unknown): void {
 function requireServices(
   overrides?: Partial<HoodlefinanceAppScriptServices>,
 ): HoodlefinanceAppScriptServices {
-  const globalScope = globalThis as Partial<HoodlefinanceAppScriptGlobals>;
+  const globalScope = globalThis as Partial<AppScriptGlobals>;
   const cacheService = overrides?.cacheService || globalScope.CacheService;
   const propertiesService =
     overrides?.propertiesService || globalScope.PropertiesService;
@@ -69,7 +46,7 @@ function requireServices(
 
 function createPendingAddOnHomepage(): () => unknown {
   return function hoodlefinanceBuildSheetsAddOnHomepage(): unknown {
-    const cardService = (globalThis as Partial<HoodlefinanceAppScriptGlobals>)
+    const cardService = (globalThis as Partial<AppScriptGlobals>)
       .CardService;
 
     if (!cardService) {

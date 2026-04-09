@@ -367,7 +367,7 @@ export function loadCurrencyCodeUnits(
     loadStoredTextResource({
       cacheKey: CURRENCY_CODES_CACHE_KEY,
       cacheTtlSeconds: CURRENCY_CODES_CACHE_TTL_SECONDS,
-      fetchText: () => services.httpFetch!(CURRENCY_CODES_URL),
+      fetchText: () => services.httpFetch(CURRENCY_CODES_URL).getContentText(),
       getCachedString: services.getCachedString,
       getStoredTextResource: services.getStoredTextResource,
       invalidPayloadMessage: `Invalid text resource payload for ${CURRENCY_CODES_URL}`,

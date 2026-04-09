@@ -1,4 +1,5 @@
 import type { FxPair } from "./request";
+import type { TextHttpResponse } from "./text-http-response";
 
 export function buildGoogleFinanceQuoteUrl(pairSlug: string): string {
   return `https://www.google.com/finance/quote/${encodeURIComponent(
@@ -29,9 +30,10 @@ function findGoogleFinancePairTuple(
 }
 
 export function extractGoogleFinancePairTuple(
-  html: string,
+  response: TextHttpResponse,
   pairSlug: string,
 ): unknown[] {
+  const html = response.getContentText();
   const callbacks =
     String(html || "").match(
       /AF_initDataCallback\(([\s\S]*?)\);\s*<\/script>/gi,
@@ -59,13 +61,13 @@ export function extractGoogleFinancePairTuple(
 }
 
 export function extractGoogleFinanceFxPairQuote(
-  html: string,
+  response: TextHttpResponse,
   fxPair: FxPair,
 ): Record<string, unknown> {
   const pairSlug = String(fxPair.googlePairSlug || "")
     .trim()
     .toUpperCase();
-  const tuple = extractGoogleFinancePairTuple(html, pairSlug);
+  const tuple = extractGoogleFinancePairTuple(response, pairSlug);
   const marketData = Array.isArray(tuple[5]) ? tuple[5] : [];
   const pairDetail = Array.isArray(tuple[15]) ? tuple[15] : [];
   const currentPrice = Number(marketData[0]);

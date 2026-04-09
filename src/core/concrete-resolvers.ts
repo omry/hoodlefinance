@@ -40,17 +40,14 @@ import {
   isPseUnavailableError,
   tryResolvePseListingFromHtml,
   type PseListing,
-  type PseQuoteResponseLike,
 } from "./pse-quotes";
 import {
   buildYahooIsinSearchUrl,
   extractYahooSymbolFromSearchResponse,
-  type YahooSearchResponseLike,
 } from "./yahoo-isin-search";
 import {
   buildYahooChartUrl,
   extractYahooQuoteMetaFromResponse,
-  type YahooQuoteResponseLike,
 } from "./yahoo-quote";
 import {
   createPreferredYahooSymbolResolver,
@@ -64,7 +61,6 @@ import {
 import {
   buildIsraeliFundTradingviewFallbackInfo,
   extractTradingviewFundQuoteFromResponse,
-  type TradingviewQuoteResponseLike,
 } from "./tradingview-fund";
 import {
   createResolutionFailure,
@@ -73,12 +69,15 @@ import {
   type RouteResult,
 } from "./route-results";
 import type { ResolverNode, RouteJob, RuntimePlan } from "./planner";
-import type { ResolverClassLike } from "./resolver-materialization";
+import type { ResolverClass } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
 import {
   loadStoredTextResource,
   type ResolverServices,
 } from "./resolver-services";
+import {
+  type TextHttpResponse,
+} from "./text-http-response";
 
 export class DirectIdentifierResolver extends IdentifierResolver {
   constructor() {
@@ -215,16 +214,11 @@ export interface YahooIsinSearchRequest {
 export interface YahooIsinSearchBatchResponse {
   error?: unknown;
   request: YahooIsinSearchRequest;
-  response?: YahooSearchResponseLike;
+  response?: TextHttpResponse;
 }
 
 interface SequentialFetchRequestLike {
   url: string;
-}
-
-interface SequentialFetchResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
 }
 
 const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
@@ -233,33 +227,19 @@ const PSE_ISIN_MAP_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PSE_ISIN_MAP_STORED_KEY = "hoodlefinance.pseIsinMap";
 const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
-function createSequentialFetchResponse(
-  body: string,
-  responseCode = 200,
-): SequentialFetchResponseLike {
-  return {
-    getContentText() {
-      return body;
-    },
-    getResponseCode() {
-      return responseCode;
-    },
-  };
-}
-
 function fetchRequestsSequentially<TRequest extends SequentialFetchRequestLike>(
-  httpFetch: (url: string) => string,
+  httpFetch: (url: string) => TextHttpResponse,
   requests: TRequest[],
 ): Array<{
   error?: unknown;
   request: TRequest;
-  response?: SequentialFetchResponseLike;
+  response?: TextHttpResponse;
 }> {
   return requests.map((request) => {
     try {
       return {
         request,
-        response: createSequentialFetchResponse(httpFetch(request.url)),
+        response: httpFetch(request.url),
       };
     } catch (error) {
       return {
@@ -345,7 +325,7 @@ export class PseIsinMapResolver extends IdentifierResolver {
     this.pseIsinMapByIsin = loadStoredTextResource({
       cacheKey: PSE_ISIN_MAP_CACHE_KEY,
       cacheTtlSeconds: PSE_ISIN_MAP_CACHE_TTL_SECONDS,
-      fetchText: () => this.httpFetch(PSE_ISIN_MAP_URL),
+      fetchText: () => this.httpFetch(PSE_ISIN_MAP_URL).getContentText(),
       getCachedString: this.getCachedString,
       getStoredTextResource: this.getStoredTextResource,
       invalidPayloadMessage: "Invalid PSE ISIN map payload.",
@@ -550,7 +530,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
         }
 
         const resolvedTicker = extractYahooSymbolFromSearchResponse(
-          responseItem.response as YahooSearchResponseLike,
+          responseItem.response as TextHttpResponse,
           responseItem.request.isin,
         );
         this.putCachedString(
@@ -885,7 +865,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
 
       try {
         const quote = extractPseFrameQuoteFromResponse(
-          responseItem.response as PseQuoteResponseLike,
+          responseItem.response as TextHttpResponse,
           responseItem.request.symbol,
         );
         this.putCachedJson(
@@ -1127,7 +1107,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
       try {
         const listing = normalizePseListing(responseItem.request.listing);
         const quote = extractPseQuoteFromResponse(
-          responseItem.response as PseQuoteResponseLike,
+          responseItem.response as TextHttpResponse,
           listing,
         );
         const stockJob = jobs[responseItem.request.index];
@@ -1235,7 +1215,8 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     this.preferredReitTickerSet = loadStoredTextResource({
       cacheKey: PREFERRED_REIT_WHITELIST_CACHE_KEY,
       cacheTtlSeconds: PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
-      fetchText: () => this.httpFetch(PREFERRED_REIT_WHITELIST_URL),
+      fetchText: () =>
+        this.httpFetch(PREFERRED_REIT_WHITELIST_URL).getContentText(),
       getCachedString: this.getCachedString,
       getStoredTextResource: this.getStoredTextResource,
       invalidPayloadMessage: "Invalid preferred REIT whitelist payload.",
@@ -1338,7 +1319,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
 
           const quote = decorateFxQuote(
             extractYahooQuoteMetaFromResponse(
-              responseItem.response as YahooQuoteResponseLike,
+              responseItem.response as TextHttpResponse,
               job.tickerInput || responseItem.request.yahooSymbol,
             ),
             (job.routeState.fxPair as FxRequest["fxPair"] | null) || null,
@@ -1484,7 +1465,7 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 
       try {
         const quote = extractTradingviewFundQuoteFromResponse(
-          responseItem.response as TradingviewQuoteResponseLike,
+          responseItem.response as TextHttpResponse,
           responseItem.request.yahooSymbol,
           responseItem.request.expectedSymbol,
         );
@@ -1527,7 +1508,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
 export function createConcreteResolverMaterializationDependencies(
   resolverServices: ResolverServices,
 ): {
-  resolverClassesByName: Record<string, ResolverClassLike>;
+  resolverClassesByName: Record<string, ResolverClass>;
   resolverServices: ResolverServices;
 } {
   return {

@@ -8,14 +8,14 @@ import {
 } from "./resolver-registry";
 import type { ResolverServices } from "./resolver-services";
 
-export interface ResolverClassLike {
+export interface ResolverClass {
   fromSpec(code: string): ResolverNode;
 }
 
 export interface ResolverMaterializationDependencies {
   registryByCode?: ResolverRegistryByCode;
   registryByName?: ResolverRegistryByName;
-  resolverClassesByName: Record<string, ResolverClassLike | undefined>;
+  resolverClassesByName: Record<string, ResolverClass | undefined>;
   resolverServices?: ResolverServices;
 }
 

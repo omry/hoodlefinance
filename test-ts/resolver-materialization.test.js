@@ -19,6 +19,7 @@ const {
   getRegisteredResolverByName,
   materializeResolversByCode,
 } = require("../dist/ts/core/index.js");
+const { createTextHttpResponse } = require("./resource-fixtures.js");
 const { createTestResolverServices } = require("./resolver-service-fixtures.js");
 
 class FakeResolver {
@@ -77,7 +78,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   const services = createTestResolverServices({
     httpFetch(url) {
       if (String(url) === "https://www.google.com/finance/quote/EUR-USD") {
-        return `AF_initDataCallback({data:${JSON.stringify([
+        return createTextHttpResponse(`AF_initDataCallback({data:${JSON.stringify([
           [
             "EUR-USD",
             null,
@@ -96,29 +97,29 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
             null,
             ["EUR", "USD", "Euro"],
           ],
-        ])},sideChannel:{}});</script>`;
+        ])},sideChannel:{}});</script>`);
       }
 
       if (String(url).includes("/v8/finance/chart/")) {
-        return JSON.stringify({
+        return createTextHttpResponse(JSON.stringify({
           chart: {
             result: [{ meta: { regularMarketPrice: 12, symbol: "IBM" } }],
           },
-        });
+        }));
       }
 
       if (String(url).includes("/v1/finance/search")) {
-        return JSON.stringify({
+        return createTextHttpResponse(JSON.stringify({
           quotes: [{ symbol: "IBM", quoteType: "EQUITY", score: 1 }],
-        });
+        }));
       }
 
       if (String(url).includes("tradingview.com")) {
-        return `\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `;
+        return createTextHttpResponse(`\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `);
       }
 
       if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
-        return `
+        return createTextHttpResponse(`
             <html>
               <table>
                 <tr>
@@ -129,18 +130,18 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
                 </tr>
               </table>
             </html>
-          `;
+          `);
       }
 
       if (
         String(url) ===
         "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties"
       ) {
-        return "PHY077751022=PSE:BDO\n";
+        return createTextHttpResponse("PHY077751022=PSE:BDO\n");
       }
 
       if (String(url).indexOf("frames.pse.com.ph/security/") >= 0) {
-        return `
+        return createTextHttpResponse(`
             <html>
               <input
                 id="stock-json"
@@ -166,10 +167,10 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
               <h3 class="last-price">9.87</h3>
               As of Jan 2, 2024 3:00 PM
             </html>
-          `;
+          `);
       }
 
-      return `
+      return createTextHttpResponse(`
           <html>
             <div class="compInfo"><p>BDO Unibank, Inc.</p></div>
             <select>
@@ -187,7 +188,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
             </table>
             As of Jan 2, 2024 3:00 PM
           </html>
-        `;
+        `);
     },
     getCachedJson() {
       return null;

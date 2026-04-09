@@ -34,3 +34,4 @@ export * from "./route-execution";
 export * from "./route-results";
 export * from "./quote-routing";
 export * from "./route-state";
+export * from "./text-http-response";

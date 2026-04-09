@@ -3,6 +3,7 @@ import {
   isPrefixlessExchange,
   resolveExchangeSuffix,
 } from "./exchange-symbols";
+import type { TextHttpResponse } from "./text-http-response";
 
 const YAHOO_EXCHANGE_BY_META_NAME: Record<string, string> = {
   AMEX: "AMEX",
@@ -44,11 +45,6 @@ const GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY: Record<string, string> = {
   PNK: "OTCMKTS",
   PSE: "PSE",
 };
-
-export interface YahooSearchResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
-}
 
 export function buildYahooIsinSearchUrl(isin: string): string {
   return (
@@ -182,7 +178,7 @@ export function extractYahooSymbolFromSearchPayload(
 }
 
 export function extractYahooSymbolFromSearchResponse(
-  response: YahooSearchResponseLike,
+  response: TextHttpResponse,
   isin: string,
 ): string {
   if (response.getResponseCode() !== 200) {

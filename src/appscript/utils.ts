@@ -1,25 +1,9 @@
 import { parsePreferredReitTickerSet } from "../core/preferred-yahoo-symbols";
 import type { StoredTextResource } from "../runtime/ResolverServices";
-
-export interface AppsScriptResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
-}
-
-export interface AppsScriptRequestLike {
-  muteHttpExceptions?: boolean;
-  url: string;
-}
-
-export interface AppsScriptUrlFetchLike {
-  fetch(url: string): AppsScriptResponseLike;
-  fetchAll(requests: AppsScriptRequestLike[]): AppsScriptResponseLike[];
-}
-
-export interface AppsScriptCacheLike {
-  get(key: string): string | null;
-  put(key: string, value: string, expirationInSeconds: number): void;
-}
+import type {
+  AppsScriptCache,
+  AppsScriptUrlFetchApp,
+} from "./host-types";
 
 export interface StringCacheAdapter {
   getCachedString(key: string): string;
@@ -46,7 +30,7 @@ export interface StoredTextResourceStore {
 }
 
 export function createStringCache(
-  cache: AppsScriptCacheLike,
+  cache: AppsScriptCache,
 ): StringCacheAdapter {
   return {
     getCachedString(key) {
@@ -69,7 +53,7 @@ export function cacheTextResource(
   return stringCache.putCachedString(cacheKey, text, cacheTtlSeconds);
 }
 
-export function createJsonCache(cache: AppsScriptCacheLike): JsonCacheAdapter {
+export function createJsonCache(cache: AppsScriptCache): JsonCacheAdapter {
   return {
     getCachedJson(key) {
       const raw = cache.get(key);
@@ -111,7 +95,7 @@ export function createStoredTextState(
   };
 }
 
-export function createFetchAllInChunks(urlFetchApp: AppsScriptUrlFetchLike) {
+export function createFetchAllInChunks(urlFetchApp: AppsScriptUrlFetchApp) {
   return function fetchAllInChunks<TRequest extends { url: string }>(
     _source: string,
     requests: TRequest[],

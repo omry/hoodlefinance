@@ -1,7 +1,4 @@
-export interface YahooQuoteResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
-}
+import type { TextHttpResponse } from "./text-http-response";
 
 export function buildYahooChartUrl(yahooSymbol: string): string {
   return (
@@ -54,7 +51,7 @@ export function extractYahooQuoteMetaFromPayload(
 }
 
 export function extractYahooQuoteMetaFromResponse(
-  response: YahooQuoteResponseLike,
+  response: TextHttpResponse,
   ticker: string,
 ): Record<string, unknown> {
   if (response.getResponseCode() !== 200) {

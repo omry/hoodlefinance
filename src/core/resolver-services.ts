@@ -1,10 +1,12 @@
+import type { TextHttpResponse } from "./text-http-response";
+
 export interface StoredTextResource {
   fetchedAtMs: number;
   text: string;
 }
 
 export abstract class ResolverServices {
-  abstract httpFetch(url: string): string;
+  abstract httpFetch(url: string): TextHttpResponse;
 
   getCachedJson(_cacheKey: string): unknown {
     return null;

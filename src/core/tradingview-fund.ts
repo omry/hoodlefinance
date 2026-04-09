@@ -1,9 +1,6 @@
-const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
+import type { TextHttpResponse } from "./text-http-response";
 
-export interface TradingviewQuoteResponseLike {
-  getContentText(): string;
-  getResponseCode(): number;
-}
+const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
 
 export function buildIsraeliFundTradingviewFallbackInfo(
   yahooSymbol: string,
@@ -127,7 +124,7 @@ export function extractTradingviewFundQuote(
 }
 
 export function extractTradingviewFundQuoteFromResponse(
-  response: TradingviewQuoteResponseLike,
+  response: TextHttpResponse,
   yahooSymbol: string,
   expectedSymbol: string,
 ): Record<string, unknown> {
