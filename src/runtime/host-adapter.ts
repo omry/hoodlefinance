@@ -1,6 +1,5 @@
 import { createConcreteResolverMaterializationDependencies } from "../core/concrete-resolvers";
-import { collectResolverNodesByCode, ResolveFlow } from "../core/resolve-flow";
-import { createRequestResolutionEnvHelpers } from "../core/request-resolution-env";
+import { ResolveFlow } from "../core/resolve-flow";
 import { looksLikeIsin } from "../core/request";
 import { DagPlan } from "../core/spec-data";
 import { type LookupEnvelopeResult } from "../core/request-resolution";
@@ -28,7 +27,6 @@ interface HoodlefinanceRuntimeDependencies {
 interface HoodlefinanceRuntime {
   lookup(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult;
-  lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult;
   resolveAttribute(identifier: string, attribute?: string): unknown;
 }
 
@@ -60,28 +58,12 @@ export function createHoodlefinanceRuntime(
       return looksLikeIsin(value);
     },
   });
-  const runtimeLookupHelpers = createRequestResolutionEnvHelpers(resolveFlow, {
-    looksLikeIsin,
-    resolverServices: resolverMaterializationDeps.resolverServices,
-  });
 
-  const runtime = {
+  return {
     lookup: resolveFlow.lookup,
     lookupEnvelope: resolveFlow.lookupEnvelope,
-    lookupViaGraph: resolveFlow.lookup,
     resolveAttribute(identifier: string, attribute?: string): unknown {
       return resolveFlow.resolveAttribute(identifier, attribute);
     },
-    // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
-    buildResolvePlan: runtimeLookupHelpers.buildResolvePlan,
-    createRequestInput: runtimeLookupHelpers.createRequestInput,
-    httpFetch: deps.httpFetch,
-    getPlanNodeByCode(code: string) {
-      return resolveFlow.getPlanNodeByCode(code);
-    },
-    resolveFxRate: runtimeLookupHelpers.resolveFxRate,
-    resolversByCode: collectResolverNodesByCode(resolveFlow),
   };
-
-  return runtime as HoodlefinanceRuntime & typeof runtime;
 }

@@ -496,19 +496,3 @@ export class ResolveFlow {
       ),
     );
 }
-
-export function collectResolverNodesByCode(
-  resolveFlow: ResolveFlow,
-): Record<string, ResolverNode> {
-  const resolverNodesByCode: Record<string, ResolverNode> = Object.create(null);
-
-  for (const [code, node] of Object.entries(resolveFlow.nodesByCode)) {
-    if (isResolverPlanNode(node)) {
-      continue;
-    }
-
-    resolverNodesByCode[code] = node;
-  }
-
-  return resolverNodesByCode;
-}

@@ -5,11 +5,6 @@ const {
   createHoodlefinanceRuntime,
 } = require("../../dist/ts/runtime/host-adapter.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
-const { describePlanSource } = require("../../dist/ts/core/route-results.js");
-const {
-  buildRoutingPlanTreeNode,
-  buildRoutingTableGrid,
-} = require("../../dist/ts/core/routing-introspection.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
 const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
@@ -109,29 +104,12 @@ function createCliEnvironment() {
   });
 
   Object.assign(env, {
-    buildResolvePlan: runtime.buildResolvePlan,
-    createRequestInput: runtime.createRequestInput,
-    getPlanNodeByCode: runtime.getPlanNodeByCode,
     lookup: runtime.lookup,
     lookupEnvelope: runtime.lookupEnvelope,
-    lookupViaGraph: runtime.lookupViaGraph,
     resolveAttribute: runtime.resolveAttribute,
-    resolveFxRate: runtime.resolveFxRate,
-    resolversByCode: runtime.resolversByCode,
   });
 
   return env;
-}
-
-function routeLabelFromPlan(routeClass, routePath) {
-  return describePlanSource({
-    routeClass,
-    routePath,
-  });
-}
-
-function routeLabelFromLookup(result) {
-  return result.route || "(none)";
 }
 
 function normalizeAttribute(attribute) {
@@ -144,10 +122,6 @@ function lookupEnvelopeWithEnvironment(env, args) {
 
 function lookupWithEnvironment(env, args) {
   return env.lookup(args.ticker, normalizeAttribute(args.attribute));
-}
-
-function lookupWithGraphEnvironment(env, args) {
-  return env.lookupViaGraph(args.ticker, normalizeAttribute(args.attribute));
 }
 
 function formatLookupResult(result) {
@@ -190,42 +164,6 @@ function formatResolvedValue(result) {
     : result && typeof result === "object"
       ? JSON.parse(JSON.stringify(result))
       : result;
-}
-
-function formatRoutingTable(env = createCliEnvironment()) {
-  const grid = buildRoutingTableGrid({
-    buildResolvePlan: env.buildResolvePlan,
-    createRequestInput: env.createRequestInput,
-  }).map((row, index) =>
-    index === 0 ? ["classification", "example", "route"] : row,
-  );
-
-  return grid.map((columns) => columns.join("\t")).join("\n");
-}
-
-function formatRoutingTreeNode(node, prefix = "", isLast = true, isRoot = false) {
-  const connector = isRoot ? "" : isLast ? "└── " : "├── ";
-  const nextPrefix = isRoot ? "" : `${prefix}${isLast ? "    " : "│   "}`;
-  const kindSuffix = node.kind === "leaf" ? "" : ` [${node.kind}]`;
-  const lines = [`${prefix}${connector}${node.label}${kindSuffix}`];
-
-  node.children.forEach((child, index) => {
-    lines.push(
-      formatRoutingTreeNode(
-        child,
-        nextPrefix,
-        index === node.children.length - 1,
-        false,
-      ),
-    );
-  });
-
-  return lines.join("\n");
-}
-
-function formatRoutingTree(env = createCliEnvironment()) {
-  const rootNode = buildRoutingPlanTreeNode(env.getPlanNodeByCode("ROOT"));
-  return formatRoutingTreeNode(rootNode, "", true, true);
 }
 
 function runSmokeSuite(env = createCliEnvironment()) {
@@ -351,35 +289,7 @@ function runSmokeSuite(env = createCliEnvironment()) {
 function printUsage() {
   console.error("Usage: npm run hoodlefinance.ts -- <ticker> [attribute]");
   console.error("       npm run hoodlefinance.ts -- --envelope <ticker> [attribute]");
-  console.error("       npm run hoodlefinance.ts -- --graph <ticker> [attribute]");
-  console.error("       npm run hoodlefinance.ts -- --compare <ticker> [attribute]");
-  console.error("       npm run hoodlefinance.ts -- --routing");
-  console.error("       npm run hoodlefinance.ts -- --routing-table");
-  console.error("       npm run hoodlefinance.ts -- --trace <symbol>");
   console.error("       npm run smoke.ts -- --smoke");
-}
-
-function formatRoutingTrace(result) {
-  return result.attemptedRoutes && result.attemptedRoutes.length
-    ? result.attemptedRoutes.join(" -> ")
-    : "(no runtime trace)";
-}
-
-function formatTraceOutput(symbol, result) {
-  const lines = [
-    `symbol: ${symbol}`,
-    `planned route: ${routeLabelFromLookup(result)}`,
-    `runtime trace: ${formatRoutingTrace(result)}`,
-  ];
-
-  if (result.status === "success") {
-    lines.push("result: success");
-    return lines.join("\n");
-  }
-
-  lines.push("result: error");
-  lines.push(`error: ${result.error}`);
-  return lines.join("\n");
 }
 
 function main(argv = process.argv.slice(2)) {
@@ -398,16 +308,6 @@ function main(argv = process.argv.slice(2)) {
     process.exit(1);
   }
 
-  if (firstArg === "--routing-table") {
-    console.log("NOT IMPLEMENTED");
-    return;
-  }
-
-  if (firstArg === "--routing" || firstArg === "--routing-tree") {
-    console.log(formatRoutingTree(getEnv()));
-    return;
-  }
-
   if (firstArg === "--envelope") {
     if (!secondArg) {
       printUsage();
@@ -422,56 +322,6 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  if (firstArg === "--graph") {
-    if (!secondArg) {
-      printUsage();
-      process.exit(1);
-    }
-
-    const result = lookupWithGraphEnvironment(getEnv(), {
-      attribute: normalizeAttribute(thirdArg),
-      ticker: secondArg,
-    });
-    console.log(formatEnvelopeResult(result));
-
-    if (result.status !== "success") {
-      process.exit(1);
-    }
-
-    return;
-  }
-
-  if (firstArg === "--compare") {
-    if (!secondArg) {
-      printUsage();
-      process.exit(1);
-    }
-
-    const requestArgs = {
-      attribute: normalizeAttribute(thirdArg),
-      ticker: secondArg,
-    };
-    const oldResult = lookupWithEnvironment(getEnv(), requestArgs);
-    const newResult = lookupWithGraphEnvironment(getEnv(), requestArgs);
-
-    console.log(`ticker: ${secondArg}  attribute: ${requestArgs.attribute}`);
-    console.log(`old: status=${oldResult.status}  route=${oldResult.route}  value=${oldResult.value}`);
-    console.log(`new: status=${newResult.status}  route=${newResult.route}  value=${newResult.value}`);
-
-    const statusMatch = oldResult.status === newResult.status;
-    const valueMatch = String(oldResult.value) === String(newResult.value);
-
-    if (statusMatch && valueMatch) {
-      console.log("parity: ok");
-    } else {
-      if (!statusMatch) console.error(`parity: status mismatch (${oldResult.status} vs ${newResult.status})`);
-      if (!valueMatch) console.error(`parity: value mismatch (${oldResult.value} vs ${newResult.value})`);
-      process.exit(1);
-    }
-
-    return;
-  }
-
   if (firstArg === "--smoke") {
     const smoke = runSmokeSuite(getEnv());
 
@@ -483,23 +333,9 @@ function main(argv = process.argv.slice(2)) {
     process.exit(smoke.failures.length ? 1 : 0);
   }
 
-  if (firstArg === "--trace") {
-    if (!secondArg) {
-      printUsage();
-      process.exit(1);
-    }
-
-    const result = lookupWithEnvironment(getEnv(), {
-      attribute: normalizeAttribute(thirdArg),
-      ticker: secondArg,
-    });
-    console.log(formatTraceOutput(secondArg, result));
-
-    if (result.status !== "success") {
-      process.exit(1);
-    }
-
-    return;
+  if (firstArg.startsWith("--")) {
+    printUsage();
+    process.exit(1);
   }
 
   let result;
@@ -529,13 +365,8 @@ module.exports = {
   createCliEnvironment,
   formatLookupResult,
   formatEnvelopeResult,
-  formatTraceOutput,
-  formatRoutingTrace,
-  formatRoutingTable,
-  formatRoutingTree,
   lookupEnvelopeWithEnvironment,
   lookupWithEnvironment,
-  lookupWithGraphEnvironment,
   main,
   runSmokeSuite,
 };
