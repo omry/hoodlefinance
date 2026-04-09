@@ -199,18 +199,35 @@ export abstract class ResolverPlan
   implements ResolverPlanNode
 {
   readonly nodes: ResolverNode[];
+  // TEMPORARY: this lets plan nodes reach shared runtime services, including
+  // ResolveFlow itself for the current FX-conversion concession. Remove once
+  // the compiled execution DAG can express those edges directly.
+  readonly refs: PlanRuntimeRefs | null;
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
 
   constructor(
     name: string,
     nodes: ResolverNode[],
+    refsOrOptions: PlanRuntimeRefs | ResolverPlanOptions = {},
     options: ResolverPlanOptions = {},
   ) {
+    const hasRefs =
+      !!refsOrOptions &&
+      typeof refsOrOptions === "object" &&
+      "resolveFlow" in refsOrOptions;
+    const resolvedRefs = hasRefs
+      ? (refsOrOptions as PlanRuntimeRefs)
+      : null;
+    const resolvedOptions = hasRefs
+      ? options
+      : (refsOrOptions as ResolverPlanOptions);
+
     super(name);
     this.nodes = nodes || [];
-    this.routeClass = options.routeClass || name;
-    this.routePath = options.routePath || "";
+    this.refs = resolvedRefs;
+    this.routeClass = resolvedOptions.routeClass || name;
+    this.routePath = resolvedOptions.routePath || "";
   }
 
   getNodesForRequest(request: PlannerRequest): ResolverNode[] {
@@ -352,7 +369,7 @@ export abstract class ResolverPlan
       | Record<string, ResolverNode>
       | ((nodeCode: string) => ResolverNode | null),
     overrides: Record<string, unknown> | null | undefined,
-    _deps: PlanNodeBuilderDependencies,
+    deps: PlanNodeBuilderDependencies,
   ): ResolverPlan {
     const resolveNodeByCode =
       typeof resolverMap === "function"
@@ -363,6 +380,7 @@ export abstract class ResolverPlan
     const Ctor = this as unknown as new (
       name: string,
       nodes: ResolverNode[],
+      refs: PlanRuntimeRefs,
       options: ResolverPlanOptions,
     ) => ResolverPlan;
     return new Ctor(
@@ -370,6 +388,7 @@ export abstract class ResolverPlan
       this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
       ) as ResolverNode[],
+      deps.refs,
       this.materializeOptions(overrides),
     );
   }
@@ -458,9 +477,10 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
   constructor(
     name: string,
     nodes: ResolverNode[],
+    refsOrOptions: PlanRuntimeRefs | ResolverPlanOptions = {},
     options: ResolverPlanOptions = {},
   ) {
-    super(name, nodes, options);
+    super(name, nodes, refsOrOptions, options);
     if (this.nodes.length < 2) {
       throw new Error(
         `FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`,
@@ -499,6 +519,10 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
 export type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
 
 export interface PlanNodeBuilderDependencies {
+  // TEMPORARY: this shared refs bag is the only acceptable place to thread
+  // ResolveFlow into plan nodes for the current FX-conversion concession.
+  // TODO: remove any ResolveFlow reference from here once conversion moves to
+  // the compiled execution DAG.
   refs: PlanRuntimeRefs;
 }
 

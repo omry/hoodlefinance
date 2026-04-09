@@ -12,7 +12,6 @@ const {
   RouteExecutionResolver,
   TickerQuoteResolutionPlan,
   buildPlanNodeFromSpec,
-  createPlanRuntimeRefs,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput(overrides = {}) {
@@ -103,11 +102,9 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
   const tradingview = createLeafResolver("TRADINGVIEW-FUND", {
     sourceName: "TRADINGVIEW",
   });
-  const refs = createPlanRuntimeRefs({
-    looksLikeIsin(value) {
-      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
-    },
-  });
+  const refs = {
+    resolveFlow: {},
+  };
 
   const plan = buildPlanNodeFromSpec(
     "QUOTE:TICKER",
@@ -130,6 +127,7 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
   );
 
   assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
+  assert.equal(plan.refs, refs);
 
   const runtimePlan = plan.buildRuntimePlan({
     allowTradingviewFallback: true,
@@ -146,11 +144,9 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
 });
 
 test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime materializer", () => {
-  const refs = createPlanRuntimeRefs({
-    looksLikeIsin() {
-      return false;
-    },
-  });
+  const refs = {
+    resolveFlow: {},
+  };
 
   const plan = buildPlanNodeFromSpec(
     "ROOT",
@@ -179,11 +175,9 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(request.ticker || ""));
     },
   });
-  const refs = createPlanRuntimeRefs({
-    looksLikeIsin(value) {
-      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
-    },
-  });
+  const refs = {
+    resolveFlow: {},
+  };
 
   const plan = buildPlanNodeFromSpec(
     "IDENTIFIER:ISIN",
@@ -223,11 +217,9 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
 test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () => {
   const pseFrames = createLeafResolver("PSE-FRAMES");
   const pseEdge = createLeafResolver("PSE-EDGE");
-  const refs = createPlanRuntimeRefs({
-    looksLikeIsin(value) {
-      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
-    },
-  });
+  const refs = {
+    resolveFlow: {},
+  };
 
   const plan = buildPlanNodeFromSpec(
     "QUOTE:PSE",

@@ -2,10 +2,7 @@ import { isResolverPlanNode } from "./plan-navigation";
 import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
 import type { ResolverNode, ResolverPlanNode } from "./planner";
 import { RawRequestInput } from "./request";
-import {
-  createPlanRuntimeRefs,
-  type PlanRuntimeRefDependencies,
-} from "./plan-runtime-refs";
+import { type PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -337,18 +334,25 @@ function isTerminalNodeId(code: string): boolean {
 }
 
 export interface ResolveFlowDependencies
-  extends ResolverMaterializationDependencies, PlanRuntimeRefDependencies {}
+  extends ResolverMaterializationDependencies {
+  looksLikeIsin(value: string): boolean;
+}
 
 export class ResolveFlow {
   readonly graph: Graph.View;
   readonly nodesByCode: Record<string, ResolverNode>;
-  private readonly runtimeRefs: ReturnType<typeof createPlanRuntimeRefs>;
+  private readonly runtimeRefs: PlanRuntimeRefs;
   private readonly resolutionEnv: RequestResolutionDependencies | null;
 
   constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
     this.graph = buildGraphView(definition);
     this.nodesByCode = Object.create(null);
-    this.runtimeRefs = createPlanRuntimeRefs(deps);
+    this.runtimeRefs = {
+      // TEMPORARY: attribute-side resolution may reach into ResolveFlow to use
+      // the main FX subtree until the compiled execution DAG can model that
+      // edge explicitly.
+      resolveFlow: this,
+    };
 
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
