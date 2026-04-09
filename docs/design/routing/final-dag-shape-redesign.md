@@ -306,18 +306,11 @@ even after the old structural DAG layer is removed.
 
 Two follow-up items are expected immediately after the initial migration:
 
-1. Runtime-lookup duplication
-   - `ResolveFlow` should become the single owner of runtime lookup setup.
-   - If the host adapter or CLI still rebuild request-classification,
-     `buildResolvePlan`, FX helper wiring, or similar runtime plumbing outside
-     `ResolveFlow`, that remains an architectural gap.
-   - The follow-up should collapse those duplicated runtime paths so lookup
-     behavior is owned in one place.
-
-2. Public exposure of internal resolver helpers
+1. Public exposure of internal resolver helpers
    - The initial migration may temporarily keep helper surfaces such as
      `getNodeByCode(...)`, `getPlanNodeByCode(...)`, internal resolver maps, or
-     exported compatibility helpers for the sake of CLI and test continuity.
+     exported compatibility helpers such as `resolveFxRate(...)` for the sake of
+     CLI and test continuity.
    - That is acceptable only as a transitional step.
    - The follow-up should remove or internalize those surfaces so the intended
      public runtime shape stays centered on:
@@ -332,6 +325,21 @@ class ResolveFlow {
   resolveAttribute(identifier: string, attribute?: string): unknown;
 }
 ```
+
+2. Runtime coupling to specific resolver ids and node types
+   - The initial migration may still leave `ResolveFlow` aware of
+     HOODLEFINANCE-specific runtime entry ids such as `RESOLVED-IDENTIFIER` or
+     `DEFAULT-ATTRIBUTE:FX`, and of specific node-type strings such as
+     `TerminalCollectorPlan`.
+   - That keeps the graph container structurally cleaner than before, but it
+     still mixes generic graph ownership with application-specific runtime
+     bootstrap assumptions.
+   - The follow-up should narrow that coupling so `ResolveFlow` does not need to
+     know which authored ids correspond to request classification, direct
+     identifier lookup, FX lookup, or similar product-specific entry wiring.
+   - Structural graph invariants such as `ROOT` and `TERMINAL` remain in scope
+     for `ResolveFlow`; the follow-up is specifically about hard-coded routing
+     and resolver-setup knowledge beyond those graph boundaries.
 
 The goal of this follow-up is not to redesign routing semantics.
 It is to finish collapsing the remaining compatibility scaffolding after the

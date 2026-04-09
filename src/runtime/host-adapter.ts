@@ -1,25 +1,20 @@
 import { createConcreteResolverMaterializationDependencies } from "../core/concrete-resolvers";
+import { collectResolverNodesByCode, ResolveFlow } from "../core/resolve-flow";
 import { resolveRoutingNode } from "../core/plan-navigation";
 import { createDefaultResolvePlanBuilder } from "../core/resolve-plan";
-import { collectResolverNodesByCode, ResolveFlow } from "../core/resolve-flow";
-import { extractAttributeValue } from "../core/attribute-extraction";
 import {
-  looksLikeIsin,
-  FxRequest,
-  RawRequestInput,
   type FxPair,
-  type RequestInput,
+  FxRequest,
+  looksLikeIsin,
+  RawRequestInput,
 } from "../core/request";
-import { buildFxPairFromCodes } from "../core/fx-normalization";
 import { DagPlan } from "../core/spec-data";
 import {
   resolvePlannedQuoteEnvelope,
-  resolveRequestEnvelope,
-  resolveRequestValue,
   type LookupEnvelopeResult,
   type RequestResolutionDependencies,
 } from "../core/request-resolution";
-import type { ResolverPlanNode } from "../core/planner";
+import { extractAttributeValue } from "../core/attribute-extraction";
 
 interface HoodlefinanceRuntimeDependencies {
   httpFetch(url: string): string;
@@ -45,15 +40,77 @@ interface HoodlefinanceRuntime {
   lookup(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupEnvelope(identifier: string, attribute?: string): LookupEnvelopeResult;
   lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult;
+  resolveAttribute(identifier: string, attribute?: string): unknown;
+}
+
+function createRuntimeLookupHelpers(resolveFlow: ResolveFlow) {
+  const directIdentifierResolver = resolveFlow.getNodeByCode(
+    "RESOLVED-IDENTIFIER",
+  ) as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"];
+  const buildResolvePlan = createDefaultResolvePlanBuilder({
+    directIdentifierResolver,
+    getPlanNodeByCode: (code) => resolveFlow.getPlanNodeByCode(code),
+  });
+  const fxPlan = resolveFlow.getPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
+
+  function createRequestInput(
+    identifier: string,
+    attribute?: string,
+  ): ReturnType<NonNullable<RequestResolutionDependencies["classifyRawRequest"]>> {
+    const rawRequestInput = new RawRequestInput(
+      identifier,
+      String(attribute == null ? "price" : attribute).trim(),
+    );
+    const resolvedNode = resolveRoutingNode(
+      resolveFlow.getPlanNodeByCode("ROOT"),
+      rawRequestInput,
+    );
+
+    if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
+      throw new Error("Request classification failed.");
+    }
+
+    const outcome = resolvedNode.resolve(rawRequestInput);
+
+    if (outcome.status !== "success") {
+      throw new Error(outcome.error || "Request classification failed.");
+    }
+
+    return outcome.value as ReturnType<
+      NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
+    >;
+  }
+
+  function resolveFxRate(fxPair: FxPair): LookupEnvelopeResult {
+    const fxRequest = new FxRequest({
+      attribute: "price",
+      fxPair,
+      identifier: fxPair.yahooChartSymbol,
+    });
+    const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
+
+    if (env.status === "success") {
+      const price = Number(
+        extractAttributeValue(env.value as Record<string, unknown>, "price"),
+      );
+      if (Number.isFinite(price)) {
+        return { ...env, value: price };
+      }
+    }
+
+    return env;
+  }
+
+  return {
+    buildResolvePlan,
+    createRequestInput,
+    resolveFxRate,
+  };
 }
 
 export function createHoodlefinanceRuntime(
   deps: HoodlefinanceRuntimeDependencies,
 ): HoodlefinanceRuntime {
-  type DirectIdentifierResolverLike = Parameters<
-    typeof createDefaultResolvePlanBuilder
-  >[0]["directIdentifierResolver"];
-
   const resolverMaterializationDeps =
     createConcreteResolverMaterializationDependencies({
       httpFetch: deps.httpFetch,
@@ -73,136 +130,30 @@ export function createHoodlefinanceRuntime(
         : {}),
     });
 
-  function createResolutionPath(dagPlan: typeof DagPlan) {
-    const resolveFlow = new ResolveFlow(dagPlan, {
-      ...resolverMaterializationDeps,
-      looksLikeIsin(value) {
-        return looksLikeIsin(value);
-      },
-    });
-    const directIdentifierResolver = resolveFlow.getNodeByCode(
-      "RESOLVED-IDENTIFIER",
-    )!;
-    const getPathPlanNodeByCode = (code: string): ResolverPlanNode =>
-      resolveFlow.getPlanNodeByCode(code);
-    const buildResolvePlan = createDefaultResolvePlanBuilder({
-      directIdentifierResolver:
-        directIdentifierResolver as DirectIdentifierResolverLike,
-      getPlanNodeByCode: getPathPlanNodeByCode,
-    });
-    const fxPlan = getPathPlanNodeByCode("DEFAULT-ATTRIBUTE:FX");
-    const rootPlan = getPathPlanNodeByCode("ROOT");
-
-    let resolveFxRate: (fxPair: FxPair) => LookupEnvelopeResult;
-    const classifyRawRequest = (requestInput: RawRequestInput): RequestInput => {
-      const resolvedNode = resolveRoutingNode(rootPlan, requestInput);
-
-      if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
-        throw new Error("Request classification failed.");
-      }
-
-      const outcome = resolvedNode.resolve(requestInput);
-
-      if (outcome.status !== "success") {
-        throw new Error(outcome.error || "Request classification failed.");
-      }
-
-      return outcome.value as RequestInput;
-    };
-    const resolutionEnv: RequestResolutionDependencies = {
-      buildResolvePlan,
-      classifyRawRequest,
-      httpFetch: deps.httpFetch,
-      getCachedString: deps.getCachedString,
-      looksLikeIsin,
-      putCachedString: deps.putCachedString,
-      resolveFxRate: (fxPair) => resolveFxRate(fxPair),
-    };
-
-    resolveFxRate = (fxPair: FxPair): LookupEnvelopeResult => {
-      const fxRequest = new FxRequest({
-        attribute: "price",
-        fxPair,
-        identifier: fxPair.yahooSymbol,
-      });
-
-      const env = resolvePlannedQuoteEnvelope(fxPlan, fxRequest, []);
-
-      if (env.status === "success") {
-        const price = Number(
-          extractAttributeValue(env.value as Record<string, unknown>, "price"),
-        );
-        if (Number.isFinite(price)) {
-          return { ...env, value: price };
-        }
-      }
-
-      return env;
-    };
-
-    return {
-      buildResolvePlan,
-      getPlanNodeByCode: getPathPlanNodeByCode,
-      resolutionEnv,
-      resolversByCode: collectResolverNodesByCode(resolveFlow),
-      resolveFxRate,
-    };
-  }
-
-  const dagResolutionPath = createResolutionPath(DagPlan);
-  const {
-    buildResolvePlan,
-    getPlanNodeByCode,
-    resolutionEnv,
-    resolversByCode,
-    resolveFxRate,
-  } = dagResolutionPath;
-
-  // Helper to normalize request input parameters
-  const normalizeRequestInput = (
-    identifier: string,
-    attribute: string | undefined,
-  ) =>
-    new RawRequestInput(
-      identifier,
-      String(attribute == null ? "price" : attribute).trim(),
-    );
+  const resolveFlow = new ResolveFlow(DagPlan, {
+    ...resolverMaterializationDeps,
+    looksLikeIsin(value) {
+      return looksLikeIsin(value);
+    },
+  });
+  const runtimeLookupHelpers = createRuntimeLookupHelpers(resolveFlow);
 
   const runtime = {
-    lookup(identifier: string, attribute?: string): LookupEnvelopeResult {
-      return resolveRequestValue(
-        resolutionEnv,
-        normalizeRequestInput(identifier, attribute),
-      );
-    },
-    lookupEnvelope(
-      identifier: string,
-      attribute?: string,
-    ): LookupEnvelopeResult {
-      return resolveRequestEnvelope(
-        resolutionEnv,
-        normalizeRequestInput(identifier, attribute),
-      );
-    },
-    lookupViaGraph(identifier: string, attribute?: string): LookupEnvelopeResult {
-      return resolveRequestValue(
-        resolutionEnv,
-        normalizeRequestInput(identifier, attribute),
-      );
+    lookup: resolveFlow.lookup,
+    lookupEnvelope: resolveFlow.lookupEnvelope,
+    lookupViaGraph: resolveFlow.lookup,
+    resolveAttribute(identifier: string, attribute?: string): unknown {
+      return resolveFlow.resolveAttribute(identifier, attribute);
     },
     // Internal extras exposed for JS consumers (not in HoodlefinanceRuntime type)
-    buildResolvePlan,
-    createRequestInput(identifier: string, attribute?: string) {
-      return resolutionEnv.classifyRawRequest!(
-        normalizeRequestInput(identifier, attribute),
-      );
-    },
+    buildResolvePlan: runtimeLookupHelpers.buildResolvePlan,
+    createRequestInput: runtimeLookupHelpers.createRequestInput,
     httpFetch: deps.httpFetch,
     getPlanNodeByCode(code: string) {
-      return getPlanNodeByCode(code);
+      return resolveFlow.getPlanNodeByCode(code);
     },
-    resolveFxRate,
-    resolversByCode,
+    resolveFxRate: runtimeLookupHelpers.resolveFxRate,
+    resolversByCode: collectResolverNodesByCode(resolveFlow),
   };
 
   return runtime as HoodlefinanceRuntime & typeof runtime;

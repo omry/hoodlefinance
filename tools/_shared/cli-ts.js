@@ -108,14 +108,17 @@ function createCliEnvironment() {
     putCachedString: stringCache.putCachedString,
   });
 
-  env.buildResolvePlan = runtime.buildResolvePlan;
-  env.createRequestInput = runtime.createRequestInput;
-  env.getPlanNodeByCode = runtime.getPlanNodeByCode;
-  env.lookup = runtime.lookup;
-  env.lookupEnvelope = runtime.lookupEnvelope;
-  env.lookupViaGraph = runtime.lookupViaGraph;
-  env.resolveFxRate = runtime.resolveFxRate;
-  env.resolversByCode = runtime.resolversByCode;
+  Object.assign(env, {
+    buildResolvePlan: runtime.buildResolvePlan,
+    createRequestInput: runtime.createRequestInput,
+    getPlanNodeByCode: runtime.getPlanNodeByCode,
+    lookup: runtime.lookup,
+    lookupEnvelope: runtime.lookupEnvelope,
+    lookupViaGraph: runtime.lookupViaGraph,
+    resolveAttribute: runtime.resolveAttribute,
+    resolveFxRate: runtime.resolveFxRate,
+    resolversByCode: runtime.resolversByCode,
+  });
 
   return env;
 }
@@ -131,24 +134,21 @@ function routeLabelFromLookup(result) {
   return result.route || "(none)";
 }
 
+function normalizeAttribute(attribute) {
+  return String(attribute == null ? "price" : attribute).trim();
+}
+
 function lookupEnvelopeWithEnvironment(env, args) {
-  return env.lookupEnvelope(
-    args.ticker,
-    String(args.attribute || "price").trim(),
-  );
+  return env.lookupEnvelope(args.ticker, normalizeAttribute(args.attribute));
 }
 
 function lookupWithEnvironment(env, args) {
-  return env.lookup(args.ticker, String(args.attribute || "price").trim());
+  return env.lookup(args.ticker, normalizeAttribute(args.attribute));
 }
 
 function lookupWithGraphEnvironment(env, args) {
-  return env.lookupViaGraph(
-    args.ticker,
-    String(args.attribute || "price").trim(),
-  );
+  return env.lookupViaGraph(args.ticker, normalizeAttribute(args.attribute));
 }
-
 
 function formatLookupResult(result) {
   if (result.status !== "success") {
@@ -182,6 +182,14 @@ function formatEnvelopeResult(result) {
     },
     2,
   );
+}
+
+function formatResolvedValue(result) {
+  return result instanceof Date
+    ? result
+    : result && typeof result === "object"
+      ? JSON.parse(JSON.stringify(result))
+      : result;
 }
 
 function formatRoutingTable(env = createCliEnvironment()) {
@@ -407,7 +415,7 @@ function main(argv = process.argv.slice(2)) {
     }
 
     const result = lookupEnvelopeWithEnvironment(getEnv(), {
-      attribute: thirdArg || "price",
+      attribute: normalizeAttribute(thirdArg),
       ticker: secondArg,
     });
     console.log(formatEnvelopeResult(result));
@@ -421,7 +429,7 @@ function main(argv = process.argv.slice(2)) {
     }
 
     const result = lookupWithGraphEnvironment(getEnv(), {
-      attribute: thirdArg || "price",
+      attribute: normalizeAttribute(thirdArg),
       ticker: secondArg,
     });
     console.log(formatEnvelopeResult(result));
@@ -439,7 +447,10 @@ function main(argv = process.argv.slice(2)) {
       process.exit(1);
     }
 
-    const requestArgs = { attribute: thirdArg || "price", ticker: secondArg };
+    const requestArgs = {
+      attribute: normalizeAttribute(thirdArg),
+      ticker: secondArg,
+    };
     const oldResult = lookupWithEnvironment(getEnv(), requestArgs);
     const newResult = lookupWithGraphEnvironment(getEnv(), requestArgs);
 
@@ -479,7 +490,7 @@ function main(argv = process.argv.slice(2)) {
     }
 
     const result = lookupWithEnvironment(getEnv(), {
-      attribute: thirdArg || "price",
+      attribute: normalizeAttribute(thirdArg),
       ticker: secondArg,
     });
     console.log(formatTraceOutput(secondArg, result));
@@ -491,16 +502,16 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  const result = lookupWithEnvironment(getEnv(), {
-    attribute: secondArg || "price",
-    ticker: firstArg,
-  });
-  if (result.status !== "success") {
-    console.error(result.error);
+  let result;
+
+  try {
+    result = getEnv().resolveAttribute(firstArg, normalizeAttribute(secondArg));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 
-  const formattedResult = formatLookupResult(result);
+  const formattedResult = formatResolvedValue(result);
 
   if (formattedResult instanceof Date) {
     console.log(formattedResult.toISOString());
