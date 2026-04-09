@@ -35,7 +35,7 @@ export function createRequestResolutionEnvHelpers(
   const directIdentifierResolver = nodeLookup.getNodeByCode(
     "RESOLVED-IDENTIFIER",
   ) as Parameters<typeof createDefaultResolvePlanBuilder>[0]["directIdentifierResolver"];
-  const resolverServices = deps.resolverServices || {};
+  const resolverServices = deps.resolverServices || null;
   const buildResolvePlan = createDefaultResolvePlanBuilder({
     directIdentifierResolver,
     getPlanNodeByCode: (code) => nodeLookup.getPlanNodeByCode(code),
@@ -75,11 +75,11 @@ export function createRequestResolutionEnvHelpers(
     buildResolvePlan,
     classifyRawRequest,
     getCachedString: (cacheKey) =>
-      typeof resolverServices.getCachedString === "function"
+      typeof resolverServices?.getCachedString === "function"
         ? resolverServices.getCachedString(cacheKey)
         : "",
     httpFetch: (url) => {
-      if (typeof resolverServices.httpFetch !== "function") {
+      if (typeof resolverServices?.httpFetch !== "function") {
         throw new Error(
           `ResolveFlow requires resolverServices.httpFetch to fetch "${url}".`,
         );
@@ -89,7 +89,7 @@ export function createRequestResolutionEnvHelpers(
     },
     looksLikeIsin: deps.looksLikeIsin,
     putCachedString: (cacheKey, value, ttlSeconds) =>
-      typeof resolverServices.putCachedString === "function"
+      typeof resolverServices?.putCachedString === "function"
         ? resolverServices.putCachedString(
             cacheKey,
             value,

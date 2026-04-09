@@ -3,30 +3,41 @@ export interface StoredTextResource {
   text: string;
 }
 
+export abstract class ResolverServices {
+  abstract httpFetch(url: string): string;
+
+  getCachedJson(_cacheKey: string): unknown {
+    return null;
+  }
+
+  putCachedJson(_cacheKey: string, value: unknown, _ttlSeconds: number): unknown {
+    return value;
+  }
+
+  getCachedString(_cacheKey: string): string {
+    return "";
+  }
+
+  putCachedString(_cacheKey: string, value: string, _ttlSeconds: number): string {
+    return String(value || "");
+  }
+
+  getStoredTextResource(_resourceKey: string): StoredTextResource | null {
+    return null;
+  }
+
+  putStoredTextResource(
+    _resourceKey: string,
+    _text: string,
+    _fetchedAtMs: number,
+  ): StoredTextResource | null {
+    return null;
+  }
+}
+
 export interface StoredTextState {
   fallbackText: string;
   freshText: string;
-}
-
-export interface ResolverServices {
-  // Network fetches for live upstream resources.
-  httpFetch?(url: string): string;
-
-  // JSON cache for structured quote and lookup payloads.
-  getCachedJson?(cacheKey: string): unknown;
-  putCachedJson?(cacheKey: string, value: unknown, ttlSeconds: number): unknown;
-
-  // String cache for raw text resources such as maps and whitelists.
-  getCachedString?(cacheKey: string): string;
-  putCachedString?(cacheKey: string, value: string, ttlSeconds: number): string;
-
-  // Durable stored text resources for environments with a backing store.
-  getStoredTextResource?(resourceKey: string): StoredTextResource | null;
-  putStoredTextResource?(
-    resourceKey: string,
-    text: string,
-    fetchedAtMs: number,
-  ): StoredTextResource | null;
 }
 
 export interface LoadStoredTextResourceOptions<TValue> {

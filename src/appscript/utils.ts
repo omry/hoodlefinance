@@ -1,5 +1,5 @@
 import { parsePreferredReitTickerSet } from "../core/preferred-yahoo-symbols";
-import type { StoredTextResource } from "../core/resolver-services";
+import type { StoredTextResource } from "../runtime/ResolverServices";
 
 export interface AppsScriptResponseLike {
   getContentText(): string;

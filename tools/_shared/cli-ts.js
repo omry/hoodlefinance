@@ -4,6 +4,9 @@
 const {
   createHoodlefinanceRuntime,
 } = require("../../dist/ts/runtime/host-adapter.js");
+const {
+  StandAloneResolverServices,
+} = require("../../dist/ts/runtime/StandAloneResolverServices.js");
 const { looksLikeIsin } = require("../../dist/ts/core/request.js");
 const fs = require("node:fs");
 const { createUrlFetchApp } = require("../../tools/_shared/urlfetch-sync.js");
@@ -43,65 +46,35 @@ function createSyncFetcher() {
   };
 }
 
-function createStringCache() {
-  const cache = new Map();
-
-  return {
-    getCachedString(key) {
-      return cache.get(key) || "";
-    },
-    putCachedString(key, value) {
-      cache.set(key, String(value || ""));
-      return String(value || "");
-    },
-  };
-}
-
-function createJsonCache() {
-  const cache = new Map();
-
-  return {
-    getCachedJson(key) {
-      return cache.has(key) ? cache.get(key) : null;
-    },
-    putCachedJson(key, value) {
-      cache.set(key, value);
-      return value;
-    },
-  };
-}
-
 function createCliEnvironment() {
   const syncFetchText = createSyncFetcher();
-  const stringCache = createStringCache();
-  const jsonCache = createJsonCache();
-  const env = {
-    getCachedString: stringCache.getCachedString,
+  const resolverServices = new StandAloneResolverServices({
     httpFetch(url) {
       return syncFetchText(url);
     },
+  });
+  const env = {
+    getCachedString(key) {
+      return resolverServices.getCachedString(key);
+    },
+    httpFetch(url) {
+      return resolverServices.httpFetch(url);
+    },
     looksLikeIsin,
-    putCachedString: stringCache.putCachedString,
   };
 
-  stringCache.putCachedString(
+  resolverServices.putCachedString(
     PREFERRED_REIT_WHITELIST_CACHE_KEY,
     loadPreferredReitWhitelistText(),
+    21600,
   );
-  stringCache.putCachedString(
+  resolverServices.putCachedString(
     CURRENCY_CODES_CACHE_KEY,
     loadCurrencyCodesText(),
+    21600,
   );
 
-  const runtime = createHoodlefinanceRuntime({
-    httpFetch(url) {
-      return env.httpFetch(url);
-    },
-    getCachedJson: jsonCache.getCachedJson,
-    getCachedString: stringCache.getCachedString,
-    putCachedJson: jsonCache.putCachedJson,
-    putCachedString: stringCache.putCachedString,
-  });
+  const runtime = createHoodlefinanceRuntime(resolverServices);
 
   Object.assign(env, {
     lookup: runtime.lookup,

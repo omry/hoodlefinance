@@ -1524,39 +1524,8 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   TradingviewFundResolver,
 } as const;
 
-export interface ConcreteResolverMaterializationDependencies extends ResolverServices {}
-
-export function createConcreteResolverServices(
-  deps: ConcreteResolverMaterializationDependencies,
-): ResolverServices {
-  const services: ResolverServices = {};
-
-  if (deps.httpFetch) {
-    services.httpFetch = deps.httpFetch;
-  }
-  if (deps.getCachedJson) {
-    services.getCachedJson = deps.getCachedJson;
-  }
-  if (deps.getCachedString) {
-    services.getCachedString = deps.getCachedString;
-  }
-  if (deps.getStoredTextResource) {
-    services.getStoredTextResource = deps.getStoredTextResource;
-  }
-  if (deps.putCachedJson) {
-    services.putCachedJson = deps.putCachedJson;
-  }
-  if (deps.putCachedString) {
-    services.putCachedString = deps.putCachedString;
-  }
-  if (deps.putStoredTextResource) {
-    services.putStoredTextResource = deps.putStoredTextResource;
-  }
-  return services;
-}
-
 export function createConcreteResolverMaterializationDependencies(
-  deps: ConcreteResolverMaterializationDependencies,
+  resolverServices: ResolverServices,
 ): {
   resolverClassesByName: Record<string, ResolverClassLike>;
   resolverServices: ResolverServices;
@@ -1565,6 +1534,6 @@ export function createConcreteResolverMaterializationDependencies(
     resolverClassesByName: {
       ...CONCRETE_RESOLVER_CLASSES_BY_NAME,
     },
-    resolverServices: createConcreteResolverServices(deps),
+    resolverServices,
   };
 }

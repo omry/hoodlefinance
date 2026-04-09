@@ -1,33 +1,17 @@
 import { createHoodlefinanceRuntime } from "../runtime/host-adapter";
 import {
-  type AppsScriptCacheLike,
+  AppScriptResolverServices,
+  type AppScriptResolverServicesOptions,
+  type AppsScriptCacheServiceLike,
+  type AppsScriptPropertiesServiceLike,
+} from "../runtime/AppScriptResolverServices";
+import {
   type AppsScriptUrlFetchLike,
-  createJsonCache,
-  createStoredTextResourceStore,
-  createStringCache,
 } from "./utils";
-import { type StoredTextResource } from "../core/resolver-services";
 
 const DEFAULT_ATTRIBUTE = "price";
 
-interface AppsScriptCacheServiceLike {
-  getScriptCache(): AppsScriptCacheLike;
-}
-
-interface AppsScriptPropertiesLike {
-  getProperty(key: string): string | null;
-  setProperty(key: string, value: string): void;
-}
-
-interface AppsScriptPropertiesServiceLike {
-  getScriptProperties(): AppsScriptPropertiesLike;
-}
-
-interface HoodlefinanceAppScriptServices {
-  cacheService: AppsScriptCacheServiceLike;
-  propertiesService?: AppsScriptPropertiesServiceLike;
-  urlFetchApp: AppsScriptUrlFetchLike;
-}
+type HoodlefinanceAppScriptServices = AppScriptResolverServicesOptions;
 
 interface HoodlefinanceAppScriptBindings {
   HOODLEFINANCE(identifier: unknown, attribute?: unknown): unknown;
@@ -110,33 +94,9 @@ export function createHoodlefinanceAppScriptBindings(
   overrides?: Partial<HoodlefinanceAppScriptServices>,
 ): HoodlefinanceAppScriptBindings {
   const services = requireServices(overrides);
-  const scriptCache = services.cacheService.getScriptCache();
-  const stringCache = createStringCache(scriptCache);
-  const jsonCache = createJsonCache(scriptCache);
-  const scriptProperties = services.propertiesService
-    ? services.propertiesService.getScriptProperties()
-    : null;
-  const storedTextResourceStore =
-    createStoredTextResourceStore(scriptProperties);
-  const runtime = createHoodlefinanceRuntime({
-    httpFetch(url) {
-      return services.urlFetchApp.fetch(url).getContentText();
-    },
-    getCachedJson: jsonCache.getCachedJson,
-    getCachedString: stringCache.getCachedString,
-    getStoredTextResource(key): StoredTextResource | null {
-      return storedTextResourceStore.getStoredTextResource(key);
-    },
-    putCachedJson: jsonCache.putCachedJson,
-    putCachedString: stringCache.putCachedString,
-    putStoredTextResource(key, text, fetchedAtMs): StoredTextResource | null {
-      return storedTextResourceStore.putStoredTextResource(
-        key,
-        text,
-        fetchedAtMs,
-      );
-    },
-  });
+  const runtime = createHoodlefinanceRuntime(
+    new AppScriptResolverServices(services),
+  );
 
   return {
     HOODLEFINANCE(identifier, attribute = DEFAULT_ATTRIBUTE) {

@@ -1,20 +1,20 @@
 import {
   createConcreteResolverMaterializationDependencies,
-  type ConcreteResolverMaterializationDependencies,
 } from "../core/concrete-resolvers";
 import { ResolveFlow } from "../core/resolve-flow";
 import { looksLikeIsin } from "../core/request";
 import { DagPlan } from "../core/spec-data";
+import { ResolverServices } from "./ResolverServices";
 export type HoodlefinanceRuntime = Pick<
   ResolveFlow,
   "lookup" | "lookupEnvelope" | "resolveAttribute"
 >;
 
 export function createHoodlefinanceRuntime(
-  deps: ConcreteResolverMaterializationDependencies,
+  resolverServices: ResolverServices,
 ): HoodlefinanceRuntime {
   const resolverMaterializationDeps =
-    createConcreteResolverMaterializationDependencies(deps);
+    createConcreteResolverMaterializationDependencies(resolverServices);
 
   const resolveFlow = new ResolveFlow(DagPlan, {
     ...resolverMaterializationDeps,
