@@ -41,7 +41,7 @@ type RequestResolutionPlan = Pick<
 
 interface ResolvedQuoteLookup {
   attributePlan: ResolverPlanNode | null;
-  envelope: LookupEnvelopeResult;
+  result: LookupResult;
   resolvedRequest: ResolvedRequest | null;
 }
 
@@ -56,10 +56,9 @@ export interface RequestResolutionDependencies {
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
 }
 
-export interface LookupEnvelopeResult {
+export interface LookupResult {
   attemptedRoutes: string[];
   error?: string;
-  kind: "quote";
   route: string;
   status: "failure" | "success";
   value: unknown;
@@ -69,11 +68,10 @@ function failureResult(
   route: string,
   attemptedRoutes: string[],
   error: unknown,
-): LookupEnvelopeResult {
+): LookupResult {
   return {
     attemptedRoutes,
     error: error instanceof Error ? error.message : String(error || ""),
-    kind: "quote",
     route,
     status: "failure",
     value: null,
@@ -84,10 +82,9 @@ function normalizePlanOutcome(
   route: string,
   attemptedRoutes: string[],
   outcome: QuotePlanOutcome,
-): LookupEnvelopeResult {
-  const normalized: LookupEnvelopeResult = {
+): LookupResult {
+  const normalized: LookupResult = {
     attemptedRoutes,
-    kind: "quote",
     route,
     status: outcome.status,
     value:
@@ -147,11 +144,11 @@ function normalizeRequestInput(
   return env.buildResolvePlan(requestInput).requestInput;
 }
 
-export function resolvePlannedQuoteEnvelope(
+export function resolvePlannedQuoteResult(
   attributePlan: ResolverPlanNode,
   resolvedRequest: ResolvedRequest,
   attemptedRoutes: string[],
-): LookupEnvelopeResult {
+): LookupResult {
   const resolvableAttributePlan = requireResolvablePlan<ResolvedRequest, unknown>(
     attributePlan,
     "Attribute plan cannot execute this request.",
@@ -168,10 +165,9 @@ export function resolvePlannedQuoteEnvelope(
 
 function createDebugValueResult(
   resolvePlan: RequestResolutionPlan,
-): LookupEnvelopeResult {
+): LookupResult {
   return {
     attemptedRoutes: [],
-    kind: "quote",
     route: resolvePlan.plannedRoute || "(none)",
     status: "success",
     value: resolvePlan.debugValue,
@@ -181,7 +177,7 @@ function createDebugValueResult(
 function tryResolveDirectIsinValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
-): LookupEnvelopeResult | null {
+): LookupResult | null {
   if (requestInput.attributeType !== "isin") {
     return null;
   }
@@ -204,7 +200,6 @@ function tryResolveDirectIsinValue(
 
   return {
     attemptedRoutes: [directResolution.route],
-    kind: "quote",
     route: directResolution.route,
     status: "success",
     value: directResolution.value,
@@ -220,7 +215,7 @@ function resolveIdentifierPlanLookup(
   if (!identifierPlan) {
     return {
       attributePlan: null,
-      envelope: failureResult("(none)", [], "Identifier resolution failed."),
+      result: failureResult("(none)", [], "Identifier resolution failed."),
       resolvedRequest: null,
     };
   }
@@ -237,7 +232,7 @@ function resolveIdentifierPlanLookup(
   if (identifierOutcome.status !== "success") {
     return {
       attributePlan: null,
-      envelope: failureResult(
+      result: failureResult(
         identifierRoute,
         [identifierRoute],
         identifierOutcome.error,
@@ -253,7 +248,7 @@ function resolveIdentifierPlanLookup(
   if (!attributePlan) {
     return {
       attributePlan: null,
-      envelope: failureResult(
+      result: failureResult(
         identifierRoute,
         [identifierRoute],
         "No attribute route is available for this request.",
@@ -264,7 +259,7 @@ function resolveIdentifierPlanLookup(
 
   return {
     attributePlan,
-    envelope: resolvePlannedQuoteEnvelope(
+    result: resolvePlannedQuoteResult(
       attributePlan,
       identifierOutcome.value,
       [identifierRoute],
@@ -277,44 +272,44 @@ function resolveIdentifierPlanLookup(
 function finalizeLookupValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
-  envelope: LookupEnvelopeResult,
+  lookupResult: LookupResult,
   attributePlan?: ResolverPlanNode | null,
   resolvedRequest?: ResolvedRequest | null,
-): LookupEnvelopeResult {
-  if (envelope.status !== "success") {
-    return envelope;
+): LookupResult {
+  if (lookupResult.status !== "success") {
+    return lookupResult;
   }
 
-  const attemptedRoutes = envelope.attemptedRoutes.slice();
+  const attemptedRoutes = lookupResult.attemptedRoutes.slice();
   const quote = {
-    ...((envelope.value || {}) as Record<string, unknown>),
+    ...((lookupResult.value || {}) as Record<string, unknown>),
   };
  
   try {
-    const fxEnvelope =
+    const fxResult =
       attributePlan &&
       typeof (
         attributePlan as ResolverPlanNode & {
-          resolveOutputCurrencyEnvelope?: (
+          resolveOutputCurrencyResult?: (
             request: RequestInput,
             value: Record<string, unknown>,
-          ) => LookupEnvelopeResult | null;
+          ) => LookupResult | null;
         }
-      ).resolveOutputCurrencyEnvelope === "function"
+      ).resolveOutputCurrencyResult === "function"
         ? (
             attributePlan as ResolverPlanNode & {
-              resolveOutputCurrencyEnvelope(
+              resolveOutputCurrencyResult(
                 request: RequestInput,
                 value: Record<string, unknown>,
-              ): LookupEnvelopeResult | null;
+              ): LookupResult | null;
             }
-          ).resolveOutputCurrencyEnvelope(requestInput, quote)
+          ).resolveOutputCurrencyResult(requestInput, quote)
         : null;
 
-    if (fxEnvelope) {
-      attemptedRoutes.push(...fxEnvelope.attemptedRoutes);
-      if (fxEnvelope.status === "success") {
-        const rate = Number(fxEnvelope.value);
+    if (fxResult) {
+      attemptedRoutes.push(...fxResult.attemptedRoutes);
+      if (fxResult.status === "success") {
+        const rate = Number(fxResult.value);
         if (Number.isFinite(rate)) {
           quote.hoodlefinanceFxUnitScale = rate;
         }
@@ -352,58 +347,21 @@ function finalizeLookupValue(
                   tickerInput: requestInput.ticker,
                 },
           );
- 
+
     return {
-      ...envelope,
+      ...lookupResult,
       attemptedRoutes,
       value,
     };
   } catch (error) {
-    return failureResult(envelope.route, attemptedRoutes, error);
+    return failureResult(lookupResult.route, attemptedRoutes, error);
   }
-}
-
-export function resolveRequestEnvelope(
-  env: RequestResolutionDependencies,
-  requestInput: RawRequestInput | RequestInput,
-): LookupEnvelopeResult {
-  const normalizedRequestInput = normalizeRequestInput(env, requestInput);
-  let resolvePlan: Readonly<ResolvePlan>;
-
-  try {
-    validateDeferredLookupModes(normalizedRequestInput);
-    resolvePlan = env.buildResolvePlan(normalizedRequestInput);
-  } catch (error) {
-    return failureResult("(none)", [], error);
-  }
-
-  if (resolvePlan.debugValue) {
-    return createDebugValueResult(resolvePlan);
-  }
-
-  if (resolvePlan.attributePlan && resolvePlan.resolvedRequest) {
-    return resolvePlannedQuoteEnvelope(
-      resolvePlan.attributePlan,
-      resolvePlan.resolvedRequest,
-      [],
-    );
-  }
-
-  if (resolvePlan.identifierPlan) {
-    return resolveIdentifierPlanLookup(normalizedRequestInput, resolvePlan).envelope;
-  }
-
-  return failureResult(
-    resolvePlan.plannedRoute || "(none)",
-    [],
-    "Identifier resolution failed.",
-  );
 }
 
 export function resolveRequestValue(
   env: RequestResolutionDependencies,
   requestInput: RawRequestInput | RequestInput,
-): LookupEnvelopeResult {
+): LookupResult {
   const normalizedRequestInput = normalizeRequestInput(env, requestInput);
 
   try {
@@ -436,9 +394,9 @@ export function resolveRequestValue(
 
   let effectiveAttributePlan = resolvePlan.attributePlan || null;
   let effectiveResolvedRequest = resolvePlan.resolvedRequest || null;
-  const envelope =
+  const lookupResult =
     effectiveAttributePlan && effectiveResolvedRequest
-      ? resolvePlannedQuoteEnvelope(
+      ? resolvePlannedQuoteResult(
           effectiveAttributePlan,
           effectiveResolvedRequest,
           [],
@@ -451,7 +409,7 @@ export function resolveRequestValue(
             );
             effectiveAttributePlan = identifierLookup.attributePlan;
             effectiveResolvedRequest = identifierLookup.resolvedRequest;
-            return identifierLookup.envelope;
+            return identifierLookup.result;
           })()
         : failureResult(
             resolvePlan.plannedRoute || "(none)",
@@ -462,7 +420,7 @@ export function resolveRequestValue(
   return finalizeLookupValue(
     env,
     normalizedRequestInput,
-    envelope,
+    lookupResult,
     effectiveAttributePlan,
     effectiveResolvedRequest,
   );

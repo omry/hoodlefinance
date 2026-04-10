@@ -295,14 +295,13 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
     ticker: "PSE:BDO",
   });
 
-  const env = plan.resolveOutputCurrencyEnvelope(request, {
+  const env = plan.resolveOutputCurrencyResult(request, {
     currency: "PHP",
     regularMarketPrice: 100,
   });
 
   assert.deepEqual(env, {
     attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
-    kind: "quote",
     route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
     status: "success",
     value: 0.02,

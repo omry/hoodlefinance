@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  resolveRequestEnvelope,
   resolveRequestValue,
 } = require("../dist/ts/core/index.js");
 const { createTextHttpResponse } = require("./resource-fixtures.js");
@@ -70,31 +69,6 @@ function createRequestInput(overrides = {}) {
     ...overrides,
   };
 }
-
-test("resolveRequestEnvelope rejects deferred info modes before plan building", () => {
-  const result = resolveRequestEnvelope(
-    createEnv(),
-    createRequestInput({ infoMode: "source-list" }),
-  );
-
-  assert.equal(result.status, "failure");
-  assert.equal(result.route, "(none)");
-  assert.match(
-    result.error,
-    /Ticker route introspection is not yet available\./,
-  );
-});
-
-test("resolveRequestEnvelope rejects deferred source overrides before plan building", () => {
-  const result = resolveRequestEnvelope(
-    createEnv(),
-    createRequestInput({ sourceOverride: "YAHOO" }),
-  );
-
-  assert.equal(result.status, "failure");
-  assert.equal(result.route, "(none)");
-  assert.match(result.error, /"@YAHOO" is not available for this request\./);
-});
 
 test("resolveRequestValue rejects deferred modes before direct isin fast paths", () => {
   const infoModeResult = resolveRequestValue(
@@ -355,13 +329,12 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
               },
             };
           },
-          resolveOutputCurrencyEnvelope(requestInput, quote) {
+          resolveOutputCurrencyResult(requestInput, quote) {
             conversionCalls += 1;
             assert.equal(requestInput.attribute, "price@USD");
             assert.equal(quote.currency, "PHP");
             return {
               attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
-              kind: "quote",
               route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
               status: "success",
               value: 0.02,
@@ -413,13 +386,12 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
                 },
               };
             },
-            resolveOutputCurrencyEnvelope(requestInput, quote) {
+            resolveOutputCurrencyResult(requestInput, quote) {
               conversionCalls += 1;
               assert.equal(requestInput.attribute, "price@USD");
               assert.equal(quote.currency, "PHP");
               return {
                 attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
-                kind: "quote",
                 route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
                 status: "success",
                 value: 0.02,

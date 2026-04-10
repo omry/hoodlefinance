@@ -31,8 +31,8 @@ import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
-  resolvePlannedQuoteEnvelope,
-  type LookupEnvelopeResult,
+  resolvePlannedQuoteResult,
+  type LookupResult,
 } from "./request-resolution";
 import type { ResolverServices } from "./resolver-services";
 
@@ -362,22 +362,22 @@ export abstract class ResolverPlan
     };
   }
 
-  resolveOutputCurrencyEnvelope(
+  resolveOutputCurrencyResult(
     requestInput: RequestInput,
     quote: Record<string, unknown>,
-  ): LookupEnvelopeResult | null {
+  ): LookupResult | null {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
     if (!this.refs && singleNode) {
       const nestedResolver = singleNode as ResolverNode & {
-        resolveOutputCurrencyEnvelope?: (
+        resolveOutputCurrencyResult?: (
           request: RequestInput,
           value: Record<string, unknown>,
-        ) => LookupEnvelopeResult | null;
+        ) => LookupResult | null;
       };
 
-      if (typeof nestedResolver.resolveOutputCurrencyEnvelope === "function") {
-        return nestedResolver.resolveOutputCurrencyEnvelope(requestInput, quote);
+      if (typeof nestedResolver.resolveOutputCurrencyResult === "function") {
+        return nestedResolver.resolveOutputCurrencyResult(requestInput, quote);
       }
     }
 
@@ -417,7 +417,7 @@ export abstract class ResolverPlan
     const fxPlan = this.refs.resolveFlow.getPlanNodeByCode(
       "DEFAULT-ATTRIBUTE:FX",
     );
-    const fxEnvelope = resolvePlannedQuoteEnvelope(
+    const fxResult = resolvePlannedQuoteResult(
       fxPlan,
       new FxRequest({
         attribute: "price",
@@ -427,20 +427,20 @@ export abstract class ResolverPlan
       [],
     );
 
-    if (fxEnvelope.status === "success") {
+    if (fxResult.status === "success") {
       const rate = Number(
         extractAttributeValue(
-          fxEnvelope.value as Record<string, unknown>,
+          fxResult.value as Record<string, unknown>,
           "price",
         ),
       );
 
       if (Number.isFinite(rate)) {
-        return { ...fxEnvelope, value: rate };
+        return { ...fxResult, value: rate };
       }
     }
 
-    return fxEnvelope;
+    return fxResult;
   }
 
   static getSpecNodeCodes(spec: PlanSpec): string[] {
