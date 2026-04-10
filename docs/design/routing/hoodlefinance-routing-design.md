@@ -13,7 +13,11 @@ the primary goal.
 
 ## Core Idea
 
-- The public input is two strings: `identifier` and `attribute`.
+- The public API still starts from two raw strings: `identifier` and
+  `attribute`.
+- The runtime immediately represents that raw public input as
+  `RawRequestInput`, then classifies and parses it into a richer `RequestInput`
+  before routing continues.
 - Identifier resolvers turn those raw inputs into a typed request object for
   the resolved identifier family.
 - Attribute resolvers take that typed request and return the
@@ -21,6 +25,10 @@ the primary goal.
 - Plans own graph structure, fallback order, and containment.
 - Resolvers own only capability and execution. Plans are also resolvers, so
   nested plans and leaf resolvers share the same basic contract.
+
+This document remains partly aspirational. It describes the current routing
+split, but it also keeps a few deferred design goals visible so the intended
+end state stays clear.
 
 ## High-Level Flow
 
@@ -43,8 +51,10 @@ ISIN:PHY077751022 + price
 
 ## Input
 
+Current runtime input shape:
+
 ```js
-class RequestInput {
+class RawRequestInput {
   // Original identifier string from the caller.
   identifier;
 
@@ -53,7 +63,45 @@ class RequestInput {
 }
 ```
 
+The current runtime then classifies and enriches that raw input into a parsed
+request object before identifier and attribute routing proceed:
+
+```js
+class RequestInput {
+  // Original raw identifier from the caller.
+  identifier;
+
+  // Normalized requested attribute.
+  attribute;
+
+  // Parsed ticker after source-override and info-mode handling.
+  ticker;
+
+  // Parsed classification used for routing, for example:
+  // "equity", "fx", or "isin".
+  classification;
+
+  // Parsed source override when present, for example from "PSE:BDO@PSE-EDGE".
+  sourceOverride;
+
+  // Parsed info-mode flag for source-list / source-name style introspection.
+  infoMode;
+
+  // Parsed FX metadata when the request is an FX pair.
+  fxPair;
+
+  // Parsed attribute metadata such as base attribute and output-code request.
+  attributeRequest;
+  attributeType;
+}
+```
+
+So in current code the public input is still two strings, but the routing
+layers do not pass those strings around directly after classification.
+
 ## Typed Request Types
+
+Current implemented typed requests:
 
 ```js
 class BaseRequest {
@@ -79,7 +127,11 @@ class FxRequest extends BaseRequest {
   baseCurrency;
   quoteCurrency;
 }
+```
 
+Deferred / future typed request family:
+
+```js
 class CommodityRequest extends BaseRequest {
   // Resolved commodity code, for example "GOLD" or "BRENT".
   commodity;
@@ -102,11 +154,15 @@ class CommodityRequest extends BaseRequest {
 }
 ```
 
+`CommodityRequest` is not implemented yet. It remains here as a planned
+extension point for the next routing families rather than a description of
+today's shipped runtime surface.
+
 ## Phase Functions
 
 ```js
-// Resolve the raw request input into the typed request object used by downstream
-// attribute resolution.
+// Resolve the classified request input into the typed request object used by
+// downstream attribute resolution.
 //
 // This phase is responsible for identifier interpretation, normalization, and
 // discovery across identifier families such as securities, ISIN-backed inputs,
@@ -115,7 +171,7 @@ class CommodityRequest extends BaseRequest {
 // resolution.
 //
 // Returns ResolutionResult. On success, `value` is one of the typed
-// request objects such as EquityRequest, FxRequest, or CommodityRequest.
+// request objects such as EquityRequest, FxRequest, or later CommodityRequest.
 function resolveIdentifier(input) {}
 
 // Get the requested attribute value from the typed request returned by
@@ -164,7 +220,8 @@ plans. Both phases should use the same execution verb for simplicity.
 
 Here, `request` is phase-dependent:
 
-- for identifier resolvers, `request` means `RequestInput`
+- for request classification, `request` means `RawRequestInput`
+- for identifier resolvers, `request` means the classified `RequestInput`
 - for attribute resolvers, `request` means one of the typed request objects
 
 The runtime implementation can assert that the request shape is correct for the
@@ -196,6 +253,14 @@ class YahooIsinSearchResolver extends IdentifierResolver {}
 class FxNormalizationResolver extends IdentifierResolver {}
 ```
 
+Current implementation note:
+
+- `DirectIdentifierResolver`, `PseIsinMapResolver`, and
+  `YahooIsinSearchResolver` are implemented today.
+- FX normalization currently happens during request parsing and classification,
+  before identifier-plan execution. `FxNormalizationResolver` remains a valid
+  future shape if that work later moves into the identifier graph explicitly.
+
 Purpose:
 
 - interpret raw input
@@ -218,6 +283,17 @@ class LonIsinResolver extends AttributeResolver {}
 class IbkrIsinResolver extends AttributeResolver {}
 class TradingViewIsinResolver extends AttributeResolver {}
 ```
+
+Current implementation note:
+
+- DAG-backed attribute routing today is centered on quote resolvers such as
+  `YahooQuoteResolver`, `GoogleFxResolver`, `PSEFramesResolver`,
+  `PSEEdgeResolver`, and `TradingviewFundResolver`.
+- ISIN attribute lookup currently still uses helper logic outside the authored
+  attribute DAG rather than dedicated resolver nodes such as
+  `ArivaIsinResolver`, `LonIsinResolver`, `IbkrIsinResolver`, or
+  `TradingViewIsinResolver`.
+- Those dedicated ISIN attribute resolvers remain a plausible future DAG shape.
 
 Purpose:
 
@@ -286,7 +362,7 @@ Typical nodes:
 - PSE plan containing `PSEFramesResolver`, `PSEEdgeResolver`
 - Yahoo quote plan
 - Google FX plan
-- IBKR/LON/ARIVA/TradingView ISIN plans
+- future IBKR/LON/ARIVA/TradingView ISIN plans
 
 ## Composite Resolver Plans
 
@@ -321,17 +397,17 @@ Resolver
     DirectIdentifierResolver
     PseIsinMapResolver
     YahooIsinSearchResolver
-    FxNormalizationResolver
+    FxNormalizationResolver (future / optional)
 
   AttributeResolver
     YahooQuoteResolver
     GoogleFxResolver
     PSEFramesResolver
     PSEEdgeResolver
-    ArivaIsinResolver
-    LonIsinResolver
-    IbkrIsinResolver
-    TradingViewIsinResolver
+    ArivaIsinResolver (future)
+    LonIsinResolver (future)
+    IbkrIsinResolver (future)
+    TradingViewIsinResolver (future)
 
 ResolverPlan
   IdentifierResolutionPlan
@@ -351,6 +427,11 @@ ResolverPlan
 Forced routing should be planner behavior, not resolver behavior.
 
 Forcing happens when the caller uses `IDENTIFIER@SOURCE`.
+
+This remains a design goal, but it is currently deferred from the main
+`ResolveFlow.resolveAttribute(...)` path. Some lower-level planner code still
+models forced routing, but the high-level runtime lookup path does not yet
+expose the full behavior described in this section.
 
 Depending on the source and request family, that may build either:
 
@@ -405,4 +486,4 @@ This should be checked in tests, not at runtime.
 - explicit attribute-resolution graph
 - containment belongs to plans
 - force/fallback/grouping belong to plans
-- easier extension for commodities late
+- easier extension for commodities later
