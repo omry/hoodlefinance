@@ -226,7 +226,11 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
   const defaultAttributeRoot = createPlan("DEFAULT-ATTRIBUTE", "");
   const rootPlan = createPlan("ROOT", "");
   const requestRoot = createPlan("REQUEST-ROOT", "");
-  const refs = { resolveFlow: { marker: "resolve-flow" } };
+  const refs = {
+    getFxPlan() {
+      return { marker: "fx-plan" };
+    },
+  };
 
   forcedLeaf.matchesSourceName = (source) =>
     String(source || "").trim().toUpperCase() === "YAHOO";

@@ -18,6 +18,7 @@ const {
   getRoutingTableRows,
   ResolveFlow,
 } = require("../dist/ts/core/index.js");
+const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
 function createResolverMaterializationDependencies() {
@@ -46,10 +47,14 @@ function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
 }
 
 test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated results", () => {
-  const compiledDag = createIntegratedCompiledDag();
+  createIntegratedCompiledDag();
+  const runtimeLookup = createRuntimePlanLookup(DagPlan, {
+    ...createResolverMaterializationDependencies(),
+    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
+  });
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: compiledDag.getNodeByCode("RESOLVED-IDENTIFIER"),
-    getPlanNodeByCode: compiledDag.getPlanNodeByCode,
+    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
+    getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
 
   const deps = {
@@ -79,10 +84,13 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
 });
 
 test("forced PSE sub-sources use the requested individual provider in integrated mode", () => {
-  const compiledDag = createIntegratedCompiledDag();
+  const runtimeLookup = createRuntimePlanLookup(DagPlan, {
+    ...createResolverMaterializationDependencies(),
+    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
+  });
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: compiledDag.getNodeByCode("RESOLVED-IDENTIFIER"),
-    getPlanNodeByCode: compiledDag.getPlanNodeByCode,
+    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
+    getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
 
   const framesPlan = buildResolvePlan(new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
@@ -122,11 +130,14 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
   const modifiedSpecs = JSON.parse(JSON.stringify(DagPlan));
   modifiedSpecs["DEFAULT-ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
-  const compiledDag = createIntegratedCompiledDag(modifiedSpecs);
+  const runtimeLookup = createRuntimePlanLookup(modifiedSpecs, {
+    ...createResolverMaterializationDependencies(),
+    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
+  });
 
   const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: compiledDag.getNodeByCode("RESOLVED-IDENTIFIER"),
-    getPlanNodeByCode: compiledDag.getPlanNodeByCode,
+    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
+    getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
 
   assert.throws(

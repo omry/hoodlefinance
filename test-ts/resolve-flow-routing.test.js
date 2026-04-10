@@ -11,12 +11,12 @@ const {
   PseIsinMapResolver,
   RequestClassifierResolver,
   RequestInput,
-  ResolveFlow,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
   createDefaultResolvePlanBuilder,
 } = require("../dist/ts/core/index.js");
+const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
 function createResolverMaterializationDependencies() {
@@ -77,7 +77,7 @@ function createRequestInput(identifier, attribute = "price") {
 }
 
 function createBuildResolvePlanFromCompiledDag() {
-  const resolveFlow = new ResolveFlow(
+  const runtimeLookup = createRuntimePlanLookup(
     DagPlan,
     {
       ...createResolverMaterializationDependencies(),
@@ -86,9 +86,9 @@ function createBuildResolvePlanFromCompiledDag() {
   );
 
   return createDefaultResolvePlanBuilder({
-    directIdentifierResolver: resolveFlow.getNodeByCode("RESOLVED-IDENTIFIER"),
+    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
     getPlanNodeByCode(code) {
-      return resolveFlow.getPlanNodeByCode(code);
+      return runtimeLookup.getPlanNode(code);
     },
   });
 }

@@ -321,7 +321,7 @@ function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
   const graphNode = graph.getNode(normalizedCode);
 
   if (!graphNode) {
-    throw new Error(`Unknown compiled graph node "${normalizedCode}".`);
+    throw new Error(`Unknown runtime graph node "${normalizedCode}".`);
   }
 
   return graphNode;
@@ -338,26 +338,20 @@ export interface ResolveFlowDependencies
 
 export class ResolveFlow {
   readonly graph: Graph.View;
-  readonly nodesByCode: Record<string, ResolverNode>;
   private readonly runtimeRefs: PlanRuntimeRefs;
   private readonly resolutionEnv: RequestResolutionDependencies | null;
+  #nodesByCode: Record<string, ResolverNode>;
 
   constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
     this.graph = buildGraphView(definition);
-    this.nodesByCode = Object.create(null);
+    this.#nodesByCode = Object.create(null);
     this.runtimeRefs = {
-      // TEMPORARY: attribute-side resolution may reach into ResolveFlow to use
-      // the main FX subtree until the compiled execution DAG can model that
-      // edge explicitly.
-      resolveFlow: this,
+      getFxPlan: () => this.#getRuntimePlanNode("DEFAULT-ATTRIBUTE:FX"),
     };
 
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
-      if (
-        isPlanResolverClass(node.type) ||
-        node.type === "TerminalCollectorPlan"
-      ) {
+      if (isPlanResolverClass(node.type) || isTerminalNodeId(node.id)) {
         continue;
       }
 
@@ -368,11 +362,11 @@ export class ResolveFlow {
       resolverSpecsByCode,
       deps,
     );
-    Object.assign(this.nodesByCode, resolverRegistry.byCode);
+    Object.assign(this.#nodesByCode, resolverRegistry.byCode);
 
     for (const node of this.graph.getTopologicalOrder()) {
       if (isPlanResolverClass(node.type)) {
-        this.getNodeByCode(node.id);
+        this.#getRuntimeNode(node.id);
       }
     }
 
@@ -388,12 +382,28 @@ export class ResolveFlow {
       return;
     }
 
-    this.resolutionEnv = createRequestResolutionEnv(this, {
-      looksLikeIsin: deps.looksLikeIsin,
-      ...(deps.resolverServices
-        ? { resolverServices: deps.resolverServices }
-        : {}),
-    });
+    this.resolutionEnv = createRequestResolutionEnv(
+      {
+        defaultAttributeRoot: this.#getRuntimePlanNode("DEFAULT-ATTRIBUTE"),
+        directIdentifierResolver: this.#getRuntimeNode(
+          "RESOLVED-IDENTIFIER",
+        ) as {
+          resolve(
+            requestInput: import("./request").RequestInput,
+          ): import("./planner").ResolutionResult<
+            import("./request").ResolvedRequest
+          >;
+        },
+        identifierRootPlan: this.#getRuntimePlanNode("IDENTIFIER-ROOT"),
+        rootPlan: this.#getRuntimePlanNode("ROOT"),
+      },
+      {
+        looksLikeIsin: deps.looksLikeIsin,
+        ...(deps.resolverServices
+          ? { resolverServices: deps.resolverServices }
+          : {}),
+      },
+    );
   }
 
   getGraph(): Graph.View {
@@ -433,9 +443,9 @@ export class ResolveFlow {
     return result.value;
   }
 
-  readonly getNodeByCode = (code: string): ResolverNode => {
+  #getRuntimeNode(code: string): ResolverNode {
     const normalizedCode = normalizeCode(code);
-    const existingNode = this.nodesByCode[normalizedCode];
+    const existingNode = this.#nodesByCode[normalizedCode];
 
     if (existingNode) {
       return existingNode;
@@ -443,9 +453,9 @@ export class ResolveFlow {
 
     const spec = requireGraphNodeSpec(this.graph, normalizedCode);
 
-    if (spec.type === "TerminalCollectorPlan") {
+    if (isTerminalNodeId(spec.id)) {
       throw new Error(
-        `Compiled graph terminal node "${normalizedCode}" is not executable.`,
+        `Runtime graph terminal node "${normalizedCode}" is not executable.`,
       );
     }
 
@@ -459,27 +469,27 @@ export class ResolveFlow {
       normalizedCode,
       spec,
       (nodeCode) =>
-        isTerminalNodeId(nodeCode) ? null : this.getNodeByCode(nodeCode),
+        isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode),
       null,
       {
         refs: this.runtimeRefs,
       },
     );
 
-    this.nodesByCode[normalizedCode] = compiledNode;
+    this.#nodesByCode[normalizedCode] = compiledNode;
 
     return compiledNode;
-  };
+  }
 
-  readonly getPlanNodeByCode = (code: string): ResolverPlanNode => {
-    const node = this.getNodeByCode(code);
+  #getRuntimePlanNode(code: string): ResolverPlanNode {
+    const node = this.#getRuntimeNode(code);
 
     if (!isResolverPlanNode(node)) {
       throw new Error(
-        `Compiled graph node "${normalizeCode(code)}" is not a resolver plan node.`,
+        `Runtime graph node "${normalizeCode(code)}" is not a resolver plan node.`,
       );
     }
 
     return node;
-  };
+  }
 }

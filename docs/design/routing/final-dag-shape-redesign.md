@@ -319,43 +319,28 @@ Those may happen later, but they are not part of this redesign.
 The first implementation of this redesign may still leave transitional gaps
 even after the old structural DAG layer is removed.
 
-Two follow-up items are expected immediately after the initial migration:
+One follow-up item remains after the initial migration:
 
-1. Public exposure of internal resolver helpers
-   - `getNodeByCode(...)`, `getPlanNodeByCode(...)`, and public resolver maps
-     such as `nodesByCode` still exist.
-   - Those are compiler/materialization-oriented helper surfaces, not the
-     intended public runtime API.
-   - They still remain because internal request-resolution plumbing, temporary
-     FX coupling, and tests still reach into compiled nodes directly.
-   - The follow-up should remove or internalize those remaining surfaces so the
-     intended public runtime shape stays centered on:
-
-```ts
-class ResolveFlow {
-  readonly graph: Graph.View;
-
-  constructor(definition: Graph.Definition, deps);
-
-  getGraph(): Graph.View;
-  resolveAttribute(identifier: string, attribute?: string): unknown;
-}
-```
-
-2. Runtime coupling to specific resolver ids and node types
+1. Runtime coupling to specific resolver ids and node types
    - Structural awareness of the graph `ROOT` and `TERMINAL` boundaries remains
      in scope for `ResolveFlow`, via graph helpers such as
      `resolveFlow.getGraph().getRoot()` and `resolveFlow.getGraph().getTerminal()`.
-   - Any hard-coded awareness beyond those structural boundaries is still a
-     gap. That includes HOODLEFINANCE-specific authored ids such as
-     `RESOLVED-IDENTIFIER` or `DEFAULT-ATTRIBUTE:FX`, and specific node-type
+   - Any hard-coded awareness beyond those structural boundaries remains a gap.
+   - The remaining examples are HOODLEFINANCE-specific authored ids such as
+     `RESOLVED-IDENTIFIER` and `DEFAULT-ATTRIBUTE:FX`, plus specific node-type
      strings such as `TerminalCollectorPlan`.
-   - That still mixes generic graph ownership with application-specific runtime
-     bootstrap assumptions.
-   - The follow-up should narrow that coupling so `ResolveFlow` does not need to
-     know which authored ids correspond to direct identifier lookup, FX lookup,
-     or similar product-specific entry wiring beyond the structural root and
-     terminal boundaries.
+   - That means the runtime still mixes generic graph ownership with
+     application-specific bootstrap knowledge.
+   - In the short term, smaller local cleanups may still be possible.
+   - The clean fix, however, is now mostly blocked on the compiled execution
+     DAG phase (`ResolverPlan` -> execution DAG).
+   - The reason is that the remaining authored-id coupling is currently filling
+     in for missing graph-native handoff semantics between:
+     - request classification
+     - identifier resolution
+     - downstream attribute routing
+   - Fully removing this coupling is therefore expected to wait for the DAG
+     compiler / execution-lowering step.
 
 The goal of this follow-up is not to redesign routing semantics.
 It is to finish collapsing the remaining compatibility scaffolding after the

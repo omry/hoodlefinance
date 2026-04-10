@@ -1,8 +1,8 @@
-import type { ResolveFlow } from "./resolve-flow";
+import type { ResolverPlanNode } from "./planner";
 
 export interface PlanRuntimeRefs {
-  // TEMPORARY: attribute-side resolution will use this to reach the main FX
-  // node/subtree directly for output-currency conversion until the compiled
-  // execution DAG can model that edge explicitly.
-  resolveFlow: ResolveFlow;
+  // TEMPORARY: attribute-side resolution uses the runtime FX root plan
+  // directly for output-currency conversion until the execution DAG can model
+  // that edge explicitly.
+  getFxPlan(): ResolverPlanNode;
 }

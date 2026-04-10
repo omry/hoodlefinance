@@ -103,7 +103,9 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
     sourceName: "TRADINGVIEW",
   });
   const refs = {
-    resolveFlow: {},
+    getFxPlan() {
+      throw new Error("fx plan should not be requested for this test");
+    },
   };
 
   const plan = buildPlanNodeFromSpec(
@@ -246,25 +248,22 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
 
 test("ResolverPlan can resolve output-currency conversion through ResolveFlow", () => {
   const refs = {
-    resolveFlow: {
-      getPlanNodeByCode(code) {
-        assert.equal(code, "DEFAULT-ATTRIBUTE:FX");
-        return {
-          describe() {
-            return "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX";
-          },
-          resolve(request) {
-            assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
-            return {
-              status: "success",
-              value: {
-                currency: "USD",
-                regularMarketPrice: 0.02,
-              },
-            };
-          },
-        };
-      },
+    getFxPlan() {
+      return {
+        describe() {
+          return "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX";
+        },
+        resolve(request) {
+          assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
+          return {
+            status: "success",
+            value: {
+              currency: "USD",
+              regularMarketPrice: 0.02,
+            },
+          };
+        },
+      };
     },
   };
   const plan = buildPlanNodeFromSpec(

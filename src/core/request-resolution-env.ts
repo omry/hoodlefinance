@@ -1,8 +1,7 @@
 import { resolveRoutingNode } from "./plan-navigation";
-import { buildDefaultAttributePlanForResolvedRequest } from "./plan-selection";
+import { buildAmbiguousDefaultAttributeRouteError } from "./plan-selection";
 import type {
   ResolutionResult,
-  ResolverNode,
   ResolverPlanNode,
 } from "./planner";
 import {
@@ -16,9 +15,13 @@ import type {
 } from "./request-resolution";
 import type { ResolverServices } from "./resolver-services";
 
-interface RequestResolutionNodeLookup {
-  getNodeByCode(code: string): ResolverNode;
-  getPlanNodeByCode(code: string): ResolverPlanNode;
+interface RequestResolutionRuntimeRefs {
+  defaultAttributeRoot: ResolverPlanNode;
+  directIdentifierResolver: {
+    resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
+  };
+  identifierRootPlan: ResolverPlanNode;
+  rootPlan: ResolverPlanNode;
 }
 
 interface RequestResolutionEnvBuilderDependencies {
@@ -27,13 +30,13 @@ interface RequestResolutionEnvBuilderDependencies {
 }
 
 function classifyRawRequest(
-  nodeLookup: RequestResolutionNodeLookup,
+  rootPlan: ResolverPlanNode,
   requestInput: RawRequestInput,
 ): ReturnType<
   NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
 > {
   const resolvedNode = resolveRoutingNode(
-    nodeLookup.getPlanNodeByCode("ROOT"),
+    rootPlan,
     requestInput,
   );
 
@@ -53,27 +56,40 @@ function classifyRawRequest(
 }
 
 function buildDefaultAttributePlan(
-  nodeLookup: RequestResolutionNodeLookup,
+  defaultAttributeRoot: ResolverPlanNode,
   resolvedRequest: ResolvedRequest,
 ): ResolverPlanNode {
-  return buildDefaultAttributePlanForResolvedRequest(resolvedRequest, {
-    getPlanNodeByCode: (code) => nodeLookup.getPlanNodeByCode(code),
-  });
+  const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
+    (plan) => !plan.canHandle || plan.canHandle(resolvedRequest),
+  ) as ResolverPlanNode[];
+
+  if (!candidatePlans.length) {
+    throw new Error("No attribute route is available for this request.");
+  }
+
+  if (candidatePlans.length > 1) {
+    throw buildAmbiguousDefaultAttributeRouteError(
+      resolvedRequest,
+      candidatePlans,
+    );
+  }
+
+  return candidatePlans[0] as ResolverPlanNode;
 }
 
 function selectLookupExecution(
-  nodeLookup: RequestResolutionNodeLookup,
-  directIdentifierResolver: {
-    resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
-  },
+  refs: RequestResolutionRuntimeRefs,
   requestInput: RequestInput,
 ): LookupExecutionSelection {
-  const outcome = directIdentifierResolver.resolve(requestInput);
+  const outcome = refs.directIdentifierResolver.resolve(requestInput);
   const resolvedRequest = outcome.status === "success" ? outcome.value : null;
 
   if (resolvedRequest) {
     return {
-      attributePlan: buildDefaultAttributePlan(nodeLookup, resolvedRequest),
+      attributePlan: buildDefaultAttributePlan(
+        refs.defaultAttributeRoot,
+        resolvedRequest,
+      ),
       buildAttributePlan: null,
       identifierPlan: null,
       resolvedRequest,
@@ -83,10 +99,13 @@ function selectLookupExecution(
   return {
     attributePlan: null,
     buildAttributePlan(resolvedIdentifierRequest) {
-      return buildDefaultAttributePlan(nodeLookup, resolvedIdentifierRequest);
+      return buildDefaultAttributePlan(
+        refs.defaultAttributeRoot,
+        resolvedIdentifierRequest,
+      );
     },
     identifierPlan: resolveRoutingNode(
-      nodeLookup.getPlanNodeByCode("IDENTIFIER-ROOT"),
+      refs.identifierRootPlan,
       requestInput,
       {
         allowNone: true,
@@ -97,19 +116,14 @@ function selectLookupExecution(
 }
 
 export function createRequestResolutionEnv(
-  nodeLookup: RequestResolutionNodeLookup,
+  refs: RequestResolutionRuntimeRefs,
   deps: RequestResolutionEnvBuilderDependencies,
 ): RequestResolutionDependencies {
-  const directIdentifierResolver = nodeLookup.getNodeByCode(
-    "RESOLVED-IDENTIFIER",
-  ) as {
-    resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
-  };
   const resolverServices = deps.resolverServices || null;
 
   return {
     classifyRawRequest: (requestInput) =>
-      classifyRawRequest(nodeLookup, requestInput),
+      classifyRawRequest(refs.rootPlan, requestInput),
     getCachedString: (cacheKey) =>
       typeof resolverServices?.getCachedString === "function"
         ? resolverServices.getCachedString(cacheKey)
@@ -133,6 +147,6 @@ export function createRequestResolutionEnv(
           )
         : String(value || ""),
     selectLookupExecution: (requestInput) =>
-      selectLookupExecution(nodeLookup, directIdentifierResolver, requestInput),
+      selectLookupExecution(refs, requestInput),
   };
 }

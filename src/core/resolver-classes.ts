@@ -209,9 +209,9 @@ export abstract class ResolverPlan
   implements ResolverPlanNode
 {
   readonly nodes: ResolverNode[];
-  // TEMPORARY: this lets plan nodes reach shared runtime services, including
-  // ResolveFlow itself for the current FX-conversion concession. Remove once
-  // the compiled execution DAG can express those edges directly.
+  // TEMPORARY: this lets plan nodes reach the runtime FX root plan for the
+  // current output-currency concession. Remove once the execution DAG can
+  // express that edge directly.
   readonly refs: PlanRuntimeRefs | null;
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
@@ -225,7 +225,7 @@ export abstract class ResolverPlan
     const hasRefs =
       !!refsOrOptions &&
       typeof refsOrOptions === "object" &&
-      "resolveFlow" in refsOrOptions;
+      "getFxPlan" in refsOrOptions;
     const resolvedRefs = hasRefs
       ? (refsOrOptions as PlanRuntimeRefs)
       : null;
@@ -414,9 +414,7 @@ export abstract class ResolverPlan
       );
     }
 
-    const fxPlan = this.refs.resolveFlow.getPlanNodeByCode(
-      "DEFAULT-ATTRIBUTE:FX",
-    );
+    const fxPlan = this.refs.getFxPlan();
     const fxResult = resolvePlannedQuoteResult(
       fxPlan,
       new FxRequest({
