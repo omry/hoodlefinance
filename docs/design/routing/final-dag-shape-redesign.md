@@ -328,19 +328,19 @@ class ResolveFlow {
 ```
 
 2. Runtime coupling to specific resolver ids and node types
-   - The initial migration may still leave `ResolveFlow` aware of
-     HOODLEFINANCE-specific runtime entry ids such as `RESOLVED-IDENTIFIER` or
-     `DEFAULT-ATTRIBUTE:FX`, and of specific node-type strings such as
-     `TerminalCollectorPlan`.
-   - That keeps the graph container structurally cleaner than before, but it
-     still mixes generic graph ownership with application-specific runtime
+   - Structural awareness of the graph `ROOT` and `TERMINAL` boundaries remains
+     in scope for `ResolveFlow`, via graph helpers such as
+     `resolveFlow.getGraph().getRoot()` and `resolveFlow.getGraph().getTerminal()`.
+   - Any hard-coded awareness beyond those structural boundaries is still a
+     gap. That includes HOODLEFINANCE-specific authored ids such as
+     `RESOLVED-IDENTIFIER` or `DEFAULT-ATTRIBUTE:FX`, and specific node-type
+     strings such as `TerminalCollectorPlan`.
+   - That still mixes generic graph ownership with application-specific runtime
      bootstrap assumptions.
    - The follow-up should narrow that coupling so `ResolveFlow` does not need to
-     know which authored ids correspond to request classification, direct
-     identifier lookup, FX lookup, or similar product-specific entry wiring.
-   - Structural graph invariants such as `ROOT` and `TERMINAL` remain in scope
-     for `ResolveFlow`; the follow-up is specifically about hard-coded routing
-     and resolver-setup knowledge beyond those graph boundaries.
+     know which authored ids correspond to direct identifier lookup, FX lookup,
+     or similar product-specific entry wiring beyond the structural root and
+     terminal boundaries.
 
 The goal of this follow-up is not to redesign routing semantics.
 It is to finish collapsing the remaining compatibility scaffolding after the

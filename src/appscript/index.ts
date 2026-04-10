@@ -10,7 +10,6 @@ type HoodlefinanceAppScriptServices = AppScriptHostServices;
 
 interface HoodlefinanceAppScriptBindings {
   HOODLEFINANCE(identifier: unknown, attribute?: unknown): unknown;
-  hoodlefinanceDebugEnvelope(identifier: unknown, attribute?: unknown): string;
   hoodlefinanceBuildSheetsAddOnHomepage(): unknown;
 }
 
@@ -78,19 +77,7 @@ export function createHoodlefinanceAppScriptBindings(
   return {
     HOODLEFINANCE(identifier, attribute = DEFAULT_ATTRIBUTE) {
       assertScalarIdentifier(identifier);
-      const result = runtime.lookup(String(identifier), String(attribute));
-
-      if (result.status !== "success") {
-        throw new Error(result.error || "Lookup failed.");
-      }
-
-      return result.value;
-    },
-    hoodlefinanceDebugEnvelope(identifier, attribute = DEFAULT_ATTRIBUTE) {
-      assertScalarIdentifier(identifier);
-      return JSON.stringify(
-        runtime.lookupEnvelope(String(identifier), String(attribute)),
-      );
+      return runtime.resolveAttribute(String(identifier), String(attribute));
     },
     hoodlefinanceBuildSheetsAddOnHomepage: createPendingAddOnHomepage(),
   };

@@ -307,7 +307,7 @@ function runLookup(mode, lookupCase) {
 
   if (mode === "ts") {
     const env = TsCli.createCliEnvironment();
-    return TsCli.lookupWithEnvironment(env, lookupCase);
+    return TsCli.resolveAttributeResultWithEnvironment(env, lookupCase);
   }
 
   throw new Error(`Unsupported lookup mode "${mode}".`);
@@ -335,18 +335,16 @@ function collectTrace(mode, lookupCase) {
     };
   }
 
-  const env = TsCli.createCliEnvironment();
-  const envelope = TsCli.lookupEnvelopeWithEnvironment(env, lookupCase);
-
   return {
-    plannedRoute: String(envelope.route || "(none)"),
-    runtimeTrace: Array.isArray(envelope.attemptedRoutes)
-      ? envelope.attemptedRoutes.map((route) => ({
-          elapsedMs: null,
-          label: String(route || ""),
-          status: "attempted",
-        }))
-      : [],
+    plannedRoute:
+      "(unavailable: TypeScript runtime tracing is not implemented)",
+    runtimeTrace: [
+      {
+        elapsedMs: null,
+        label: "TypeScript runtime trace unavailable",
+        status: "unavailable",
+      },
+    ],
   };
 }
 

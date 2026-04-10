@@ -92,13 +92,6 @@ test("HOODLEFINANCE resolves local FX requests through the App Script bindings",
   const bindings = createHoodlefinanceAppScriptBindings(services);
 
   assert.equal(bindings.HOODLEFINANCE("USDUSD", "price"), 1);
-
-  const envelope = JSON.parse(
-    bindings.hoodlefinanceDebugEnvelope("USDUSD", "price"),
-  );
-  assert.equal(envelope.status, "success");
-  assert.equal(envelope.value.regularMarketPrice, 1);
-  assert.equal(envelope.value.hoodlefinanceFxDisplayCurrency, "USD");
 });
 
 test("HOODLEFINANCE reuses stored currency code data when the cache is cold", () => {

@@ -110,18 +110,6 @@ function parseVersion(versionMetadataText) {
 }
 
 function buildAppsScriptWrapperBlock(options) {
-  const debugWrapper = `
-function HOODLEFINANCE_ENVELOPE(identifier, attribute) {
-  var bindings = globalThis.${INTERNAL_BINDINGS_GLOBAL};
-
-  if (!bindings) {
-    throw new Error("HOODLEFINANCE bindings were not initialized.");
-  }
-
-  return bindings.hoodlefinanceDebugEnvelope(identifier, attribute);
-}
-`;
-
   return `
 /**
  * Quote function for supported current quote attributes.
@@ -181,7 +169,6 @@ function HOODLEFINANCE(identifier, attribute) {
 function HOODLEFINANCE_VERSION() {
   return HOODLEFINANCE_VERSION_;
 }
-${debugWrapper}
 
 function hoodlefinanceBuildSheetsAddOnHomepage() {
   var bindings = globalThis.${INTERNAL_BINDINGS_GLOBAL};

@@ -12,9 +12,7 @@ import {
   type ResolverMaterializationDependencies,
 } from "./resolver-materialization";
 import {
-  resolveRequestEnvelope,
   resolveRequestValue,
-  type LookupEnvelopeResult,
   type RequestResolutionDependencies,
 } from "./request-resolution";
 import { createRequestResolutionEnvHelpers } from "./request-resolution-env";
@@ -410,13 +408,20 @@ export class ResolveFlow {
     return this.resolutionEnv;
   }
 
+  private createRawRequestInput(
+    identifier: string,
+    attribute?: string,
+  ): RawRequestInput {
+    return new RawRequestInput(
+      String(identifier || ""),
+      String(attribute == null ? "price" : attribute).trim(),
+    );
+  }
+
   resolveAttribute(identifier: string, attribute = "price"): unknown {
     const result = resolveRequestValue(
       this.requireResolutionEnv(),
-      new RawRequestInput(
-        String(identifier || ""),
-        String(attribute == null ? "price" : attribute).trim(),
-      ),
+      this.createRawRequestInput(identifier, attribute),
     );
 
     if (result.status !== "success") {
@@ -475,28 +480,4 @@ export class ResolveFlow {
 
     return node;
   };
-
-  readonly lookup = (
-    identifier: string,
-    attribute?: string,
-  ): LookupEnvelopeResult =>
-    resolveRequestValue(
-      this.requireResolutionEnv(),
-      new RawRequestInput(
-        identifier,
-        String(attribute == null ? "price" : attribute).trim(),
-      ),
-    );
-
-  readonly lookupEnvelope = (
-    identifier: string,
-    attribute?: string,
-  ): LookupEnvelopeResult =>
-    resolveRequestEnvelope(
-      this.requireResolutionEnv(),
-      new RawRequestInput(
-        identifier,
-        String(attribute == null ? "price" : attribute).trim(),
-      ),
-    );
 }

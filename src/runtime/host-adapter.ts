@@ -7,7 +7,7 @@ import { DagPlan } from "../core/spec-data";
 import { ResolverServices } from "./ResolverServices";
 export type HoodlefinanceRuntime = Pick<
   ResolveFlow,
-  "lookup" | "lookupEnvelope" | "resolveAttribute"
+  "resolveAttribute"
 >;
 
 export function createHoodlefinanceRuntime(
@@ -22,8 +22,6 @@ export function createHoodlefinanceRuntime(
   });
 
   return {
-    lookup: resolveFlow.lookup,
-    lookupEnvelope: resolveFlow.lookupEnvelope,
     resolveAttribute: resolveFlow.resolveAttribute.bind(resolveFlow),
   };
 }

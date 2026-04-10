@@ -77,8 +77,6 @@ function createCliEnvironment() {
   const runtime = createHoodlefinanceRuntime(resolverServices);
 
   Object.assign(env, {
-    lookup: runtime.lookup,
-    lookupEnvelope: runtime.lookupEnvelope,
     resolveAttribute: runtime.resolveAttribute,
   });
 
@@ -89,46 +87,23 @@ function normalizeAttribute(attribute) {
   return String(attribute == null ? "price" : attribute).trim();
 }
 
-function lookupEnvelopeWithEnvironment(env, args) {
-  return env.lookupEnvelope(args.ticker, normalizeAttribute(args.attribute));
-}
-
-function lookupWithEnvironment(env, args) {
-  return env.lookup(args.ticker, normalizeAttribute(args.attribute));
-}
-
-function formatLookupResult(result) {
-  if (result.status !== "success") {
-    return null;
+function resolveAttributeResultWithEnvironment(env, args) {
+  try {
+    return {
+      error: "",
+      status: "success",
+      value: env.resolveAttribute(
+        args.ticker,
+        normalizeAttribute(args.attribute),
+      ),
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      status: "failure",
+      value: null,
+    };
   }
-
-  if (result.value instanceof Date) {
-    return result.value;
-  }
-
-  if (result.value && typeof result.value === "object") {
-    return JSON.parse(JSON.stringify(result.value));
-  }
-
-  return result.value;
-}
-
-function formatEnvelopeResult(result) {
-  return JSON.stringify(
-    result,
-    (_key, value) => {
-      if (value instanceof Error) {
-        return {
-          message: value.message,
-          name: value.name,
-          stack: value.stack,
-        };
-      }
-
-      return value;
-    },
-    2,
-  );
 }
 
 function formatResolvedValue(result) {
@@ -238,7 +213,7 @@ function runSmokeSuite(env = createCliEnvironment()) {
   for (const smokeCase of cases) {
     try {
       smokeCase.expected(
-        lookupWithEnvironment(env, {
+        resolveAttributeResultWithEnvironment(env, {
           attribute: smokeCase.attribute,
           ticker: smokeCase.ticker,
         }),
@@ -261,12 +236,11 @@ function runSmokeSuite(env = createCliEnvironment()) {
 
 function printUsage() {
   console.error("Usage: npm run hoodlefinance.ts -- <ticker> [attribute]");
-  console.error("       npm run hoodlefinance.ts -- --envelope <ticker> [attribute]");
   console.error("       npm run smoke.ts -- --smoke");
 }
 
 function main(argv = process.argv.slice(2)) {
-  const [firstArg, secondArg, thirdArg] = argv;
+  const [firstArg, secondArg] = argv;
   let env = null;
   function getEnv() {
     if (!env) {
@@ -279,20 +253,6 @@ function main(argv = process.argv.slice(2)) {
   if (!firstArg) {
     printUsage();
     process.exit(1);
-  }
-
-  if (firstArg === "--envelope") {
-    if (!secondArg) {
-      printUsage();
-      process.exit(1);
-    }
-
-    const result = lookupEnvelopeWithEnvironment(getEnv(), {
-      attribute: normalizeAttribute(thirdArg),
-      ticker: secondArg,
-    });
-    console.log(formatEnvelopeResult(result));
-    return;
   }
 
   if (firstArg === "--smoke") {
@@ -336,10 +296,7 @@ if (require.main === module) {
 
 module.exports = {
   createCliEnvironment,
-  formatLookupResult,
-  formatEnvelopeResult,
-  lookupEnvelopeWithEnvironment,
-  lookupWithEnvironment,
+  resolveAttributeResultWithEnvironment,
   main,
   runSmokeSuite,
 };

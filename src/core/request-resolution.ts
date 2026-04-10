@@ -166,11 +166,49 @@ export function resolvePlannedQuoteEnvelope(
   });
 }
 
-function resolveIdentifierPlanEnvelope(
-  requestInput: RequestInput,
+function createDebugValueResult(
   resolvePlan: RequestResolutionPlan,
 ): LookupEnvelopeResult {
-  return resolveIdentifierPlanLookup(requestInput, resolvePlan).envelope;
+  return {
+    attemptedRoutes: [],
+    kind: "quote",
+    route: resolvePlan.plannedRoute || "(none)",
+    status: "success",
+    value: resolvePlan.debugValue,
+  };
+}
+
+function tryResolveDirectIsinValue(
+  env: RequestResolutionDependencies,
+  requestInput: RequestInput,
+): LookupEnvelopeResult | null {
+  if (requestInput.attributeType !== "isin") {
+    return null;
+  }
+
+  const directResolution = resolveDirectIsinAttributeValue(
+    {
+      tickerInput: requestInput.ticker,
+    },
+    {
+      fetchText: (url) => env.httpFetch(url).getContentText(),
+      getCachedString: env.getCachedString,
+      looksLikeIsin: env.looksLikeIsin,
+      putCachedString: env.putCachedString,
+    },
+  );
+
+  if (!directResolution) {
+    return null;
+  }
+
+  return {
+    attemptedRoutes: [directResolution.route],
+    kind: "quote",
+    route: directResolution.route,
+    status: "success",
+    value: directResolution.value,
+  };
 }
 
 function resolveIdentifierPlanLookup(
@@ -246,8 +284,11 @@ function finalizeLookupValue(
   if (envelope.status !== "success") {
     return envelope;
   }
- 
-  const quote = (envelope.value || {}) as Record<string, unknown>;
+
+  const attemptedRoutes = envelope.attemptedRoutes.slice();
+  const quote = {
+    ...((envelope.value || {}) as Record<string, unknown>),
+  };
  
   try {
     const fxEnvelope =
@@ -271,9 +312,7 @@ function finalizeLookupValue(
         : null;
 
     if (fxEnvelope) {
-        envelope.attemptedRoutes = envelope.attemptedRoutes.concat(
-          fxEnvelope.attemptedRoutes,
-        );
+      attemptedRoutes.push(...fxEnvelope.attemptedRoutes);
       if (fxEnvelope.status === "success") {
         const rate = Number(fxEnvelope.value);
         if (Number.isFinite(rate)) {
@@ -316,10 +355,11 @@ function finalizeLookupValue(
  
     return {
       ...envelope,
+      attemptedRoutes,
       value,
     };
   } catch (error) {
-    return failureResult(envelope.route, envelope.attemptedRoutes, error);
+    return failureResult(envelope.route, attemptedRoutes, error);
   }
 }
 
@@ -338,13 +378,7 @@ export function resolveRequestEnvelope(
   }
 
   if (resolvePlan.debugValue) {
-    return {
-      attemptedRoutes: [],
-      kind: "quote",
-      route: resolvePlan.plannedRoute || "(none)",
-      status: "success",
-      value: resolvePlan.debugValue,
-    };
+    return createDebugValueResult(resolvePlan);
   }
 
   if (resolvePlan.attributePlan && resolvePlan.resolvedRequest) {
@@ -356,7 +390,7 @@ export function resolveRequestEnvelope(
   }
 
   if (resolvePlan.identifierPlan) {
-    return resolveIdentifierPlanEnvelope(normalizedRequestInput, resolvePlan);
+    return resolveIdentifierPlanLookup(normalizedRequestInput, resolvePlan).envelope;
   }
 
   return failureResult(
@@ -372,53 +406,32 @@ export function resolveRequestValue(
 ): LookupEnvelopeResult {
   const normalizedRequestInput = normalizeRequestInput(env, requestInput);
 
-  if (normalizedRequestInput.attributeType === "isin") {
-    try {
-      validateDeferredLookupModes(normalizedRequestInput);
+  try {
+    validateDeferredLookupModes(normalizedRequestInput);
+  } catch (error) {
+    return failureResult("(none)", [], error);
+  }
 
-      const directResolution = resolveDirectIsinAttributeValue(
-        {
-          tickerInput: normalizedRequestInput.ticker,
-        },
-        {
-          fetchText: (url) => env.httpFetch(url).getContentText(),
-          getCachedString: env.getCachedString,
-          looksLikeIsin: env.looksLikeIsin,
-          putCachedString: env.putCachedString,
-        },
-      );
+  try {
+    const directResult = tryResolveDirectIsinValue(env, normalizedRequestInput);
 
-      if (directResolution) {
-        return {
-          attemptedRoutes: [directResolution.route],
-          kind: "quote",
-          route: directResolution.route,
-          status: "success",
-          value: directResolution.value,
-        };
-      }
-    } catch (error) {
-      return failureResult("(none)", [], error);
+    if (directResult) {
+      return directResult;
     }
+  } catch (error) {
+    return failureResult("(none)", [], error);
   }
 
   let resolvePlan: Readonly<ResolvePlan> | null = null;
 
   try {
-    validateDeferredLookupModes(normalizedRequestInput);
     resolvePlan = env.buildResolvePlan(normalizedRequestInput);
   } catch (error) {
     return failureResult("(none)", [], error);
   }
 
   if (resolvePlan.debugValue) {
-    return {
-      attemptedRoutes: [],
-      kind: "quote",
-      route: resolvePlan.plannedRoute || "(none)",
-      status: "success",
-      value: resolvePlan.debugValue,
-    };
+    return createDebugValueResult(resolvePlan);
   }
 
   let effectiveAttributePlan = resolvePlan.attributePlan || null;
