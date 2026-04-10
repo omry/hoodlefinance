@@ -210,7 +210,8 @@ verification during and after the redesign.
 
 This redesign does not implement the new graph renderer.
 It should leave the runtime in a shape where rendering can read directly from
-`ResolveFlow` without needing a separate structural DAG object.
+`ResolveFlow` through `resolveFlow.getGraph()`, without needing a separate
+structural DAG object or any resolver-materialization helpers.
 
 The existing `ResolveFlow` rendering design should be interpreted against the
 final runtime shape, not the current transitional one.
@@ -231,6 +232,21 @@ Out of scope for this migration:
 
 The first follow-up after this migration should be rendering against the new
 graph shape.
+
+That follow-up should obey these constraints:
+
+- visualization must consume only `Graph.View` data obtained from
+  `resolveFlow.getGraph()`
+- visualization must not depend on `ResolveFlow` internals such as
+  `getNodeByCode(...)`, `getPlanNodeByCode(...)`, `nodesByCode`, or compiled
+  resolver instances
+- the first graph-rendering format should be Mermaid text
+- the first integration target should be `cli --graph`
+- the initial CLI experience should remain text-based by rendering Mermaid
+  through a Mermaid-to-ASCII tool
+- if graph-rendering configuration is needed for the CLI path, keep it local to
+  the CLI entrypoint and define it near the top of the CLI source rather than
+  spreading rendering constants into core runtime code
 
 ## Validation Requirements
 
@@ -294,7 +310,6 @@ These are intentionally deferred:
 - replacing `type` class-name strings with a registration model
 - removing `runtimeRefs`
 - changing `DagPlan` naming
-- implementing the first renderer against the redesigned graph
 - changing routing semantics
 
 Those may happen later, but they are not part of this redesign.
