@@ -9,7 +9,7 @@ const { createTestResolverServices } = require("./resolver-service-fixtures.js")
 
 function createEnv(overrides = {}) {
   const counters = {
-    buildResolvePlan: 0,
+    selectLookupExecution: 0,
   };
   const resolverServices = createTestResolverServices({
     getCachedString(key) {
@@ -36,14 +36,14 @@ function createEnv(overrides = {}) {
   });
 
   return {
-    buildResolvePlan() {
-      counters.buildResolvePlan += 1;
+    selectLookupExecution() {
+      counters.selectLookupExecution += 1;
 
-      if (typeof overrides.buildResolvePlan === "function") {
-        return overrides.buildResolvePlan.apply(this, arguments);
+      if (typeof overrides.selectLookupExecution === "function") {
+        return overrides.selectLookupExecution.apply(this, arguments);
       }
 
-      throw new Error("buildResolvePlan should not be called for this test");
+      throw new Error("selectLookupExecution should not be called for this test");
     },
     counters,
     getCachedString: resolverServices.getCachedString,
@@ -140,7 +140,7 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
     createRequestInput({ attribute: "isin", ticker: "PSE:BDO" }),
   );
 
-  assert.equal(pseEnv.counters.buildResolvePlan, 0);
+  assert.equal(pseEnv.counters.selectLookupExecution, 0);
   assert.equal(pseResult.status, "success");
   assert.equal(pseResult.value, "PHY077751022");
 
@@ -171,16 +171,16 @@ test("resolveRequestValue resolves explicit-source isin requests without quote p
     createRequestInput({ attribute: "isin", ticker: "LON:SJPA" }),
   );
 
-  assert.equal(lonEnv.counters.buildResolvePlan, 0);
+  assert.equal(lonEnv.counters.selectLookupExecution, 0);
   assert.equal(lonResult.status, "success");
   assert.equal(lonResult.value, "US0000000001");
 });
 
 test("resolveRequestValue still uses quote planning for ambiguous isin requests", () => {
-  let buildResolvePlanCalls = 0;
+  let selectLookupExecutionCalls = 0;
   const env = createEnv({
-    buildResolvePlan() {
-      buildResolvePlanCalls += 1;
+    selectLookupExecution() {
+      selectLookupExecutionCalls += 1;
       return {
         attributePlan: {
           describe() {
@@ -197,10 +197,8 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
             };
           },
         },
-        debugValue: "",
+        buildAttributePlan: null,
         identifierPlan: null,
-        plannedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
-        requestInput: null,
         resolvedRequest: {
           attribute: "price",
           identifier: "GOOG",
@@ -227,18 +225,18 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
     createRequestInput({ attribute: "isin", ticker: "GOOG" }),
   );
 
-  assert.equal(buildResolvePlanCalls, 1);
+  assert.equal(selectLookupExecutionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, "US02079K1079");
 });
 
 test("resolveRequestValue supports quote-based LON isin resolution", () => {
-  let buildResolvePlanCalls = 0;
+  let selectLookupExecutionCalls = 0;
   let fetchCalls = 0;
   const cache = new Map();
   const env = createEnv({
-    buildResolvePlan() {
-      buildResolvePlanCalls += 1;
+    selectLookupExecution() {
+      selectLookupExecutionCalls += 1;
       return {
         attributePlan: {
           describe() {
@@ -254,10 +252,8 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
             };
           },
         },
-        debugValue: "",
+        buildAttributePlan: null,
         identifierPlan: null,
-        plannedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
-        requestInput: null,
         resolvedRequest: {
           attribute: "price",
           identifier: "VOD",
@@ -303,7 +299,7 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
     createRequestInput({ attribute: "isin", ticker: "VOD" }),
   );
 
-  assert.equal(buildResolvePlanCalls, 2);
+  assert.equal(selectLookupExecutionCalls, 2);
   assert.equal(fetchCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, "GB00BH4HKS39");
@@ -314,7 +310,7 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
 test("resolveRequestValue uses the attribute plan for output-currency conversion", () => {
   let conversionCalls = 0;
   const env = createEnv({
-    buildResolvePlan() {
+    selectLookupExecution() {
       return {
         attributePlan: {
           describe() {
@@ -341,10 +337,8 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
             };
           },
         },
-        debugValue: "",
+        buildAttributePlan: null,
         identifierPlan: null,
-        plannedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
-        requestInput: null,
         resolvedRequest: {
           attribute: "price@USD",
           identifier: "BDO",
@@ -370,7 +364,7 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
 test("resolveRequestValue uses buildAttributePlan for identifier-first output-currency conversion", () => {
   let conversionCalls = 0;
   const env = createEnv({
-    buildResolvePlan() {
+    selectLookupExecution() {
       return {
         buildAttributePlan() {
           return {
@@ -399,7 +393,6 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
             },
           };
         },
-        debugValue: "",
         identifierPlan: {
           describe() {
             return "IDENTIFIER:ISIN -> ISIN:YAHOO";
@@ -422,8 +415,6 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
             };
           },
         },
-        plannedRoute: "IDENTIFIER:ISIN -> ISIN:YAHOO",
-        requestInput: null,
         resolvedRequest: null,
       };
     },

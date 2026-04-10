@@ -15,7 +15,7 @@ import {
   resolveRequestValue,
   type RequestResolutionDependencies,
 } from "./request-resolution";
-import { createRequestResolutionEnvHelpers } from "./request-resolution-env";
+import { createRequestResolutionEnv } from "./request-resolution-env";
 
 function isPlanResolverClass(nodeType: string): boolean {
   return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
@@ -378,6 +378,8 @@ export class ResolveFlow {
 
     const supportsRuntimeLookup =
       !!this.graph.getNode("ROOT") &&
+      !!this.graph.getNode("DEFAULT-ATTRIBUTE") &&
+      !!this.graph.getNode("IDENTIFIER-ROOT") &&
       !!this.graph.getNode("RESOLVED-IDENTIFIER") &&
       !!this.graph.getNode("DEFAULT-ATTRIBUTE:FX");
 
@@ -386,12 +388,12 @@ export class ResolveFlow {
       return;
     }
 
-    this.resolutionEnv = createRequestResolutionEnvHelpers(this, {
+    this.resolutionEnv = createRequestResolutionEnv(this, {
       looksLikeIsin: deps.looksLikeIsin,
       ...(deps.resolverServices
         ? { resolverServices: deps.resolverServices }
         : {}),
-    }).resolutionEnv;
+    });
   }
 
   getGraph(): Graph.View {
