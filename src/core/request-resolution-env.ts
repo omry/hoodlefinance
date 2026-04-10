@@ -1,21 +1,27 @@
 import { resolveRoutingNode } from "./plan-navigation";
+import { buildDefaultAttributePlanForResolvedRequest } from "./plan-selection";
+import type {
+  ResolutionResult,
+  ResolverNode,
+  ResolverPlanNode,
+} from "./planner";
 import {
-  buildDefaultAttributePlanForResolvedRequest,
-} from "./plan-selection";
-import type { ResolutionResult, ResolverNode, ResolverPlanNode } from "./planner";
-import { RawRequestInput, type RequestInput, type ResolvedRequest } from "./request";
+  RawRequestInput,
+  type RequestInput,
+  type ResolvedRequest,
+} from "./request";
 import type {
   LookupExecutionSelection,
   RequestResolutionDependencies,
 } from "./request-resolution";
 import type { ResolverServices } from "./resolver-services";
 
-export interface RequestResolutionNodeLookup {
+interface RequestResolutionNodeLookup {
   getNodeByCode(code: string): ResolverNode;
   getPlanNodeByCode(code: string): ResolverPlanNode;
 }
 
-export interface RequestResolutionEnvBuilderDependencies {
+interface RequestResolutionEnvBuilderDependencies {
   looksLikeIsin(value: string): boolean;
   resolverServices?: ResolverServices;
 }
@@ -23,7 +29,9 @@ export interface RequestResolutionEnvBuilderDependencies {
 function classifyRawRequest(
   nodeLookup: RequestResolutionNodeLookup,
   requestInput: RawRequestInput,
-): ReturnType<NonNullable<RequestResolutionDependencies["classifyRawRequest"]>> {
+): ReturnType<
+  NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
+> {
   const resolvedNode = resolveRoutingNode(
     nodeLookup.getPlanNodeByCode("ROOT"),
     requestInput,

@@ -86,6 +86,14 @@
       "src/appscript/install-global-bindings.ts",
       "test-ts/**/*.js"
     ],
+    "ignoreIssues": {
+      "src/runtime/StandAloneResolverServices.ts": [
+        "files"
+      ],
+      "src/runtime/TestResolverServices.ts": [
+        "files"
+      ]
+    },
     "project": [
       "src/**/*.ts",
       "test-ts/**/*.js"

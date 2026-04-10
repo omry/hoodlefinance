@@ -12,7 +12,11 @@ export abstract class ResolverServices {
     return null;
   }
 
-  putCachedJson(_cacheKey: string, value: unknown, _ttlSeconds: number): unknown {
+  putCachedJson(
+    _cacheKey: string,
+    value: unknown,
+    _ttlSeconds: number,
+  ): unknown {
     return value;
   }
 
@@ -20,7 +24,11 @@ export abstract class ResolverServices {
     return "";
   }
 
-  putCachedString(_cacheKey: string, value: string, _ttlSeconds: number): string {
+  putCachedString(
+    _cacheKey: string,
+    value: string,
+    _ttlSeconds: number,
+  ): string {
     return String(value || "");
   }
 
@@ -37,12 +45,12 @@ export abstract class ResolverServices {
   }
 }
 
-export interface StoredTextState {
+interface StoredTextState {
   fallbackText: string;
   freshText: string;
 }
 
-export interface LoadStoredTextResourceOptions<TValue> {
+interface LoadStoredTextResourceOptions<TValue> {
   cacheKey: string;
   cacheTtlSeconds: number;
   fetchText(): string;
@@ -66,12 +74,12 @@ export interface LoadStoredTextResourceOptions<TValue> {
   tryParse(text: string): TValue | null;
 }
 
-export interface LoadedStoredTextResource<TValue> {
+interface LoadedStoredTextResource<TValue> {
   parsed: TValue;
   text: string;
 }
 
-export function createStoredTextState(
+function createStoredTextState(
   text: string | null | undefined,
   fetchedAtMs: number,
   nowMs: number,
