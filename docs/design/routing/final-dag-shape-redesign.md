@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current graph and ResolveFlow shape for the authored DAG runtime.
+---
+
 # Final DAG Shape Redesign
 
 ## Objective
@@ -14,25 +20,19 @@ The goal is to make the DAG architecture minimal and durable:
 
 This redesign is about graph shape and object boundaries, not routing behavior.
 
-## Current Problem
+## Historical Context
 
-The current architecture still carries multiple generations of DAG design:
+Earlier iterations of the TypeScript routing work carried multiple generations
+of DAG design:
 
 - authored graph data in `DagPlan`
-- a separate public structural DAG layer in `plan-spec-dag.ts`
+- a separate public structural DAG layer
 - a compiled runtime graph in `ResolveFlow`
 - older tree-oriented and table introspection assumptions in parts of the CLI
 
-Even though the authored data is already fairly small, the surrounding runtime
-shape is still more layered than necessary.
-
-The most important symptoms are:
-
-- `ResolveFlow` still carries a separate `dag` object instead of owning its
-  topology directly
-- public structural DAG helpers still exist as first-class architecture
-- some public helpers are really projections or migration leftovers
-- naming still reflects earlier iterations more than the intended final model
+That intermediate layering is the context for this document. The current
+runtime shape described below is the result of removing those extra structural
+layers and consolidating the graph model around `Graph` plus `ResolveFlow`.
 
 ## Design Direction
 
@@ -116,7 +116,7 @@ That means:
 It should not treat derived views such as `topologicalOrder` as core graph
 identity.
 
-Suggested shape:
+Current shape:
 
 ```ts
 class ResolveFlow {
@@ -129,9 +129,9 @@ class ResolveFlow {
 }
 ```
 
-`resolveAttribute(identifier, attribute)` is the first required high-level
-runtime API. It should live on `ResolveFlow`, mimic `HOODLEFINANCE()`, and is
-the only new public runtime behavior required by this migration.
+`resolveAttribute(identifier, attribute)` is the high-level runtime API exposed
+by the current TypeScript graph runtime. It lives on `ResolveFlow` and mimics
+`HOODLEFINANCE()` at the runtime boundary.
 
 `getTopologicalOrder()` is a projection, not core state.
 It is a dependency-respecting linearization of the DAG in which every parent
@@ -153,10 +153,9 @@ This makes `ResolveFlow` the owner of:
 The instantiated resolver map may still exist internally, but it should not be
 part of the public `ResolveFlow` surface.
 
-## What Should Be Removed
+## Removed Older Layers
 
-After migration, these should no longer remain as public architectural layers
-unless a concrete use still justifies them:
+The current runtime no longer uses these earlier public architectural layers:
 
 - `PlanSpecDag`
 - `HoodleFinancePlanSpecDag`
@@ -170,8 +169,7 @@ unless a concrete use still justifies them:
 - `compileResolveFlow(...)`
 - `ResolveFlow.fromPlanSpecs(...)`
 
-Also remove construction scaffolding that exists only to support the older
-separation:
+The older separation also removed construction scaffolding such as:
 
 - `ResolveFlowOptions`
 - `dag` as a nested field on `ResolveFlow`

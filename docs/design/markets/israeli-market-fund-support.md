@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current implementation note for Israeli fund and ETF support behavior.
+---
+
 # Israeli Fund / ETF Support
 
 This note describes the current implementation for Israeli fund and ETF support in `HOODLEFINANCE`.

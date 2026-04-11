@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Planned best-effort symbol and exchange output attributes.
+---
+
 # Symbol And Exchange Attributes
 
 This note describes a best-effort identifier-resolution surface for `HOODLEFINANCE`.

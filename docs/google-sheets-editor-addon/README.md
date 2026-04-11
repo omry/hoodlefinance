@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current add-on overview, maintenance notes, and deployment helper entrypoint.
+---
+
 # Google Sheets™ Editor Add-on
 
 This folder holds the Google Sheets™ Editor add-on packaging, review notes, and deployment helpers for `HOODLEFINANCE`.
@@ -9,10 +15,13 @@ What this folder includes:
 - a Sheets add-on homepage function in [`hoodlefinance.js`](../../hoodlefinance.js)
 - an `onInstall()` hook that reuses the normal menu bootstrap
 - a sample [`appsscript.json`](./appsscript.json) manifest for a Sheets-only Editor add-on project that can be used as a starting point for Marketplace packaging work
-- a packaging and runtime review in [`marketplace-evaluation.md`](./marketplace-evaluation.md)
-- a step-by-step Marketplace readiness checklist in [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md)
-- an OAuth-review prep note in [`oauth-review-prep.md`](./oauth-review-prep.md)
-- an OAuth-review submission checklist in [`oauth-review-checklist.md`](./oauth-review-checklist.md)
+- historical launch records:
+  - [`marketplace-evaluation.md`](./marketplace-evaluation.md)
+  - [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md)
+  - [`oauth-review-prep.md`](./oauth-review-prep.md)
+  - [`oauth-review-checklist.md`](./oauth-review-checklist.md)
+
+This README is the current maintainer overview for the add-on. Treat the other markdown files in this folder as launch history unless they explicitly say otherwise.
 
 ## Manual Test Finding
 
@@ -41,7 +50,7 @@ This answered the main product question that unpublished Apps Script™ test dep
 - The private Marketplace dry run now validates that Marketplace packaging can expose the custom functions in Sheets.
 - Google's current Editor add-on docs say unpublished test deployments run `onOpen()` in `AuthMode.LIMITED`, while only published add-ons run `onOpen()` in `AuthMode.NONE`. That means the unpublished manual test does not fully validate publish-time menu behavior.
 - The current add-on code uses the Editor add-on menu path and skips the bound-script-style automatic raw-source update check during add-on `onOpen()`, including published `AuthMode.NONE` cases.
-- Listing assets, policy pages, and support links now exist, and the remaining notes in this folder focus on rollout history, maintenance, and add-on-specific follow-up work. See [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the broader design/status view and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) for the actual execution checklist.
+- Listing assets, policy pages, and support links now exist, and the remaining notes in this folder focus on rollout history, maintenance, and add-on-specific follow-up work. Use [`marketplace-evaluation.md`](./marketplace-evaluation.md) and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) as launch history rather than current operating guidance.
 - The runtime behavior of the custom functions is still subject to the same Apps Script™ execution and fetch limits described in [`docs/design/deployment/google-sheets-deployment-strategy.md`](../design/deployment/google-sheets-deployment-strategy.md).
 
 ## Next Steps
@@ -50,7 +59,7 @@ This answered the main product question that unpublished Apps Script™ test dep
 - keep the maintainer deployment helper and demo-sheet sync notes in sync with the production add-on
 - record any post-launch migration or support follow-up notes in this folder
 
-For the rollout history and pre-launch review record, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md). For the OAuth-review notes, use [`oauth-review-checklist.md`](./oauth-review-checklist.md).
+For rollout history, use [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md). For the OAuth-review record, use [`oauth-review-checklist.md`](./oauth-review-checklist.md).
 
 ## Marketplace Listing Assets
 

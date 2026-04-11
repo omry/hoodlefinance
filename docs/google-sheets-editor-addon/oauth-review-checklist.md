@@ -1,3 +1,11 @@
+---
+status: Archived
+updated: 2026-04-11
+summary: Historical OAuth review submission checklist and verification record.
+---
+
+> Historical note: this checklist captures the OAuth review submission record for launch. Use [`README.md`](./README.md) for the current add-on overview and maintainer workflow. Use [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the related packaging history.
+
 # OAuth Review Submission Checklist
 
 This checklist turns the broader notes in [`oauth-review-prep.md`](./oauth-review-prep.md) and [`marketplace-readiness-checklist.md`](./marketplace-readiness-checklist.md) into a concrete submission and review tracker.

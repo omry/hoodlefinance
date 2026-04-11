@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current deployment guidance for public installs and maintainer workflows in Google Sheets.
+---
+
 # Google Sheets™ Deployment Strategy
 
 This note evaluates realistic deployment paths for `HOODLEFINANCE` in Google Sheets™.

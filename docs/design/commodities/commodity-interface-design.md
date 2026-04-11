@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Planned public interface for future commodity support in HOODLEFINANCE.
+---
+
 # Commodity Interface Design
 
 This note defines the planned public interface for commodity support in `HOODLEFINANCE`, including identifier grammar, attribute grammar, normalization rules, and deferred scope.

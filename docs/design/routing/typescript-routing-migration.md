@@ -1,4 +1,17 @@
+---
+status: Archived
+updated: 2026-04-11
+summary: Historical note for an intermediate TypeScript routing migration phase that has since been completed and cleaned up.
+---
+
 # TypeScript Routing Migration
+
+> Historical note: this document captures an intermediate TypeScript routing
+> migration phase. The routing core has since moved past this scaffold.
+> Prefer [`hoodlefinance-routing-design.md`](./hoodlefinance-routing-design.md),
+> [`final-dag-shape-redesign.md`](./final-dag-shape-redesign.md), and
+> [`resolve-flow-rendering.md`](./resolve-flow-rendering.md) for current
+> guidance.
 
 This repo's next TypeScript step should start with the routing core rather than a whole-file conversion of `hoodlefinance.js`.
 

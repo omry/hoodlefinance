@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current website deployment model for GitHub Pages and hoodlefinance.com.
+---
+
 # Website Deployment Strategy
 
 This note describes how the public `hoodlefinance.com` website will be deployed through GitHub Pages.
@@ -108,15 +114,14 @@ Keep the GitHub Pages surface narrow:
 - keep the custom domain configured directly on GitHub Pages
 - avoid redirect-based homepage behavior for the OAuth-facing site
 
-## Implementation Order
+## Current Implementation
 
-1. Create the Docusaurus site skeleton in the repo.
-2. Define the minimum initial content:
-   - homepage
-   - support page
-   - privacy policy page
-   - terms page
-   - API/help page
-3. Configure Docusaurus for the custom domain.
-4. Add GitHub Actions workflows for website build and Pages deploy.
-5. Point `hoodlefinance.com` DNS at GitHub Pages and configure the custom domain in repo settings.
+The core website deployment pieces are already in place:
+
+1. The Docusaurus site lives under `website/`.
+2. The custom domain is declared through `website/static/CNAME`.
+3. Pull requests run the website build check in `.github/workflows/website-test-deploy.yml`.
+4. Pushes to `main` run the Pages deploy in `.github/workflows/website-deploy.yml`.
+
+That leaves this document as the current deployment reference, not as a future
+implementation checklist.

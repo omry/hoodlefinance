@@ -1,3 +1,11 @@
+---
+status: Archived
+updated: 2026-04-11
+summary: Historical OAuth review preparation notes for the add-on launch.
+---
+
+> Historical note: this document captures the OAuth review preparation package used for launch. Use [`README.md`](./README.md) for the current add-on overview and maintainer workflow. Use [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the related packaging history.
+
 # OAuth Review Preparation
 
 This note captures the current OAuth-review surface for the Google Sheets™ Editor add-on and the short justifications needed for public Marketplace review.

@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Research note on likely free data sources for planned commodity support.
+---
+
 # Free Commodity Data Sources
 
 This note surveys free or publicly accessible commodity data sources that are realistic candidates for `HOODLEFINANCE`.

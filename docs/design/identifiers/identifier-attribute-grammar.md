@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current identifier and attribute grammar model for HOODLEFINANCE.
+---
+
 # Identifier And Attribute Grammar
 
 This note describes the grammar model that `HOODLEFINANCE` should be explained and extended with.

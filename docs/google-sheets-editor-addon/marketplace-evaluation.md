@@ -1,3 +1,11 @@
+---
+status: Archived
+updated: 2026-04-11
+summary: Historical packaging evaluation and launch-era maintenance planning for the Marketplace add-on.
+---
+
+> Historical note: this document captures the packaging analysis and launch-era decision record for the Marketplace path. Use [`README.md`](./README.md) for the current add-on overview and maintainer workflow.
+
 # Marketplace Packaging Evaluation
 
 This note captures the packaging work that moved the Google Sheets™ Editor add-on from Apps Script™ test deployment into a Google Workspace Marketplace™ package.

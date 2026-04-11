@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Routing split and typed-request model for the current and planned runtime.
+---
+
 # Hoodlefinance Routing Design Sketch
 
 This sketch separates routing into two explicit phases:

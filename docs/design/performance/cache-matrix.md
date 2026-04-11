@@ -1,3 +1,9 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current cache usage matrix and cache-candidate reference for HOODLEFINANCE.
+---
+
 # Cache Matrix
 
 This matrix is manually maintained. It is meant to show where `CacheService` is already used, what is cached, and which network-heavy paths still look like good cache candidates.

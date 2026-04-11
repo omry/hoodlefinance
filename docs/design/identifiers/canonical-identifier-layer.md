@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Planned canonical internal identifier model with provider-specific rendering.
+---
+
 # Canonical Identifier Layer
 
 This note describes a planned refactor that keeps one canonical internal identifier model and derives provider-specific lookup and rendering forms from it.

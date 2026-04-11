@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Current gap analysis for source identity, overrides, and introspection in routing.
+---
+
 # Routing Source Gaps
 
 This note records the main gaps between the current routing design and the

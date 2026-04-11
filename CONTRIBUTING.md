@@ -292,6 +292,10 @@ That includes:
 - limitations
 - examples
 
+If a change affects architecture, invariants, interfaces, rollout, or maintainer operations, update the relevant repo-local design or runbook docs too.
+
+When you add or promote a current internal doc, update [`docs/INDEX.md`](./docs/INDEX.md) so the canonical docs map stays accurate.
+
 If the user-facing behavior changed and the docs did not, the change is incomplete.
 
 ## Release Workflow

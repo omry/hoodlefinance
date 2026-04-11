@@ -2,6 +2,14 @@
 
 Repo-specific directives for coding agents working in this project.
 
+## Documentation map
+
+- Canonical repo docs index: [`docs/INDEX.md`](./docs/INDEX.md)
+- Active design docs: [`docs/design/`](./docs/design/)
+- ADRs: [`docs/adr/`](./docs/adr/)
+- Historical design docs: [`docs/design/archive/`](./docs/design/archive/) and archived or superseded notes kept in-topic under [`docs/design/`](./docs/design/)
+- If a doc's current status is unclear, prefer current docs over archived ones and trace outward from [`docs/INDEX.md`](./docs/INDEX.md).
+
 ## Stop and ask
 
 - If a tracked repo file appears unexpectedly renamed, moved, regenerated, deleted, or otherwise changed, stop and ask before reverting, recreating, reclassifying, or staging over that change.

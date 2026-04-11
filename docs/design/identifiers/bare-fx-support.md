@@ -1,3 +1,9 @@
+---
+status: Draft
+updated: 2026-04-11
+summary: Planned support for bare FX identifiers and currency-unit parsing.
+---
+
 # Bare FX Support
 
 This note describes the planned support for bare FX identifiers such as `USDPHP`, alongside the existing `CURRENCY:USDPHP` form.

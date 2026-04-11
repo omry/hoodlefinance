@@ -1,3 +1,12 @@
+---
+status: Superseded
+updated: 2026-04-11
+summary: Earlier routing graph design superseded by the final ResolveFlow graph shape.
+superseded_by: docs/design/routing/final-dag-shape-redesign.md
+---
+
+> Superseded note: this document describes an earlier routing graph design. For the current graph/runtime shape, see [`final-dag-shape-redesign.md`](./final-dag-shape-redesign.md).
+
 # Routing Graph Design
 
 ## Motivation

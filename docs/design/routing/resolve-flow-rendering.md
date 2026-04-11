@@ -1,176 +1,136 @@
+---
+status: Active
+updated: 2026-04-11
+summary: Current graph-rendering shape for the TypeScript CLI based on Graph.View and `--graph`.
+---
+
 # ResolveFlow Rendering Design
 
-## Objective
+This note describes the current graph-rendering path for CLI and documentation tooling.
 
-Replace the current tree-style routing introspection with a graph-native
-rendering path that treats `ResolveFlow` as the primary runtime object.
+It is rendering-only. It does not change lookup behavior, resolver execution, or deployed runtime logic.
 
-This design is for CLI and documentation tooling only. It does not change
-lookup behavior, resolver execution, or deployed runtime logic.
+## Current Shape
 
-## Current Problem
+The rendering path now follows the constraints from [`final-dag-shape-redesign.md`](./final-dag-shape-redesign.md):
 
-The current `--routing` view renders routing as a nested tree.
+- rendering consumes `Graph.View` data obtained from `resolveFlow.getGraph()`
+- rendering does not depend on `ResolveFlow` internals such as compiled resolver instances or node lookup helpers
+- Mermaid text is the canonical render format
+- the TypeScript CLI exposes graph rendering through `--graph`
+- the default CLI experience remains text-first by projecting Mermaid into a lightweight text view
 
-That is misleading for two reasons:
-
-- the authored routing definition is a DAG, not a tree
-- the instantiated runtime object is now a whole-graph `ResolveFlow`, not a
-  single root node with tree ownership semantics
-
-The tree view is therefore only a lossy projection. It duplicates shared
-children conceptually and makes sequential flow look like parent/child
-containment.
-
-## Design Direction
-
-The new rendering path should render the whole `ResolveFlow`.
-
-That means:
-
-- topology comes from `resolveFlow.dag`
-- runtime node metadata comes from instantiated resolver nodes
-- renderers consume an explicit node-and-edge model
-- tree projection is no longer the primary representation
-
-The CLI should eventually expose this as `--dag`, replacing `--routing`.
+This note applies to the TypeScript CLI path in [`tools/_shared/cli-ts.js`](../../../tools/_shared/cli-ts.js). The older JS CLI still has its separate `--routing` tree view.
 
 ## Source Of Truth
 
-The renderer should build from two layers of `ResolveFlow`:
+The renderer builds from `Graph.View` only.
 
-1. Structural topology
-   - `resolveFlow.dag.nodes`
-   - `resolveFlow.dag.edges`
-   - `resolveFlow.dag.topologicalOrder`
-   - `resolveFlow.dag.root`
-   - `resolveFlow.dag.terminal`
+Current topology inputs:
 
-2. Instantiated node metadata
-   - `resolveFlow.getNodeByCode(code)`
-   - `resolveFlow.getPlanNodeByCode(code)` when the node is a plan node
-   - `getRoutingNodeKind()`
-   - `getRoutingDescription()`
-   - `describeRoutingNode()` when helpful for leaf labels
+- `graph.getTopologicalOrder()`
+- each node's `id`
+- each node's `next` edges
 
-The structural DAG remains the topology source of truth. Instantiated nodes
-only enrich that structure with display metadata.
+The renderer does not currently enrich the graph with resolver kind labels, plan-node metadata, or descriptions. The rendered labels are the graph node ids themselves.
 
-## Intermediate Rendering Model
+## Mermaid Renderer
 
-Introduce a small graph-view model dedicated to rendering.
+The core renderer lives in [`src/core/graph-mermaid.ts`](../../../src/core/graph-mermaid.ts).
 
-Suggested shape:
+Current behavior:
 
-```ts
-interface ResolveFlowRenderNode {
-  code: string;
-  kind: string;
-  label: string;
-  description: string | null;
-  parentCodes: string[];
-  childCodes: string[];
-}
+- output starts with `flowchart TD` or `flowchart LR`
+- nodes are emitted in topological order
+- each node gets a Mermaid-safe alias such as `N0`, `N1`, `N2`
+- the displayed label is the escaped graph node id
+- edges are emitted from each node to every id in `node.next`
 
-interface ResolveFlowRenderEdge {
-  from: string;
-  to: string;
-}
+Current shape:
 
-interface ResolveFlowRenderGraph {
-  rootCode: string;
-  terminalCode: string;
-  nodes: ResolveFlowRenderNode[];
-  edges: ResolveFlowRenderEdge[];
-}
+```text
+flowchart LR
+  N0["ROOT"]
+  N1["QUOTE"]
+  N2["TERMINAL"]
+  N0 --> N1
+  N1 --> N2
 ```
 
 Properties:
 
-- `nodes` must be stable and preferably follow DAG topological order
-- `edges` must be explicit, not inferred from nested children
-- each graph node appears exactly once
-- shared downstream nodes remain shared in the rendering model
+- each graph node appears once
+- shared downstream nodes remain shared
+- output order is stable because it follows `Graph.View` topological order
 
-## Renderer Outputs
+## Text Projection
 
-### Plain Text CLI View
+The default CLI output is a lightweight text projection derived from the Mermaid render, not a separate graph model.
 
-The default CLI renderer should be terminal-first and graph-aware.
+That projection currently:
 
-Recommended format:
+- preserves the Mermaid header such as `flowchart LR`
+- prints each node label once in order
+- prints outgoing edges as indented `->` lines
 
-```text
-ROOT [switch] -> CLASSIFY-REQUEST, REQUEST-ROOT
-CLASSIFY-REQUEST [leaf] -> TERMINAL
-REQUEST-ROOT [switch] -> DEFAULT-ATTRIBUTE, IDENTIFIER-ROOT
-QUOTE:TICKER [try each] -> YAHOO, TRADINGVIEW-FUND
-YAHOO [leaf] - Yahoo quote lookup -> TERMINAL
-```
-
-Rules:
-
-- one line per node
-- each node appears once
-- outgoing edges are explicit
-- descriptions are optional and only shown when they add signal
-- ordering follows the DAG topological order for stable diffs and test output
-
-This output is intentionally not ASCII art. The goal is clarity, not a fake
-tree diagram.
-
-### Mermaid Output
-
-Add a Mermaid renderer for GitHub and docs copy/paste.
-
-Recommended direction:
+Example:
 
 ```text
-flowchart TD
-  ROOT["ROOT [switch]"]
-  CLASSIFY_REQUEST["CLASSIFY-REQUEST [leaf]"]
-  REQUEST_ROOT["REQUEST-ROOT [switch]"]
-  ROOT --> CLASSIFY_REQUEST
-  ROOT --> REQUEST_ROOT
+flowchart LR
+
+ROOT
+  -> QUOTE
+
+QUOTE
+  -> TERMINAL
+
+TERMINAL
 ```
 
-Rules:
+This is intentionally simple. It favors stable diffs and terminal readability over ASCII-art diagrams.
 
-- node ids should be Mermaid-safe
-- human labels should preserve original routing codes
-- topology must match the same intermediate graph used by the CLI renderer
+## SVG Output
+
+The same Mermaid output can also be rendered to SVG in the CLI path using `beautiful-mermaid`.
+
+SVG is an output option for visualization convenience; it is not a separate graph representation.
 
 ## CLI Contract
 
-The intended CLI shape is:
+The current TypeScript CLI graph surface is:
 
-- `--dag`
-  - default plain-text graph rendering
-- `--dag --format mermaid`
-  - Mermaid output from the same graph model
+- `--graph`
+  - default lightweight text projection
+- `--graph --output=mermaid`
+  - raw Mermaid output
+- `--graph --output=svg`
+  - SVG output
+- `--graph --output=svg --browser`
+  - opens the rendered SVG in a browser
 
-`--graph` remains reserved for request execution through the graph runtime.
-
-`--routing` should be removed once `--dag` is complete.
+`--browser` currently requires `--output=svg`.
 
 ## Non-Goals
 
-This rendering change does not:
+The current rendering path does not:
 
-- redesign `ResolveFlow`
-- change resolver classes
-- change `DagPlan` naming or serialization format
-- add request-specific route-path rendering in this step
-- replace execution-oriented `RoutingGraph`
+- expose resolver kinds or descriptions in node labels
+- render request-specific execution traces
+- depend on `ResolveFlow` internals beyond `getGraph()`
+- replace the older JS CLI's `--routing` output
 
-Request-specific planning and tracing can be added later as a separate
-rendering layer on top of `ResolveFlow`.
+Those can be revisited later if the graph CLI needs richer introspection.
 
-## Verification Criteria
+## Verification
 
-- the rendering model preserves the `ResolveFlow` DAG topology exactly
-- shared nodes are rendered once, not duplicated into multiple subtrees
-- node kind metadata is preserved in the rendered output
-- plain-text output is stable across runs
-- Mermaid output is derived from the same intermediate model
-- the final CLI output no longer depends on tree recursion from a root node
+Current verification should cover:
+
+- Mermaid rendering from `Graph.View`
+- text projection derived from Mermaid
+- SVG rendering from the same Mermaid source
+- CLI option parsing for `--graph`, `--output=mermaid`, `--output=svg`, and `--browser`
+
+The current tests live in:
+
+- [`test-ts/graph-mermaid.test.js`](../../../test-ts/graph-mermaid.test.js)
+- [`test-ts/hoodlefinance-cli.test.js`](../../../test-ts/hoodlefinance-cli.test.js)

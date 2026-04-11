@@ -1,3 +1,11 @@
+---
+status: Archived
+updated: 2026-04-11
+summary: Historical marketplace readiness and pre-launch review checklist.
+---
+
+> Historical note: this checklist captures the pre-launch Marketplace review path and rollout record. Use [`README.md`](./README.md) for the current add-on overview and maintainer workflow. Use [`marketplace-evaluation.md`](./marketplace-evaluation.md) for the related packaging history.
+
 # Marketplace Readiness Checklist
 
 This checklist is the practical follow-up to [`marketplace-evaluation.md`](./marketplace-evaluation.md).
