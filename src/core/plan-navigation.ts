@@ -72,7 +72,10 @@ export function resolveRoutingNode<TNode extends ResolverNode>(
 ): TNode | ResolverNode | null {
   let currentNode = node;
 
-  while (isResolverPlanNode(currentNode) && currentNode.getRoutingNodeKind() === "switch") {
+  while (
+    isResolverPlanNode(currentNode) &&
+    ["step", "switch"].includes(currentNode.getRoutingNodeKind())
+  ) {
     const routingNode = currentNode;
 
     currentNode = selectSinglePlanNode<TNode>(routingNode, request, {

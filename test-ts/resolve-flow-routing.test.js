@@ -9,6 +9,7 @@ const {
   PseEdgeResolver,
   PseFramesResolver,
   PseIsinMapResolver,
+  RawRequestInput,
   RequestClassifierResolver,
   RequestInput,
   TradingviewFundResolver,
@@ -138,7 +139,7 @@ test("compiled DagPlan preserves representative planned routes", () => {
 
   for (const { example, expectedRoute } of cases) {
     const requestInput = createRequestInput(example, "price");
-    const dagPlan = buildDagResolvePlan(requestInput);
+    const dagPlan = buildDagResolvePlan(new RawRequestInput(example, "price"));
 
     assert.equal(dagPlan.plannedRoute, expectedRoute, `${example} plannedRoute`);
     assert.deepEqual(summarizeResolvePlan(dagPlan), {

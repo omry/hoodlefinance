@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  RequestInput,
+  RawRequestInput,
   ROUTING_TABLE_EXAMPLES,
   buildRoutingPlanTreeNode,
   buildRoutingTableGrid,
@@ -12,40 +12,23 @@ const {
   getRoutingTableRows,
 } = require("../dist/ts/core/index.js");
 
-function createRequestInput(identifier, attribute) {
-  return new RequestInput({
-    attribute,
-    attributeRequest: {
-      baseAttribute: "price",
-      outputCode: "",
-      rawAttribute: attribute,
-      wantsOutputCurrency: false,
-    },
-    attributeType: "quote",
-    classification:
-      identifier === "EURUSD" || identifier === "USDUSD"
-        ? "fx"
-        : identifier === "US02079K1079" || identifier === "PHY077751022"
-          ? "isin"
-          : "equity",
-    fxPair: null,
-    identifier,
-    infoMode: "",
-    sourceOverride: "",
-    ticker: identifier,
-    upperTicker: identifier.toUpperCase(),
-  });
-}
-
 function createDeps() {
   return {
     buildResolvePlan(requestInput) {
+      const identifier = requestInput.identifier;
       return {
         debugValue: "",
-        plannedRoute: `ROUTE:${requestInput.ticker}`,
+        plannedRoute: `ROUTE:${identifier}`,
+        requestInput: {
+          classification:
+            identifier === "EURUSD" || identifier === "USDUSD"
+              ? "fx"
+              : identifier === "US02079K1079" || identifier === "PHY077751022"
+                ? "isin"
+                : "equity",
+        },
       };
     },
-    createRequestInput,
   };
 }
 

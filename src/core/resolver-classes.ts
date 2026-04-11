@@ -422,7 +422,6 @@ export abstract class ResolverPlan
         fxPair,
         identifier: fxPair.yahooChartSymbol,
       }),
-      [],
     );
 
     if (fxResult.status === "success") {
@@ -486,6 +485,16 @@ export abstract class ResolverPlan
 export class RoutingPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
     return "switch";
+  }
+}
+
+export class StepPlan extends ResolverPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return "step";
+  }
+
+  getNodesForRequest(_request: PlannerRequest): ResolverNode[] {
+    return (this.nodes || []).slice();
   }
 }
 
@@ -602,6 +611,7 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   PseQuoteResolutionPlan,
   RequestClassificationPlan,
   RoutingPlan,
+  StepPlan,
   TickerQuoteResolutionPlan,
 } as const;
 

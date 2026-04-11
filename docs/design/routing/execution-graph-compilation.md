@@ -144,56 +144,56 @@ The current graph below is the actual Mermaid output from the TypeScript CLI:
 
 ```mermaid
 flowchart LR
-  ROOT[ROOT]
-  CLASSIFY[CLASSIFY-REQUEST]
-  REQ[REQUEST-ROOT]
-  ATTR[DEFAULT-ATTRIBUTE]
-  EQUITY[DEFAULT-ATTRIBUTE:EQUITY]
-  FX[DEFAULT-ATTRIBUTE:FX]
-  TICKER[QUOTE:TICKER]
-  PSE[QUOTE:PSE]
-  FXDEFAULT[QUOTE:DEFAULT-FX]
-  IDENTROOT[IDENTIFIER-ROOT]
-  ISIN[IDENTIFIER:ISIN]
-  DIRECT[RESOLVED-IDENTIFIER]
-  ISINPSE[ISIN:PSE]
-  ISINYAHOO[ISIN:YAHOO]
-  PSEFRAMES[PSE-FRAMES]
-  PSEEDGE[PSE-EDGE]
-  TVFUND[TRADINGVIEW-FUND]
-  GOOGLEFX[GOOGLE-FX]
-  YAHOO[YAHOO]
-  TERMINAL[TERMINAL]
-
-  ROOT --> CLASSIFY
-  ROOT --> REQ
-  CLASSIFY --> TERMINAL
-  REQ --> ATTR
-  REQ --> IDENTROOT
-  ATTR --> EQUITY
-  ATTR --> FX
-  EQUITY --> TICKER
-  EQUITY --> PSE
-  FX --> DIRECT
-  FX --> FXDEFAULT
-  IDENTROOT --> DIRECT
-  IDENTROOT --> ISIN
-  ISIN --> ISINPSE
-  ISIN --> ISINYAHOO
-  PSE --> PSEFRAMES
-  PSE --> PSEEDGE
-  TICKER --> YAHOO
-  TICKER --> TVFUND
-  FXDEFAULT --> GOOGLEFX
-  FXDEFAULT --> YAHOO
-  DIRECT --> TERMINAL
-  ISINPSE --> TERMINAL
-  ISINYAHOO --> TERMINAL
-  PSEFRAMES --> TERMINAL
-  PSEEDGE --> TERMINAL
-  TVFUND --> TERMINAL
-  GOOGLEFX --> TERMINAL
-  YAHOO --> TERMINAL
+  N0["ROOT"]
+  N1["CLASSIFY-REQUEST"]
+  N2["REQUEST-ROOT"]
+  N3["DEFAULT-ATTRIBUTE"]
+  N4["IDENTIFIER-ROOT"]
+  N5["DEFAULT-ATTRIBUTE:EQUITY"]
+  N6["DEFAULT-ATTRIBUTE:FX"]
+  N7["RESOLVED-IDENTIFIER"]
+  N8["IDENTIFIER:ISIN"]
+  N9["QUOTE:PSE"]
+  N10["QUOTE:TICKER"]
+  N11["FX-IDENTITY"]
+  N12["QUOTE:DEFAULT-FX"]
+  N13["ISIN:PSE"]
+  N14["ISIN:YAHOO"]
+  N15["PSE-FRAMES"]
+  N16["PSE-EDGE"]
+  N17["TRADINGVIEW-FUND"]
+  N18["GOOGLE-FX"]
+  N19["YAHOO"]
+  N20["TERMINAL"]
+  N0 --> N1
+  N1 --> N2
+  N2 --> N3
+  N2 --> N4
+  N3 --> N5
+  N3 --> N6
+  N4 --> N7
+  N4 --> N8
+  N5 --> N9
+  N5 --> N10
+  N6 --> N11
+  N6 --> N12
+  N7 --> N20
+  N8 --> N13
+  N8 --> N14
+  N9 --> N15
+  N9 --> N16
+  N10 --> N19
+  N10 --> N17
+  N11 --> N20
+  N12 --> N18
+  N12 --> N19
+  N13 --> N20
+  N14 --> N20
+  N15 --> N20
+  N16 --> N20
+  N17 --> N20
+  N18 --> N20
+  N19 --> N20
 ```
 
 This is still the descriptive routing graph, not the future compiled execution
@@ -418,6 +418,8 @@ Open design questions for the next pass:
 - what execution-node taxonomy is actually needed
 - what values move across edges
 - how identifier-to-attribute handoff is represented explicitly
+- which richer execution primitives should exist only in the compiled form,
+  such as first-class fan-out, fan-in, and transform-oriented nodes
 - whether compiled graphs are per-request, per-classification, or otherwise
   reusable
 - whether batching remains outside the execution graph or becomes first-class

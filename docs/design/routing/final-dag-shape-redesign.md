@@ -83,6 +83,19 @@ Constraints for this phase:
 This keeps the redesign focused on graph shape, not on plugin or registration
 architecture.
 
+Current authored/runtime graph primitives should stay limited to what the
+existing linear `ResolveFlow` runtime can execute honestly.
+
+That means this phase may use simple unconditional sequencing primitives such
+as `StepPlan`, but it should not pretend to support richer execution semantics
+such as first-class fan-out or fan-in unless the runtime really implements
+them.
+
+Those richer primitives are still expected to become useful later. They belong
+to the compiled execution-graph phase described in
+[`execution-graph-compilation.md`](./execution-graph-compilation.md), where a
+more capable engine can model branch, join, and transform behavior directly.
+
 Additional invariants:
 
 - `Graph.Node.id` must be unique

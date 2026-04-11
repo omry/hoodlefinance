@@ -50,7 +50,6 @@ export interface RequestResolutionDependencies {
 }
 
 export interface LookupResult {
-  attemptedRoutes: string[];
   error?: string;
   route: string;
   status: "failure" | "success";
@@ -59,11 +58,9 @@ export interface LookupResult {
 
 function failureResult(
   route: string,
-  attemptedRoutes: string[],
   error: unknown,
 ): LookupResult {
   return {
-    attemptedRoutes,
     error: error instanceof Error ? error.message : String(error || ""),
     route,
     status: "failure",
@@ -73,11 +70,9 @@ function failureResult(
 
 function normalizePlanOutcome(
   route: string,
-  attemptedRoutes: string[],
   outcome: QuotePlanOutcome,
 ): LookupResult {
   const normalized: LookupResult = {
-    attemptedRoutes,
     route,
     status: outcome.status,
     value:
@@ -122,7 +117,7 @@ function validateDeferredLookupModes(requestInput: RequestInput): void {
   }
 }
 
-function normalizeRequestInput(
+function classifyLookupInput(
   env: RequestResolutionDependencies,
   requestInput: RawRequestInput | RequestInput,
 ): RequestInput {
@@ -136,7 +131,6 @@ function normalizeRequestInput(
 export function resolvePlannedQuoteResult(
   attributePlan: ResolverPlanNode,
   resolvedRequest: ResolvedRequest,
-  attemptedRoutes: string[],
 ): LookupResult {
   const resolvableAttributePlan = requireResolvablePlan<ResolvedRequest, unknown>(
     attributePlan,
@@ -145,7 +139,7 @@ export function resolvePlannedQuoteResult(
   const route = resolvableAttributePlan.describe(resolvedRequest);
   const outcome = resolvableAttributePlan.resolve(resolvedRequest);
 
-  return normalizePlanOutcome(route, attemptedRoutes.concat([route]), {
+  return normalizePlanOutcome(route, {
     error: outcome.status === "failure" ? outcome.error : undefined,
     status: outcome.status,
     value: outcome.status === "success" ? outcome.value : null,
@@ -177,7 +171,6 @@ function tryResolveDirectIsinValue(
   }
 
   return {
-    attemptedRoutes: [directResolution.route],
     route: directResolution.route,
     status: "success",
     value: directResolution.value,
@@ -193,7 +186,7 @@ function resolveIdentifierPlanLookup(
   if (!identifierPlan) {
     return {
       attributePlan: null,
-      result: failureResult("(none)", [], "Identifier resolution failed."),
+      result: failureResult("(none)", "Identifier resolution failed."),
       resolvedRequest: null,
     };
   }
@@ -212,7 +205,6 @@ function resolveIdentifierPlanLookup(
       attributePlan: null,
       result: failureResult(
         identifierRoute,
-        [identifierRoute],
         identifierOutcome.error,
       ),
       resolvedRequest: null,
@@ -228,7 +220,6 @@ function resolveIdentifierPlanLookup(
       attributePlan: null,
       result: failureResult(
         identifierRoute,
-        [identifierRoute],
         "No attribute route is available for this request.",
       ),
       resolvedRequest: identifierOutcome.value,
@@ -240,7 +231,6 @@ function resolveIdentifierPlanLookup(
     result: resolvePlannedQuoteResult(
       attributePlan,
       identifierOutcome.value,
-      [identifierRoute],
     ),
     resolvedRequest: identifierOutcome.value,
   };
@@ -258,7 +248,6 @@ function finalizeLookupValue(
     return lookupResult;
   }
 
-  const attemptedRoutes = lookupResult.attemptedRoutes.slice();
   const quote = {
     ...((lookupResult.value || {}) as Record<string, unknown>),
   };
@@ -285,7 +274,6 @@ function finalizeLookupValue(
         : null;
 
     if (fxResult) {
-      attemptedRoutes.push(...fxResult.attemptedRoutes);
       if (fxResult.status === "success") {
         const rate = Number(fxResult.value);
         if (Number.isFinite(rate)) {
@@ -328,11 +316,10 @@ function finalizeLookupValue(
 
     return {
       ...lookupResult,
-      attemptedRoutes,
       value,
     };
   } catch (error) {
-    return failureResult(lookupResult.route, attemptedRoutes, error);
+    return failureResult(lookupResult.route, error);
   }
 }
 
@@ -340,12 +327,18 @@ export function resolveRequestValue(
   env: RequestResolutionDependencies,
   requestInput: RawRequestInput | RequestInput,
 ): LookupResult {
-  const normalizedRequestInput = normalizeRequestInput(env, requestInput);
+  let normalizedRequestInput: RequestInput;
+
+  try {
+    normalizedRequestInput = classifyLookupInput(env, requestInput);
+  } catch (error) {
+    return failureResult("(none)", error);
+  }
 
   try {
     validateDeferredLookupModes(normalizedRequestInput);
   } catch (error) {
-    return failureResult("(none)", [], error);
+    return failureResult("(none)", error);
   }
 
   try {
@@ -355,7 +348,7 @@ export function resolveRequestValue(
       return directResult;
     }
   } catch (error) {
-    return failureResult("(none)", [], error);
+    return failureResult("(none)", error);
   }
 
   let lookupSelection: LookupExecutionSelection | null = null;
@@ -363,7 +356,7 @@ export function resolveRequestValue(
   try {
     lookupSelection = env.selectLookupExecution(normalizedRequestInput);
   } catch (error) {
-    return failureResult("(none)", [], error);
+    return failureResult("(none)", error);
   }
 
   let effectiveAttributePlan = lookupSelection.attributePlan || null;
@@ -373,7 +366,6 @@ export function resolveRequestValue(
       ? resolvePlannedQuoteResult(
           effectiveAttributePlan,
           effectiveResolvedRequest,
-          [],
         )
       : lookupSelection.identifierPlan
         ? (() => {
@@ -387,7 +379,6 @@ export function resolveRequestValue(
           })()
         : failureResult(
             "(none)",
-            [],
             "Identifier resolution failed.",
           );
 

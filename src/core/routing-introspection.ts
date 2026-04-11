@@ -1,5 +1,5 @@
 import type { ResolverNode, ResolverPlanNode, RoutingNodeKind } from "./planner";
-import type { RequestClassification, RequestInput } from "./request";
+import { RawRequestInput, type RequestClassification, type RequestInput } from "./request";
 
 export interface RoutingTableExample {
   example: string;
@@ -30,11 +30,11 @@ export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
 ];
 
 export interface RoutingIntrospectionDependencies {
-  buildResolvePlan(requestInput: RequestInput): {
+  buildResolvePlan(requestInput: RawRequestInput): {
     debugValue: string;
     plannedRoute: string;
+    requestInput: Pick<RequestInput, "classification">;
   };
-  createRequestInput(identifier: string, attribute: string): RequestInput;
 }
 
 interface RoutingPlanNodeLike {
@@ -73,11 +73,12 @@ export function buildRoutingTableRow(
   row: RoutingTableExample,
   deps: RoutingIntrospectionDependencies,
 ): RoutingTableRow {
-  const requestInput = deps.createRequestInput(row.example, "price");
-  const resolvePlan = deps.buildResolvePlan(requestInput);
+  const resolvePlan = deps.buildResolvePlan(
+    new RawRequestInput(row.example, "price"),
+  );
 
   return {
-    classification: requestInput.classification,
+    classification: resolvePlan.requestInput.classification,
     example: row.example,
     route: resolvePlan.debugValue || resolvePlan.plannedRoute,
   };

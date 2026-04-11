@@ -123,6 +123,31 @@ test("resolveRoutingNode unwraps routing plans until it reaches a concrete node"
   assert.equal(resolved, yahoo);
 });
 
+test("resolveRoutingNode also unwraps linear step plans", () => {
+  const request = createRequest();
+  const classifier = createResolverNode("CLASSIFY-REQUEST");
+
+  const resolved = resolveRoutingNode(
+    {
+      canHandle() {
+        return true;
+      },
+      getNodesForRequest() {
+        return [classifier];
+      },
+      getRoutingNodeKind() {
+        return "step";
+      },
+      isRoutingNode: true,
+      name: "ROOT",
+      nodes: [classifier],
+    },
+    request,
+  );
+
+  assert.equal(resolved, classifier);
+});
+
 test("resolver node name matching and lookup search by name", () => {
   const request = createRequest();
   const yahoo = createResolverNode("YAHOO");

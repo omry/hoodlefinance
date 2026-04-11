@@ -10,6 +10,7 @@ const {
   PseQuoteResolutionPlan,
   ResolverPlan,
   RouteExecutionResolver,
+  StepPlan,
   TickerQuoteResolutionPlan,
   buildPlanNodeFromSpec,
 } = require("../dist/ts/core/index.js");
@@ -97,6 +98,25 @@ test("RequestClassificationPlan routes raw inputs to the classifier node", () =>
   );
 });
 
+test("StepPlan forwards to all children without request-based selection", () => {
+  const first = createLeafResolver("FIRST", {
+    canHandle() {
+      return false;
+    },
+  });
+  const second = createLeafResolver("SECOND");
+  const plan = new StepPlan("ROOT", [first, second]);
+
+  assert.deepEqual(
+    plan.getNodesForRequest(new RawRequestInput("GOOG", "price")).map((node) => node.name),
+    ["FIRST", "SECOND"],
+  );
+  assert.deepEqual(
+    plan.getNodesForRequest(createRequestInput()).map((node) => node.name),
+    ["FIRST", "SECOND"],
+  );
+});
+
 test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owned route state", () => {
   const yahoo = createLeafResolver("YAHOO");
   const tradingview = createLeafResolver("TRADINGVIEW-FUND", {
@@ -164,6 +184,33 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
 
   assert.equal(plan.nodes.length, 1);
   assert.equal(plan.nodes[0], null);
+});
+
+test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes", () => {
+  const classifier = createLeafResolver("CLASSIFY-REQUEST");
+  const refs = {
+    getFxPlan() {
+      throw new Error("fx plan should not be requested for this test");
+    },
+  };
+
+  const plan = buildPlanNodeFromSpec(
+    "ROOT",
+    {
+      id: "ROOT",
+      next: ["CLASSIFY-REQUEST"],
+      type: "StepPlan",
+    },
+    (nodeCode) =>
+      ({
+        "CLASSIFY-REQUEST": classifier,
+      })[nodeCode],
+    null,
+    { refs },
+  );
+
+  assert.equal(plan instanceof StepPlan, true);
+  assert.equal(plan.getRoutingNodeKind(), "step");
 });
 
 test("FirstSuccessPlan can express ISIN-country fallback through child canHandle ordering", () => {
@@ -300,7 +347,6 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
   });
 
   assert.deepEqual(env, {
-    attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
     route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
     status: "success",
     value: 0.02,

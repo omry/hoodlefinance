@@ -18,7 +18,6 @@ export interface QuoteRoutingPlanLike {
 export function resolveQuoteForResolvedRequest(
   env: QuoteRoutingDependencies,
   resolvedRequest: ResolvedRequest,
-  attemptedRoutes: string[],
 ) {
   if (resolvedRequest.requestType === "fx") {
     const plan = env.quoteFxPlan;
@@ -27,7 +26,6 @@ export function resolveQuoteForResolvedRequest(
 
     return {
       ...outcome,
-      attemptedRoutes: attemptedRoutes.concat([routeLabel]),
       kind: "quote",
       route: routeLabel,
     };
@@ -42,18 +40,16 @@ export function resolveQuoteForResolvedRequest(
     const outcome = plan.resolve(resolvedRequest);
     return {
       ...outcome,
-      attemptedRoutes: attemptedRoutes.concat([routeLabel]),
       kind: "quote",
       route: routeLabel,
     };
   }
 
   return {
-    attemptedRoutes,
     error:
       "Quote lookup is not yet available for this request in the TypeScript CLI.",
     kind: "quote",
-    route: attemptedRoutes[attemptedRoutes.length - 1] || "(none)",
+    route: "(none)",
     status: "failure",
   };
 }

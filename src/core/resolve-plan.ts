@@ -6,7 +6,6 @@ import {
   buildSourceOverrideUnavailableError,
   type PlanSelectionDependencies,
 } from "./plan-selection";
-import { resolveRoutingNode } from "./plan-navigation";
 import { FirstSuccessPlan, type ResolverPlanOptions } from "./resolver-classes";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
@@ -18,6 +17,7 @@ import { createRequestInput, extractIsinFromRequestInput } from "./request-build
 import { looksLikeIsin } from "./request";
 import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "./planner";
 import type { ResolutionResult } from "./planner";
+import { resolveRoutingNode } from "./plan-navigation";
 
 export interface DefaultResolvePlanBuilderDependencies {
   directIdentifierResolver: {
@@ -43,7 +43,7 @@ export interface ResolvePlanDependencies {
     sourceOverride: string,
     contextLabel?: string,
   ): Error;
-  classifyRawRequest(input: RawRequestInput): RequestInput;
+  enterRequestInput(input: RawRequestInput): RequestInput;
   createRequestInput(identifier: string, attribute: string): RequestInput;
   listSupportedSourcesForRequest(input: RequestInput): string;
   resolveIdentifierDirect(input: RequestInput): ResolvedRequest | null;
@@ -91,7 +91,7 @@ function wrapSelectedResolverNode(
 
 export function createDefaultResolvePlanBuilder(
   deps: DefaultResolvePlanBuilderDependencies,
-): (requestInput: RawRequestInput | RequestInput) => Readonly<ResolvePlan> {
+): (requestInput: RawRequestInput) => Readonly<ResolvePlan> {
   function resolveIdentifierDirect(
     requestInput: RequestInput,
   ): ResolvedRequest | null {
@@ -153,20 +153,20 @@ export function createDefaultResolvePlanBuilder(
         return resolveIdentifierDirect(input);
       },
       buildSourceOverrideUnavailableError,
-      classifyRawRequest(input) {
+      enterRequestInput(input) {
         const resolvedNode = resolveRoutingNode(
           deps.getPlanNodeByCode("ROOT"),
           input,
         );
 
         if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
-          throw new Error("Request classification failed.");
+          throw new Error("Request entry failed.");
         }
 
         const outcome = resolvedNode.resolve(input);
 
         if (outcome.status !== "success") {
-          throw new Error(outcome.error || "Request classification failed.");
+          throw new Error(outcome.error || "Request entry failed.");
         }
 
         return outcome.value as RequestInput;
@@ -183,7 +183,7 @@ export function createDefaultResolvePlanBuilder(
   }
 
   return function buildDefaultResolvePlan(
-    requestInput: RawRequestInput | RequestInput,
+    requestInput: RawRequestInput,
   ): Readonly<ResolvePlan> {
     return buildResolvePlan(requestInput, buildResolvePlanDependencies());
   };
@@ -196,51 +196,59 @@ function normalizeSourceOverride(requestInput: RequestInput): string {
 }
 
 export function buildResolvePlan(
-  requestInput: RawRequestInput | RequestInput,
+  requestInput: RawRequestInput,
   deps: ResolvePlanDependencies,
 ): Readonly<ResolvePlan> {
-  const normalizedRequestInput =
-    requestInput instanceof RawRequestInput
-      ? deps.classifyRawRequest(requestInput)
-      : requestInput;
-  const nonInfoRequestInput = normalizedRequestInput.infoMode
+  const normalizedRequestInput = deps.enterRequestInput(requestInput);
+
+  return buildResolvePlanForRequestInput(normalizedRequestInput, deps);
+}
+
+function buildResolvePlanForRequestInput(
+  requestInput: RequestInput,
+  deps: ResolvePlanDependencies,
+): Readonly<ResolvePlan> {
+  const nonInfoRequestInput = requestInput.infoMode
     ? deps.createRequestInput(
-        normalizedRequestInput.ticker,
-        normalizedRequestInput.attribute,
+        requestInput.ticker,
+        requestInput.attribute,
       )
-    : normalizedRequestInput;
-  const infoMode = normalizedRequestInput.infoMode;
-  const sourceOverride = normalizeSourceOverride(normalizedRequestInput);
+    : requestInput;
+  const infoMode = requestInput.infoMode;
+  const sourceOverride = normalizeSourceOverride(requestInput);
   const hasForcedQuoteSource =
-    normalizedRequestInput.attributeType === "quote" &&
-    !!normalizedRequestInput.sourceOverride;
-  const resolvedRequest = deps.resolveIdentifierDirect(normalizedRequestInput);
+    requestInput.attributeType === "quote" &&
+    !!requestInput.sourceOverride;
+  const resolvedRequest = deps.resolveIdentifierDirect(requestInput);
   const representativeForcedAttributeRequest = hasForcedQuoteSource
-    ? deps.buildRepresentativeForcedAttributeRequest(normalizedRequestInput)
+    ? deps.buildRepresentativeForcedAttributeRequest(requestInput)
     : null;
 
   if (infoMode === "source-list") {
     return createResolvePlan({
       debugValue: deps.listSupportedSourcesForRequest(nonInfoRequestInput),
-      plannedRoute: buildResolvePlan(nonInfoRequestInput, deps).plannedRoute,
-      requestInput: normalizedRequestInput,
+      plannedRoute: buildResolvePlanForRequestInput(
+        nonInfoRequestInput,
+        deps,
+      ).plannedRoute,
+      requestInput,
     });
   }
 
   if (infoMode === "source-name") {
     return createResolvePlan({
-      debugValue: buildResolvePlan(
+      debugValue: buildResolvePlanForRequestInput(
         deps.createRequestInput(
-          normalizedRequestInput.ticker,
-          normalizedRequestInput.attribute,
+          requestInput.ticker,
+          requestInput.attribute,
         ),
         deps,
       ).plannedRoute,
-      requestInput: normalizedRequestInput,
+      requestInput,
     });
   }
 
-  deps.validateNonQuoteSourceOverride(normalizedRequestInput, resolvedRequest);
+  deps.validateNonQuoteSourceOverride(requestInput, resolvedRequest);
 
   if (
     hasForcedQuoteSource &&
@@ -252,20 +260,19 @@ export function buildResolvePlan(
 
   if (resolvedRequest) {
     const attributePlan = deps.buildQuoteRoutePlanForResolvedRequest(
-      normalizedRequestInput,
+      requestInput,
       resolvedRequest,
     );
 
     return createResolvePlan({
       attributePlan,
       plannedRoute: attributePlan.describe(resolvedRequest),
-      requestInput: normalizedRequestInput,
+      requestInput,
       resolvedRequest,
     });
   }
 
-  const identifierPlan =
-    deps.buildIdentifierResolutionPlan(normalizedRequestInput);
+  const identifierPlan = deps.buildIdentifierResolutionPlan(requestInput);
 
   if (!identifierPlan) {
     throw new Error("Identifier resolution failed.");
@@ -274,22 +281,22 @@ export function buildResolvePlan(
   return createResolvePlan({
     buildAttributePlan(resolvedIdentifierRequest) {
       return deps.buildQuoteRoutePlanForResolvedRequest(
-        normalizedRequestInput,
+        requestInput,
         resolvedIdentifierRequest,
       );
     },
     identifierPlan,
     plannedRoute: hasForcedQuoteSource
       ? representativeForcedAttributeRequest
-        ? `${identifierPlan.describe(normalizedRequestInput)} => ${deps
+        ? `${identifierPlan.describe(requestInput)} => ${deps
             .buildForcedAttributePlanForResolvedRequest(
-              normalizedRequestInput,
+              requestInput,
               representativeForcedAttributeRequest,
             )
             .describe(representativeForcedAttributeRequest)}`
-        : identifierPlan.describe(normalizedRequestInput)
-      : identifierPlan.describe(normalizedRequestInput),
-    requestInput: normalizedRequestInput,
+        : identifierPlan.describe(requestInput)
+      : identifierPlan.describe(requestInput),
+    requestInput,
   });
 }
 
@@ -299,7 +306,7 @@ export function classifyTickerJob(
   deps: ResolvePlanDependencies,
 ): DebugRoutePlanLike | RuntimePlanLike | null {
   const resolvePlan = buildResolvePlan(
-    deps.createRequestInput(String(ticker).trim(), attribute),
+    new RawRequestInput(String(ticker).trim(), attribute),
     deps,
   );
 

@@ -3,17 +3,20 @@ const test = require("node:test");
 
 const {
   DirectIdentifierResolver,
+  FirstSuccessPlan,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
   PseFramesResolver,
   PseIsinMapResolver,
   RequestClassifierResolver,
+  RawRequestInput,
   YahooIsinSearchResolver,
   YahooQuoteResolver,
   TradingviewFundResolver,
   DagPlan,
   RequestInput,
+  buildQuoteRoutePlanForResolvedRequest,
   createDefaultResolvePlanBuilder,
   getRoutingTableRows,
   ResolveFlow,
@@ -46,6 +49,50 @@ function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
   });
 }
 
+function wrapSelectedResolverNode(node, parentPlan = null) {
+  const wrappedName = String((node && node.name) || "").trim();
+  const refs =
+    parentPlan && parentPlan.refs
+      ? parentPlan.refs
+      : node && node.refs
+        ? node.refs
+        : null;
+  const options = {
+    routeClass(request) {
+      return node && node.buildRuntimePlan
+        ? node.buildRuntimePlan(request).routeClass
+        : wrappedName;
+    },
+    routePath(request) {
+      return node && node.buildRuntimePlan
+        ? node.buildRuntimePlan(request).routePath
+        : wrappedName;
+    },
+  };
+
+  return refs
+    ? new FirstSuccessPlan(wrappedName, [node], refs, options)
+    : new FirstSuccessPlan(wrappedName, [node], options);
+}
+
+function buildTypedAttributePlan(runtimeLookup, requestInput) {
+  const outcome = runtimeLookup.getNode("RESOLVED-IDENTIFIER").resolve(requestInput);
+
+  assert.equal(outcome.status, "success");
+
+  return {
+    attributePlan: wrapSelectedResolverNode(
+      buildQuoteRoutePlanForResolvedRequest(requestInput, outcome.value, {
+        buildForcedSelectedAttributePlan(resolverOrPlan, _request, parentPlan) {
+          return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
+        },
+        getPlanNodeByCode: runtimeLookup.getPlanNode,
+      }),
+    ),
+    resolvedRequest: outcome.value,
+  };
+}
+
 test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated results", () => {
   createIntegratedCompiledDag();
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
@@ -59,13 +106,6 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
 
   const deps = {
     buildResolvePlan,
-    createRequestInput: (id, attr) => new RequestInput(id, attr, {
-      looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
-      normalizeAttribute: (a) => String(a || "price"),
-      parseAttributeRequest: (a) => ({ baseAttribute: a, outputCode: "", rawAttribute: a, wantsOutputCurrency: false }),
-      parseFxTicker: () => null, // Simplified for this test
-      parseTickerRequest: (t) => ({ infoMode: t.endsWith("@") ? "source-list" : t.endsWith("@?") ? "source-name" : "", sourceOverride: "", ticker: t.replace(/@\??$/, "") }),
-    }),
   };
 
   const rows = getRoutingTableRows(deps);
@@ -79,7 +119,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
   assert.equal(findRow("PSE:BDO").route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER");
 
   // Specific planned route check
-  const googPlan = buildResolvePlan(deps.createRequestInput("GOOG", "price"));
+  const googPlan = buildResolvePlan(new RawRequestInput("GOOG", "price"));
   assert.equal(googPlan.plannedRoute, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
@@ -92,28 +132,47 @@ test("forced PSE sub-sources use the requested individual provider in integrated
     directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
     getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
-
-  const framesPlan = buildResolvePlan(new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
+  const framesRequest = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
     looksLikeIsin: () => false,
     normalizeAttribute: (a) => a,
     parseAttributeRequest: (a) => ({}),
     parseFxTicker: () => null,
-    parseTickerRequest: (t) => ({ ticker: "PSE:BDO", sourceOverride: "PSE-FRAMES", infoMode: "" }),
-  }));
+    parseTickerRequest: () => ({
+      ticker: "PSE:BDO",
+      sourceOverride: "PSE-FRAMES",
+      infoMode: "",
+    }),
+  });
+  const framesPlan = buildTypedAttributePlan(runtimeLookup, framesRequest);
 
   assert.equal(framesPlan.attributePlan.name, "PSE-FRAMES");
-  assert.equal(framesPlan.plannedRoute, "EQUITY -> PSE -> PSE-FRAMES");
+  assert.equal(
+    framesPlan.attributePlan.describe(framesPlan.resolvedRequest),
+    "EQUITY -> PSE -> PSE-FRAMES",
+  );
+  assert.equal(
+    buildResolvePlan(new RawRequestInput("PSE:BDO", "price")).plannedRoute,
+    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
+  );
 
-  const edgePlan = buildResolvePlan(new RequestInput("PSE:BDO@PSE-EDGE", "price", {
+  const edgeRequest = new RequestInput("PSE:BDO@PSE-EDGE", "price", {
     looksLikeIsin: () => false,
     normalizeAttribute: (a) => a,
     parseAttributeRequest: (a) => ({}),
     parseFxTicker: () => null,
-    parseTickerRequest: (t) => ({ ticker: "PSE:BDO", sourceOverride: "PSE-EDGE", infoMode: "" }),
-  }));
+    parseTickerRequest: () => ({
+      ticker: "PSE:BDO",
+      sourceOverride: "PSE-EDGE",
+      infoMode: "",
+    }),
+  });
+  const edgePlan = buildTypedAttributePlan(runtimeLookup, edgeRequest);
 
   assert.equal(edgePlan.attributePlan.name, "PSE-EDGE");
-  assert.equal(edgePlan.plannedRoute, "EQUITY -> PSE -> PSE-EDGE");
+  assert.equal(
+    edgePlan.attributePlan.describe(edgePlan.resolvedRequest),
+    "EQUITY -> PSE -> PSE-EDGE",
+  );
 });
 
 test("integrated routing errors on ambiguous default attribute plans", () => {
@@ -135,19 +194,22 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
   });
 
-  const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
-    getPlanNodeByCode: runtimeLookup.getPlanNode,
-  });
-
   assert.throws(
-    () => buildResolvePlan(new RequestInput("GOOG", "price", {
-      looksLikeIsin: () => false,
-      normalizeAttribute: (a) => a,
-      parseAttributeRequest: (a) => ({}),
-      parseFxTicker: () => null,
-      parseTickerRequest: (t) => ({ ticker: t, sourceOverride: "", infoMode: "" }),
-    })),
+    () =>
+      buildTypedAttributePlan(
+        runtimeLookup,
+        new RequestInput("GOOG", "price", {
+          looksLikeIsin: () => false,
+          normalizeAttribute: (a) => a,
+          parseAttributeRequest: (a) => ({}),
+          parseFxTicker: () => null,
+          parseTickerRequest: (t) => ({
+            ticker: t,
+            sourceOverride: "",
+            infoMode: "",
+          }),
+        }),
+      ),
     /Ambiguous default attribute route for classification "equity": DEFAULT-ATTRIBUTE:EQUITY, AMBIGUOUS-EXTRA\./
   );
 });

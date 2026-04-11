@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  RawRequestInput,
   resolveRequestValue,
 } = require("../dist/ts/core/index.js");
 const { createTextHttpResponse } = require("./resource-fixtures.js");
@@ -36,6 +37,13 @@ function createEnv(overrides = {}) {
   });
 
   return {
+    classifyRawRequest(requestInput) {
+      if (typeof overrides.classifyRawRequest === "function") {
+        return overrides.classifyRawRequest(requestInput);
+      }
+
+      throw new Error("classifyRawRequest should not be called for this test");
+    },
     selectLookupExecution() {
       counters.selectLookupExecution += 1;
 
@@ -102,6 +110,57 @@ test("resolveRequestValue rejects deferred modes before direct isin fast paths",
     sourceOverrideResult.error,
     /"@YAHOO" is not available for this request\./,
   );
+});
+
+test("resolveRequestValue records raw-input classification as part of lookup flow", () => {
+  let classifyRawRequestCalls = 0;
+  let selectLookupExecutionCalls = 0;
+  const env = createEnv({
+    classifyRawRequest(input) {
+      classifyRawRequestCalls += 1;
+      assert.equal(input instanceof RawRequestInput, true);
+
+      return createRequestInput({
+        attribute: input.attribute,
+        identifier: input.identifier,
+        ticker: input.identifier,
+      });
+    },
+    selectLookupExecution(requestInput) {
+      selectLookupExecutionCalls += 1;
+      assert.equal(requestInput.ticker, "GOOG");
+      return {
+        attributePlan: {
+          describe() {
+            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
+          },
+          resolve() {
+            return {
+              status: "success",
+              value: {
+                regularMarketPrice: 123.45,
+              },
+            };
+          },
+        },
+        buildAttributePlan: null,
+        identifierPlan: null,
+        resolvedRequest: {
+          attribute: "price",
+          classification: "equity",
+          identifier: "GOOG",
+        },
+      };
+    },
+  });
+
+  const result = resolveRequestValue(env, new RawRequestInput("GOOG", "price"));
+
+  assert.equal(classifyRawRequestCalls, 1);
+  assert.equal(selectLookupExecutionCalls, 1);
+  assert.equal(result.status, "success");
+  assert.equal(result.value, 123.45);
+  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
 test("resolveRequestValue resolves explicit-source isin requests without quote planning", () => {
@@ -330,7 +389,6 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
             assert.equal(requestInput.attribute, "price@USD");
             assert.equal(quote.currency, "PHP");
             return {
-              attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
               route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
               status: "success",
               value: 0.02,
@@ -355,10 +413,7 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
   assert.equal(conversionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, 2);
-  assert.deepEqual(result.attemptedRoutes, [
-    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
-    "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
-  ]);
+  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
 test("resolveRequestValue uses buildAttributePlan for identifier-first output-currency conversion", () => {
@@ -385,7 +440,6 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
               assert.equal(requestInput.attribute, "price@USD");
               assert.equal(quote.currency, "PHP");
               return {
-                attemptedRoutes: ["DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX"],
                 route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
                 status: "success",
                 value: 0.02,
@@ -432,9 +486,5 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
   assert.equal(conversionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, 2);
-  assert.deepEqual(result.attemptedRoutes, [
-    "IDENTIFIER:ISIN -> ISIN:YAHOO",
-    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
-    "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
-  ]);
+  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });

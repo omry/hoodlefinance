@@ -8,7 +8,11 @@ import type {
 import type { ResolverServices } from "./resolver-services";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
-export type RoutingNodeKind = "leaf" | "switch" | "try each";
+export type RoutingNodeKind =
+  | "leaf"
+  | "switch"
+  | "try each"
+  | "step";
 
 export type ResolutionStatus = "success" | "failure";
 

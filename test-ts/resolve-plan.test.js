@@ -83,6 +83,36 @@ function createResolvedRequest() {
   };
 }
 
+function classifyRawRequestInput(input) {
+  const rawIdentifier = String(input.identifier || "").trim();
+  const infoMode = rawIdentifier.endsWith("@")
+    ? "source-list"
+    : rawIdentifier.endsWith("@?")
+      ? "source-name"
+      : "";
+  const normalizedIdentifier = infoMode
+    ? rawIdentifier.replace(/@\??$/, "")
+    : rawIdentifier;
+  const sourceOverrideMatch = normalizedIdentifier.match(/^(.*)@([^@]+)$/);
+  const ticker = sourceOverrideMatch ? sourceOverrideMatch[1] : normalizedIdentifier;
+  const sourceOverride = sourceOverrideMatch ? sourceOverrideMatch[2] : "";
+  const classification =
+    ticker === "EURUSD" || ticker === "USDUSD"
+      ? "fx"
+      : /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(ticker)
+        ? "isin"
+        : "equity";
+
+  return createRequestInput({
+    attribute: input.attribute,
+    classification,
+    identifier: rawIdentifier,
+    infoMode,
+    sourceOverride,
+    ticker,
+  });
+}
+
 function createPlanNodeLookupFactory() {
   const equityPlan = createPlan("EQUITY", "TICKER -> YAHOO");
   equityPlan.canHandle = (request) =>
@@ -128,22 +158,27 @@ function createPlanNodeLookupFactory() {
 
   const classifierNode = createPlan("CLASSIFY-REQUEST", "CLASSIFY-REQUEST");
   classifierNode.resolve = function resolve(request) {
+    if (request instanceof RequestInput) {
+      return {
+        elapsedMs: 0,
+        status: "success",
+        value: request,
+      };
+    }
+
     return {
       elapsedMs: 0,
       status: "success",
-      value: createRequestInput({
-        attribute: request.attribute,
-        identifier: request.identifier,
-        ticker: request.identifier,
-      }),
+      value: classifyRawRequestInput(request),
     };
   };
 
   const rootPlan = createPlan("ROOT", "");
   rootPlan.isRoutingNode = true;
-  rootPlan.getRoutingNodeKind = () => "switch";
-  rootPlan.getNodesForRequest = function getNodesForRequest(request) {
-    return request instanceof RawRequestInput ? [classifierNode] : [requestRoot];
+  rootPlan.getRoutingNodeKind = () => "step";
+  rootPlan.nodes = [classifierNode];
+  rootPlan.getNodesForRequest = function getNodesForRequest() {
+    return this.nodes || [];
   };
 
   return function getPlanNodeByCode(code) {
@@ -186,12 +221,12 @@ function createDeps(overrides = {}) {
         `"@${sourceOverride}" is not available for this request.`,
       );
     },
-    classifyRawRequest(input) {
-      return createRequestInput({
-        attribute: input.attribute,
-        identifier: input.identifier,
-        ticker: input.identifier,
-      });
+    enterRequestInput(input) {
+      if (input instanceof RequestInput) {
+        return input;
+      }
+
+      return classifyRawRequestInput(input);
     },
     createRequestInput(identifier, attribute) {
       return createRequestInput({ attribute, identifier, ticker: identifier });
@@ -208,7 +243,7 @@ function createDeps(overrides = {}) {
 }
 
 test("buildResolvePlan returns a direct attribute plan when the identifier resolves immediately", () => {
-  const input = createRequestInput();
+  const input = new RawRequestInput("GOOG", "price");
   const plan = buildResolvePlan(input, createDeps());
 
   assert.equal(plan.debugValue, "");
@@ -226,6 +261,7 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
   const defaultAttributeRoot = createPlan("DEFAULT-ATTRIBUTE", "");
   const rootPlan = createPlan("ROOT", "");
   const requestRoot = createPlan("REQUEST-ROOT", "");
+  const classifierNode = createPlan("CLASSIFY-REQUEST", "CLASSIFY-REQUEST");
   const refs = {
     getFxPlan() {
       return { marker: "fx-plan" };
@@ -251,10 +287,18 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
   requestRoot.getNodesForRequest = function getNodesForRequest() {
     return [defaultAttributeRoot];
   };
+  classifierNode.resolve = function resolve(request) {
+    return {
+      elapsedMs: 0,
+      status: "success",
+      value: request,
+    };
+  };
   rootPlan.isRoutingNode = true;
-  rootPlan.getRoutingNodeKind = () => "switch";
+  rootPlan.getRoutingNodeKind = () => "step";
+  rootPlan.nodes = [classifierNode];
   rootPlan.getNodesForRequest = function getNodesForRequest() {
-    return [requestRoot];
+    return this.nodes || [];
   };
 
   const buildResolvePlanBuilder = createDefaultResolvePlanBuilder({
@@ -282,9 +326,28 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
   assert.equal(plan.attributePlan.refs, refs);
 });
 
-test("buildResolvePlan classifies raw requests before selecting a route", () => {
-  const plan = buildResolvePlan(new RawRequestInput("GOOG", "price"), createDeps());
+test("buildResolvePlan enters through the root graph for raw input", () => {
+  let enterRequestInputCalls = 0;
+  let resolveIdentifierDirectCalls = 0;
+  const plan = buildResolvePlan(
+    new RawRequestInput("GOOG", "price"),
+    createDeps({
+      enterRequestInput(input) {
+        enterRequestInputCalls += 1;
+        assert.equal(input instanceof RawRequestInput, true);
 
+        return classifyRawRequestInput(input);
+      },
+      resolveIdentifierDirect(input) {
+        resolveIdentifierDirectCalls += 1;
+        assert.equal(input instanceof RequestInput, true);
+        return createResolvedRequest();
+      },
+    }),
+  );
+
+  assert.equal(enterRequestInputCalls, 1);
+  assert.equal(resolveIdentifierDirectCalls, 1);
   assert.equal(plan.requestInput.identifier, "GOOG");
   assert.equal(plan.requestInput.classification, "equity");
   assert.equal(plan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
@@ -294,14 +357,14 @@ test("buildResolvePlan returns source-list and source-name debug views", () => {
   const deps = createDeps();
 
   const sourceListPlan = buildResolvePlan(
-    createRequestInput({ infoMode: "source-list", ticker: "GOOG" }),
+    new RawRequestInput("GOOG@", "price"),
     deps,
   );
   assert.equal(sourceListPlan.debugValue, "YAHOO, IBKR");
   assert.equal(sourceListPlan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
 
   const sourceNamePlan = buildResolvePlan(
-    createRequestInput({ infoMode: "source-name", ticker: "GOOG" }),
+    new RawRequestInput("GOOG@?", "price"),
     deps,
   );
   assert.equal(sourceNamePlan.debugValue, "EQUITY -> TICKER -> YAHOO");
@@ -313,15 +376,12 @@ test("buildResolvePlan falls back to the identifier plan when direct resolution 
       return null;
     },
   });
-  const input = createRequestInput({
-    identifier: "US02079K1079",
-    ticker: "US02079K1079",
-  });
+  const input = new RawRequestInput("US02079K1079", "price");
   const plan = buildResolvePlan(input, deps);
 
   assert.equal(plan.resolvedRequest, null);
   assert.equal(
-    plan.identifierPlan.describe(input),
+    plan.identifierPlan.describe(plan.requestInput),
     "IDENTIFIER:ISIN -> ISIN:YAHOO",
   );
   assert.equal(
@@ -368,7 +428,7 @@ test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", ()
   });
 
   const equityPlan = buildResolvePlanBuilder(
-    createRequestInput({ ticker: "GOOG" }),
+    new RawRequestInput("GOOG", "price"),
   );
   assert.equal(equityPlan.debugValue, "");
   assert.equal(equityPlan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
@@ -381,13 +441,7 @@ test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", ()
   assert.equal(rawPlan.requestInput.identifier, "GOOG");
   assert.equal(rawPlan.plannedRoute, "EQUITY -> TICKER -> YAHOO");
 
-  const fxPlan = buildResolvePlanBuilder(
-    createRequestInput({
-      classification: "fx",
-      identifier: "EURUSD",
-      ticker: "EURUSD",
-    }),
-  );
+  const fxPlan = buildResolvePlanBuilder(new RawRequestInput("EURUSD", "price"));
   assert.equal(fxPlan.debugValue, "");
   assert.equal(fxPlan.plannedRoute, "FX -> GOOGLE-FX");
   assert.equal(
@@ -396,10 +450,7 @@ test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", ()
   );
 
   const isinPlan = buildResolvePlanBuilder(
-    createRequestInput({
-      identifier: "US02079K1079",
-      ticker: "US02079K1079",
-    }),
+    new RawRequestInput("US02079K1079", "price"),
   );
   assert.equal(isinPlan.resolvedRequest, null);
   assert.equal(
