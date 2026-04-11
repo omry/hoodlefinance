@@ -37,8 +37,11 @@ For now, use:
 
 - ADR directory: [`./adr/`](./adr/)
 - ADR template: [`./adr/TEMPLATE.md`](./adr/TEMPLATE.md)
-
-This repo does not yet have a populated ADR set. Add ADRs only for durable decisions that are stable enough to deserve their own long-lived record.
+- Lightweight docs lifecycle: [`./adr/20260411-lightweight-doc-lifecycle.md`](./adr/20260411-lightweight-doc-lifecycle.md)
+- Marketplace add-on as primary install path: [`./adr/20260411-marketplace-addon-primary-install-path.md`](./adr/20260411-marketplace-addon-primary-install-path.md)
+- Docusaurus site on GitHub Pages: [`./adr/20260411-docusaurus-github-pages-website.md`](./adr/20260411-docusaurus-github-pages-website.md)
+- `ResolveFlow` and `Graph.View` runtime shape: [`./adr/20260411-resolve-flow-graph-runtime-shape.md`](./adr/20260411-resolve-flow-graph-runtime-shape.md)
+- TypeScript routing core as source of truth: [`./adr/20260411-typescript-routing-core-source-of-truth.md`](./adr/20260411-typescript-routing-core-source-of-truth.md)
 
 ### Runbooks And Operations
 
