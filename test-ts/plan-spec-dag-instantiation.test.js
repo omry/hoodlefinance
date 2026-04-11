@@ -14,7 +14,8 @@ const {
   RouteExecutionResolver,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
 } = require("../dist/ts/core/index.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
@@ -38,7 +39,8 @@ function createResolverMaterializationDependencies() {
       RequestClassifierResolver,
       TradingviewFundResolver,
       YahooIsinSearchResolver,
-      YahooQuoteResolver,
+      YahooEquityQuoteResolver,
+      YahooFxResolver,
     },
     resolverServices: createStaticResolverServices(),
   };
@@ -111,7 +113,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
 
     assert.equal(graph.getRoot().id, "ROOT");
     assert.equal(graph.getTerminal().id, "TERMINAL");
-    assert.equal(graph.getNode("YAHOO").type, "YahooQuoteResolver");
+    assert.equal(graph.getNode("YAHOO-QUOTE").type, "YahooEquityQuoteResolver");
     assert.deepEqual(
       graph.getChildren("IDENTIFIER:ISIN").map((node) => node.id),
       ["ISIN:PSE", "ISIN:YAHOO"],

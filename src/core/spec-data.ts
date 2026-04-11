@@ -37,7 +37,7 @@ export const DagPlan: Graph.Definition = {
   },
   "QUOTE:DEFAULT-FX": {
     id: "QUOTE:DEFAULT-FX",
-    next: ["GOOGLE-FX", "YAHOO"],
+    next: ["GOOGLE-FX", "YAHOO-FX"],
     type: "AttributeResolutionPlan",
   },
   "QUOTE:PSE": {
@@ -47,7 +47,7 @@ export const DagPlan: Graph.Definition = {
   },
   "QUOTE:TICKER": {
     id: "QUOTE:TICKER",
-    next: ["YAHOO", "TRADINGVIEW-FUND"],
+    next: ["YAHOO-QUOTE", "TRADINGVIEW-FUND"],
     type: "TickerQuoteResolutionPlan",
   },
   "IDENTIFIER-ROOT": {
@@ -85,10 +85,15 @@ export const DagPlan: Graph.Definition = {
     next: ["TERMINAL"],
     type: "GoogleFxResolver",
   },
-  YAHOO: {
-    id: "YAHOO",
+  "YAHOO-QUOTE": {
+    id: "YAHOO-QUOTE",
     next: ["TERMINAL"],
-    type: "YahooQuoteResolver",
+    type: "YahooEquityQuoteResolver",
+  },
+  "YAHOO-FX": {
+    id: "YAHOO-FX",
+    next: ["TERMINAL"],
+    type: "YahooFxResolver",
   },
   "TRADINGVIEW-FUND": {
     id: "TRADINGVIEW-FUND",

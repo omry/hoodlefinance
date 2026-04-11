@@ -161,10 +161,11 @@ flowchart LR
   N14["ISIN:YAHOO"]
   N15["PSE-FRAMES"]
   N16["PSE-EDGE"]
-  N17["TRADINGVIEW-FUND"]
-  N18["GOOGLE-FX"]
-  N19["YAHOO"]
-  N20["TERMINAL"]
+  N17["YAHOO-QUOTE"]
+  N18["TRADINGVIEW-FUND"]
+  N19["GOOGLE-FX"]
+  N20["YAHOO-FX"]
+  N21["TERMINAL"]
   N0 --> N1
   N1 --> N2
   N2 --> N3
@@ -177,23 +178,24 @@ flowchart LR
   N5 --> N10
   N6 --> N11
   N6 --> N12
-  N7 --> N20
+  N7 --> N21
   N8 --> N13
   N8 --> N14
   N9 --> N15
   N9 --> N16
-  N10 --> N19
   N10 --> N17
-  N11 --> N20
-  N12 --> N18
+  N10 --> N18
+  N11 --> N21
   N12 --> N19
-  N13 --> N20
-  N14 --> N20
-  N15 --> N20
-  N16 --> N20
-  N17 --> N20
-  N18 --> N20
-  N19 --> N20
+  N12 --> N20
+  N13 --> N21
+  N14 --> N21
+  N15 --> N21
+  N16 --> N21
+  N17 --> N21
+  N18 --> N21
+  N19 --> N21
+  N20 --> N21
 ```
 
 This is still the descriptive routing graph, not the future compiled execution

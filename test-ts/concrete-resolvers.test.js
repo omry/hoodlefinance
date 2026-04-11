@@ -9,7 +9,8 @@ const {
   PseFramesResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
   TradingviewFundResolver,
   RequestInput,
   FxRequest,
@@ -433,8 +434,8 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   });
 });
 
-test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
-  const cachedResolver = initResolver(new YahooQuoteResolver(), createTestResolverServices({
+test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
+  const cachedResolver = initResolver(new YahooEquityQuoteResolver(), createTestResolverServices({
     httpFetch() {
       throw new Error("cache hit should not fetch Yahoo quote");
     },
@@ -468,7 +469,7 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
   assert.equal(cachedResult.value.regularMarketPrice, 123.45);
 
   let cachedWrite = null;
-  const fetchedResolver = initResolver(new YahooQuoteResolver(), createTestResolverServices({
+  const fetchedResolver = initResolver(new YahooEquityQuoteResolver(), createTestResolverServices({
     httpFetch() {
       return textResponse(JSON.stringify({
         chart: {
@@ -505,10 +506,10 @@ test("YahooQuoteResolver resolves cached and fetched Yahoo quote lookups", () =>
   });
 });
 
-test("YahooQuoteResolver owns preferred equity fallback symbols without affecting FX route state", () => {
+test("YahooEquityQuoteResolver owns preferred equity fallback symbols without affecting FX route state", () => {
   let lastFetchedUrl = null;
   let cachedWrite = null;
-  const resolver = new YahooQuoteResolver();
+  const resolver = new YahooEquityQuoteResolver();
   resolver.initEnv(createTestResolverServices({
     httpFetch(url) {
       lastFetchedUrl = url;
@@ -586,10 +587,10 @@ test("YahooQuoteResolver owns preferred equity fallback symbols without affectin
   });
 });
 
-test("YahooQuoteResolver falls back to stored preferred whitelist data when refresh fails", () => {
+test("YahooEquityQuoteResolver falls back to stored preferred whitelist data when refresh fails", () => {
   let cachedWhitelistWrite = null;
   let storedWhitelistWrite = null;
-  const resolver = new YahooQuoteResolver();
+  const resolver = new YahooEquityQuoteResolver();
   resolver.initEnv(createTestResolverServices({
     httpFetch(url) {
       if (

@@ -9,7 +9,8 @@ const {
   PseFramesResolver,
   PseIsinMapResolver,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
   TradingviewFundResolver,
   FxRequest,
   EquityRequest,
@@ -51,6 +52,8 @@ test("materializeResolversByCode instantiates and registers resolvers by class n
     {
       resolverClassesByName: {
         FakeResolver,
+        YahooEquityQuoteResolver,
+        YahooFxResolver,
       },
     },
   );
@@ -210,7 +213,8 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
       LOCAL: "LocalFxResolver",
       "ISIN:PSE": "PseIsinMapResolver",
       "ISIN:YAHOO": "YahooIsinSearchResolver",
-      YAHOO: "YahooQuoteResolver",
+      "YAHOO-QUOTE": "YahooEquityQuoteResolver",
+      "YAHOO-FX": "YahooFxResolver",
       "TRADINGVIEW-FUND": "TradingviewFundResolver",
       GOOGLE: "GoogleFxResolver",
       "PSE-FRAMES": "PSEFramesResolver",
@@ -227,7 +231,8 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(registry.byCode.GOOGLE instanceof GoogleFxResolver, true);
   assert.equal(registry.byCode["PSE-FRAMES"] instanceof PseFramesResolver, true);
   assert.equal(registry.byCode["PSE-EDGE"] instanceof PseEdgeResolver, true);
-  assert.equal(registry.byCode.YAHOO instanceof YahooQuoteResolver, true);
+  assert.equal(registry.byCode["YAHOO-QUOTE"] instanceof YahooEquityQuoteResolver, true);
+  assert.equal(registry.byCode["YAHOO-FX"] instanceof YahooFxResolver, true);
   assert.equal(
     registry.byCode["TRADINGVIEW-FUND"] instanceof TradingviewFundResolver,
     true,

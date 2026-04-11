@@ -1153,7 +1153,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
   }
 }
 
-export class YahooQuoteResolver extends RouteExecutionResolver {
+export abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedString?: ResolverServices["getCachedString"];
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
@@ -1163,9 +1163,14 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
   putStoredTextResource?: ResolverServices["putStoredTextResource"];
   preferredReitTickerSet: ReadonlySet<string> | null;
 
-  constructor() {
-    super("YAHOO");
+  constructor(code: string, traceLabel?: string) {
+    super(code, traceLabel);
     this.preferredReitTickerSet = null;
+  }
+
+  matchesSourceName(source: string): boolean {
+    const override = String(source || "").trim().toUpperCase();
+    return override === "YAHOO" || super.matchesSourceName(source);
   }
 
   initEnv(services: ResolverServices): void {
@@ -1188,24 +1193,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     this.putStoredTextResource = services.putStoredTextResource;
   }
 
-  getExampleInput(): string | null {
-    return "GOOG";
-  }
 
-  getRoutingDescription(): string | null {
-    return "Yahoo quote lookup";
-  }
-
-  canHandle(request: RequestInput | ResolvedRequest): boolean {
-    return (
-      (request instanceof EquityRequest &&
-        request.exchange !== "PSE" &&
-        !!request.yahooSymbol) ||
-      (request instanceof FxRequest &&
-        !!request.fxPair &&
-        !!request.fxPair.yahooChartSymbol)
-    );
-  }
 
   ensurePreferredReitTickerSet(): ReadonlySet<string> {
     if (this.preferredReitTickerSet) {
@@ -1260,9 +1248,7 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     return {};
   }
 
-  getRouteClass(request: RequestInput | ResolvedRequest): string {
-    return request instanceof FxRequest ? "FORCED:YAHOO" : "TICKER";
-  }
+
 
   executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
     const results: Array<RouteResult | null> = jobs.map(() => null);
@@ -1354,7 +1340,60 @@ export class YahooQuoteResolver extends RouteExecutionResolver {
     return results as unknown as Array<Record<string, unknown> | null>;
   }
 
-  static fromSpec(_code: string): YahooQuoteResolver {
+}
+
+export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
+  constructor() {
+    super("YAHOO-QUOTE", "YAHOO");
+  }
+
+  getExampleInput(): string | null {
+    return "GOOG";
+  }
+
+  getRoutingDescription(): string | null {
+    return "Yahoo equity quote lookup";
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return (
+      request instanceof EquityRequest &&
+      request.exchange !== "PSE" &&
+      !!request.yahooSymbol
+    );
+  }
+
+  getRouteClass(_request: RequestInput | ResolvedRequest): string {
+    return "TICKER";
+  }
+
+  static fromSpec(_code: string): YahooEquityQuoteResolver {
+    return new this();
+  }
+}
+
+export class YahooFxResolver extends BaseYahooQuoteResolver {
+  constructor() {
+    super("YAHOO-FX", "YAHOO");
+  }
+
+  getRoutingDescription(): string | null {
+    return "Yahoo FX quote lookup";
+  }
+
+  canHandle(request: RequestInput | ResolvedRequest): boolean {
+    return (
+      request instanceof FxRequest &&
+      !!request.fxPair &&
+      !!request.fxPair.yahooChartSymbol
+    );
+  }
+
+  getRouteClass(_request: RequestInput | ResolvedRequest): string {
+    return "FORCED:YAHOO";
+  }
+
+  static fromSpec(_code: string): YahooFxResolver {
     return new this();
   }
 }
@@ -1501,7 +1540,8 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   PseIsinMapResolver,
   RequestClassifierResolver,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
   TradingviewFundResolver,
 } as const;
 

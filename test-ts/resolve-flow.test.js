@@ -12,7 +12,8 @@ const {
   RequestClassifierResolver,
   ResolveFlow,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
   TradingviewFundResolver,
 } = require("../dist/ts/core/index.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
@@ -30,7 +31,8 @@ function createResolverMaterializationDependencies() {
       RequestClassifierResolver,
       TradingviewFundResolver,
       YahooIsinSearchResolver,
-      YahooQuoteResolver,
+      YahooEquityQuoteResolver,
+      YahooFxResolver,
     },
     resolverServices: createStaticResolverServices(),
   };
@@ -44,6 +46,6 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
 
   assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
   assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
-  assert.equal(resolveFlow.getGraph().getNode("YAHOO").type, "YahooQuoteResolver");
+  assert.equal(resolveFlow.getGraph().getNode("YAHOO-QUOTE").type, "YahooEquityQuoteResolver");
   assert.equal(resolveFlow.resolveAttribute("USDUSD", "price"), 1);
 });

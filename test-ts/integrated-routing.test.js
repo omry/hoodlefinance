@@ -12,7 +12,8 @@ const {
   RequestClassifierResolver,
   RawRequestInput,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
   TradingviewFundResolver,
   DagPlan,
   RequestInput,
@@ -35,7 +36,8 @@ function createResolverMaterializationDependencies() {
       PseIsinMapResolver,
       RequestClassifierResolver,
       YahooIsinSearchResolver,
-      YahooQuoteResolver,
+      YahooEquityQuoteResolver,
+      YahooFxResolver,
       TradingviewFundResolver,
     },
     resolverServices: createStaticResolverServices(),
@@ -180,7 +182,7 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
   const ambiguousSpec = {
     "AMBIGUOUS-EXTRA": {
       id: "AMBIGUOUS-EXTRA",
-      next: ["YAHOO"],
+      next: ["YAHOO-QUOTE"],
       type: "AttributeResolutionPlan",
     },
   };

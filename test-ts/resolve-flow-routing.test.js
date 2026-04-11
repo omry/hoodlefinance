@@ -14,7 +14,8 @@ const {
   RequestInput,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
   createDefaultResolvePlanBuilder,
 } = require("../dist/ts/core/index.js");
 const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
@@ -32,7 +33,8 @@ function createResolverMaterializationDependencies() {
       RequestClassifierResolver,
       TradingviewFundResolver,
       YahooIsinSearchResolver,
-      YahooQuoteResolver,
+      YahooEquityQuoteResolver,
+      YahooFxResolver,
     },
     resolverServices: createStaticResolverServices(),
   };

@@ -13,7 +13,8 @@ const {
   ResolveFlow,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
-  YahooQuoteResolver,
+  YahooEquityQuoteResolver,
+  YahooFxResolver,
 } = require("../dist/ts/core/index.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
@@ -30,7 +31,8 @@ function createResolverMaterializationDependencies() {
       RequestClassifierResolver,
       TradingviewFundResolver,
       YahooIsinSearchResolver,
-      YahooQuoteResolver,
+      YahooEquityQuoteResolver,
+      YahooFxResolver,
     },
     resolverServices: createStaticResolverServices(),
   };
