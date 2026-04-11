@@ -5,7 +5,6 @@ const {
   AttributeResolutionPlan,
   FirstSuccessPlan,
   RawRequestInput,
-  RequestClassificationPlan,
   RequestInput,
   PseQuoteResolutionPlan,
   ResolverPlan,
@@ -79,23 +78,6 @@ test("ResolverPlan maintains standard fallback sequence and full routing-tree vi
     ["YAHOO", "IBKR"],
   );
   assert.equal(plan.buildRoutePath(request), "YAHOO -> IBKR");
-});
-
-test("RequestClassificationPlan routes raw inputs to the classifier node", () => {
-  const classifier = createLeafResolver("CLASSIFY-REQUEST");
-  const requestRoot = createLeafResolver("REQUEST-ROOT");
-  const plan = new RequestClassificationPlan("ROOT", [classifier, requestRoot]);
-
-  assert.deepEqual(
-    plan
-      .getNodesForRequest(new RawRequestInput("GOOG", "price"))
-      .map((node) => node.name),
-    ["CLASSIFY-REQUEST"],
-  );
-  assert.deepEqual(
-    plan.getNodesForRequest(createRequestInput()).map((node) => node.name),
-    ["REQUEST-ROOT"],
-  );
 });
 
 test("StepPlan forwards to all children without request-based selection", () => {
@@ -187,7 +169,8 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
 });
 
 test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes", () => {
-  const classifier = createLeafResolver("CLASSIFY-REQUEST");
+  const defaultAttributeRoot = createLeafResolver("DEFAULT-ATTRIBUTE");
+  const identifierRoot = createLeafResolver("IDENTIFIER-ROOT");
   const refs = {
     getFxPlan() {
       throw new Error("fx plan should not be requested for this test");
@@ -198,12 +181,13 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
     "ROOT",
     {
       id: "ROOT",
-      next: ["CLASSIFY-REQUEST"],
+      next: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
       type: "StepPlan",
     },
     (nodeCode) =>
       ({
-        "CLASSIFY-REQUEST": classifier,
+        "DEFAULT-ATTRIBUTE": defaultAttributeRoot,
+        "IDENTIFIER-ROOT": identifierRoot,
       })[nodeCode],
     null,
     { refs },

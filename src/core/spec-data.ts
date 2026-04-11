@@ -7,18 +7,8 @@ function defineGraphNode<T extends Graph.Node>(node: T): T {
 export const DagPlan: Graph.Definition = {
   ROOT: {
     id: "ROOT",
-    next: ["CLASSIFY-REQUEST"],
-    type: "StepPlan",
-  },
-  "REQUEST-ROOT": {
-    id: "REQUEST-ROOT",
-    next: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
-    type: "RoutingPlan",
-  },
-  "CLASSIFY-REQUEST": {
-    id: "CLASSIFY-REQUEST",
-    next: ["REQUEST-ROOT"],
     type: "RequestClassifierResolver",
+    next: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
   },
   "DEFAULT-ATTRIBUTE": {
     id: "DEFAULT-ATTRIBUTE",

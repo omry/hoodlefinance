@@ -168,6 +168,12 @@ function unescapeMermaidLabel(value) {
     .replace(/\\\\/g, "\\");
 }
 
+function normalizeTextGraphLabel(value) {
+  return unescapeMermaidLabel(value)
+    .replace(/<br\s*\/?>/gi, "\n")
+    .trim();
+}
+
 function renderMermaidAsTextGraph(mermaidText) {
   const nodeByAlias = new Map();
   const orderedAliases = [];
@@ -189,7 +195,7 @@ function renderMermaidAsTextGraph(mermaidText) {
     const nodeMatch = trimmedLine.match(/^([A-Z0-9_]+)\["([\s\S]*)"\]$/);
     if (nodeMatch) {
       const alias = nodeMatch[1];
-      const label = unescapeMermaidLabel(nodeMatch[2]).trim() || alias;
+      const label = normalizeTextGraphLabel(nodeMatch[2]) || alias;
       nodeByAlias.set(alias, label);
       orderedAliases.push(alias);
       continue;
@@ -217,11 +223,11 @@ function renderMermaidAsTextGraph(mermaidText) {
     }
 
     outputLines.push("");
-    outputLines.push(nodeLabel);
+    outputLines.push(...nodeLabel.split("\n"));
 
     for (const childAlias of edgesByAlias.get(alias) || []) {
       const childLabel = nodeByAlias.get(childAlias) || childAlias;
-      outputLines.push(`  -> ${childLabel}`);
+      outputLines.push(`  -> ${childLabel.split("\n")[0]}`);
     }
   }
 

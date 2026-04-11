@@ -2,6 +2,7 @@ import { resolveRoutingNode } from "./plan-navigation";
 import { buildAmbiguousDefaultAttributeRouteError } from "./plan-selection";
 import type {
   ResolutionResult,
+  ResolverNode,
   ResolverPlanNode,
 } from "./planner";
 import {
@@ -21,7 +22,9 @@ interface RequestResolutionRuntimeRefs {
     resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
   };
   identifierRootPlan: ResolverPlanNode;
-  rootPlan: ResolverPlanNode;
+  rootClassifier: {
+    resolve(requestInput: RawRequestInput): ResolutionResult<RequestInput>;
+  } | ResolverNode;
 }
 
 interface RequestResolutionEnvBuilderDependencies {
@@ -30,21 +33,16 @@ interface RequestResolutionEnvBuilderDependencies {
 }
 
 function classifyRawRequest(
-  rootPlan: ResolverPlanNode,
+  rootClassifier: RequestResolutionRuntimeRefs["rootClassifier"],
   requestInput: RawRequestInput,
 ): ReturnType<
   NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
 > {
-  const resolvedNode = resolveRoutingNode(
-    rootPlan,
-    requestInput,
-  );
-
-  if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
+  if (!rootClassifier || typeof rootClassifier.resolve !== "function") {
     throw new Error("Request classification failed.");
   }
 
-  const outcome = resolvedNode.resolve(requestInput);
+  const outcome = rootClassifier.resolve(requestInput);
 
   if (outcome.status !== "success") {
     throw new Error(outcome.error || "Request classification failed.");
@@ -123,7 +121,7 @@ export function createRequestResolutionEnv(
 
   return {
     classifyRawRequest: (requestInput) =>
-      classifyRawRequest(refs.rootPlan, requestInput),
+      classifyRawRequest(refs.rootClassifier, requestInput),
     getCachedString: (cacheKey) =>
       typeof resolverServices?.getCachedString === "function"
         ? resolverServices.getCachedString(cacheKey)

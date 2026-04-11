@@ -90,6 +90,9 @@ function createBuildResolvePlanFromCompiledDag() {
 
   return createDefaultResolvePlanBuilder({
     directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
+    getRootNode() {
+      return runtimeLookup.getNode("ROOT");
+    },
     getPlanNodeByCode(code) {
       return runtimeLookup.getPlanNode(code);
     },

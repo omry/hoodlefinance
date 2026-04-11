@@ -141,8 +141,8 @@ export class RequestClassifierResolver extends IdentifierResolver {
     | null
     | undefined;
 
-  constructor() {
-    super("CLASSIFY-REQUEST");
+  constructor(code = "ROOT") {
+    super(code);
   }
 
   canHandle(input: RequestInput | RawRequestInput | ResolvedRequest): boolean {
@@ -199,8 +199,8 @@ export class RequestClassifierResolver extends IdentifierResolver {
     }
   }
 
-  static fromSpec(_code: string): RequestClassifierResolver {
-    return new this();
+  static fromSpec(code: string): RequestClassifierResolver {
+    return new this(code);
   }
 }
 

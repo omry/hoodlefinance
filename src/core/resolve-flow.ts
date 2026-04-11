@@ -395,7 +395,7 @@ export class ResolveFlow {
           >;
         },
         identifierRootPlan: this.#getRuntimePlanNode("IDENTIFIER-ROOT"),
-        rootPlan: this.#getRuntimePlanNode("ROOT"),
+        rootClassifier: this.#getRuntimeNode("ROOT"),
       },
       {
         looksLikeIsin: deps.looksLikeIsin,

@@ -59,8 +59,9 @@ test("renderGraphAsMermaidFlowchart renders ordered nodes and edges from Graph.V
   const mermaid = renderGraphAsMermaidFlowchart(graph);
 
   assert.match(mermaid, /^flowchart TD/m);
-  assert.match(mermaid, /N0\["ROOT"\]/);
-  assert.match(mermaid, /N1\["QUOTE"\]/);
+  assert.match(mermaid, /N0\["ROOT<br\/>RoutingPlan"\]/);
+  assert.match(mermaid, /N1\["QUOTE<br\/>YahooQuoteResolver"\]/);
+  assert.match(mermaid, /N2\["TERMINAL<br\/>TerminalCollectorPlan"\]/);
   assert.match(mermaid, /N0 --> N1/);
   assert.match(mermaid, /N1 --> N2/);
 });

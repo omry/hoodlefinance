@@ -10,6 +10,16 @@ function escapeMermaidLabel(value: string): string {
     .replace(/"/g, '\\"');
 }
 
+function formatNodeLabel(node: { id: string; type?: string }): string {
+  const parts = [node.id];
+
+  if (node.type) {
+    parts.push(node.type);
+  }
+
+  return parts.map(escapeMermaidLabel).join("<br/>");
+}
+
 export function renderGraphAsMermaidFlowchart(
   graph: Graph.View,
   options: MermaidFlowchartRenderOptions = {},
@@ -22,7 +32,7 @@ export function renderGraphAsMermaidFlowchart(
   orderedNodes.forEach((node, index) => {
     const alias = `N${index}`;
     aliasByNodeId[node.id] = alias;
-    lines.push(`  ${alias}["${escapeMermaidLabel(node.id)}"]`);
+    lines.push(`  ${alias}["${formatNodeLabel(node)}"]`);
   });
 
   for (const node of orderedNodes) {

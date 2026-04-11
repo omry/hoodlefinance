@@ -40,9 +40,11 @@ function createResolverMaterializationDependencies() {
 
 test("DagPlan uses the final graph node shape", () => {
   assert.equal(DagPlan.ROOT.id, "ROOT");
-  assert.equal(DagPlan.ROOT.type, "StepPlan");
-  assert.deepEqual(DagPlan.ROOT.next, ["CLASSIFY-REQUEST"]);
-  assert.deepEqual(DagPlan["CLASSIFY-REQUEST"].next, ["REQUEST-ROOT"]);
+  assert.equal(DagPlan.ROOT.type, "RequestClassifierResolver");
+  assert.deepEqual(
+    DagPlan.ROOT.next,
+    ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+  );
   assert.equal(DagPlan["QUOTE:PSE"].type, "PseQuoteResolutionPlan");
   assert.deepEqual(DagPlan["QUOTE:PSE"].next, ["PSE-FRAMES", "PSE-EDGE"]);
 });

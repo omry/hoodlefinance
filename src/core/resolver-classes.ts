@@ -498,27 +498,6 @@ export class StepPlan extends ResolverPlan {
   }
 }
 
-export class RequestClassificationPlan extends ResolverPlan {
-  getRoutingNodeKind(): RoutingNodeKind {
-    return "switch";
-  }
-
-  getNodesForRequest(request: PlannerRequest): ResolverNode[] {
-    const classifierNode = this.nodes[0] || null;
-    const requestRootNode = this.nodes[1] || null;
-
-    if (request instanceof RawRequestInput) {
-      return classifierNode ? [classifierNode] : [];
-    }
-
-    return requestRootNode ? [requestRootNode] : [];
-  }
-
-  getRoutingNodes(): ResolverNode[] {
-    return (this.nodes || []).filter(Boolean);
-  }
-}
-
 export class FirstSuccessPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
     return "try each";
@@ -609,7 +588,6 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   FirstSuccessPlan,
   FxAttributeResolutionPlan,
   PseQuoteResolutionPlan,
-  RequestClassificationPlan,
   RoutingPlan,
   StepPlan,
   TickerQuoteResolutionPlan,

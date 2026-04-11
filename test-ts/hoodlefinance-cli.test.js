@@ -134,30 +134,31 @@ test("renderGraphMermaidWithEnvironment renders the Graph.View as Mermaid", () =
   const mermaid = renderGraphMermaidWithEnvironment(createFakeGraphEnv());
 
   assert.match(mermaid, /^flowchart LR/m);
-  assert.match(mermaid, /N0\["ROOT"\]/);
-  assert.match(mermaid, /N1\["QUOTE"\]/);
+  assert.match(mermaid, /N0\["ROOT<br\/>RoutingPlan"\]/);
+  assert.match(mermaid, /N1\["QUOTE<br\/>YahooQuoteResolver"\]/);
   assert.match(mermaid, /N0 --> N1/);
 });
 
 test("renderMermaidAsTextGraph renders a lightweight text projection", () => {
   const text = renderMermaidAsTextGraph(`flowchart TD
-  N0["ROOT"]
-  N1["QUOTE"]
-  N2["TERMINAL"]
+  N0["ROOT<br/>RoutingPlan"]
+  N1["QUOTE<br/>YahooQuoteResolver"]
+  N2["TERMINAL<br/>TerminalCollectorPlan"]
   N0 --> N1
   N1 --> N2`);
 
   assert.match(text, /^flowchart TD/m);
-  assert.match(text, /\nROOT\n  -> QUOTE/);
-  assert.match(text, /\nQUOTE\n  -> TERMINAL/);
+  assert.match(text, /\nROOT\nRoutingPlan\n  -> QUOTE/);
+  assert.match(text, /\nQUOTE\nYahooQuoteResolver\n  -> TERMINAL/);
+  assert.match(text, /\nTERMINAL\nTerminalCollectorPlan/);
 });
 
 test("renderGraphTextWithEnvironment renders the Mermaid graph as lightweight text", () => {
   const text = renderGraphTextWithEnvironment(createFakeGraphEnv());
 
   assert.match(text, /^flowchart LR/m);
-  assert.match(text, /\nROOT\n  -> QUOTE/);
-  assert.match(text, /\nTERMINAL/);
+  assert.match(text, /\nROOT\nRoutingPlan\n  -> QUOTE/);
+  assert.match(text, /\nTERMINAL\nTerminalCollectorPlan/);
 });
 
 test("renderGraphSvgWithEnvironment renders the Mermaid graph as SVG", async () => {

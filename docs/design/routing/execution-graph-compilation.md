@@ -139,63 +139,59 @@ Before looking at compiled outputs for individual requests, it helps to keep
 the descriptive routing graph in view as the stable routing surface the
 compiler starts from.
 
-The current graph below is the actual Mermaid output from the TypeScript CLI:
+The current graph below is the Mermaid shape emitted by the TypeScript CLI:
 `node tools/_shared/cli-ts.js --graph --output=mermaid`
 
 ```mermaid
 flowchart LR
-  N0["ROOT"]
-  N1["CLASSIFY-REQUEST"]
-  N2["REQUEST-ROOT"]
-  N3["DEFAULT-ATTRIBUTE"]
-  N4["IDENTIFIER-ROOT"]
-  N5["DEFAULT-ATTRIBUTE:EQUITY"]
-  N6["DEFAULT-ATTRIBUTE:FX"]
-  N7["RESOLVED-IDENTIFIER"]
-  N8["IDENTIFIER:ISIN"]
-  N9["QUOTE:PSE"]
-  N10["QUOTE:TICKER"]
-  N11["FX-IDENTITY"]
-  N12["QUOTE:DEFAULT-FX"]
-  N13["ISIN:PSE"]
-  N14["ISIN:YAHOO"]
-  N15["PSE-FRAMES"]
-  N16["PSE-EDGE"]
-  N17["YAHOO-QUOTE"]
-  N18["TRADINGVIEW-FUND"]
-  N19["GOOGLE-FX"]
-  N20["YAHOO-FX"]
-  N21["TERMINAL"]
+  N0["ROOT<br/>RequestClassifierResolver"]
+  N1["DEFAULT-ATTRIBUTE<br/>RoutingPlan"]
+  N2["IDENTIFIER-ROOT<br/>RoutingPlan"]
+  N3["DEFAULT-ATTRIBUTE:EQUITY<br/>EquityAttributeResolutionPlan"]
+  N4["DEFAULT-ATTRIBUTE:FX<br/>FxAttributeResolutionPlan"]
+  N5["RESOLVED-IDENTIFIER<br/>DirectIdentifierResolver"]
+  N6["IDENTIFIER:ISIN<br/>FirstSuccessPlan"]
+  N7["QUOTE:PSE<br/>PseQuoteResolutionPlan"]
+  N8["QUOTE:TICKER<br/>TickerQuoteResolutionPlan"]
+  N9["FX-IDENTITY<br/>LocalFxResolver"]
+  N10["QUOTE:DEFAULT-FX<br/>AttributeResolutionPlan"]
+  N11["ISIN:PSE<br/>PseIsinMapResolver"]
+  N12["ISIN:YAHOO<br/>YahooIsinSearchResolver"]
+  N13["PSE-FRAMES<br/>PSEFramesResolver"]
+  N14["PSE-EDGE<br/>PSEEdgeResolver"]
+  N15["YAHOO-QUOTE<br/>YahooEquityQuoteResolver"]
+  N16["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
+  N17["GOOGLE-FX<br/>GoogleFxResolver"]
+  N18["YAHOO-FX<br/>YahooFxResolver"]
+  N19["TERMINAL<br/>TerminalCollectorPlan"]
   N0 --> N1
-  N1 --> N2
-  N2 --> N3
-  N2 --> N4
-  N3 --> N5
-  N3 --> N6
-  N4 --> N7
-  N4 --> N8
-  N5 --> N9
-  N5 --> N10
+  N0 --> N2
+  N1 --> N3
+  N1 --> N4
+  N2 --> N5
+  N2 --> N6
+  N3 --> N7
+  N3 --> N8
+  N4 --> N9
+  N4 --> N10
+  N5 --> N19
   N6 --> N11
   N6 --> N12
-  N7 --> N21
-  N8 --> N13
-  N8 --> N14
-  N9 --> N15
-  N9 --> N16
+  N7 --> N13
+  N7 --> N14
+  N8 --> N15
+  N8 --> N16
+  N9 --> N19
   N10 --> N17
   N10 --> N18
-  N11 --> N21
+  N11 --> N19
   N12 --> N19
-  N12 --> N20
-  N13 --> N21
-  N14 --> N21
-  N15 --> N21
-  N16 --> N21
-  N17 --> N21
-  N18 --> N21
-  N19 --> N21
-  N20 --> N21
+  N13 --> N19
+  N14 --> N19
+  N15 --> N19
+  N16 --> N19
+  N17 --> N19
+  N18 --> N19
 ```
 
 This is still the descriptive routing graph, not the future compiled execution

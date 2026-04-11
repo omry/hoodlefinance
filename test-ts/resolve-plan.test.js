@@ -148,16 +148,8 @@ function createPlanNodeLookupFactory() {
     return this.nodes || [];
   };
 
-  const requestRoot = createPlan("REQUEST-ROOT", "");
-  requestRoot.isRoutingNode = true;
-  requestRoot.getRoutingNodeKind = () => "switch";
-  requestRoot.nodes = [defaultAttributeRoot, identifierRoot];
-  requestRoot.getNodesForRequest = function getNodesForRequest() {
-    return this.nodes || [];
-  };
-
-  const classifierNode = createPlan("CLASSIFY-REQUEST", "CLASSIFY-REQUEST");
-  classifierNode.resolve = function resolve(request) {
+  const rootNode = createPlan("ROOT", "ROOT");
+  rootNode.resolve = function resolve(request) {
     if (request instanceof RequestInput) {
       return {
         elapsedMs: 0,
@@ -173,23 +165,8 @@ function createPlanNodeLookupFactory() {
     };
   };
 
-  const rootPlan = createPlan("ROOT", "");
-  rootPlan.isRoutingNode = true;
-  rootPlan.getRoutingNodeKind = () => "step";
-  rootPlan.nodes = [classifierNode];
-  rootPlan.getNodesForRequest = function getNodesForRequest() {
-    return this.nodes || [];
-  };
-
-  return function getPlanNodeByCode(code) {
-    if (code === "ROOT") {
-      return rootPlan;
-    }
-
-    if (code === "REQUEST-ROOT") {
-      return requestRoot;
-    }
-
+  return {
+    getPlanNodeByCode(code) {
     if (code === "DEFAULT-ATTRIBUTE") {
       return defaultAttributeRoot;
     }
@@ -199,6 +176,10 @@ function createPlanNodeLookupFactory() {
     }
 
     throw new Error(`Unexpected spec ${code}`);
+    },
+    getRootNode() {
+      return rootNode;
+    },
   };
 }
 
@@ -259,9 +240,7 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
   const forcedLeaf = createPlan("YAHOO", "YAHOO");
   const parentPlan = createPlan("EQUITY", "EQUITY -> YAHOO");
   const defaultAttributeRoot = createPlan("DEFAULT-ATTRIBUTE", "");
-  const rootPlan = createPlan("ROOT", "");
-  const requestRoot = createPlan("REQUEST-ROOT", "");
-  const classifierNode = createPlan("CLASSIFY-REQUEST", "CLASSIFY-REQUEST");
+  const rootNode = createPlan("ROOT", "ROOT");
   const refs = {
     getFxPlan() {
       return { marker: "fx-plan" };
@@ -282,36 +261,20 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
   defaultAttributeRoot.getNodesForRequest = function getNodesForRequest() {
     return this.nodes || [];
   };
-  requestRoot.isRoutingNode = true;
-  requestRoot.getRoutingNodeKind = () => "switch";
-  requestRoot.getNodesForRequest = function getNodesForRequest() {
-    return [defaultAttributeRoot];
-  };
-  classifierNode.resolve = function resolve(request) {
+  rootNode.resolve = function resolve(_request) {
     return {
       elapsedMs: 0,
       status: "success",
-      value: request,
+      value: createRequestInput(),
     };
-  };
-  rootPlan.isRoutingNode = true;
-  rootPlan.getRoutingNodeKind = () => "step";
-  rootPlan.nodes = [classifierNode];
-  rootPlan.getNodesForRequest = function getNodesForRequest() {
-    return this.nodes || [];
   };
 
   const buildResolvePlanBuilder = createDefaultResolvePlanBuilder({
     directIdentifierResolver: new DirectIdentifierResolver(),
+    getRootNode() {
+      return rootNode;
+    },
     getPlanNodeByCode(code) {
-      if (code === "ROOT") {
-        return rootPlan;
-      }
-
-      if (code === "REQUEST-ROOT") {
-        return requestRoot;
-      }
-
       if (code === "DEFAULT-ATTRIBUTE") {
         return defaultAttributeRoot;
       }
@@ -320,7 +283,7 @@ test("buildResolvePlan preserves parent refs when wrapping a forced source selec
     },
   });
   const plan = buildResolvePlanBuilder(
-    createRequestInput({ sourceOverride: "YAHOO" }),
+    new RawRequestInput("GOOG", "price"),
   );
 
   assert.equal(plan.attributePlan.refs, refs);
@@ -422,9 +385,11 @@ test("classifyTickerJob returns either debug plans or runtime plans from the res
 });
 
 test("createDefaultResolvePlanBuilder packages the core resolve-plan wiring", () => {
+  const runtimeLookup = createPlanNodeLookupFactory();
   const buildResolvePlanBuilder = createDefaultResolvePlanBuilder({
     directIdentifierResolver: new DirectIdentifierResolver(),
-    getPlanNodeByCode: createPlanNodeLookupFactory(),
+    getRootNode: runtimeLookup.getRootNode,
+    getPlanNodeByCode: runtimeLookup.getPlanNodeByCode,
   });
 
   const equityPlan = buildResolvePlanBuilder(

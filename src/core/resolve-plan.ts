@@ -16,12 +16,12 @@ import { createRequestInput, extractIsinFromRequestInput } from "./request-build
 import { looksLikeIsin } from "./request";
 import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "./planner";
 import type { ResolutionResult } from "./planner";
-import { resolveRoutingNode } from "./plan-navigation";
 
 export interface DefaultResolvePlanBuilderDependencies {
   directIdentifierResolver: {
     resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
   };
+  getRootNode(): ResolverNode;
   getPlanNodeByCode(code: string): ResolverPlanNode;
 }
 
@@ -116,10 +116,7 @@ export function createDefaultResolvePlanBuilder(
         );
       },
       enterRequestInput(input) {
-        const resolvedNode = resolveRoutingNode(
-          deps.getPlanNodeByCode("ROOT"),
-          input,
-        );
+        const resolvedNode = deps.getRootNode();
 
         if (!resolvedNode || typeof resolvedNode.resolve !== "function") {
           throw new Error("Request entry failed.");

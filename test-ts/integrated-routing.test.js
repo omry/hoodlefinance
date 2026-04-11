@@ -100,6 +100,9 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
   });
   const buildResolvePlan = createDefaultResolvePlanBuilder({
     directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
+    getRootNode() {
+      return runtimeLookup.getNode("ROOT");
+    },
     getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
 
@@ -129,6 +132,9 @@ test("integrated mode always follows the default PSE quote branch", () => {
   });
   const buildResolvePlan = createDefaultResolvePlanBuilder({
     directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
+    getRootNode() {
+      return runtimeLookup.getNode("ROOT");
+    },
     getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
   const request = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {

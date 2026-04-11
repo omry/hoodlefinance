@@ -30,9 +30,10 @@ Current topology inputs:
 
 - `graph.getTopologicalOrder()`
 - each node's `id`
+- each node's `type`
 - each node's `next` edges
 
-The renderer does not currently enrich the graph with resolver kind labels, plan-node metadata, or descriptions. The rendered labels are the graph node ids themselves.
+The renderer currently enriches each label with the node id plus the node type on a second line. It still does not add longer descriptions or execution metadata.
 
 ## Mermaid Renderer
 
@@ -43,16 +44,16 @@ Current behavior:
 - output starts with `flowchart TD` or `flowchart LR`
 - nodes are emitted in topological order
 - each node gets a Mermaid-safe alias such as `N0`, `N1`, `N2`
-- the displayed label is the escaped graph node id
+- the displayed label is the escaped graph node id with the node type beneath it
 - edges are emitted from each node to every id in `node.next`
 
 Current shape:
 
 ```text
 flowchart LR
-  N0["ROOT"]
-  N1["QUOTE"]
-  N2["TERMINAL"]
+  N0["ROOT<br/>RoutingPlan"]
+  N1["QUOTE<br/>YahooQuoteResolver"]
+  N2["TERMINAL<br/>TerminalCollectorPlan"]
   N0 --> N1
   N1 --> N2
 ```
@@ -70,8 +71,8 @@ The default CLI output is a lightweight text projection derived from the Mermaid
 That projection currently:
 
 - preserves the Mermaid header such as `flowchart LR`
-- prints each node label once in order
-- prints outgoing edges as indented `->` lines
+- prints each node label once in order, including the type on its own line
+- prints outgoing edges as indented `->` lines that point to the child node id
 
 Example:
 
@@ -79,12 +80,15 @@ Example:
 flowchart LR
 
 ROOT
+RoutingPlan
   -> QUOTE
 
 QUOTE
+YahooQuoteResolver
   -> TERMINAL
 
 TERMINAL
+TerminalCollectorPlan
 ```
 
 This is intentionally simple. It favors stable diffs and terminal readability over ASCII-art diagrams.
@@ -114,7 +118,7 @@ The current TypeScript CLI graph surface is:
 
 The current rendering path does not:
 
-- expose resolver kinds or descriptions in node labels
+- expose longer descriptions or request-specific state in node labels
 - render request-specific execution traces
 - depend on `ResolveFlow` internals beyond `getGraph()`
 - replace the older JS CLI's `--routing` output
