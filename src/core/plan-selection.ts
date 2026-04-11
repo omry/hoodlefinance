@@ -1,5 +1,4 @@
 import {
-  findNamedResolverNode,
   resolveRoutingNode,
 } from "./plan-navigation";
 import type { RequestInput, ResolvedRequest } from "./request";
@@ -11,32 +10,11 @@ export interface PlanSelectionDependencies {
     request: RequestInput,
     parentPlan?: ResolverPlanNode | null,
   ): ResolverPlanNode;
-  buildForcedSelectedAttributePlan(
-    resolverOrPlan: ResolverNode,
-    request: ResolvedRequest,
-    parentPlan?: ResolverPlanNode | null,
-  ): ResolverPlanNode;
   extractIsinFromRequestInput(input: RequestInput): string;
   listAllDefaultAttributePlans(): ResolverPlanNode[];
   getPlanNodeByCode(code: string): ResolverPlanNode;
 }
 
-function normalizeSourceOverride(
-  input: Pick<RequestInput, "sourceOverride">,
-): string {
-  return String(input.sourceOverride || "")
-    .trim()
-    .toUpperCase();
-}
-
-export function buildSourceOverrideUnavailableError(
-  sourceOverride: string,
-  contextLabel?: string,
-): Error {
-  const suffix = contextLabel ? ` for ${contextLabel}` : " for this request";
-
-  return new Error(`"@${sourceOverride}" is not available${suffix}.`);
-}
 
 export function buildAmbiguousDefaultAttributeRouteError(
   request: Pick<ResolvedRequest, "classification">,
@@ -61,26 +39,13 @@ export function buildIdentifierResolutionPlan(
   deps: PlanSelectionDependencies,
 ): ResolverPlanNode | null {
   const isinValue = deps.extractIsinFromRequestInput(input);
-  const sourceOverride = normalizeSourceOverride(input);
   const identifierRoot = deps.getPlanNodeByCode("IDENTIFIER-ROOT");
   const identifierPlan = resolveRoutingNode(identifierRoot, input, {
     allowNone: true,
   }) as ResolverPlanNode | null;
-  const selectedNode =
-    sourceOverride && identifierPlan
-      ? findNamedResolverNode(identifierPlan, sourceOverride, input)
-      : null;
 
   if (!isinValue) {
     return null;
-  }
-
-  if (selectedNode) {
-    return deps.buildSelectedIdentifierPlan(selectedNode, input, identifierPlan);
-  }
-
-  if (sourceOverride) {
-    throw buildSourceOverrideUnavailableError(sourceOverride);
   }
 
   return identifierPlan;
@@ -107,50 +72,13 @@ export function buildDefaultAttributePlanForResolvedRequest(
   return candidatePlans[0] as ResolverPlanNode;
 }
 
-export function buildForcedAttributePlanForResolvedRequest(
-  input: RequestInput,
-  request: ResolvedRequest,
-  deps: Pick<
-    PlanSelectionDependencies,
-    "buildForcedSelectedAttributePlan" | "getPlanNodeByCode"
-  >,
-): ResolverPlanNode {
-  const sourceOverride = normalizeSourceOverride(input);
-  const defaultPlan = buildDefaultAttributePlanForResolvedRequest(
-    request,
-    deps,
-  );
-
-  if (input.attributeType !== "quote") {
-    throw buildSourceOverrideUnavailableError(sourceOverride);
-  }
-
-  const selectedNode = findNamedResolverNode(
-    defaultPlan,
-    sourceOverride,
-    request,
-  );
-
-  if (selectedNode) {
-    return deps.buildForcedSelectedAttributePlan(selectedNode, request, defaultPlan);
-  }
-
-  throw buildSourceOverrideUnavailableError(sourceOverride);
-}
-
 export function buildQuoteRoutePlanForResolvedRequest(
-  input: RequestInput,
+  _input: RequestInput,
   request: ResolvedRequest,
   deps: Pick<
     PlanSelectionDependencies,
-    "buildForcedSelectedAttributePlan" | "getPlanNodeByCode"
+    "getPlanNodeByCode"
   >,
 ): ResolverPlanNode {
-  const sourceOverride = normalizeSourceOverride(input);
-
-  if (sourceOverride && input.attributeType === "quote") {
-    return buildForcedAttributePlanForResolvedRequest(input, request, deps);
-  }
-
   return buildDefaultAttributePlanForResolvedRequest(request, deps);
 }

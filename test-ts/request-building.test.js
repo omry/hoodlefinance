@@ -66,15 +66,13 @@ function createDeps() {
       if (candidateTicker && candidateSource === "?") {
         return {
           infoMode: "source-name",
-          sourceOverride: "",
           ticker: candidateTicker,
         };
       }
 
-      if (candidateTicker && candidateSource === "YAHOO") {
+      if (candidateTicker && candidateSource) {
         return {
-          infoMode: "",
-          sourceOverride: "YAHOO",
+          infoMode: "source-override",
           ticker: candidateTicker,
         };
       }
@@ -82,12 +80,11 @@ function createDeps() {
       if (candidateTicker) {
         return {
           infoMode: "source-list",
-          sourceOverride: "",
           ticker: candidateTicker,
         };
       }
 
-      return { infoMode: "", sourceOverride: "", ticker: value };
+      return { infoMode: "", ticker: value };
     },
   };
 }
@@ -109,7 +106,7 @@ test("createRequestInput classifies equity, fx, and isin inputs", () => {
   );
 });
 
-test("RequestInput can derive the same request shape through its runtime-style constructor", () => {
+test("RequestInput strips unsupported source suffixes through its runtime-style constructor", () => {
   const deps = createDeps();
   const input = new RequestInput("GOOG@YAHOO", "price", {
     looksLikeIsin: deps.looksLikeIsin,
@@ -120,7 +117,7 @@ test("RequestInput can derive the same request shape through its runtime-style c
   });
 
   assert.equal(input.attribute, "price");
-  assert.equal(input.sourceOverride, "YAHOO");
+  assert.equal(input.infoMode, "source-override");
   assert.equal(input.ticker, "GOOG");
   assert.equal(input.classification, "equity");
 });

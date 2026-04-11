@@ -80,17 +80,15 @@ class RequestInput {
   // Normalized requested attribute.
   attribute;
 
-  // Parsed ticker after source-override and info-mode handling.
+  // Parsed ticker after identifier-suffix stripping and info-mode handling.
   ticker;
 
   // Parsed classification used for routing, for example:
   // "equity", "fx", or "isin".
   classification;
 
-  // Parsed source override when present, for example from "PSE:BDO@PSE-EDGE".
-  sourceOverride;
-
-  // Parsed info-mode flag for source-list / source-name style introspection.
+  // Parsed info-mode flag for deferred source-list / source-name style
+  // introspection.
   infoMode;
 
   // Parsed FX metadata when the request is an FX pair.
@@ -428,16 +426,15 @@ ResolverPlan
     YahooQuotePlan
 ```
 
-## Forced Routing
+## Deferred Forced Routing
 
 Forced routing should be planner behavior, not resolver behavior.
 
-Forcing happens when the caller uses `IDENTIFIER@SOURCE`.
+Historically, forcing was sketched as `IDENTIFIER@SOURCE`.
 
-This remains a design goal, but it is currently deferred from the main
-`ResolveFlow.resolveAttribute(...)` path. Some lower-level planner code still
-models forced routing, but the high-level runtime lookup path does not yet
-expose the full behavior described in this section.
+That remains a design sketch rather than part of the current supported runtime
+contract. The cleanup in the TypeScript core intentionally removes current-path
+dependence on forced-source behavior.
 
 Depending on the source and request family, that may build either:
 
@@ -455,10 +452,10 @@ class ForcedAttributePlan extends AttributeResolutionPlan {
 }
 ```
 
-So:
+Historically, that implied:
 
-- `@PSE-FRAMES` means build `ForcedAttributePlan(new PSEFramesResolver())`
-- `@IBKR` with `isin` means build `ForcedAttributePlan(new IbkrIsinResolver())`
+- `@PSE-FRAMES` would mean build `ForcedAttributePlan(new PSEFramesResolver())`
+- `@IBKR` with `isin` would mean build `ForcedAttributePlan(new IbkrIsinResolver())`
 
 No special "forced plan" contract is needed on the resolver itself.
 

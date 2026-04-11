@@ -5,10 +5,8 @@ const {
   RequestInput,
   buildAmbiguousDefaultAttributeRouteError,
   buildDefaultAttributePlanForResolvedRequest,
-  buildForcedAttributePlanForResolvedRequest,
   buildIdentifierResolutionPlan,
   buildQuoteRoutePlanForResolvedRequest,
-  buildSourceOverrideUnavailableError,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput(overrides = {}) {
@@ -25,7 +23,6 @@ function createRequestInput(overrides = {}) {
     fxPair: null,
     identifier: overrides.identifier || "GOOG",
     infoMode: "",
-    sourceOverride: overrides.sourceOverride || "",
     ticker: overrides.ticker || overrides.identifier || "GOOG",
   });
 }
@@ -87,9 +84,6 @@ function createDeps() {
   });
 
   return {
-    buildForcedSelectedAttributePlan(resolverOrPlan) {
-      return createNode(`FORCED:${resolverOrPlan.name}`);
-    },
     buildSelectedIdentifierPlan(resolverOrPlan) {
       return createNode(`IDENTIFIER:${resolverOrPlan.name}`);
     },
@@ -114,15 +108,7 @@ function createDeps() {
   };
 }
 
-test("plan-selection error helpers keep the current user-facing wording", () => {
-  assert.equal(
-    buildSourceOverrideUnavailableError("YAHOO").message,
-    '"@YAHOO" is not available for this request.',
-  );
-  assert.equal(
-    buildSourceOverrideUnavailableError("YAHOO", "ISIN lookups").message,
-    '"@YAHOO" is not available for ISIN lookups.',
-  );
+test("plan-selection error helpers keep the current ambiguity wording", () => {
   assert.equal(
     buildAmbiguousDefaultAttributeRouteError(
       createResolvedRequest({ classification: "equity" }),
@@ -135,7 +121,7 @@ test("plan-selection error helpers keep the current user-facing wording", () => 
   );
 });
 
-test("buildIdentifierResolutionPlan handles absent, selected, and invalid source overrides", () => {
+test("buildIdentifierResolutionPlan handles absent and direct identifier resolution", () => {
   const deps = createDeps();
 
   assert.equal(
@@ -153,36 +139,11 @@ test("buildIdentifierResolutionPlan handles absent, selected, and invalid source
     ).name,
     "IDENTIFIER-LEAF",
   );
-
-  assert.equal(
-    buildIdentifierResolutionPlan(
-      createRequestInput({
-        identifier: "US02079K1079",
-        sourceOverride: "YAHOO",
-        ticker: "US02079K1079",
-      }),
-      deps,
-    ).name,
-    "IDENTIFIER:YAHOO",
-  );
-
-  assert.throws(
-    () =>
-      buildIdentifierResolutionPlan(
-        createRequestInput({
-          identifier: "US02079K1079",
-          sourceOverride: "MISSING",
-          ticker: "US02079K1079",
-        }),
-        deps,
-      ),
-    /"@MISSING" is not available for this request\./,
-  );
 });
 
-test("buildDefault and forced attribute plan helpers keep the planner selection behavior", () => {
+test("buildDefault and quote attribute helpers keep the planner selection behavior", () => {
   const deps = createDeps();
-  const requestInput = createRequestInput({ sourceOverride: "YAHOO" });
+  const requestInput = createRequestInput();
   const resolvedRequest = createResolvedRequest();
 
   assert.equal(
@@ -190,16 +151,8 @@ test("buildDefault and forced attribute plan helpers keep the planner selection 
     "QUOTE-DEFAULT",
   );
   assert.equal(
-    buildForcedAttributePlanForResolvedRequest(
-      requestInput,
-      resolvedRequest,
-      deps,
-    ).name,
-    "FORCED:YAHOO",
-  );
-  assert.equal(
     buildQuoteRoutePlanForResolvedRequest(requestInput, resolvedRequest, deps)
       .name,
-    "FORCED:YAHOO",
+    "QUOTE-DEFAULT",
   );
 });

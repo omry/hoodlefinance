@@ -10,14 +10,6 @@ const {
   stripTickerSourceOverride,
 } = require("../dist/ts/core/index.js");
 
-function isKnownSourceOverrideName(candidateSource) {
-  return new Set(["IBKR", "PSE-EDGE", "PSE-FRAMES", "YAHOO"]).has(
-    String(candidateSource || "")
-      .trim()
-      .toUpperCase(),
-  );
-}
-
 test("normalizeAttribute defaults blankish inputs to price", () => {
   assert.equal(normalizeAttribute(undefined), "price");
   assert.equal(normalizeAttribute(null), "price");
@@ -47,55 +39,45 @@ test("parseAttributeRequest keeps the current converted-attribute contract", () 
   );
 });
 
-test("parseTickerRequest preserves source-override and info-mode behavior", () => {
+test("parseTickerRequest distinguishes explicit source suffixes from info modes", () => {
   assert.deepEqual(
-    parseTickerRequest("BTCUSD@YAHOO", isKnownSourceOverrideName),
+    parseTickerRequest("BTCUSD@YAHOO"),
     {
-      infoMode: "",
-      sourceOverride: "YAHOO",
+      infoMode: "source-override",
       ticker: "BTCUSD",
     },
   );
 
-  assert.deepEqual(parseTickerRequest("BTCUSD@?", isKnownSourceOverrideName), {
+  assert.deepEqual(parseTickerRequest("BTCUSD@?"), {
     infoMode: "source-name",
-    sourceOverride: "",
     ticker: "BTCUSD",
   });
 
-  assert.deepEqual(parseTickerRequest("BTCUSD@", isKnownSourceOverrideName), {
+  assert.deepEqual(parseTickerRequest("BTCUSD@"), {
     infoMode: "source-list",
-    sourceOverride: "",
     ticker: "BTCUSD",
   });
 
   assert.deepEqual(
-    parseTickerRequest("BTCUSD@MYSTERY", isKnownSourceOverrideName),
+    parseTickerRequest("BTCUSD@MYSTERY"),
     {
-      infoMode: "source-list",
-      sourceOverride: "",
+      infoMode: "source-override",
       ticker: "BTCUSD",
     },
   );
 });
 
-test("ticker override helpers match the parsed ticker contract", () => {
+test("ticker parsing helpers strip suffixes consistently", () => {
   assert.equal(
-    extractTickerSourceOverride(
-      "PSE:BDO@PSE-FRAMES",
-      isKnownSourceOverrideName,
-    ),
+    extractTickerSourceOverride("PSE:BDO@PSE-FRAMES"),
     "PSE-FRAMES",
   );
   assert.equal(
-    extractTickerInfoMode("BTCUSD@?", isKnownSourceOverrideName),
+    extractTickerInfoMode("BTCUSD@?"),
     "source-name",
   );
   assert.equal(
-    stripTickerSourceOverride(
-      "ISIN:US02079K1079@YAHOO",
-      isKnownSourceOverrideName,
-    ),
+    stripTickerSourceOverride("ISIN:US02079K1079@YAHOO"),
     "ISIN:US02079K1079",
   );
 });

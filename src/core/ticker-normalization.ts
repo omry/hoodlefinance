@@ -6,10 +6,10 @@ import {
   resolveExchangeSuffix,
 } from "./exchange-symbols";
 import { parseFxTicker } from "./fx-normalization";
-import { stripDefaultTickerSourceOverride } from "./source-overrides";
+import { stripTickerSourceOverride } from "./request-parsing";
 
 export function normalizeTickerWithoutIsin(ticker: string): string {
-  const value = String(stripDefaultTickerSourceOverride(ticker) || "").trim();
+  const value = String(stripTickerSourceOverride(ticker) || "").trim();
   const fxPair = parseFxTicker(value);
   const parts = value.split(":");
 

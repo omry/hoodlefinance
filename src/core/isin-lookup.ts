@@ -113,7 +113,6 @@ export interface ResolveIsinAttributeDependencies {
 }
 
 export interface ResolveIsinAttributeContext {
-  sourceOverride?: string;
   tickerInput?: string;
 }
 
@@ -245,13 +244,9 @@ export function resolveIsinAttributeValue(
   deps: ResolveIsinAttributeDependencies,
 ): string {
   const tickerInput = String(context.tickerInput || "").trim();
-  const sourceOverride = String(context.sourceOverride || "")
-    .trim()
-    .toUpperCase();
   const directIsinInput = extractDirectIsinInput(tickerInput, deps.looksLikeIsin);
   const exchange = inferIsinExchange(quote, tickerInput);
-  const source =
-    sourceOverride || (exchange ? ISIN_SOURCE_BY_EXCHANGE[exchange] || "" : "");
+  const source = exchange ? ISIN_SOURCE_BY_EXCHANGE[exchange] || "" : "";
 
   if (directIsinInput) {
     return directIsinInput;
@@ -263,21 +258,10 @@ export function resolveIsinAttributeValue(
 
   if (!source) {
     if (!exchange) {
-      throw new Error(
-        'Could not determine which market to use for ISIN lookup. Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR".',
-      );
+      throw new Error("Could not determine which market to use for ISIN lookup.");
     }
 
-    throw new Error(
-      `ISIN lookup is not supported yet for exchange "${exchange}". Try an identifier source override such as "@TRADINGVIEW", "@LON", "@PSE", "@ARIVA", or "@IBKR".`,
-    );
-  }
-
-  if (
-    sourceOverride &&
-    !["ARIVA", "IBKR", "LON", "PSE", "TRADINGVIEW"].includes(sourceOverride)
-  ) {
-    throw new Error(`"@${sourceOverride}" is not available for ISIN lookups.`);
+    throw new Error(`ISIN lookup is not supported yet for exchange "${exchange}".`);
   }
 
   if (source === "PSE") {

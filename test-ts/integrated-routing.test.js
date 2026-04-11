@@ -85,9 +85,6 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
   return {
     attributePlan: wrapSelectedResolverNode(
       buildQuoteRoutePlanForResolvedRequest(requestInput, outcome.value, {
-        buildForcedSelectedAttributePlan(resolverOrPlan, _request, parentPlan) {
-          return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
-        },
         getPlanNodeByCode: runtimeLookup.getPlanNode,
       }),
     ),
@@ -125,7 +122,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
   assert.equal(googPlan.plannedRoute, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
-test("forced PSE sub-sources use the requested individual provider in integrated mode", () => {
+test("integrated mode always follows the default PSE quote branch", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
     ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
@@ -134,46 +131,26 @@ test("forced PSE sub-sources use the requested individual provider in integrated
     directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
     getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
-  const framesRequest = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
+  const request = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
     looksLikeIsin: () => false,
     normalizeAttribute: (a) => a,
     parseAttributeRequest: (a) => ({}),
     parseFxTicker: () => null,
     parseTickerRequest: () => ({
       ticker: "PSE:BDO",
-      sourceOverride: "PSE-FRAMES",
-      infoMode: "",
+      infoMode: "source-list",
     }),
   });
-  const framesPlan = buildTypedAttributePlan(runtimeLookup, framesRequest);
+  const plan = buildTypedAttributePlan(runtimeLookup, request);
 
-  assert.equal(framesPlan.attributePlan.name, "PSE-FRAMES");
+  assert.equal(plan.attributePlan.name, "DEFAULT-ATTRIBUTE:EQUITY");
   assert.equal(
-    framesPlan.attributePlan.describe(framesPlan.resolvedRequest),
-    "EQUITY -> PSE -> PSE-FRAMES",
+    plan.attributePlan.describe(plan.resolvedRequest),
+    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
   );
   assert.equal(
     buildResolvePlan(new RawRequestInput("PSE:BDO", "price")).plannedRoute,
     "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
-  );
-
-  const edgeRequest = new RequestInput("PSE:BDO@PSE-EDGE", "price", {
-    looksLikeIsin: () => false,
-    normalizeAttribute: (a) => a,
-    parseAttributeRequest: (a) => ({}),
-    parseFxTicker: () => null,
-    parseTickerRequest: () => ({
-      ticker: "PSE:BDO",
-      sourceOverride: "PSE-EDGE",
-      infoMode: "",
-    }),
-  });
-  const edgePlan = buildTypedAttributePlan(runtimeLookup, edgeRequest);
-
-  assert.equal(edgePlan.attributePlan.name, "PSE-EDGE");
-  assert.equal(
-    edgePlan.attributePlan.describe(edgePlan.resolvedRequest),
-    "EQUITY -> PSE -> PSE-EDGE",
   );
 });
 
@@ -207,7 +184,6 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
           parseFxTicker: () => null,
           parseTickerRequest: (t) => ({
             ticker: t,
-            sourceOverride: "",
             infoMode: "",
           }),
         }),

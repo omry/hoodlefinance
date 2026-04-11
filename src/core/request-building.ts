@@ -23,7 +23,6 @@ import {
 import {
   parseFxTicker,
 } from "./fx-normalization";
-import { isDefaultSourceOverrideName } from "./source-overrides";
 import { normalizeTickerWithoutIsin } from "./ticker-normalization";
 
 export interface RequestBuildingDependencies {
@@ -47,9 +46,7 @@ const DEFAULT_REQUEST_BUILDING_DEPENDENCIES: RequestBuildingDependencies = {
   normalizeTickerWithoutIsin,
   parseAttributeRequest,
   parseFxTicker,
-  parseTickerRequest(ticker: string): ParsedTickerRequest {
-    return parseTickerRequest(ticker, isDefaultSourceOverrideName);
-  },
+  parseTickerRequest,
 };
 
 export function extractIsinFromRequestInput(

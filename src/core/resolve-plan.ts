@@ -1,11 +1,10 @@
 import { createResolvePlan } from "./route-jobs";
 import {
-  buildForcedAttributePlanForResolvedRequest,
   buildIdentifierResolutionPlan,
   buildQuoteRoutePlanForResolvedRequest,
-  buildSourceOverrideUnavailableError,
   type PlanSelectionDependencies,
 } from "./plan-selection";
+import { extractTickerSourceOverride } from "./request-parsing";
 import { FirstSuccessPlan, type ResolverPlanOptions } from "./resolver-classes";
 import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
@@ -27,30 +26,15 @@ export interface DefaultResolvePlanBuilderDependencies {
 }
 
 export interface ResolvePlanDependencies {
-  buildForcedAttributePlanForResolvedRequest(
-    input: RequestInput,
-    request: ResolvedRequest,
-  ): ResolverPlanNode;
   buildIdentifierResolutionPlan(input: RequestInput): ResolverPlanNode | null;
   buildQuoteRoutePlanForResolvedRequest(
     input: RequestInput,
     request: ResolvedRequest,
   ): ResolverPlanNode;
-  buildRepresentativeForcedAttributeRequest(
-    input: RequestInput,
-  ): ResolvedRequest | null;
-  buildSourceOverrideUnavailableError(
-    sourceOverride: string,
-    contextLabel?: string,
-  ): Error;
   enterRequestInput(input: RawRequestInput): RequestInput;
   createRequestInput(identifier: string, attribute: string): RequestInput;
   listSupportedSourcesForRequest(input: RequestInput): string;
   resolveIdentifierDirect(input: RequestInput): ResolvedRequest | null;
-  validateNonQuoteSourceOverride(
-    requestInput: RequestInput,
-    resolvedRequest: ResolvedRequest | null,
-  ): void;
 }
 
 function wrapSelectedResolverNode(
@@ -108,17 +92,8 @@ export function createDefaultResolvePlanBuilder(
     return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
   }
 
-  function buildForcedSelectedAttributePlan(
-    resolverOrPlan: ResolverNode,
-    _request: ResolvedRequest,
-    parentPlan?: ResolverPlanNode | null,
-  ): ResolverPlanNode {
-    return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
-  }
-
   function buildResolvePlanDependencies() {
     const planSelectionDeps: PlanSelectionDependencies = {
-      buildForcedSelectedAttributePlan,
       buildSelectedIdentifierPlan,
       extractIsinFromRequestInput(request) {
         return extractIsinFromRequestInput(request, looksLikeIsin);
@@ -130,29 +105,16 @@ export function createDefaultResolvePlanBuilder(
     };
 
     const resolvePlanDeps: ResolvePlanDependencies = {
-      buildForcedAttributePlanForResolvedRequest(input, request) {
-        return wrapSelectedResolverNode(
-          buildForcedAttributePlanForResolvedRequest(input, request, {
-            buildForcedSelectedAttributePlan,
-            getPlanNodeByCode: deps.getPlanNodeByCode,
-          }),
-        );
-      },
       buildIdentifierResolutionPlan(input) {
         return buildIdentifierResolutionPlan(input, planSelectionDeps);
       },
       buildQuoteRoutePlanForResolvedRequest(input, request) {
         return wrapSelectedResolverNode(
           buildQuoteRoutePlanForResolvedRequest(input, request, {
-            buildForcedSelectedAttributePlan,
             getPlanNodeByCode: deps.getPlanNodeByCode,
           }),
         );
       },
-      buildRepresentativeForcedAttributeRequest(input) {
-        return resolveIdentifierDirect(input);
-      },
-      buildSourceOverrideUnavailableError,
       enterRequestInput(input) {
         const resolvedNode = resolveRoutingNode(
           deps.getPlanNodeByCode("ROOT"),
@@ -176,7 +138,6 @@ export function createDefaultResolvePlanBuilder(
         return "";
       },
       resolveIdentifierDirect,
-      validateNonQuoteSourceOverride() {},
     };
 
     return resolvePlanDeps;
@@ -187,12 +148,6 @@ export function createDefaultResolvePlanBuilder(
   ): Readonly<ResolvePlan> {
     return buildResolvePlan(requestInput, buildResolvePlanDependencies());
   };
-}
-
-function normalizeSourceOverride(requestInput: RequestInput): string {
-  return String(requestInput.sourceOverride || "")
-    .trim()
-    .toUpperCase();
 }
 
 export function buildResolvePlan(
@@ -215,14 +170,13 @@ function buildResolvePlanForRequestInput(
       )
     : requestInput;
   const infoMode = requestInput.infoMode;
-  const sourceOverride = normalizeSourceOverride(requestInput);
-  const hasForcedQuoteSource =
-    requestInput.attributeType === "quote" &&
-    !!requestInput.sourceOverride;
   const resolvedRequest = deps.resolveIdentifierDirect(requestInput);
-  const representativeForcedAttributeRequest = hasForcedQuoteSource
-    ? deps.buildRepresentativeForcedAttributeRequest(requestInput)
-    : null;
+
+  if (infoMode === "source-override") {
+    throw new Error(
+      `"@${extractTickerSourceOverride(requestInput.identifier)}" is not available for this request.`,
+    );
+  }
 
   if (infoMode === "source-list") {
     return createResolvePlan({
@@ -246,16 +200,6 @@ function buildResolvePlanForRequestInput(
       ).plannedRoute,
       requestInput,
     });
-  }
-
-  deps.validateNonQuoteSourceOverride(requestInput, resolvedRequest);
-
-  if (
-    hasForcedQuoteSource &&
-    !resolvedRequest &&
-    !representativeForcedAttributeRequest
-  ) {
-    throw deps.buildSourceOverrideUnavailableError(sourceOverride);
   }
 
   if (resolvedRequest) {
@@ -286,16 +230,7 @@ function buildResolvePlanForRequestInput(
       );
     },
     identifierPlan,
-    plannedRoute: hasForcedQuoteSource
-      ? representativeForcedAttributeRequest
-        ? `${identifierPlan.describe(requestInput)} => ${deps
-            .buildForcedAttributePlanForResolvedRequest(
-              requestInput,
-              representativeForcedAttributeRequest,
-            )
-            .describe(representativeForcedAttributeRequest)}`
-        : identifierPlan.describe(requestInput)
-      : identifierPlan.describe(requestInput),
+    plannedRoute: identifierPlan.describe(requestInput),
     requestInput,
   });
 }

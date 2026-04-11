@@ -1168,11 +1168,6 @@ export abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
     this.preferredReitTickerSet = null;
   }
 
-  matchesSourceName(source: string): boolean {
-    const override = String(source || "").trim().toUpperCase();
-    return override === "YAHOO" || super.matchesSourceName(source);
-  }
-
   initEnv(services: ResolverServices): void {
     if (
       typeof services.httpFetch !== "function" ||

@@ -15,7 +15,7 @@ It focuses on two things:
 
 It is intentionally not a change log.
 
-The narrower note at `docs/design/identifiers/symbol-exchange-attributes.md` remains useful background for symbol/exchange output behavior. This document is the broader grammar note for identifiers, attributes, style qualifiers, and source overrides.
+The narrower note at `docs/design/identifiers/symbol-exchange-attributes.md` remains useful background for symbol/exchange output behavior. This document is the broader grammar note for identifiers, attributes, style qualifiers, and the currently reserved `@...` suffix space.
 
 ## Design Summary
 
@@ -24,14 +24,14 @@ The working model is:
 - the identifier says what instrument or pair we want
 - the attribute says what fact we want about it
 - an attribute qualifier, when present, says how to render that fact
-- an identifier suffix, when present, can force or inspect source routing
+- an identifier suffix, when present, is reserved for deferred debug or routing controls and is not part of the current supported TypeScript runtime contract
 
 In short:
 
 - identifier = subject
 - attribute = requested fact
 - attribute qualifier = output style
-- identifier `@...` suffix = source/debug control
+- identifier `@...` suffix = reserved debug/routing space
 
 That split is the main design rule for future additions.
 
@@ -71,22 +71,22 @@ These prefixes do not all play the same semantic role:
 
 The syntax is shared even when the meaning differs.
 
-### Identifier Source Suffixes
+### Identifier Suffixes
 
 Identifiers can also carry an optional trailing `@...` suffix.
 
-Current public/debug forms:
+Historical and deferred forms:
 
 - `IDENTIFIER@SOURCE`
 - `IDENTIFIER@?`
 - `IDENTIFIER@`
 - `IDENTIFIER@anything-unknown`
 
-Current behavior:
+Current TypeScript runtime guidance:
 
-- `@SOURCE` forces a supported source for that request and disables fallback from that forced path
-- `@?` returns the planned route for that request
-- `@` and unknown `@...` suffixes return the supported source list, which may group individual forceable providers under a higher-level family such as `PSE (PSE-FRAMES, PSE-EDGE)`
+- these forms are not part of the supported runtime lookup contract
+- the current core parser still strips `@...` suffixes and recognizes debug-oriented info modes, but callers should not rely on source forcing through these forms
+- future boundary-level debug tooling may reuse this suffix space deliberately, but that is deferred work rather than current support
 
 Examples:
 
@@ -98,7 +98,7 @@ Examples:
 - `BTCUSD@?`
 - `BTCUSD@`
 
-These suffixes are primarily a debugging and coverage-inspection surface, not the default user-facing path.
+These suffixes should be treated as reserved design space, not as a supported user-facing feature.
 
 ## Current Public Attribute Grammar
 
@@ -145,20 +145,17 @@ Its current model is:
 
 - direct ISIN input returns the direct ISIN
 - otherwise, the function infers an exchange-aware default resolver
-- an identifier-side `@SOURCE` suffix can force a specific `isin` resolver
 
 Examples:
 
 - `=HOODLEFINANCE("GOOG", "isin")`
-- `=HOODLEFINANCE("PSE:BDO@PSE", "isin")`
-- `=HOODLEFINANCE("ZPRV.DE@ARIVA", "isin")`
-- `=HOODLEFINANCE("SJPA.L@LON", "isin")`
-- `=HOODLEFINANCE("GOOG@IBKR", "isin")`
-- `=HOODLEFINANCE("ZPRX.DE@TRADINGVIEW", "isin")`
+- `=HOODLEFINANCE("PSE:BDO", "isin")`
+- `=HOODLEFINANCE("SJPA.L", "isin")`
+- `=HOODLEFINANCE("ZPRX.DE", "isin")`
 
 This is an important design boundary:
 
-- source choice for `isin` lives on the identifier side
+- source selection for `isin` is currently inferred from the identifier rather than exposed as a public override
 - formatting choice for values such as `symbol` and `exchange` lives on the attribute side
 
 ## Separator Semantics
@@ -203,23 +200,22 @@ So the same separator appears in both identifiers and attributes, but the two ar
 
 Inside identifiers, trailing `@...` is reserved for source and debug control.
 
-Current meanings:
+Current status:
 
-- `@SOURCE` = force source
-- `@?` = show planned route
-- `@` = show supported sources
+- `@...` is reserved suffix space for deferred debug/routing controls
+- it is not part of the supported runtime lookup contract today
 
-That keeps provider-routing hints out of the attribute namespace.
+That reservation keeps provider-routing hints out of the attribute namespace even while the concrete feature remains deferred.
 
 ## Current Design Rules
 
 The current design should be described with these rules:
 
-1. Identifiers may carry subject information plus optional routing/debug hints.
+1. Identifiers may carry subject information plus optional reserved suffix space for future routing/debug hints.
 2. Attributes request facts about that subject.
 3. Attribute qualifiers are for output style, not for resolver-source selection.
 4. `isin` stays a plain attribute even when it dispatches through source-specific resolver logic.
-5. Source forcing belongs on the identifier side.
+5. If source forcing ever becomes public again, it should stay on the identifier side.
 
 Those rules are more important than any one spelling detail.
 
@@ -234,7 +230,7 @@ Identifiers currently combine several categories of information:
 - subject identity
 - exchange or namespace hints
 - dedicated routing prefixes such as `PSE:`
-- optional debug/source suffixes
+- optional reserved debug/source suffixes
 
 That is acceptable, but it means the identifier grammar is still broader than a pure "symbol only" model.
 
@@ -242,35 +238,35 @@ That is acceptable, but it means the identifier grammar is still broader than a 
 
 Not every source participates in every attribute.
 
-Today, the source namespace includes a mix of:
+Today, the inferred source space includes a mix of:
 
 - quote-oriented paths such as `YAHOO` and `GOOGLE`
 - resolver-oriented paths such as `TRADINGVIEW`, `LON`, `ARIVA`, `IBKR`, and `PSE`
 
 The important design point is not to force artificial uniformity. A shared source namespace is fine even when each attribute supports only a subset of sources.
 
-### `@?` Reports The Deduced Primary Route
+### Deferred `@...` Debug Surfaces Need Explicit Boundaries
 
-`@?` currently reports the planned route for the request.
+The older `@?`, `@`, and `@SOURCE` sketches are still useful as design references, but they are deferred from the current TypeScript runtime contract.
 
-It should be understood as route introspection, not as a perfect explanation of every runtime branch that might run later. A fuller fallback-graph explanation would require a more explicit runtime routing model.
+If route introspection returns in a supported way, it should be understood as route introspection rather than as a perfect explanation of every runtime branch that might run later.
 
 ## Forward Design
 
 Future additions should preserve the same conceptual split:
 
 - identifier chooses the subject
-- identifier may optionally control routing/debug behavior
+- identifier may optionally carry reserved routing/debug suffix space
 - attribute chooses the requested fact
 - attribute qualifier chooses representation style
 
 That suggests the following direction.
 
-### Keep Source On The Identifier Side
+### Keep Source On The Identifier Side If It Returns
 
 New source-selection features should continue to live on the identifier side rather than re-entering the attribute namespace.
 
-Good fit:
+Good future fit:
 
 - `IDENTIFIER@SOURCE`
 
@@ -278,7 +274,7 @@ Bad fit:
 
 - new public forms such as `price:yahoo` or `isin:ibkr`
 
-If internal testing hooks are ever added, they should not blur the public rule that source choice belongs with identifier routing.
+If internal testing hooks are ever added, they should not blur the public rule that any future source choice belongs with identifier routing.
 
 ### Keep Style On The Attribute Side
 
@@ -293,9 +289,9 @@ This includes current patterns such as:
 
 If more rendered-output variants are added later, they should align with this same rule.
 
-### Treat Source Overrides As Debug/Advanced Surface
+### Treat Any Future Source Overrides As Debug/Advanced Surface
 
-The current `@SOURCE` forms are useful, but they should still be framed as advanced tooling:
+If `@SOURCE` forms return in the future, they should still be framed as advanced tooling:
 
 - troubleshooting
 - coverage inspection
@@ -312,7 +308,7 @@ The main candidate direction is:
 
 - represent primary source, fallback candidates, and failure policy explicitly
 - let `@?` or a future debug surface report that explicit model
-- keep forced-source behavior strict and unsurprising
+- keep any future forced-source behavior strict and unsurprising
 
 This is especially relevant for paths where the initial deduced route and the final successful route can differ.
 
@@ -325,7 +321,7 @@ The current identifier families are practical and already established:
 - exchange-prefixed identifiers
 - `CURRENCY:`
 - `ISIN:`
-- identifier-side `@SOURCE`
+- reserved identifier-side `@...` suffix space
 
 Future cleanup should explain these forms more clearly, not replace them casually.
 
@@ -334,8 +330,9 @@ Future cleanup should explain these forms more clearly, not replace them casuall
 The design to preserve is:
 
 - identifier syntax carries subject selection and optional routing/debug hints
+- the current supported runtime contract does not expose public source forcing
 - attribute syntax carries fact selection
 - attribute qualification carries output style
-- source selection stays on the identifier side
+- any future source selection should stay on the identifier side
 
 That model is strong enough to explain the current API and clear enough to guide future additions without drifting back toward source-specific attribute sprawl.

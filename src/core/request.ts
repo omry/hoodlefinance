@@ -26,8 +26,7 @@ export interface FxPair {
 }
 
 export interface ParsedTickerRequest {
-  infoMode: "" | "source-list" | "source-name";
-  sourceOverride: string;
+  infoMode: "" | "source-list" | "source-name" | "source-override";
   ticker: string;
 }
 
@@ -39,7 +38,6 @@ export interface RequestInputInit {
   fxPair: FxPair | null;
   identifier: string;
   infoMode: ParsedTickerRequest["infoMode"];
-  sourceOverride: string;
   ticker: string;
 }
 
@@ -105,7 +103,6 @@ export class RequestInput {
   readonly fxPair: FxPair | null;
   readonly identifier: string;
   readonly infoMode: ParsedTickerRequest["infoMode"];
-  readonly sourceOverride: string;
   readonly ticker: string;
 
   constructor(init: RequestInputInit);
@@ -130,7 +127,6 @@ export class RequestInput {
       this.fxPair = init.fxPair;
       this.identifier = init.identifier;
       this.infoMode = init.infoMode;
-      this.sourceOverride = init.sourceOverride;
       this.ticker = init.ticker;
       return;
     }
@@ -159,7 +155,6 @@ export class RequestInput {
     this.fxPair = fxPair;
     this.identifier = rawIdentifier;
     this.infoMode = parsedIdentifier.infoMode;
-    this.sourceOverride = parsedIdentifier.sourceOverride;
     this.ticker = requestTicker;
     this.classification = classifyRequestInputFromDerivedState(
       this.ticker,

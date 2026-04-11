@@ -72,13 +72,12 @@ function createRequestInput(overrides = {}) {
     attributeType,
     identifier: "GOOG",
     infoMode: "",
-    sourceOverride: "",
     ticker: "GOOG",
     ...overrides,
   };
 }
 
-test("resolveRequestValue rejects deferred modes before direct isin fast paths", () => {
+test("resolveRequestValue rejects deferred info modes before direct isin fast paths", () => {
   const infoModeResult = resolveRequestValue(
     createEnv(),
     createRequestInput({
@@ -99,7 +98,8 @@ test("resolveRequestValue rejects deferred modes before direct isin fast paths",
     createEnv(),
     createRequestInput({
       attribute: "isin",
-      sourceOverride: "YAHOO",
+      identifier: "PSE:BDO@YAHOO",
+      infoMode: "source-override",
       ticker: "PSE:BDO",
     }),
   );
@@ -163,7 +163,7 @@ test("resolveRequestValue records raw-input classification as part of lookup flo
   assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
-test("resolveRequestValue resolves explicit-source isin requests without quote planning", () => {
+test("resolveRequestValue resolves direct isin requests without quote planning", () => {
   const pseEnv = createEnv({
     httpFetch(url) {
       assert.equal(url, "https://frames.pse.com.ph/security/BDO");

@@ -10,6 +10,9 @@ This note records the main gaps between the current routing design and the
 current implementation around source identity, source introspection, and source
 overrides.
 
+The `@SOURCE` examples below are design-history examples, not a statement that
+source overrides are currently supported in the TypeScript runtime path.
+
 The routing core is much cleaner than before:
 
 - identifier resolution and attribute resolution are explicit phases
@@ -24,7 +27,7 @@ The code still uses several overlapping ideas of "source":
 
 - resolver name
 - trace label
-- user-facing source override such as `@YAHOO`
+- historical source override forms such as `@YAHOO`
 - grouped source name such as `PSE`
 - runtime winning source
 
@@ -67,7 +70,7 @@ Example:
 
 - `TLV:KSMF59`
   - planned attribute path: `YAHOO -> TRADINGVIEW`
-  - valid forced quote override today: `@YAHOO`
+  - historical forced quote override example: `@YAHOO`
   - runtime winner may be `TRADINGVIEW`
 
 Showing one flat source list for this request is inherently ambiguous unless the

@@ -1,6 +1,6 @@
 import { parseAttributeRequest } from "./request-parsing";
 export { parseAttributeRequest };
-import { stripDefaultTickerSourceOverride } from "./source-overrides";
+import { stripTickerSourceOverride } from "./request-parsing";
 import { YAHOO_EXCHANGE_BY_META_NAME } from "./exchange-symbols";
 
 interface AttributeExtractionContext {
@@ -114,7 +114,7 @@ function resolveSymbolAttribute(
   )
     .trim()
     .toUpperCase();
-  const tickerInput = stripDefaultTickerSourceOverride(
+  const tickerInput = stripTickerSourceOverride(
     String(context && context.tickerInput ? context.tickerInput : ""),
   ).trim();
 

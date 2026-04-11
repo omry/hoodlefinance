@@ -11,7 +11,7 @@ import {
 import {
   extractAttributeValue,
 } from "./attribute-extraction";
-import { buildSourceOverrideUnavailableError } from "./plan-selection";
+import { extractTickerSourceOverride } from "./request-parsing";
 import type { TextHttpResponse } from "./text-http-response";
 
 interface QuotePlanOutcome {
@@ -104,16 +104,15 @@ function requireResolvablePlan<TRequest, TValue>(
 
 function validateDeferredLookupModes(requestInput: RequestInput): void {
   const infoMode = String(requestInput.infoMode || "").trim();
-  const sourceOverride = String(requestInput.sourceOverride || "")
-    .trim()
-    .toUpperCase();
+
+  if (infoMode === "source-override") {
+    const sourceOverride = extractTickerSourceOverride(requestInput.identifier);
+
+    throw new Error(`"@${sourceOverride}" is not available for this request.`);
+  }
 
   if (infoMode) {
     throw new Error("Ticker route introspection is not yet available.");
-  }
-
-  if (sourceOverride) {
-    throw buildSourceOverrideUnavailableError(sourceOverride);
   }
 }
 
@@ -287,7 +286,6 @@ function finalizeLookupValue(
         ? resolveIsinAttributeValue(
             quote,
             {
-              sourceOverride: requestInput.sourceOverride,
               tickerInput: requestInput.ticker,
             },
             {
