@@ -169,7 +169,7 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
 });
 
 test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes", () => {
-  const defaultAttributeRoot = createLeafResolver("DEFAULT-ATTRIBUTE");
+  const defaultAttributeRoot = createLeafResolver("ATTRIBUTE");
   const identifierRoot = createLeafResolver("IDENTIFIER-ROOT");
   const refs = {
     getFxPlan() {
@@ -181,12 +181,12 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
     "ROOT",
     {
       id: "ROOT",
-      next: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+      next: ["ATTRIBUTE", "IDENTIFIER-ROOT"],
       type: "StepPlan",
     },
     (nodeCode) =>
       ({
-        "DEFAULT-ATTRIBUTE": defaultAttributeRoot,
+        "ATTRIBUTE": defaultAttributeRoot,
         "IDENTIFIER-ROOT": identifierRoot,
       })[nodeCode],
     null,
@@ -282,7 +282,7 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
     getFxPlan() {
       return {
         describe() {
-          return "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX";
+          return "ATTRIBUTE:FX -> QUOTE:FX";
         },
         resolve(request) {
           assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
@@ -331,7 +331,7 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
   });
 
   assert.deepEqual(env, {
-    route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+    route: "ATTRIBUTE:FX -> QUOTE:FX",
     status: "success",
     value: 0.02,
   });

@@ -3,7 +3,7 @@ const test = require("node:test");
 
 const {
   DagPlan,
-  DirectIdentifierResolver,
+  FirstSuccessReceiver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -24,7 +24,7 @@ const { createStaticResolverServices } = require("./resolver-service-fixtures.js
 function createResolverMaterializationDependencies() {
   return {
     resolverClassesByName: {
-      DirectIdentifierResolver,
+      FirstSuccessReceiver,
       GoogleFxResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,
@@ -98,6 +98,6 @@ test("compiled DagPlan classifies representative examples correctly", () => {
   for (const { example, expectedClassification } of cases) {
     const outcome = rootNode.resolve(new RawRequestInput(example, "price"));
     assert.equal(outcome.status, "success", `${example}: classification succeeded`);
-    assert.equal(outcome.value.classification, expectedClassification, `${example}: classification`);
+    assert.equal(outcome.value.requestInput.classification, expectedClassification, `${example}: classification`);
   }
 });

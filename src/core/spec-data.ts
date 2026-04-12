@@ -4,94 +4,105 @@ export const DagPlan: Graph.Definition = {
   ROOT: {
     id: "ROOT",
     type: "RequestClassifierResolver",
-    next: ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+    next: ["ATTRIBUTE", "IDENTIFIER:ISIN"],
   },
-  "DEFAULT-ATTRIBUTE": {
-    id: "DEFAULT-ATTRIBUTE",
-    next: ["DEFAULT-ATTRIBUTE:EQUITY", "DEFAULT-ATTRIBUTE:FX"],
+  "ATTRIBUTE": {
+    id: "ATTRIBUTE",
+    next: ["ATTRIBUTE:EQUITY", "ATTRIBUTE:FX"],
     type: "RoutingPlan",
   },
-  "DEFAULT-ATTRIBUTE:EQUITY": {
-    id: "DEFAULT-ATTRIBUTE:EQUITY",
+  "ATTRIBUTE:EQUITY": {
+    group: "STOCK",
+    id: "ATTRIBUTE:EQUITY",
     next: ["QUOTE:PSE", "QUOTE:TICKER"],
     type: "EquityAttributeResolutionPlan",
   },
-  "DEFAULT-ATTRIBUTE:FX": {
-    id: "DEFAULT-ATTRIBUTE:FX",
-    next: ["FX-IDENTITY", "QUOTE:DEFAULT-FX"],
+  "ATTRIBUTE:FX": {
+    group: "FX",
+    id: "ATTRIBUTE:FX",
+    next: ["FX-IDENTITY", "QUOTE:FX"],
     type: "FxAttributeResolutionPlan",
   },
-  "QUOTE:DEFAULT-FX": {
-    id: "QUOTE:DEFAULT-FX",
+  "QUOTE:FX": {
+    group: "FX",
+    id: "QUOTE:FX",
     next: ["GOOGLE-FX", "YAHOO-FX"],
     type: "AttributeResolutionPlan",
   },
   "QUOTE:PSE": {
+    group: "STOCK",
     id: "QUOTE:PSE",
     next: ["PSE-FRAMES", "PSE-EDGE"],
     type: "PseQuoteResolutionPlan",
   },
   "QUOTE:TICKER": {
+    group: "STOCK",
     id: "QUOTE:TICKER",
     next: ["YAHOO-QUOTE", "TRADINGVIEW-FUND"],
     type: "TickerQuoteResolutionPlan",
   },
-  "IDENTIFIER-ROOT": {
-    id: "IDENTIFIER-ROOT",
-    next: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
-    type: "RoutingPlan",
-  },
   "IDENTIFIER:ISIN": {
+    group: "ISIN",
     id: "IDENTIFIER:ISIN",
     next: ["ISIN:PSE", "ISIN:YAHOO"],
     type: "FirstSuccessPlan",
   },
-  "RESOLVED-IDENTIFIER": {
-    id: "RESOLVED-IDENTIFIER",
-    next: ["TERMINAL"],
-    type: "DirectIdentifierResolver",
+  "ISIN-RECEIVER": {
+    group: "ISIN",
+    id: "ISIN-RECEIVER",
+    next: ["ATTRIBUTE"],
+    type: "FirstSuccessReceiver",
   },
   "ISIN:PSE": {
+    group: "ISIN",
     id: "ISIN:PSE",
-    next: ["TERMINAL"],
+    next: ["ISIN-RECEIVER"],
     type: "PseIsinMapResolver",
   },
   "ISIN:YAHOO": {
+    group: "ISIN",
     id: "ISIN:YAHOO",
-    next: ["TERMINAL"],
+    next: ["ISIN-RECEIVER"],
     type: "YahooIsinSearchResolver",
   },
   "FX-IDENTITY": {
+    group: "FX",
     id: "FX-IDENTITY",
     next: ["TERMINAL"],
     type: "LocalFxResolver",
   },
   "GOOGLE-FX": {
+    group: "FX",
     id: "GOOGLE-FX",
     next: ["TERMINAL"],
     type: "GoogleFxResolver",
   },
   "YAHOO-QUOTE": {
+    group: "STOCK",
     id: "YAHOO-QUOTE",
     next: ["TERMINAL"],
     type: "YahooEquityQuoteResolver",
   },
   "YAHOO-FX": {
+    group: "FX",
     id: "YAHOO-FX",
     next: ["TERMINAL"],
     type: "YahooFxResolver",
   },
   "TRADINGVIEW-FUND": {
+    group: "STOCK",
     id: "TRADINGVIEW-FUND",
     next: ["TERMINAL"],
     type: "TradingviewFundResolver",
   },
   "PSE-FRAMES": {
+    group: "STOCK",
     id: "PSE-FRAMES",
     next: ["TERMINAL"],
     type: "PSEFramesResolver",
   },
   "PSE-EDGE": {
+    group: "STOCK",
     id: "PSE-EDGE",
     next: ["TERMINAL"],
     type: "PSEEdgeResolver",

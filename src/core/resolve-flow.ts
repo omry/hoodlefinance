@@ -88,6 +88,11 @@ function normalizeDefinitionEntries(
       normalizedNode.next = nextIds;
     }
 
+    const group = String((rawNode as Graph.Node)?.group || "").trim();
+    if (group) {
+      normalizedNode.group = group;
+    }
+
     originalKeyByNormalizedKey[normalizedKey] = key;
     normalizedEntries.push([normalizedKey, normalizedNode]);
   }
@@ -346,7 +351,7 @@ export class ResolveFlow {
     this.graph = buildGraphView(definition);
     this.#nodesByCode = Object.create(null);
     this.runtimeRefs = {
-      getFxPlan: () => this.#getRuntimePlanNode("DEFAULT-ATTRIBUTE:FX"),
+      getFxPlan: () => this.#getRuntimePlanNode("ATTRIBUTE:FX"),
     };
 
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
@@ -372,10 +377,9 @@ export class ResolveFlow {
 
     const supportsRuntimeLookup =
       !!this.graph.getNode("ROOT") &&
-      !!this.graph.getNode("DEFAULT-ATTRIBUTE") &&
-      !!this.graph.getNode("IDENTIFIER-ROOT") &&
-      !!this.graph.getNode("RESOLVED-IDENTIFIER") &&
-      !!this.graph.getNode("DEFAULT-ATTRIBUTE:FX");
+      !!this.graph.getNode("ATTRIBUTE") &&
+      !!this.graph.getNode("IDENTIFIER:ISIN") &&
+      !!this.graph.getNode("ATTRIBUTE:FX");
 
     if (!supportsRuntimeLookup) {
       this.resolutionEnv = null;
@@ -384,18 +388,13 @@ export class ResolveFlow {
 
     this.resolutionEnv = createRequestResolutionEnv(
       {
-        defaultAttributeRoot: this.#getRuntimePlanNode("DEFAULT-ATTRIBUTE"),
-        directIdentifierResolver: this.#getRuntimeNode(
-          "RESOLVED-IDENTIFIER",
-        ) as {
+        defaultAttributeRoot: this.#getRuntimePlanNode("ATTRIBUTE"),
+        identifierPlan: this.#getRuntimePlanNode("IDENTIFIER:ISIN"),
+        rootClassifier: this.#getRuntimeNode("ROOT") as {
           resolve(
-            requestInput: import("./request").RequestInput,
-          ): import("./planner").ResolutionResult<
-            import("./request").ResolvedRequest
-          >;
+            requestInput: import("./request").RawRequestInput,
+          ): import("./planner").ResolutionResult<import("./concrete-resolvers").ClassifiedInput>;
         },
-        identifierRootPlan: this.#getRuntimePlanNode("IDENTIFIER-ROOT"),
-        rootClassifier: this.#getRuntimeNode("ROOT"),
       },
       {
         looksLikeIsin: deps.looksLikeIsin,

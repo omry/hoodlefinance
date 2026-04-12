@@ -3,7 +3,7 @@ const test = require("node:test");
 
 const {
   DagPlan,
-  DirectIdentifierResolver,
+  FirstSuccessReceiver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -22,7 +22,7 @@ function createResolverMaterializationDependencies() {
   return {
     looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
     resolverClassesByName: {
-      DirectIdentifierResolver,
+      FirstSuccessReceiver,
       GoogleFxResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,
@@ -43,7 +43,7 @@ test("DagPlan uses the final graph node shape", () => {
   assert.equal(DagPlan.ROOT.type, "RequestClassifierResolver");
   assert.deepEqual(
     DagPlan.ROOT.next,
-    ["DEFAULT-ATTRIBUTE", "IDENTIFIER-ROOT"],
+    ["ATTRIBUTE", "IDENTIFIER:ISIN"],
   );
   assert.equal(DagPlan["QUOTE:PSE"].type, "PseQuoteResolutionPlan");
   assert.deepEqual(DagPlan["QUOTE:PSE"].next, ["PSE-FRAMES", "PSE-EDGE"]);

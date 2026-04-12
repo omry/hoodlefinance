@@ -1,27 +1,24 @@
 import { resolveRoutingNode } from "./plan-navigation";
 import { buildAmbiguousDefaultAttributeRouteError } from "./plan-selection";
 import type { ResolutionResult } from "./planner";
-import type { Resolver, ResolverPlan } from "./resolver-classes";
+import type { ResolverPlan } from "./resolver-classes";
 import {
   RawRequestInput,
-  type RequestInput,
   type ResolvedRequest,
 } from "./request";
 import type {
   LookupExecutionSelection,
   RequestResolutionDependencies,
 } from "./request-resolution";
+import type { ClassifiedInput } from "./concrete-resolvers";
 import type { ResolverServices } from "./resolver-services";
 
 interface RequestResolutionRuntimeRefs {
   defaultAttributeRoot: ResolverPlan;
-  directIdentifierResolver: {
-    resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
-  };
-  identifierRootPlan: ResolverPlan;
+  identifierPlan: ResolverPlan;
   rootClassifier: {
-    resolve(requestInput: RawRequestInput): ResolutionResult<RequestInput>;
-  } | Resolver;
+    resolve(requestInput: RawRequestInput): ResolutionResult<ClassifiedInput>;
+  };
 }
 
 interface RequestResolutionEnvBuilderDependencies {
@@ -62,9 +59,7 @@ function selectLookupExecution(
     throw new Error(classifyOutcome.error || "Request classification failed.");
   }
 
-  const requestInput = classifyOutcome.value as RequestInput;
-  const outcome = refs.directIdentifierResolver.resolve(requestInput);
-  const resolvedRequest = outcome.status === "success" ? outcome.value : null;
+  const { requestInput, resolvedRequest } = classifyOutcome.value as ClassifiedInput;
 
   if (resolvedRequest) {
     return {
@@ -88,7 +83,7 @@ function selectLookupExecution(
       );
     },
     identifierPlan: resolveRoutingNode(
-      refs.identifierRootPlan,
+      refs.identifierPlan,
       requestInput,
       {
         allowNone: true,

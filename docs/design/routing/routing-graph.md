@@ -29,7 +29,7 @@ to try and in what order. `buildResolvePlan(requestInput)` is the map. It knows:
 
 - Which classification applies (equity, FX, ISIN)
 - Which identifier resolver to use (direct parsing vs ISIN search)
-- Which quote resolvers to try, in order (`DEFAULT-ATTRIBUTE:FX` →
+- Which quote resolvers to try, in order (`ATTRIBUTE:FX` →
   `[FX-IDENTITY, GOOGLE-FX]`; equity → `[YAHOO, TRADINGVIEW-FUND]`; PSE →
   `[PSE-FRAMES, PSE-EDGE]`)
 - What fallback order the spec declares

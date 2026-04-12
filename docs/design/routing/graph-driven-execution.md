@@ -35,7 +35,7 @@ That mixed shape shows up in places such as:
 - `selectLookupExecution` doing an ad-hoc partial dry-run by querying ROOT and
   RESOLVED-IDENTIFIER directly, then handing back pre-selected plan objects
 - hard-coded awareness of authored ids like `RESOLVED-IDENTIFIER` and
-  `DEFAULT-ATTRIBUTE:FX` in `ResolveFlow` bootstrap logic
+  `ATTRIBUTE:FX` in `ResolveFlow` bootstrap logic
 - try-each fallback sequencing hidden inside plan nodes rather than expressed
   as graph edges the driver can see
 - route strings assembled as a side effect of execution rather than derived
@@ -116,53 +116,59 @@ The current graph as emitted by the TypeScript CLI:
 ```mermaid
 flowchart LR
   N0["ROOT<br/>RequestClassifierResolver"]
-  N1["DEFAULT-ATTRIBUTE<br/>RoutingPlan"]
-  N2["IDENTIFIER-ROOT<br/>RoutingPlan"]
-  N3["DEFAULT-ATTRIBUTE:EQUITY<br/>EquityAttributeResolutionPlan"]
-  N4["DEFAULT-ATTRIBUTE:FX<br/>FxAttributeResolutionPlan"]
-  N5["RESOLVED-IDENTIFIER<br/>DirectIdentifierResolver"]
-  N6["IDENTIFIER:ISIN<br/>FirstSuccessPlan"]
-  N7["QUOTE:PSE<br/>PseQuoteResolutionPlan"]
-  N8["QUOTE:TICKER<br/>TickerQuoteResolutionPlan"]
-  N9["FX-IDENTITY<br/>LocalFxResolver"]
-  N10["QUOTE:DEFAULT-FX<br/>AttributeResolutionPlan"]
-  N11["ISIN:PSE<br/>PseIsinMapResolver"]
-  N12["ISIN:YAHOO<br/>YahooIsinSearchResolver"]
-  N13["PSE-FRAMES<br/>PSEFramesResolver"]
-  N14["PSE-EDGE<br/>PSEEdgeResolver"]
-  N15["YAHOO-QUOTE<br/>YahooEquityQuoteResolver"]
-  N16["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
-  N17["GOOGLE-FX<br/>GoogleFxResolver"]
-  N18["YAHOO-FX<br/>YahooFxResolver"]
-  N19["TERMINAL<br/>TerminalCollectorPlan"]
+  N5["ATTRIBUTE<br/>RoutingPlan"]
+  N18["TERMINAL<br/>TerminalCollectorPlan"]
+  subgraph N1SG["ISIN"]
+    direction LR
+    N1["IDENTIFIER:ISIN<br/>FirstSuccessPlan"]
+    N2["ISIN:PSE<br/>PseIsinMapResolver"]
+    N3["ISIN:YAHOO<br/>YahooIsinSearchResolver"]
+    N4["ISIN-RECEIVER<br/>FirstSuccessReceiver"]
+  end
+  subgraph N6SG["STOCK"]
+    direction LR
+    N6["ATTRIBUTE:EQUITY<br/>EquityAttributeResolutionPlan"]
+    N8["QUOTE:PSE<br/>PseQuoteResolutionPlan"]
+    N9["QUOTE:TICKER<br/>TickerQuoteResolutionPlan"]
+    N12["PSE-FRAMES<br/>PSEFramesResolver"]
+    N13["PSE-EDGE<br/>PSEEdgeResolver"]
+    N14["YAHOO-QUOTE<br/>YahooEquityQuoteResolver"]
+    N15["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
+  end
+  subgraph N7SG["FX"]
+    direction LR
+    N7["ATTRIBUTE:FX<br/>FxAttributeResolutionPlan"]
+    N10["FX-IDENTITY<br/>LocalFxResolver"]
+    N11["QUOTE:FX<br/>AttributeResolutionPlan"]
+    N16["GOOGLE-FX<br/>GoogleFxResolver"]
+    N17["YAHOO-FX<br/>YahooFxResolver"]
+  end
+  N0 --> N5
   N0 --> N1
-  N0 --> N2
+  N1 --> N2
   N1 --> N3
-  N1 --> N4
-  N2 --> N5
-  N2 --> N6
-  N3 --> N7
-  N3 --> N8
-  N4 --> N9
-  N4 --> N10
-  N5 --> N19
-  N6 --> N11
-  N6 --> N12
-  N7 --> N13
-  N7 --> N14
-  N8 --> N15
-  N8 --> N16
-  N9 --> N19
-  N10 --> N17
+  N2 --> N4
+  N3 --> N4
+  N4 --> N5
+  N5 --> N6
+  N5 --> N7
+  N6 --> N8
+  N6 --> N9
+  N7 --> N10
+  N7 --> N11
+  N8 --> N12
+  N8 --> N13
+  N9 --> N14
+  N9 --> N15
   N10 --> N18
-  N11 --> N19
-  N12 --> N19
-  N13 --> N19
-  N14 --> N19
-  N15 --> N19
-  N16 --> N19
-  N17 --> N19
-  N18 --> N19
+  N11 --> N16
+  N11 --> N17
+  N12 --> N18
+  N13 --> N18
+  N14 --> N18
+  N15 --> N18
+  N16 --> N18
+  N17 --> N18
 ```
 
 ### Worked Examples
@@ -173,9 +179,8 @@ success at every node.
 #### Example 1: Direct Equity Quote — `GOOG price`
 
 ```
-ROOT
-→ RESOLVED-IDENTIFIER   (direct resolution succeeds)
-→ DEFAULT-ATTRIBUTE:EQUITY
+ROOT                     (direct resolution — outputs ResolvedRequest)
+→ ATTRIBUTE:EQUITY
 → QUOTE:TICKER
 → YAHOO-QUOTE
 → TERMINAL
@@ -187,11 +192,11 @@ TRADINGVIEW-FUND and continues from there.
 #### Example 2: ISIN Then Quote — `US02079K1079 price`
 
 ```
-ROOT
-→ IDENTIFIER-ROOT        (direct resolution misses — ISIN input)
+ROOT                     (ISIN input — outputs RequestInput)
 → IDENTIFIER:ISIN
 → ISIN:YAHOO
-→ DEFAULT-ATTRIBUTE:EQUITY
+→ ISIN-RECEIVER
+→ ATTRIBUTE:EQUITY
 → QUOTE:TICKER
 → YAHOO-QUOTE
 → TERMINAL
@@ -203,11 +208,11 @@ The identifier-to-attribute handoff is an ordinary graph edge — not a special
 #### Example 3: FX Pair — `EURUSD price` vs `USDUSD price`
 
 ```
-EURUSD: ROOT → DEFAULT-ATTRIBUTE:FX → QUOTE:DEFAULT-FX → GOOGLE-FX → TERMINAL
-USDUSD: ROOT → DEFAULT-ATTRIBUTE:FX → FX-IDENTITY → TERMINAL
+EURUSD: ROOT → ATTRIBUTE:FX → QUOTE:FX → GOOGLE-FX → TERMINAL
+USDUSD: ROOT → ATTRIBUTE:FX → FX-IDENTITY → TERMINAL
 ```
 
-The driver picks different edges at DEFAULT-ATTRIBUTE:FX based on what ROOT
+The driver picks different edges at ATTRIBUTE:FX based on what ROOT
 produces. No special-case branching in the driver.
 
 ### End-State Rule

@@ -31,7 +31,7 @@ function createRuntimePlanLookup(definition, deps) {
   );
   const nodesByCode = Object.assign(Object.create(null), resolverRegistry.byCode);
   const refs = {
-    getFxPlan: () => getPlanNode("DEFAULT-ATTRIBUTE:FX"),
+    getFxPlan: () => getPlanNode("ATTRIBUTE:FX"),
   };
 
   function getNode(code) {

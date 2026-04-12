@@ -135,6 +135,11 @@ export class DirectIdentifierResolver extends IdentifierResolver {
   }
 }
 
+export interface ClassifiedInput {
+  requestInput: RequestInput;
+  resolvedRequest: ResolvedRequest | null;
+}
+
 export class RequestClassifierResolver extends IdentifierResolver {
   private fxTickerParser:
     | ((ticker: string) => ReturnType<typeof createRequestInput>["fxPair"])
@@ -184,7 +189,14 @@ export class RequestClassifierResolver extends IdentifierResolver {
           })
         : createRequestInput(rawInput.identifier, rawInput.attribute);
 
-      return createResolutionSuccess(requestInput, Date.now() - startedAtMs);
+      // Absorb DirectIdentifierResolver: for non-ISIN inputs resolve inline.
+      const isIsin = !!extractIsinFromRequestInput(requestInput);
+      const resolvedRequest = isIsin
+        ? null
+        : buildTypedRequestFromParsedInput(requestInput, requestInput, Math.max(0, Date.now() - startedAtMs));
+
+      const result: ClassifiedInput = { requestInput, resolvedRequest };
+      return createResolutionSuccess(result, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
         error,
@@ -200,6 +212,16 @@ export class RequestClassifierResolver extends IdentifierResolver {
   }
 
   static fromSpec(code: string): RequestClassifierResolver {
+    return new this(code);
+  }
+}
+
+export class FirstSuccessReceiver extends IdentifierResolver {
+  constructor(code = "ISIN-RECEIVER") {
+    super(code);
+  }
+
+  static fromSpec(code: string): FirstSuccessReceiver {
     return new this(code);
   }
 }
@@ -1527,7 +1549,7 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
 }
 
 export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
-  DirectIdentifierResolver,
+  FirstSuccessReceiver,
   LocalFxResolver,
   GoogleFxResolver,
   PSEFramesResolver: PseFramesResolver,

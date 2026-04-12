@@ -39,7 +39,7 @@ export function buildIdentifierResolutionPlan(
   deps: PlanSelectionDependencies,
 ): ResolverPlan | null {
   const isinValue = deps.extractIsinFromRequestInput(input);
-  const identifierRoot = deps.getPlanNodeByCode("IDENTIFIER-ROOT");
+  const identifierRoot = deps.getPlanNodeByCode("IDENTIFIER:ISIN");
   const identifierPlan = resolveRoutingNode(identifierRoot, input, {
     allowNone: true,
   }) as ResolverPlan | null;
@@ -56,7 +56,7 @@ export function buildDefaultAttributePlanForResolvedRequest(
   deps: Pick<PlanSelectionDependencies, "getPlanNodeByCode">,
 ): ResolverPlan {
   const defaultAttributeRoot =
-    deps.getPlanNodeByCode("DEFAULT-ATTRIBUTE") as ResolverPlan;
+    deps.getPlanNodeByCode("ATTRIBUTE") as ResolverPlan;
   const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
     (plan) => !plan.canHandle || plan.canHandle(request),
   ) as ResolverPlan[];

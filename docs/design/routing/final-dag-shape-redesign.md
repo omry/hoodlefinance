@@ -338,7 +338,7 @@ One follow-up item remains after the initial migration:
      `resolveFlow.getGraph().getRoot()` and `resolveFlow.getGraph().getTerminal()`.
    - Any hard-coded awareness beyond those structural boundaries remains a gap.
    - The remaining examples are HOODLEFINANCE-specific authored ids such as
-     `RESOLVED-IDENTIFIER` and `DEFAULT-ATTRIBUTE:FX`, plus specific node-type
+     `RESOLVED-IDENTIFIER` and `ATTRIBUTE:FX`, plus specific node-type
      strings such as `TerminalCollectorPlan`.
    - That means the runtime still mixes generic graph ownership with
      application-specific bootstrap knowledge.

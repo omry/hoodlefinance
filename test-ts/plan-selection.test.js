@@ -78,7 +78,7 @@ function createDeps() {
     nodes: [identifierLeaf],
   });
   const defaultLeaf = createNode("QUOTE-DEFAULT", { nodes: [yahoo] });
-  const defaultRoot = createNode("DEFAULT-ATTRIBUTE", {
+  const defaultRoot = createNode("ATTRIBUTE", {
     isRoutingNode: true,
     nodes: [defaultLeaf],
   });
@@ -95,11 +95,11 @@ function createDeps() {
       return [defaultLeaf];
     },
     getPlanNodeByCode(code) {
-      if (code === "IDENTIFIER-ROOT") {
+      if (code === "IDENTIFIER:ISIN") {
         return identifierRoot;
       }
 
-      if (code === "DEFAULT-ATTRIBUTE") {
+      if (code === "ATTRIBUTE") {
         return defaultRoot;
       }
 

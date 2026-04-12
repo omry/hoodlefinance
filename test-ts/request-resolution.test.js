@@ -113,7 +113,7 @@ test("resolveRequestValue records raw-input classification as part of lookup flo
       assert.equal(rawInput.identifier, "GOOG");
       return {
         attributePlan: {
-          describe() { return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
+          describe() { return "ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
           resolve() { return { status: "success", value: { regularMarketPrice: 123.45 } }; },
         },
         buildAttributePlan: null,
@@ -129,7 +129,7 @@ test("resolveRequestValue records raw-input classification as part of lookup flo
   assert.equal(selectLookupExecutionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, 123.45);
-  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
+  assert.equal(result.route, "ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
 test("resolveRequestValue resolves direct isin requests without quote planning", () => {
@@ -217,7 +217,7 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
       selectLookupExecutionCalls += 1;
       return {
         attributePlan: {
-          describe() { return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
+          describe() { return "ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
           resolve() { return { status: "success", value: { exchangeName: "NMS", fullExchangeName: "NasdaqGS", symbol: "GOOG" } }; },
         },
         buildAttributePlan: null,
@@ -257,7 +257,7 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
       selectLookupExecutionCalls += 1;
       return {
         attributePlan: {
-          describe() { return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
+          describe() { return "ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
           resolve() { return { status: "success", value: { exchangeName: "LSE", symbol: "VOD.L" } }; },
         },
         buildAttributePlan: null,
@@ -314,7 +314,7 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
       return {
         attributePlan: {
           describe() {
-            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
+            return "ATTRIBUTE:EQUITY -> QUOTE:TICKER";
           },
           resolve() {
             return {
@@ -330,7 +330,7 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
             assert.equal(requestInput.attribute, "price@USD");
             assert.equal(quote.currency, "PHP");
             return {
-              route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+              route: "ATTRIBUTE:FX -> QUOTE:FX",
               status: "success",
               value: 0.02,
             };
@@ -349,7 +349,7 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
   assert.equal(conversionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, 2);
-  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
+  assert.equal(result.route, "ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });
 
 test("resolveRequestValue uses buildAttributePlan for identifier-first output-currency conversion", () => {
@@ -360,7 +360,7 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
         buildAttributePlan() {
           return {
             describe() {
-              return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
+              return "ATTRIBUTE:EQUITY -> QUOTE:TICKER";
             },
             resolve() {
               return {
@@ -376,7 +376,7 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
               assert.equal(requestInput.attribute, "price@USD");
               assert.equal(quote.currency, "PHP");
               return {
-                route: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
+                route: "ATTRIBUTE:FX -> QUOTE:FX",
                 status: "success",
                 value: 0.02,
               };
@@ -416,5 +416,5 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
   assert.equal(conversionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, 2);
-  assert.equal(result.route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
+  assert.equal(result.route, "ATTRIBUTE:EQUITY -> QUOTE:TICKER");
 });

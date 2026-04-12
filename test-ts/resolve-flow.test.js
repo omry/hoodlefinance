@@ -3,7 +3,7 @@ const test = require("node:test");
 
 const {
   DagPlan,
-  DirectIdentifierResolver,
+  FirstSuccessReceiver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -22,7 +22,7 @@ function createResolverMaterializationDependencies() {
   return {
     looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
     resolverClassesByName: {
-      DirectIdentifierResolver,
+      FirstSuccessReceiver,
       GoogleFxResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,

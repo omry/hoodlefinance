@@ -4,6 +4,7 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   FirstSuccessPlan,
+  FirstSuccessReceiver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -27,7 +28,7 @@ const { createStaticResolverServices } = require("./resolver-service-fixtures.js
 function createResolverMaterializationDependencies() {
   return {
     resolverClassesByName: {
-      DirectIdentifierResolver,
+      FirstSuccessReceiver,
       GoogleFxResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,
@@ -77,7 +78,7 @@ function wrapSelectedResolverNode(node, parentPlan = null) {
 }
 
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
-  const outcome = runtimeLookup.getNode("RESOLVED-IDENTIFIER").resolve(requestInput);
+  const outcome = new DirectIdentifierResolver().resolve(requestInput);
 
   assert.equal(outcome.status, "success");
 
@@ -102,7 +103,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated 
     classifyRequest(rawInput) {
       const outcome = rootNode.resolve(rawInput);
       if (outcome.status !== "success") throw new Error(outcome.error);
-      return outcome.value;
+      return outcome.value.requestInput;
     },
   };
 
@@ -132,10 +133,10 @@ test("integrated mode always follows the default PSE quote branch", () => {
   });
   const plan = buildTypedAttributePlan(runtimeLookup, request);
 
-  assert.equal(plan.attributePlan.name, "DEFAULT-ATTRIBUTE:EQUITY");
+  assert.equal(plan.attributePlan.name, "ATTRIBUTE:EQUITY");
   assert.equal(
     plan.attributePlan.describe(plan.resolvedRequest),
-    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
+    "ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
   );
 });
 
@@ -149,9 +150,9 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
     },
   };
 
-  // We need to inject this into the DEFAULT-ATTRIBUTE node codes
+  // We need to inject this into the ATTRIBUTE node codes
   const modifiedSpecs = JSON.parse(JSON.stringify(DagPlan));
-  modifiedSpecs["DEFAULT-ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
+  modifiedSpecs["ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
   const runtimeLookup = createRuntimePlanLookup(modifiedSpecs, {
     ...createResolverMaterializationDependencies(),
@@ -173,6 +174,6 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
           }),
         }),
       ),
-    /Ambiguous default attribute route for classification "equity": DEFAULT-ATTRIBUTE:EQUITY, AMBIGUOUS-EXTRA\./
+    /Ambiguous default attribute route for classification "equity": ATTRIBUTE:EQUITY, AMBIGUOUS-EXTRA\./
   );
 });

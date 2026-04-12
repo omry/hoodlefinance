@@ -9,7 +9,7 @@
       "Bash(npm run check: ':*)",
       "Bash(node --test ':*)",
       "mcp__mempalace__mempalace_status",
-      "Bash(echo \"EXIT:$?\")"
+      "Read(//home/omry/.claude/plans/**)",
     ]
   },
   "hooks": {

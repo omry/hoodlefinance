@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  DirectIdentifierResolver,
+  FirstSuccessReceiver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -209,7 +209,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
 
   const registry = materializeResolversByCode(
     {
-      "RESOLVED-IDENTIFIER": "DirectIdentifierResolver",
+      "ISIN-RECEIVER": "FirstSuccessReceiver",
       LOCAL: "LocalFxResolver",
       "ISIN:PSE": "PseIsinMapResolver",
       "ISIN:YAHOO": "YahooIsinSearchResolver",
@@ -224,7 +224,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   );
 
   assert.equal(
-    registry.byCode["RESOLVED-IDENTIFIER"] instanceof DirectIdentifierResolver,
+    registry.byCode["ISIN-RECEIVER"] instanceof FirstSuccessReceiver,
     true,
   );
   assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
@@ -271,29 +271,6 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
 
   assert.equal(pseEdgeResolved.status, "success");
   assert.equal(pseEdgeResolved.value.symbol, "BDO");
-
-  const resolved = registry.byCode["RESOLVED-IDENTIFIER"].resolve(
-    new RequestInput({
-      attribute: "price",
-      attributeRequest: {
-        baseAttribute: "price",
-        outputCode: "",
-        rawAttribute: "price",
-        wantsOutputCurrency: false,
-      },
-      attributeType: "quote",
-      classification: "equity",
-      fxPair: null,
-      identifier: "GOOG",
-      infoMode: "",
-      sourceOverride: "",
-      ticker: "GOOG",
-      upperTicker: "GOOG",
-    }),
-  );
-
-  assert.equal(resolved.status, "success");
-  assert.equal(resolved.value.yahooSymbol, "GOOG");
 
   const pseResolved = registry.byCode["ISIN:PSE"].resolve(
     new RequestInput({

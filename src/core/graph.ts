@@ -3,6 +3,7 @@ export namespace Graph {
     id: string;
     type: string;
     next?: string[];
+    group?: string;
   }
 
   export type Definition = Record<string, Node>;
