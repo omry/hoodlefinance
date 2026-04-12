@@ -2,6 +2,53 @@
 
 Repo-specific directives for coding agents working in this project.
 
+## Behavioral defaults
+
+These guidelines are intended to reduce common LLM coding mistakes. Apply them alongside the repo-specific rules below. They bias toward caution over speed, and for truly trivial tasks you may use judgment.
+
+### Think before coding
+
+- Do not assume.
+- Do not hide confusion.
+- Surface tradeoffs.
+- State assumptions explicitly when they matter to the implementation.
+- If multiple reasonable interpretations exist, present them instead of silently picking one.
+- If a simpler approach exists, say so.
+- Push back when warranted.
+- If something material is unclear or risky, stop, name what is confusing, and ask instead of guessing.
+
+### Simplicity first
+
+- Solve the requested problem with the minimum code necessary.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No flexibility or configurability that was not requested.
+- No error handling for scenarios that are effectively impossible in context.
+- If a solution feels overbuilt for the task, simplify it before considering it done.
+- If you write 200 lines and the same result could be achieved in 50, rewrite it.
+- Ask: would a senior engineer say this is overcomplicated? If yes, simplify.
+
+### Surgical changes
+
+- Touch only what is needed for the request.
+- Do not "clean up" adjacent code, comments, formatting, or structure unless the change requires it.
+- Match the existing style and patterns of the codebase unless the user asks for a broader refactor.
+- If you notice unrelated dead code or issues nearby, mention them instead of fixing them opportunistically.
+- Remove imports, variables, functions, or other artifacts that your change makes unused.
+- Do not delete unrelated pre-existing dead code unless asked.
+- Every changed line should trace directly to the user's request.
+
+### Goal-driven execution
+
+- Translate requests into concrete success criteria that can be verified.
+- For bug fixes, prefer reproducing the issue with a test or other reliable check before fixing it.
+- For refactors, prefer checks that demonstrate behavior is preserved before and after.
+- For multi-step tasks, keep a brief plan in mind and verify each step before calling the work complete.
+- Favor specific goals over vague ones:
+  - "Add validation" -> write tests for invalid inputs, then make them pass.
+  - "Fix the bug" -> reproduce it with a test or reliable check, then make it pass.
+  - "Refactor X" -> verify behavior before and after the refactor.
+
 ## Documentation map
 
 - Canonical repo docs index: [`docs/INDEX.md`](./docs/INDEX.md)
