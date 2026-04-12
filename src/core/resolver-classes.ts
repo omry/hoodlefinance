@@ -2,11 +2,10 @@ import type { RouteJob, RuntimePlan } from "./planner";
 import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
-import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
 
-export type { PlanNodeBuilderDependencies, ResolverPlanOptions } from "./core-resolvers";
+export type { PlanRuntimeRefs, ResolverPlanOptions } from "./core-resolvers";
 export {
   FirstSuccessPlan,
   Resolver,
@@ -20,7 +19,7 @@ import {
   ResolverPlanOptions,
   StepPlan,
   SwitchPlan,
-  type PlanNodeBuilderDependencies,
+  type PlanRuntimeRefs,
 } from "./core-resolvers";
 
 export class IdentifierResolver extends Resolver {}
@@ -158,7 +157,7 @@ export function buildPlanNodeFromSpec(
   spec: Graph.Node,
   resolveNode: (nodeCode: string) => Resolver | null,
   overrides: Record<string, unknown> | null | undefined,
-  deps: PlanNodeBuilderDependencies,
+  deps: PlanRuntimeRefs,
 ): Resolver {
   const PlanClass =
     PLAN_RESOLVER_CLASSES_BY_NAME[spec.type as PlanResolverClassName];

@@ -2,7 +2,7 @@ import { isResolverPlan } from "./plan-navigation";
 import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
 import type { Resolver, ResolverPlan } from "./resolver-classes";
 import { RawRequestInput } from "./request";
-import { type PlanRuntimeRefs } from "./plan-runtime-refs";
+import { type PlanRuntimeRefs } from "./core-resolvers";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -470,9 +470,7 @@ export class ResolveFlow {
       (nodeCode) =>
         isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode),
       null,
-      {
-        refs: this.runtimeRefs,
-      },
+      this.runtimeRefs,
     );
 
     this.#nodesByCode[normalizedCode] = compiledNode;

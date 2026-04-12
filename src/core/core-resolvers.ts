@@ -26,24 +26,21 @@ import {
 } from "./route-results";
 import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
 import { executeRouteJobs } from "./route-execution";
-import type { PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
   resolvePlannedQuoteResult,
   type LookupResult,
 } from "./request-resolution";
 import type { ResolverServices } from "./resolver-services";
 
+// TEMPORARY: threads the runtime FX root plan into plan nodes for
+// output-currency conversion until the execution DAG can model that edge.
+export interface PlanRuntimeRefs {
+  getFxPlan(): ResolverPlan;
+}
+
 export interface ResolverPlanOptions {
   routeClass?: string | RouteClassResolver;
   routePath?: string | RoutePathResolver;
-}
-
-export interface PlanNodeBuilderDependencies {
-  // TEMPORARY: this shared refs bag is the only acceptable place to thread
-  // ResolveFlow into plan nodes for the current FX-conversion concession.
-  // TODO: remove any ResolveFlow reference from here once conversion moves to
-  // the compiled execution DAG.
-  refs: PlanRuntimeRefs;
 }
 
 function formatRoutingPlanTreeLabel(value: unknown): string {
@@ -407,12 +404,6 @@ export abstract class ResolverPlan extends Resolver {
     return getGraphNodeNextIds(spec);
   }
 
-  static materializeOptions(
-    overrides: Record<string, unknown> | null | undefined,
-  ): ResolverPlanOptions {
-    return Object.assign({}, overrides || {}) as ResolverPlanOptions;
-  }
-
   static fromSpec(
     code: string,
     spec: Graph.Node,
@@ -420,7 +411,7 @@ export abstract class ResolverPlan extends Resolver {
       | Record<string, Resolver>
       | ((nodeCode: string) => Resolver | null),
     overrides: Record<string, unknown> | null | undefined,
-    deps: PlanNodeBuilderDependencies,
+    deps: PlanRuntimeRefs,
   ): ResolverPlan {
     const resolveNodeByCode =
       typeof resolverMap === "function"
@@ -439,8 +430,8 @@ export abstract class ResolverPlan extends Resolver {
       this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
       ) as Resolver[],
-      deps.refs,
-      this.materializeOptions(overrides),
+      deps,
+      (overrides || {}) as ResolverPlanOptions,
     );
   }
 }

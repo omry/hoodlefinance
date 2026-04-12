@@ -65,7 +65,7 @@ function createRuntimePlanLookup(definition, deps) {
       (nodeCode) =>
         normalizeCode(nodeCode) === "TERMINAL" ? null : getNode(nodeCode),
       null,
-      { refs },
+      refs,
     );
     nodesByCode[normalizedCode] = compiledNode;
 

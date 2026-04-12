@@ -126,7 +126,7 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
         YAHOO: yahoo,
       })[nodeCode],
     null,
-    { refs },
+    refs,
   );
 
   assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
@@ -160,7 +160,7 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
     },
     () => null,
     null,
-    { refs },
+    refs,
   );
 
   assert.equal(plan.nodes.length, 1);
@@ -189,7 +189,7 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
         "IDENTIFIER-ROOT": identifierRoot,
       })[nodeCode],
     null,
-    { refs },
+    refs,
   );
 
   assert.equal(plan instanceof StepPlan, true);
@@ -224,7 +224,7 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
         "ISIN:YAHOO": yahooIsin,
       })[nodeCode],
     null,
-    { refs },
+    refs,
   );
 
   assert.equal(plan instanceof FirstSuccessPlan, true);
@@ -266,7 +266,7 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
         "PSE-FRAMES": pseFrames,
       })[nodeCode],
     null,
-    { refs },
+    refs,
   );
 
   assert.equal(plan instanceof PseQuoteResolutionPlan, true);
@@ -305,7 +305,7 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
     },
     () => createLeafResolver("YAHOO"),
     null,
-    { refs },
+    refs,
   );
   const request = new RequestInput({
     attribute: "price@USD",
