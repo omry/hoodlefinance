@@ -146,7 +146,7 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
     "AMBIGUOUS-EXTRA": {
       id: "AMBIGUOUS-EXTRA",
       next: ["YAHOO-QUOTE"],
-      type: "AttributeResolutionPlan",
+      type: "FirstSuccessPlan",
     },
   };
 

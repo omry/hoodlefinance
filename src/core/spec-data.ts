@@ -27,7 +27,7 @@ export const DagPlan: Graph.Definition = {
     group: "FX",
     id: "QUOTE:FX",
     next: ["GOOGLE-FX", "YAHOO-FX"],
-    type: "AttributeResolutionPlan",
+    type: "FirstSuccessPlan",
   },
   "QUOTE:PSE": {
     group: "STOCK",

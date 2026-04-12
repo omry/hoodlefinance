@@ -1,5 +1,4 @@
 export * from "./graph";
-export * from "./plan-specs";
 export * from "./resolve-flow";
 export * from "./attribute-extraction";
 export * from "./plan-runtime-refs";
