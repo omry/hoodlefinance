@@ -93,7 +93,7 @@ them.
 
 Those richer primitives are still expected to become useful later. They belong
 to the compiled execution-graph phase described in
-[`execution-graph-compilation.md`](./execution-graph-compilation.md), where a
+[`graph-driven-execution.md`](./graph-driven-execution.md), where a
 more capable engine can model branch, join, and transform behavior directly.
 
 Additional invariants:

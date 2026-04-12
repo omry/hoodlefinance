@@ -25,6 +25,7 @@ For now, use:
 
 - Design index: [`./design/README.md`](./design/README.md)
 - Routing runtime shape: [`./design/routing/final-dag-shape-redesign.md`](./design/routing/final-dag-shape-redesign.md)
+- Graph-driven execution: [`./design/routing/graph-driven-execution.md`](./design/routing/graph-driven-execution.md)
 - Graph rendering for the TypeScript CLI: [`./design/routing/resolve-flow-rendering.md`](./design/routing/resolve-flow-rendering.md)
 - Identifier and attribute grammar: [`./design/identifiers/identifier-attribute-grammar.md`](./design/identifiers/identifier-attribute-grammar.md)
 - Google Sheets deployment strategy: [`./design/deployment/google-sheets-deployment-strategy.md`](./design/deployment/google-sheets-deployment-strategy.md)

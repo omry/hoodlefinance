@@ -9,6 +9,7 @@ For new design docs, start from [`./TEMPLATE.md`](./TEMPLATE.md).
 ## Current Design References
 
 - Routing runtime shape: [`routing/final-dag-shape-redesign.md`](./routing/final-dag-shape-redesign.md)
+- Graph-driven execution: [`routing/graph-driven-execution.md`](./routing/graph-driven-execution.md)
 - Graph rendering for the TypeScript CLI: [`routing/resolve-flow-rendering.md`](./routing/resolve-flow-rendering.md)
 - Identifier and attribute grammar: [`identifiers/identifier-attribute-grammar.md`](./identifiers/identifier-attribute-grammar.md)
 - Google Sheets deployment strategy: [`deployment/google-sheets-deployment-strategy.md`](./deployment/google-sheets-deployment-strategy.md)
@@ -25,7 +26,6 @@ For new design docs, start from [`./TEMPLATE.md`](./TEMPLATE.md).
 - Bare FX support: [`identifiers/bare-fx-support.md`](./identifiers/bare-fx-support.md)
 - Canonical identifier layer: [`identifiers/canonical-identifier-layer.md`](./identifiers/canonical-identifier-layer.md)
 - Symbol and exchange attributes: [`identifiers/symbol-exchange-attributes.md`](./identifiers/symbol-exchange-attributes.md)
-- Execution graph compilation draft: [`routing/execution-graph-compilation.md`](./routing/execution-graph-compilation.md)
 - Routing source-gap note: [`routing/routing-source-gaps.md`](./routing/routing-source-gaps.md)
 
 ## Historical And Superseded Design Docs
