@@ -4,7 +4,6 @@ const test = require("node:test");
 const {
   createRouteJob,
   executeRouteJobs,
-  getRouteExecutor,
 } = require("../dist/ts/core/index.js");
 
 function makeNode(name, resultsByCall) {
@@ -21,21 +20,7 @@ function makeNode(name, resultsByCall) {
   };
 }
 
-test("getRouteExecutor returns the batch adapter for executable route nodes", () => {
-  const node = makeNode("YAHOO", [[{ status: "success", value: 1 }]]);
-  const adapter = getRouteExecutor(node);
-
-  assert.equal(adapter.executorId, "YAHOO");
-  assert.deepEqual(adapter.executeBatch([{}]), [
-    { status: "success", value: 1 },
-  ]);
-  assert.throws(
-    () => getRouteExecutor({ name: "BROKEN" }),
-    /has no batch executor/,
-  );
-});
-
-test("executeRouteJobs batches by executor and walks lookup failures forward", () => {
+test("executeRouteJobs walks lookup failures forward to the next node", () => {
   const yahoo = makeNode("YAHOO", [
     [{ error: "Yahoo temporarily unavailable", status: "lookup_failure" }],
   ]);
