@@ -1,9 +1,5 @@
 import type { Graph } from "./graph";
 
-function defineGraphNode<T extends Graph.Node>(node: T): T {
-  return node;
-}
-
 export const DagPlan: Graph.Definition = {
   ROOT: {
     id: "ROOT",
@@ -45,11 +41,11 @@ export const DagPlan: Graph.Definition = {
     next: ["RESOLVED-IDENTIFIER", "IDENTIFIER:ISIN"],
     type: "RoutingPlan",
   },
-  "IDENTIFIER:ISIN": defineGraphNode({
+  "IDENTIFIER:ISIN": {
     id: "IDENTIFIER:ISIN",
     next: ["ISIN:PSE", "ISIN:YAHOO"],
     type: "FirstSuccessPlan",
-  }),
+  },
   "RESOLVED-IDENTIFIER": {
     id: "RESOLVED-IDENTIFIER",
     next: ["TERMINAL"],

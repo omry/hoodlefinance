@@ -1,8 +1,5 @@
 import type {
-  FxPair,
-  PlannerRequest,
   RequestInput,
-  RequestClassification,
   ResolvedRequest,
 } from "./request";
 import type { ResolverServices } from "./resolver-services";
@@ -37,9 +34,9 @@ export interface RuntimePlan<RouteState = Record<string, unknown>> {
   routeState: RouteState;
 }
 
-export type RouteClassResolver = (request: PlannerRequest) => string;
+export type RouteClassResolver = (request: unknown) => string;
 
-export type RoutePathResolver = (request: PlannerRequest) => string;
+export type RoutePathResolver = (request: unknown) => string;
 
 export interface RouteContext {
   outputCurrencyCache?: {
@@ -77,14 +74,14 @@ export interface RouteTraceEntry {
 
 export interface ResolverLike {
   code: string;
-  describe(request: PlannerRequest): string;
+  describe(request: unknown): string;
   describeRoutingNode?(): string;
   getExampleInput(): string | null;
   getRoutingNodeKind(): RoutingNodeKind;
-  getGroupedSourceNames?(request: PlannerRequest): string[];
+  getGroupedSourceNames?(request: unknown): string[];
   getGroupedSourceNamesForDisplay?(
     source: string,
-    request: PlannerRequest,
+    request: unknown,
   ): string[];
   getRoutingDescription(): string | null;
   getRoutingNodes?(): ResolverNode[];
@@ -93,17 +90,17 @@ export interface ResolverLike {
 }
 
 export interface ResolverNode extends ResolverLike {
-  buildRouteState?(request: PlannerRequest): Record<string, unknown>;
-  canHandle(request: PlannerRequest): boolean;
-  buildRuntimePlan(request: PlannerRequest): RuntimePlan;
+  buildRouteState?(request: unknown): Record<string, unknown>;
+  canHandle(request: unknown): boolean;
+  buildRuntimePlan(request: unknown): RuntimePlan;
   executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
   initEnv?(services: ResolverServices): void;
-  resolve?(request: PlannerRequest): ResolutionResult<unknown>;
+  resolve?(request: unknown): ResolutionResult<unknown>;
   traceLabel?: string;
 }
 
 export interface ResolverPlanNode extends ResolverNode {
-  getNodesForRequest(request: PlannerRequest): ResolverNode[];
+  getNodesForRequest(request: unknown): ResolverNode[];
   getRoutingNodes?(): ResolverNode[];
   nodes?: ResolverNode[];
   routeClass?: string | RouteClassResolver;

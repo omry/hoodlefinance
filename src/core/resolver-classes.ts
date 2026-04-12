@@ -13,7 +13,7 @@ import type {
   RoutePathResolver,
   RuntimePlan,
 } from "./planner";
-import type { PlannerRequest, ResolvedRequest } from "./request";
+import type { ResolvedRequest } from "./request";
 import { FxRequest, RawRequestInput, RequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
 import {
@@ -68,17 +68,17 @@ export class Resolver {
     return null;
   }
 
-  canHandle(_request: PlannerRequest): boolean {
+  canHandle(_request: unknown): boolean {
     return true;
   }
 
-  buildRuntimePlan(_request: PlannerRequest): RuntimePlan {
+  buildRuntimePlan(_request: unknown): RuntimePlan {
     throw new Error(
       `Resolver "${this.name}" must implement buildRuntimePlan().`,
     );
   }
 
-  describe(request: PlannerRequest): string {
+  describe(request: unknown): string {
     return describePlanSource(this.buildRuntimePlan(request));
   }
 
@@ -92,7 +92,7 @@ export class Resolver {
     return description ? `${name} - ${description}` : name;
   }
 
-  getGroupedSourceNames(_request: PlannerRequest): string[] {
+  getGroupedSourceNames(_request: unknown): string[] {
     return [];
   }
 
@@ -109,19 +109,19 @@ export class Resolver {
 
   getGroupedSourceNamesForDisplay(
     source: string,
-    request: PlannerRequest,
+    request: unknown,
   ): string[] {
     return this.matchesSourceName(source)
       ? this.getGroupedSourceNames(request)
       : [];
   }
 
-  resolve(request: PlannerRequest): ResolutionResult<unknown> {
+  resolve(request: unknown): ResolutionResult<unknown> {
     const startedAtMs = Date.now();
 
     try {
       const plan = this.buildRuntimePlan(request);
-      const job = createResolverRouteJob(request);
+      const job = createResolverRouteJob(request as Parameters<typeof createResolverRouteJob>[0]);
       job.plan = plan;
       prepareRouteJob(job, plan);
       executeRouteJobs([job], (error) =>
@@ -173,7 +173,7 @@ export class RouteExecutionResolver extends AttributeResolver {
   }
 
   buildRouteState(
-    _request: PlannerRequest,
+    _request: unknown,
   ): Record<string, unknown> {
     return {};
   }
@@ -186,15 +186,15 @@ export class RouteExecutionResolver extends AttributeResolver {
     throw new Error(`Resolver "${this.name}" must implement executeBatch().`);
   }
 
-  getRouteClass(_request: PlannerRequest): string {
+  getRouteClass(_request: unknown): string {
     return this.name;
   }
 
-  getRoutePath(_request: PlannerRequest): string {
+  getRoutePath(_request: unknown): string {
     return this.traceLabel;
   }
 
-  buildRuntimePlan(request: PlannerRequest): RuntimePlan {
+  buildRuntimePlan(request: unknown): RuntimePlan {
     return {
       nodes: [this],
       routeClass: this.getRouteClass(request),
@@ -240,7 +240,7 @@ export abstract class ResolverPlan
     this.routePath = resolvedOptions.routePath || "";
   }
 
-  getNodesForRequest(request: PlannerRequest): ResolverNode[] {
+  getNodesForRequest(request: unknown): ResolverNode[] {
     const nodes = (this.nodes || []).slice();
 
     if (!nodes.length) {
@@ -259,7 +259,7 @@ export abstract class ResolverPlan
   }
 
   getHandleableNodesForRequest(
-    request: PlannerRequest,
+    request: unknown,
   ): ResolverNode[] {
     return (this.nodes || []).filter(
       (node) => !node.canHandle || node.canHandle(request),
@@ -270,14 +270,14 @@ export abstract class ResolverPlan
     return (this.nodes || []).slice();
   }
 
-  canHandle(request: PlannerRequest): boolean {
+  canHandle(request: unknown): boolean {
     return this.getHandleableNodesForRequest(request).length > 0;
   }
 
   abstract getRoutingNodeKind(): RoutingNodeKind;
 
   buildRouteState(
-    request: PlannerRequest,
+    request: unknown,
   ): Record<string, unknown> {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
@@ -288,7 +288,7 @@ export abstract class ResolverPlan
     return {};
   }
 
-  buildRoutePath(request: PlannerRequest): string {
+  buildRoutePath(request: unknown): string {
     let routePath = this.routePath;
     const nodes = this.getNodesForRequest(request);
 
@@ -303,7 +303,7 @@ export abstract class ResolverPlan
     return nodes.map((node) => node.name).join(" -> ");
   }
 
-  getGroupedSourceNames(_request: PlannerRequest): string[] {
+  getGroupedSourceNames(_request: unknown): string[] {
     const groupedNames: string[] = [];
 
     this.nodes.forEach((node) => {
@@ -328,7 +328,7 @@ export abstract class ResolverPlan
     return groupedNames;
   }
 
-  buildRuntimePlan(request: PlannerRequest): RuntimePlan {
+  buildRuntimePlan(request: unknown): RuntimePlan {
     let routeClass = this.routeClass;
     const nodes = this.getNodesForRequest(request);
 
@@ -493,7 +493,7 @@ export class StepPlan extends ResolverPlan {
     return "step";
   }
 
-  getNodesForRequest(_request: PlannerRequest): ResolverNode[] {
+  getNodesForRequest(_request: unknown): ResolverNode[] {
     return (this.nodes || []).slice();
   }
 }
@@ -511,10 +511,10 @@ export class EquityAttributeResolutionPlan extends AttributeResolutionPlan {
     return "switch";
   }
 
-  canHandle(request: PlannerRequest): boolean {
+  canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
-      request.classification === "equity" &&
+      (request as RequestInput).classification === "equity" &&
       super.canHandle(request)
     );
   }
@@ -525,8 +525,8 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
     return "PSE:BDO";
   }
 
-  buildRouteState(request: PlannerRequest): Record<string, unknown> {
-    if (!("symbol" in request)) return {};
+  buildRouteState(request: unknown): Record<string, unknown> {
+    if (!request || !("symbol" in (request as object))) return {};
     return buildPseQuoteRouteState(
       request as Extract<ResolvedRequest, { requestType: "equity" }>,
     );
@@ -536,17 +536,17 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
 export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {}
 
 export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
-  buildRouteState(request: PlannerRequest): Record<string, unknown> {
-    if (!("fxPair" in request)) return {};
+  buildRouteState(request: unknown): Record<string, unknown> {
+    if (!request || !("fxPair" in (request as object))) return {};
     return buildFxQuoteRouteState(
       request as Extract<ResolvedRequest, { requestType: "fx" }>,
     );
   }
 
-  canHandle(request: PlannerRequest): boolean {
+  canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
-      request.classification === "fx" &&
+      (request as RequestInput).classification === "fx" &&
       super.canHandle(request)
     );
   }
@@ -565,7 +565,7 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
     }
   }
 
-  getNodesForRequest(request: PlannerRequest): ResolverNode[] {
+  getNodesForRequest(request: unknown): ResolverNode[] {
     const localNode = this.nodes[0];
     if (localNode && (!localNode.canHandle || localNode.canHandle(request))) {
       return [localNode];
