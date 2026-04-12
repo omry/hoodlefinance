@@ -5,8 +5,6 @@ import {
 } from "./plan-specs";
 import type {
   ResolutionResult,
-  ResolverNode,
-  ResolverPlanNode,
   RouteClassResolver,
   RouteJob,
   RoutingNodeKind,
@@ -54,6 +52,7 @@ function normalizeNodeCode(nodeCode: string): string {
 export class Resolver {
   readonly code: string;
   readonly name: string;
+  readonly traceLabel?: string;
 
   constructor(code = "") {
     this.code = code || "";
@@ -66,6 +65,10 @@ export class Resolver {
 
   getRoutingDescription(): string | null {
     return null;
+  }
+
+  buildRouteState(_request: unknown): Record<string, unknown> {
+    return {};
   }
 
   canHandle(_request: unknown): boolean {
@@ -204,11 +207,8 @@ export class RouteExecutionResolver extends AttributeResolver {
   }
 }
 
-export abstract class ResolverPlan
-  extends Resolver
-  implements ResolverPlanNode
-{
-  readonly nodes: ResolverNode[];
+export abstract class ResolverPlan extends Resolver {
+  readonly nodes: Resolver[];
   // TEMPORARY: this lets plan nodes reach the runtime FX root plan for the
   // current output-currency concession. Remove once the execution DAG can
   // express that edge directly.
@@ -218,7 +218,7 @@ export abstract class ResolverPlan
 
   constructor(
     name: string,
-    nodes: ResolverNode[],
+    nodes: Resolver[],
     refsOrOptions: PlanRuntimeRefs | ResolverPlanOptions = {},
     options: ResolverPlanOptions = {},
   ) {
@@ -240,7 +240,7 @@ export abstract class ResolverPlan
     this.routePath = resolvedOptions.routePath || "";
   }
 
-  getNodesForRequest(request: unknown): ResolverNode[] {
+  getNodesForRequest(request: unknown): Resolver[] {
     const nodes = (this.nodes || []).slice();
 
     if (!nodes.length) {
@@ -260,13 +260,13 @@ export abstract class ResolverPlan
 
   getHandleableNodesForRequest(
     request: unknown,
-  ): ResolverNode[] {
+  ): Resolver[] {
     return (this.nodes || []).filter(
       (node) => !node.canHandle || node.canHandle(request),
     );
   }
 
-  getRoutingNodes(): ResolverNode[] {
+  getRoutingNodes(): Resolver[] {
     return (this.nodes || []).slice();
   }
 
@@ -281,11 +281,9 @@ export abstract class ResolverPlan
   ): Record<string, unknown> {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
-    if (singleNode && singleNode.buildRouteState) {
-      return singleNode.buildRouteState(request);
-    }
-
-    return {};
+    return singleNode && typeof singleNode.buildRouteState === "function"
+      ? singleNode.buildRouteState(request)
+      : {};
   }
 
   buildRoutePath(request: unknown): string {
@@ -343,7 +341,7 @@ export abstract class ResolverPlan
     }
 
     const routeState = this.buildRouteState(request);
-    const flattenedNodes: ResolverNode[] = [];
+    const flattenedNodes: Resolver[] = [];
 
     for (const node of nodes) {
       const runtimePlan = node.buildRuntimePlan(request);
@@ -369,7 +367,7 @@ export abstract class ResolverPlan
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
     if (!this.refs && singleNode) {
-      const nestedResolver = singleNode as ResolverNode & {
+      const nestedResolver = singleNode as Resolver & {
         resolveOutputCurrencyResult?: (
           request: RequestInput,
           value: Record<string, unknown>,
@@ -454,8 +452,8 @@ export abstract class ResolverPlan
     code: string,
     spec: PlanSpec,
     resolverMap:
-      | Record<string, ResolverNode>
-      | ((nodeCode: string) => ResolverNode | null),
+      | Record<string, Resolver>
+      | ((nodeCode: string) => Resolver | null),
     overrides: Record<string, unknown> | null | undefined,
     deps: PlanNodeBuilderDependencies,
   ): ResolverPlan {
@@ -467,7 +465,7 @@ export abstract class ResolverPlan
 
     const Ctor = this as unknown as new (
       name: string,
-      nodes: ResolverNode[],
+      nodes: Resolver[],
       refs: PlanRuntimeRefs,
       options: ResolverPlanOptions,
     ) => ResolverPlan;
@@ -475,7 +473,7 @@ export abstract class ResolverPlan
       code,
       this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
-      ) as ResolverNode[],
+      ) as Resolver[],
       deps.refs,
       this.materializeOptions(overrides),
     );
@@ -493,7 +491,7 @@ export class StepPlan extends ResolverPlan {
     return "step";
   }
 
-  getNodesForRequest(_request: unknown): ResolverNode[] {
+  getNodesForRequest(_request: unknown): Resolver[] {
     return (this.nodes || []).slice();
   }
 }
@@ -553,7 +551,7 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
 
   constructor(
     name: string,
-    nodes: ResolverNode[],
+    nodes: Resolver[],
     refsOrOptions: PlanRuntimeRefs | ResolverPlanOptions = {},
     options: ResolverPlanOptions = {},
   ) {
@@ -565,7 +563,7 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
     }
   }
 
-  getNodesForRequest(request: unknown): ResolverNode[] {
+  getNodesForRequest(request: unknown): Resolver[] {
     const localNode = this.nodes[0];
     if (localNode && (!localNode.canHandle || localNode.canHandle(request))) {
       return [localNode];
@@ -574,7 +572,7 @@ export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
     return resolverNode ? [resolverNode] : [];
   }
 
-  getRoutingNodes(): ResolverNode[] {
+  getRoutingNodes(): Resolver[] {
     const routingNodes = [];
     if (this.nodes[0]) routingNodes.push(this.nodes[0]);
     if (this.nodes[1]) routingNodes.push(this.nodes[1]);
@@ -606,10 +604,10 @@ export interface PlanNodeBuilderDependencies {
 export function buildPlanNodeFromSpec(
   code: string,
   spec: PlanSpec,
-  resolveNode: (nodeCode: string) => ResolverNode | null,
+  resolveNode: (nodeCode: string) => Resolver | null,
   overrides: Record<string, unknown> | null | undefined,
   deps: PlanNodeBuilderDependencies,
-): ResolverNode {
+): Resolver {
   const PlanClass =
     PLAN_RESOLVER_CLASSES_BY_NAME[spec.type as PlanResolverClassName];
 

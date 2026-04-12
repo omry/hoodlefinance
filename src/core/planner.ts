@@ -2,6 +2,7 @@ import type {
   RequestInput,
   ResolvedRequest,
 } from "./request";
+import type { Resolver, ResolverPlan } from "./resolver-classes";
 import type { ResolverServices } from "./resolver-services";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
@@ -28,7 +29,7 @@ export interface ResolutionFailure {
 export type ResolutionResult<T> = ResolutionSuccess<T> | ResolutionFailure;
 
 export interface RuntimePlan<RouteState = Record<string, unknown>> {
-  nodes: ResolverNode[];
+  nodes: Resolver[];
   routeClass: string;
   routePath: string;
   routeState: RouteState;
@@ -56,7 +57,7 @@ export interface RouteJob<RouteState = Record<string, unknown>> {
   routeContext: RouteContext | null;
   routeKind: RouteKind;
   routeLastLookupFailure: string;
-  routeNodes: ResolverNode[];
+  routeNodes: Resolver[];
   routePreferredLookupFailure: string;
   routeRuntimeTrace: RouteTraceEntry[];
   routeState: RouteState;
@@ -72,48 +73,13 @@ export interface RouteTraceEntry {
   status: string;
 }
 
-export interface ResolverLike {
-  code: string;
-  describe(request: unknown): string;
-  describeRoutingNode?(): string;
-  getExampleInput(): string | null;
-  getRoutingNodeKind(): RoutingNodeKind;
-  getGroupedSourceNames?(request: unknown): string[];
-  getGroupedSourceNamesForDisplay?(
-    source: string,
-    request: unknown,
-  ): string[];
-  getRoutingDescription(): string | null;
-  getRoutingNodes?(): ResolverNode[];
-  matchesSourceName?(source: string): boolean;
-  name: string;
-}
-
-export interface ResolverNode extends ResolverLike {
-  buildRouteState?(request: unknown): Record<string, unknown>;
-  canHandle(request: unknown): boolean;
-  buildRuntimePlan(request: unknown): RuntimePlan;
-  executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
-  initEnv?(services: ResolverServices): void;
-  resolve?(request: unknown): ResolutionResult<unknown>;
-  traceLabel?: string;
-}
-
-export interface ResolverPlanNode extends ResolverNode {
-  getNodesForRequest(request: unknown): ResolverNode[];
-  getRoutingNodes?(): ResolverNode[];
-  nodes?: ResolverNode[];
-  routeClass?: string | RouteClassResolver;
-  routePath?: string | RoutePathResolver;
-}
-
 export interface ResolvePlan {
-  attributePlan: ResolverPlanNode | null;
+  attributePlan: ResolverPlan | null;
   buildAttributePlan:
-    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlanNode | null)
+    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlan | null)
     | null;
   debugValue: string;
-  identifierPlan: ResolverPlanNode | null;
+  identifierPlan: ResolverPlan | null;
   plannedRoute: string;
   requestInput: RequestInput;
   resolvedRequest: ResolvedRequest | null;

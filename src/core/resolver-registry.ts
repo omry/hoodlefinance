@@ -1,8 +1,8 @@
-import type { ResolverNode } from "./planner";
+import type { Resolver } from "./resolver-classes";
 
-export type ResolverRegistryByCode = Record<string, ResolverNode>;
+export type ResolverRegistryByCode = Record<string, Resolver>;
 
-export type ResolverRegistryByName = Record<string, ResolverNode>;
+export type ResolverRegistryByName = Record<string, Resolver>;
 
 export interface MaterializedResolverRegistry {
   byCode: ResolverRegistryByCode;
@@ -18,21 +18,21 @@ function normalizeKey(value: string): string {
 export function getResolverByCode(
   registry: ResolverRegistryByCode,
   code: string,
-): ResolverNode | null {
+): Resolver | null {
   return registry[normalizeKey(code)] || null;
 }
 
 export function getRegisteredResolverByName(
   registry: ResolverRegistryByName,
   name: string,
-): ResolverNode | null {
+): Resolver | null {
   return registry[normalizeKey(name)] || null;
 }
 
 export function registerResolver(
   registry: ResolverRegistryByName,
-  resolver: ResolverNode,
-): ResolverNode {
+  resolver: Resolver,
+): Resolver {
   const name = normalizeKey((resolver && resolver.name) || "");
   const existing = name ? registry[name] || null : null;
 

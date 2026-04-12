@@ -14,33 +14,33 @@ import {
 } from "./request";
 import { createRequestInput, extractIsinFromRequestInput } from "./request-building";
 import { looksLikeIsin } from "./request";
-import type { ResolvePlan, ResolverNode, ResolverPlanNode } from "./planner";
-import type { ResolutionResult } from "./planner";
+import type { ResolvePlan, ResolutionResult } from "./planner";
+import type { Resolver, ResolverPlan } from "./resolver-classes";
 
 export interface DefaultResolvePlanBuilderDependencies {
   directIdentifierResolver: {
     resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
   };
-  getRootNode(): ResolverNode;
-  getPlanNodeByCode(code: string): ResolverPlanNode;
+  getRootNode(): Resolver;
+  getPlanNodeByCode(code: string): ResolverPlan;
 }
 
 export interface ResolvePlanDependencies {
-  buildIdentifierResolutionPlan(input: RequestInput): ResolverPlanNode | null;
+  buildIdentifierResolutionPlan(input: RequestInput): ResolverPlan | null;
   buildQuoteRoutePlanForResolvedRequest(
     input: RequestInput,
     request: ResolvedRequest,
-  ): ResolverPlanNode;
+  ): ResolverPlan;
   enterRequestInput(input: RawRequestInput): RequestInput;
   createRequestInput(identifier: string, attribute: string): RequestInput;
   listSupportedSourcesForRequest(input: RequestInput): string;
   resolveIdentifierDirect(input: RequestInput): ResolvedRequest | null;
 }
 
-function wrapSelectedResolverNode(
-  node: ResolverNode,
-  parentPlan?: ResolverPlanNode | null,
-): ResolverPlanNode {
+function wrapSelectedResolver(
+  node: Resolver,
+  parentPlan?: ResolverPlan | null,
+): ResolverPlan {
   const wrappedName = String((node && node.name) || "").trim();
   const refs =
     parentPlan &&
@@ -85,11 +85,11 @@ export function createDefaultResolvePlanBuilder(
   }
 
   function buildSelectedIdentifierPlan(
-    resolverOrPlan: ResolverNode,
+    resolverOrPlan: Resolver,
     _request: RequestInput,
-    parentPlan?: ResolverPlanNode | null,
-  ): ResolverPlanNode {
-    return wrapSelectedResolverNode(resolverOrPlan, parentPlan);
+    parentPlan?: ResolverPlan | null,
+  ): ResolverPlan {
+    return wrapSelectedResolver(resolverOrPlan, parentPlan);
   }
 
   function buildResolvePlanDependencies() {
@@ -109,7 +109,7 @@ export function createDefaultResolvePlanBuilder(
         return buildIdentifierResolutionPlan(input, planSelectionDeps);
       },
       buildQuoteRoutePlanForResolvedRequest(input, request) {
-        return wrapSelectedResolverNode(
+        return wrapSelectedResolver(
           buildQuoteRoutePlanForResolvedRequest(input, request, {
             getPlanNodeByCode: deps.getPlanNodeByCode,
           }),
@@ -262,7 +262,7 @@ export interface DebugRoutePlanLike {
 }
 
 export interface RuntimePlanLike {
-  nodes: ResolverNode[];
+  nodes: Resolver[];
   routeClass: string;
   routePath: string;
   routeState: Record<string, unknown>;

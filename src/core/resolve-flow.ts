@@ -1,6 +1,6 @@
-import { isResolverPlanNode } from "./plan-navigation";
+import { isResolverPlan } from "./plan-navigation";
 import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
-import type { ResolverNode, ResolverPlanNode } from "./planner";
+import type { Resolver, ResolverPlan } from "./resolver-classes";
 import { RawRequestInput } from "./request";
 import { type PlanRuntimeRefs } from "./plan-runtime-refs";
 import {
@@ -340,7 +340,7 @@ export class ResolveFlow {
   readonly graph: Graph.View;
   private readonly runtimeRefs: PlanRuntimeRefs;
   private readonly resolutionEnv: RequestResolutionDependencies | null;
-  #nodesByCode: Record<string, ResolverNode>;
+  #nodesByCode: Record<string, Resolver>;
 
   constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
     this.graph = buildGraphView(definition);
@@ -443,7 +443,7 @@ export class ResolveFlow {
     return result.value;
   }
 
-  #getRuntimeNode(code: string): ResolverNode {
+  #getRuntimeNode(code: string): Resolver {
     const normalizedCode = normalizeCode(code);
     const existingNode = this.#nodesByCode[normalizedCode];
 
@@ -481,10 +481,10 @@ export class ResolveFlow {
     return compiledNode;
   }
 
-  #getRuntimePlanNode(code: string): ResolverPlanNode {
+  #getRuntimePlanNode(code: string): ResolverPlan {
     const node = this.#getRuntimeNode(code);
 
-    if (!isResolverPlanNode(node)) {
+    if (!isResolverPlan(node)) {
       throw new Error(
         `Runtime graph node "${normalizeCode(code)}" is not a resolver plan node.`,
       );

@@ -1,4 +1,4 @@
-import type { ResolverNode } from "./planner";
+import type { Resolver } from "./resolver-classes";
 import {
   getResolverByCode,
   registerResolver,
@@ -9,7 +9,7 @@ import {
 import type { ResolverServices } from "./resolver-services";
 
 export interface ResolverClass {
-  fromSpec(code: string): ResolverNode;
+  fromSpec(code: string): Resolver;
 }
 
 export interface ResolverMaterializationDependencies {
@@ -62,6 +62,6 @@ export function materializeResolversByCode(
 export function getMaterializedResolverByCode(
   registry: MaterializedResolverRegistry,
   code: string,
-): ResolverNode | null {
+): Resolver | null {
   return getResolverByCode(registry.byCode, code);
 }

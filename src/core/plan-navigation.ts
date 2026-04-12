@@ -1,35 +1,35 @@
-import type { ResolverNode, ResolverPlanNode } from "./planner";
+import { type Resolver, ResolverPlan } from "./resolver-classes";
 
-export interface SelectSinglePlanNodeOptions<TNode extends ResolverNode> {
+export interface SelectSinglePlanNodeOptions<TNode extends Resolver> {
   allowNone?: boolean;
   onMultiple?: (selectedNodes: TNode[]) => Error;
   onNone?: () => Error;
 }
 
-export interface ResolveRoutingNodeOptions<TNode extends ResolverNode> {
+export interface ResolveRoutingNodeOptions<TNode extends Resolver> {
   allowNone?: boolean;
-  onMultiple?: (routingNode: ResolverPlanNode, selectedNodes: TNode[]) => Error;
-  onNone?: (routingNode: ResolverPlanNode) => Error;
+  onMultiple?: (routingNode: ResolverPlan, selectedNodes: TNode[]) => Error;
+  onNone?: (routingNode: ResolverPlan) => Error;
 }
 
-export interface FindNamedResolverNodeOptions {
+export interface FindNamedResolverOptions {
   requireCanHandle?: boolean;
 }
 
-function formatNodeName(node: ResolverNode | null | undefined): string {
+function formatNodeName(node: Resolver | null | undefined): string {
   return String((node && node.name) || "").trim() || "<unknown>";
 }
 
-export function isResolverPlanNode(node: unknown): node is ResolverPlanNode {
+export function isResolverPlan(node: unknown): node is ResolverPlan {
   return (
     !!node &&
-    typeof (node as ResolverPlanNode).getNodesForRequest === "function"
+    typeof (node as ResolverPlan).getNodesForRequest === "function"
   );
 }
 
-export function selectSinglePlanNode<TNode extends ResolverNode>(
+export function selectSinglePlanNode<TNode extends Resolver>(
   plan:
-    | Pick<ResolverPlanNode, "getNodesForRequest" | "name">
+    | Pick<ResolverPlan, "getNodesForRequest" | "name">
     | null
     | undefined,
   request: unknown,
@@ -64,15 +64,15 @@ export function selectSinglePlanNode<TNode extends ResolverNode>(
   return selectedNodes[0] ?? null;
 }
 
-export function resolveRoutingNode<TNode extends ResolverNode>(
-  node: ResolverNode | null | undefined,
+export function resolveRoutingNode<TNode extends Resolver>(
+  node: Resolver | null | undefined,
   request: unknown,
   options: ResolveRoutingNodeOptions<TNode> = {},
-): TNode | ResolverNode | null {
+): TNode | Resolver | null {
   let currentNode = node;
 
   while (
-    isResolverPlanNode(currentNode) &&
+    isResolverPlan(currentNode) &&
     ["step", "switch"].includes(currentNode.getRoutingNodeKind())
   ) {
     const routingNode = currentNode;
@@ -101,8 +101,8 @@ export function resolveRoutingNode<TNode extends ResolverNode>(
   return currentNode || null;
 }
 
-export function matchesResolverNodeName(
-  node: Pick<ResolverNode, "name"> | null | undefined,
+export function matchesResolverName(
+  node: Pick<Resolver, "name"> | null | undefined,
   name: string,
 ): boolean {
   const normalizedName = String(name || "")
@@ -119,9 +119,9 @@ export function matchesResolverNodeName(
 }
 
 export function listSearchablePlanNodes(
-  node: ResolverPlanNode | null | undefined,
+  node: ResolverPlan | null | undefined,
   request: unknown | null,
-): ResolverNode[] {
+): Resolver[] {
   if (!node) {
     return [];
   }
@@ -135,14 +135,14 @@ export function listSearchablePlanNodes(
   });
 }
 
-export function findNamedResolverNode(
-  node: ResolverNode | null | undefined,
+export function findNamedResolver(
+  node: Resolver | null | undefined,
   name: string,
   request: unknown | null,
-  options: FindNamedResolverNodeOptions = {},
-): ResolverNode | null {
+  options: FindNamedResolverOptions = {},
+): Resolver | null {
   const requireCanHandle = options.requireCanHandle !== false;
-  let nodes: ResolverNode[];
+  let nodes: Resolver[];
 
   if (!node || !name) {
     return null;
@@ -157,21 +157,21 @@ export function findNamedResolverNode(
     return null;
   }
 
-  if (matchesResolverNodeName(node, name)) {
+  if (matchesResolverName(node, name)) {
     return node;
   }
 
-  if (!isResolverPlanNode(node)) {
+  if (!isResolverPlan(node)) {
     return null;
   }
 
   nodes =
     requireCanHandle && request
       ? listSearchablePlanNodes(node, request)
-      : ((node.nodes || []) as ResolverNode[]);
+      : ((node.nodes || []) as Resolver[]);
 
   for (const childNode of nodes) {
-    const found = findNamedResolverNode(childNode, name, request, options);
+    const found = findNamedResolver(childNode, name, request, options);
     if (found) {
       return found;
     }

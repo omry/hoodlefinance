@@ -68,7 +68,7 @@ import {
   createRouteResult,
   type RouteResult,
 } from "./route-results";
-import type { ResolverNode, RouteJob, RuntimePlan } from "./planner";
+import type { RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClass } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
 import {

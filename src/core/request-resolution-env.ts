@@ -1,10 +1,7 @@
 import { resolveRoutingNode } from "./plan-navigation";
 import { buildAmbiguousDefaultAttributeRouteError } from "./plan-selection";
-import type {
-  ResolutionResult,
-  ResolverNode,
-  ResolverPlanNode,
-} from "./planner";
+import type { ResolutionResult } from "./planner";
+import type { Resolver, ResolverPlan } from "./resolver-classes";
 import {
   RawRequestInput,
   type RequestInput,
@@ -17,14 +14,14 @@ import type {
 import type { ResolverServices } from "./resolver-services";
 
 interface RequestResolutionRuntimeRefs {
-  defaultAttributeRoot: ResolverPlanNode;
+  defaultAttributeRoot: ResolverPlan;
   directIdentifierResolver: {
     resolve(requestInput: RequestInput): ResolutionResult<ResolvedRequest>;
   };
-  identifierRootPlan: ResolverPlanNode;
+  identifierRootPlan: ResolverPlan;
   rootClassifier: {
     resolve(requestInput: RawRequestInput): ResolutionResult<RequestInput>;
-  } | ResolverNode;
+  } | Resolver;
 }
 
 interface RequestResolutionEnvBuilderDependencies {
@@ -54,12 +51,12 @@ function classifyRawRequest(
 }
 
 function buildDefaultAttributePlan(
-  defaultAttributeRoot: ResolverPlanNode,
+  defaultAttributeRoot: ResolverPlan,
   resolvedRequest: ResolvedRequest,
-): ResolverPlanNode {
+): ResolverPlan {
   const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
     (plan) => !plan.canHandle || plan.canHandle(resolvedRequest),
-  ) as ResolverPlanNode[];
+  ) as ResolverPlan[];
 
   if (!candidatePlans.length) {
     throw new Error("No attribute route is available for this request.");
@@ -72,7 +69,7 @@ function buildDefaultAttributePlan(
     );
   }
 
-  return candidatePlans[0] as ResolverPlanNode;
+  return candidatePlans[0] as ResolverPlan;
 }
 
 function selectLookupExecution(
@@ -108,7 +105,7 @@ function selectLookupExecution(
       {
         allowNone: true,
       },
-    ) as ResolverPlanNode | null,
+    ) as ResolverPlan | null,
     resolvedRequest: null,
   };
 }

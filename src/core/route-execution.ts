@@ -1,5 +1,6 @@
 import type { RequestInput, ResolvedRequest } from "./request";
-import type { ResolverNode, RouteJob } from "./planner";
+import type { RouteJob } from "./planner";
+import type { Resolver } from "./resolver-classes";
 import { createResolverRouteJob, getCurrentRouteNode, prepareRouteJob } from "./route-jobs";
 import {
   applyRouteResult,
@@ -14,13 +15,14 @@ export interface RouteExecutor {
 }
 
 export function getRouteExecutor(
-  node: ResolverNode | null | undefined,
+  node: Resolver | null | undefined,
 ): RouteExecutor {
-  if (node && typeof node.executeBatch === "function") {
+  const batchNode = node as Resolver & { executeBatch?(jobs: RouteJob[]): Array<RouteResult | null> };
+  if (batchNode && typeof batchNode.executeBatch === "function") {
     return {
-      executorId: node.name || node.traceLabel || "resolver",
+      executorId: batchNode.name || batchNode.traceLabel || "resolver",
       executeBatch(jobs) {
-        return node.executeBatch ? (node.executeBatch(jobs) as Array<RouteResult | null>) : [];
+        return batchNode.executeBatch ? batchNode.executeBatch(jobs) : [];
       },
     };
   }
@@ -111,7 +113,7 @@ export function executeRouteJobs(
 }
 
 export function executeRouteNode(
-  node: ResolverNode,
+  node: Resolver,
   request: RequestInput | ResolvedRequest,
   errorMessage: (error: unknown) => string,
 ): RouteJob<Record<string, unknown>> {

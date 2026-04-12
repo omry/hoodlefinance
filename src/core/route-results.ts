@@ -1,9 +1,9 @@
 import type {
   DebugRoutePlan,
   ResolutionResult,
-  ResolverNode,
   RouteJob,
 } from "./planner";
+import type { Resolver } from "./resolver-classes";
 import { getCurrentRouteNode, mergeRouteState } from "./route-jobs";
 
 export interface RouteResult<StateChanges = Record<string, unknown>> {
@@ -144,7 +144,7 @@ export function shouldPreferLookupFailureMessage(message: unknown): boolean {
 
 export function applyRouteResult(
   job: RouteJob<Record<string, unknown>>,
-  node: ResolverNode | null | undefined,
+  node: Resolver | null | undefined,
   result: RouteResult | null | undefined,
   elapsedMs: number | null | undefined,
   errorMessage: (error: unknown) => string,

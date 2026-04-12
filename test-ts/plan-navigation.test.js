@@ -3,8 +3,8 @@ const test = require("node:test");
 
 const {
   RequestInput,
-  findNamedResolverNode,
-  matchesResolverNodeName,
+  findNamedResolver,
+  matchesResolverName,
   resolveRoutingNode,
   selectSinglePlanNode,
 } = require("../dist/ts/core/index.js");
@@ -165,14 +165,14 @@ test("resolver node name matching and lookup search by name", () => {
     nodes: [yahoo, ibkr],
   };
 
-  assert.equal(matchesResolverNodeName(yahoo, "YAHOO"), true);
-  assert.equal(matchesResolverNodeName(yahoo, "yahoo finance"), false);
-  assert.equal(findNamedResolverNode(root, "IBKR", request), ibkr);
-  assert.equal(findNamedResolverNode(root, "YAHOO", request), yahoo);
-  assert.equal(findNamedResolverNode(root, "MISSING", request), null);
+  assert.equal(matchesResolverName(yahoo, "YAHOO"), true);
+  assert.equal(matchesResolverName(yahoo, "yahoo finance"), false);
+  assert.equal(findNamedResolver(root, "IBKR", request), ibkr);
+  assert.equal(findNamedResolver(root, "YAHOO", request), yahoo);
+  assert.equal(findNamedResolver(root, "MISSING", request), null);
 });
 
-test("findNamedResolverNode searches raw searchable children, not only selector-filtered matches", () => {
+test("findNamedResolver searches raw searchable children, not only selector-filtered matches", () => {
   const request = createRequest();
   const yahoo = createResolverNode("YAHOO");
   const ibkr = createResolverNode("IBKR");
@@ -192,5 +192,5 @@ test("findNamedResolverNode searches raw searchable children, not only selector-
     sourceName: "ROOT",
   };
 
-  assert.equal(findNamedResolverNode(root, "YAHOO", request), yahoo);
+  assert.equal(findNamedResolver(root, "YAHOO", request), yahoo);
 });

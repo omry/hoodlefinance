@@ -2,23 +2,23 @@ import {
   resolveRoutingNode,
 } from "./plan-navigation";
 import type { RequestInput, ResolvedRequest } from "./request";
-import type { ResolverNode, ResolverPlanNode } from "./planner";
+import type { Resolver, ResolverPlan } from "./resolver-classes";
 
 export interface PlanSelectionDependencies {
   buildSelectedIdentifierPlan(
-    resolverOrPlan: ResolverNode,
+    resolverOrPlan: Resolver,
     request: RequestInput,
-    parentPlan?: ResolverPlanNode | null,
-  ): ResolverPlanNode;
+    parentPlan?: ResolverPlan | null,
+  ): ResolverPlan;
   extractIsinFromRequestInput(input: RequestInput): string;
-  listAllDefaultAttributePlans(): ResolverPlanNode[];
-  getPlanNodeByCode(code: string): ResolverPlanNode;
+  listAllDefaultAttributePlans(): ResolverPlan[];
+  getPlanNodeByCode(code: string): ResolverPlan;
 }
 
 
 export function buildAmbiguousDefaultAttributeRouteError(
   request: Pick<ResolvedRequest, "classification">,
-  plans: Array<Pick<ResolverPlanNode, "name">>,
+  plans: Array<Pick<ResolverPlan, "name">>,
 ): Error {
   const classification = String(request.classification || "")
     .trim()
@@ -37,12 +37,12 @@ export function buildAmbiguousDefaultAttributeRouteError(
 export function buildIdentifierResolutionPlan(
   input: RequestInput,
   deps: PlanSelectionDependencies,
-): ResolverPlanNode | null {
+): ResolverPlan | null {
   const isinValue = deps.extractIsinFromRequestInput(input);
   const identifierRoot = deps.getPlanNodeByCode("IDENTIFIER-ROOT");
   const identifierPlan = resolveRoutingNode(identifierRoot, input, {
     allowNone: true,
-  }) as ResolverPlanNode | null;
+  }) as ResolverPlan | null;
 
   if (!isinValue) {
     return null;
@@ -54,12 +54,12 @@ export function buildIdentifierResolutionPlan(
 export function buildDefaultAttributePlanForResolvedRequest(
   request: ResolvedRequest,
   deps: Pick<PlanSelectionDependencies, "getPlanNodeByCode">,
-): ResolverPlanNode {
+): ResolverPlan {
   const defaultAttributeRoot =
-    deps.getPlanNodeByCode("DEFAULT-ATTRIBUTE") as ResolverPlanNode;
+    deps.getPlanNodeByCode("DEFAULT-ATTRIBUTE") as ResolverPlan;
   const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
     (plan) => !plan.canHandle || plan.canHandle(request),
-  ) as ResolverPlanNode[];
+  ) as ResolverPlan[];
 
   if (!candidatePlans.length) {
     throw new Error("No attribute route is available for this request.");
@@ -69,7 +69,7 @@ export function buildDefaultAttributePlanForResolvedRequest(
     throw buildAmbiguousDefaultAttributeRouteError(request, candidatePlans);
   }
 
-  return candidatePlans[0] as ResolverPlanNode;
+  return candidatePlans[0] as ResolverPlan;
 }
 
 export function buildQuoteRoutePlanForResolvedRequest(
@@ -79,6 +79,6 @@ export function buildQuoteRoutePlanForResolvedRequest(
     PlanSelectionDependencies,
     "getPlanNodeByCode"
   >,
-): ResolverPlanNode {
+): ResolverPlan {
   return buildDefaultAttributePlanForResolvedRequest(request, deps);
 }

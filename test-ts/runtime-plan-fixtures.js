@@ -1,6 +1,6 @@
 const {
   buildPlanNodeFromSpec,
-  isResolverPlanNode,
+  isResolverPlan,
   materializeResolversByCode,
   PLAN_RESOLVER_CLASSES_BY_NAME,
 } = require("../dist/ts/core/index.js");
@@ -75,7 +75,7 @@ function createRuntimePlanLookup(definition, deps) {
   function getPlanNode(code) {
     const node = getNode(code);
 
-    if (!isResolverPlanNode(node)) {
+    if (!isResolverPlan(node)) {
       throw new Error(
         `Runtime graph node "${normalizeCode(code)}" is not a resolver plan node.`,
       );

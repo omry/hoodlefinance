@@ -1,4 +1,5 @@
-import type { ResolutionResult, ResolverPlanNode } from "./planner";
+import type { ResolutionResult } from "./planner";
+import type { ResolverPlan } from "./resolver-classes";
 import {
   RawRequestInput,
   type RequestInput,
@@ -26,16 +27,16 @@ interface ResolvablePlan<TRequest, TValue> {
 }
 
 export interface LookupExecutionSelection {
-  attributePlan: ResolverPlanNode | null;
+  attributePlan: ResolverPlan | null;
   buildAttributePlan:
-    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlanNode | null)
+    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlan | null)
     | null;
-  identifierPlan: ResolverPlanNode | null;
+  identifierPlan: ResolverPlan | null;
   resolvedRequest: ResolvedRequest | null;
 }
 
 interface ResolvedQuoteLookup {
-  attributePlan: ResolverPlanNode | null;
+  attributePlan: ResolverPlan | null;
   result: LookupResult;
   resolvedRequest: ResolvedRequest | null;
 }
@@ -92,7 +93,7 @@ function normalizePlanOutcome(
 }
 
 function requireResolvablePlan<TRequest, TValue>(
-  plan: ResolverPlanNode | null | undefined,
+  plan: ResolverPlan | null | undefined,
   errorMessage: string,
 ): ResolvablePlan<TRequest, TValue> {
   if (!plan || typeof plan.resolve !== "function") {
@@ -128,7 +129,7 @@ function classifyLookupInput(
 }
 
 export function resolvePlannedQuoteResult(
-  attributePlan: ResolverPlanNode,
+  attributePlan: ResolverPlan,
   resolvedRequest: ResolvedRequest,
 ): LookupResult {
   const resolvableAttributePlan = requireResolvablePlan<ResolvedRequest, unknown>(
@@ -240,7 +241,7 @@ function finalizeLookupValue(
   env: RequestResolutionDependencies,
   requestInput: RequestInput,
   lookupResult: LookupResult,
-  attributePlan?: ResolverPlanNode | null,
+  attributePlan?: ResolverPlan | null,
   resolvedRequest?: ResolvedRequest | null,
 ): LookupResult {
   if (lookupResult.status !== "success") {
@@ -255,7 +256,7 @@ function finalizeLookupValue(
     const fxResult =
       attributePlan &&
       typeof (
-        attributePlan as ResolverPlanNode & {
+        attributePlan as ResolverPlan & {
           resolveOutputCurrencyResult?: (
             request: RequestInput,
             value: Record<string, unknown>,
@@ -263,7 +264,7 @@ function finalizeLookupValue(
         }
       ).resolveOutputCurrencyResult === "function"
         ? (
-            attributePlan as ResolverPlanNode & {
+            attributePlan as ResolverPlan & {
               resolveOutputCurrencyResult(
                 request: RequestInput,
                 value: Record<string, unknown>,
