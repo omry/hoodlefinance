@@ -53,6 +53,7 @@ export class Resolver {
   readonly code: string;
   readonly name: string;
   readonly traceLabel?: string;
+  executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
 
   constructor(code = "") {
     this.code = code || "";
@@ -480,11 +481,13 @@ export abstract class ResolverPlan extends Resolver {
   }
 }
 
-export class RoutingPlan extends ResolverPlan {
+export class SwitchPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
     return "switch";
   }
 }
+
+export class RoutingPlan extends SwitchPlan {}
 
 export class StepPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
@@ -504,11 +507,7 @@ export class FirstSuccessPlan extends ResolverPlan {
 
 export class AttributeResolutionPlan extends FirstSuccessPlan {}
 
-export class EquityAttributeResolutionPlan extends AttributeResolutionPlan {
-  getRoutingNodeKind(): RoutingNodeKind {
-    return "switch";
-  }
-
+export class EquityAttributeResolutionPlan extends SwitchPlan {
   canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
@@ -533,7 +532,7 @@ export class PseQuoteResolutionPlan extends AttributeResolutionPlan {
 
 export class TickerQuoteResolutionPlan extends AttributeResolutionPlan {}
 
-export class FxAttributeResolutionPlan extends AttributeResolutionPlan {
+export class FxAttributeResolutionPlan extends SwitchPlan {
   buildRouteState(request: unknown): Record<string, unknown> {
     if (!request || !("fxPair" in (request as object))) return {};
     return buildFxQuoteRouteState(
