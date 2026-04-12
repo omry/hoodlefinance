@@ -1,8 +1,4 @@
-import type {
-  RequestInput,
-  ResolvedRequest,
-} from "./request";
-import type { Resolver, ResolverPlan } from "./resolver-classes";
+import type { Resolver } from "./resolver-classes";
 import type { ResolverServices } from "./resolver-services";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
@@ -73,18 +69,3 @@ export interface RouteTraceEntry {
   status: string;
 }
 
-export interface ResolvePlan {
-  attributePlan: ResolverPlan | null;
-  buildAttributePlan:
-    | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlan | null)
-    | null;
-  debugValue: string;
-  identifierPlan: ResolverPlan | null;
-  plannedRoute: string;
-  requestInput: RequestInput;
-  resolvedRequest: ResolvedRequest | null;
-}
-
-export interface DebugRoutePlan {
-  debugValue: string;
-}

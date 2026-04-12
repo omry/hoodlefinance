@@ -16,7 +16,7 @@ const {
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
   YahooFxResolver,
-  createDefaultResolvePlanBuilder,
+  ResolveFlow,
 } = require("../dist/ts/core/index.js");
 const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
@@ -79,84 +79,25 @@ function createRequestInput(identifier, attribute = "price") {
   });
 }
 
-function createBuildResolvePlanFromCompiledDag() {
-  const runtimeLookup = createRuntimePlanLookup(
-    DagPlan,
-    {
-      ...createResolverMaterializationDependencies(),
-      looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
-    },
-  );
-
-  return createDefaultResolvePlanBuilder({
-    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
-    getRootNode() {
-      return runtimeLookup.getNode("ROOT");
-    },
-    getPlanNodeByCode(code) {
-      return runtimeLookup.getPlanNode(code);
-    },
+test("compiled DagPlan classifies representative examples correctly", () => {
+  const looksLikeIsin = (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value));
+  const runtimeLookup = createRuntimePlanLookup(DagPlan, {
+    ...createResolverMaterializationDependencies(),
+    looksLikeIsin,
   });
-}
-
-function summarizeResolvePlan(plan) {
-  return {
-    attributeRoute:
-      plan.attributePlan && plan.resolvedRequest
-        ? plan.attributePlan.describe(plan.resolvedRequest)
-        : null,
-    hasResolvedRequest: !!plan.resolvedRequest,
-    identifierRoute: plan.identifierPlan
-      ? plan.identifierPlan.describe(plan.requestInput)
-      : null,
-    plannedRoute: plan.plannedRoute,
-  };
-}
-
-test("compiled DagPlan preserves representative planned routes", () => {
-  const buildDagResolvePlan = createBuildResolvePlanFromCompiledDag();
+  const rootNode = runtimeLookup.getNode("ROOT");
   const cases = [
-    {
-      example: "GOOG",
-      expectedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER",
-    },
-    {
-      example: "PSE:BDO",
-      expectedRoute: "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
-    },
-    {
-      example: "EURUSD",
-      expectedRoute: "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX",
-    },
-    {
-      example: "USDUSD",
-      expectedRoute: "DEFAULT-ATTRIBUTE:FX -> FX-IDENTITY",
-    },
-    {
-      example: "US02079K1079",
-      expectedRoute: "IDENTIFIER:ISIN -> ISIN:YAHOO",
-    },
-    {
-      example: "PHY077751022",
-      expectedRoute: "IDENTIFIER:ISIN -> ISIN:PSE -> ISIN:YAHOO",
-    },
+    { example: "GOOG", expectedClassification: "equity" },
+    { example: "PSE:BDO", expectedClassification: "equity" },
+    { example: "EURUSD", expectedClassification: "fx" },
+    { example: "USDUSD", expectedClassification: "fx" },
+    { example: "US02079K1079", expectedClassification: "isin" },
+    { example: "PHY077751022", expectedClassification: "isin" },
   ];
 
-  for (const { example, expectedRoute } of cases) {
-    const requestInput = createRequestInput(example, "price");
-    const dagPlan = buildDagResolvePlan(new RawRequestInput(example, "price"));
-
-    assert.equal(dagPlan.plannedRoute, expectedRoute, `${example} plannedRoute`);
-    assert.deepEqual(summarizeResolvePlan(dagPlan), {
-      attributeRoute:
-        dagPlan.attributePlan && dagPlan.resolvedRequest
-          ? dagPlan.attributePlan.describe(dagPlan.resolvedRequest)
-          : null,
-      hasResolvedRequest: !!dagPlan.resolvedRequest,
-      identifierRoute: dagPlan.identifierPlan
-        ? dagPlan.identifierPlan.describe(dagPlan.requestInput)
-        : null,
-      plannedRoute: expectedRoute,
-    });
+  for (const { example, expectedClassification } of cases) {
+    const outcome = rootNode.resolve(new RawRequestInput(example, "price"));
+    assert.equal(outcome.status, "success", `${example}: classification succeeded`);
+    assert.equal(outcome.value.classification, expectedClassification, `${example}: classification`);
   }
 });

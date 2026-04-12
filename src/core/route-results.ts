@@ -1,5 +1,4 @@
 import type {
-  DebugRoutePlan,
   ResolutionResult,
   RouteJob,
 } from "./planner";
@@ -14,17 +13,8 @@ export interface RouteResult<StateChanges = Record<string, unknown>> {
   value?: unknown;
 }
 
-export function createDebugRoutePlan(value: unknown): DebugRoutePlan {
-  return { debugValue: String(value ?? "") };
-}
-
-export function isDebugRoutePlan(plan: unknown): plan is DebugRoutePlan {
-  return !!plan && Object.prototype.hasOwnProperty.call(plan, "debugValue");
-}
-
 export function describePlanSource(
   plan:
-    | DebugRoutePlan
     | {
         routeClass?: unknown;
         routePath?: unknown;
@@ -34,10 +24,6 @@ export function describePlanSource(
 ): string {
   if (!plan) {
     return "";
-  }
-
-  if (isDebugRoutePlan(plan)) {
-    return String(plan.debugValue || "");
   }
 
   const routeClass =

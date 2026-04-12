@@ -7,26 +7,21 @@ const {
   buildRoutingPlanTreeNode,
   buildRoutingTableGrid,
   buildRoutingTableRow,
-  createDebugRoutePlan,
   formatRoutingPlanTreeLabel,
   getRoutingTableRows,
 } = require("../dist/ts/core/index.js");
 
 function createDeps() {
   return {
-    buildResolvePlan(requestInput) {
+    classifyRequest(requestInput) {
       const identifier = requestInput.identifier;
       return {
-        debugValue: "",
-        plannedRoute: `ROUTE:${identifier}`,
-        requestInput: {
-          classification:
-            identifier === "EURUSD" || identifier === "USDUSD"
-              ? "fx"
-              : identifier === "US02079K1079" || identifier === "PHY077751022"
-                ? "isin"
-                : "equity",
-        },
+        classification:
+          identifier === "EURUSD" || identifier === "USDUSD"
+            ? "fx"
+            : identifier === "US02079K1079" || identifier === "PHY077751022"
+              ? "isin"
+              : "equity",
       };
     },
   };
@@ -41,14 +36,12 @@ test("routing table helpers preserve the example-driven introspection shape", ()
   assert.deepEqual(buildRoutingTableRow({ example: "GOOG" }, deps), {
     classification: "equity",
     example: "GOOG",
-    route: "ROUTE:GOOG",
   });
 
   assert.equal(getRoutingTableRows(deps).length, ROUTING_TABLE_EXAMPLES.length);
   assert.deepEqual(buildRoutingTableGrid(deps)[0], [
     "classification",
     "example",
-    "planned route",
   ]);
 });
 
@@ -109,8 +102,3 @@ test("routing tree uses explicit node kinds from the resolver", () => {
   });
 });
 
-test("createDebugRoutePlan keeps the debug route payload simple", () => {
-  assert.deepEqual(createDebugRoutePlan("FX -> GOOGLE"), {
-    debugValue: "FX -> GOOGLE",
-  });
-});

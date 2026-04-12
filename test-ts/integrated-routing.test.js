@@ -18,7 +18,6 @@ const {
   DagPlan,
   RequestInput,
   buildQuoteRoutePlanForResolvedRequest,
-  createDefaultResolvePlanBuilder,
   getRoutingTableRows,
   ResolveFlow,
 } = require("../dist/ts/core/index.js");
@@ -93,49 +92,33 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
 }
 
 test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated results", () => {
-  createIntegratedCompiledDag();
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
     ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
   });
-  const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
-    getRootNode() {
-      return runtimeLookup.getNode("ROOT");
-    },
-    getPlanNodeByCode: runtimeLookup.getPlanNode,
-  });
 
+  const rootNode = runtimeLookup.getNode("ROOT");
   const deps = {
-    buildResolvePlan,
+    classifyRequest(rawInput) {
+      const outcome = rootNode.resolve(rawInput);
+      if (outcome.status !== "success") throw new Error(outcome.error);
+      return outcome.value;
+    },
   };
 
   const rows = getRoutingTableRows(deps);
   const findRow = (example) => rows.find(r => r.example === example);
 
-  // Partial match checks based on legacy test expectations
-  // Partial match checks based on actual TS integrated results
-  assert.equal(findRow("GOOG").route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
-  assert.equal(findRow("EURUSD").route, "DEFAULT-ATTRIBUTE:FX -> QUOTE:DEFAULT-FX");
-  assert.equal(findRow("USDUSD").route, "DEFAULT-ATTRIBUTE:FX -> FX-IDENTITY");
-  assert.equal(findRow("PSE:BDO").route, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER");
-
-  // Specific planned route check
-  const googPlan = buildResolvePlan(new RawRequestInput("GOOG", "price"));
-  assert.equal(googPlan.plannedRoute, "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER");
+  assert.equal(findRow("GOOG").classification, "equity");
+  assert.equal(findRow("EURUSD").classification, "fx");
+  assert.equal(findRow("USDUSD").classification, "fx");
+  assert.equal(findRow("PSE:BDO").classification, "equity");
 });
 
 test("integrated mode always follows the default PSE quote branch", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
     ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
-  });
-  const buildResolvePlan = createDefaultResolvePlanBuilder({
-    directIdentifierResolver: runtimeLookup.getNode("RESOLVED-IDENTIFIER"),
-    getRootNode() {
-      return runtimeLookup.getNode("ROOT");
-    },
-    getPlanNodeByCode: runtimeLookup.getPlanNode,
   });
   const request = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
     looksLikeIsin: () => false,
@@ -152,10 +135,6 @@ test("integrated mode always follows the default PSE quote branch", () => {
   assert.equal(plan.attributePlan.name, "DEFAULT-ATTRIBUTE:EQUITY");
   assert.equal(
     plan.attributePlan.describe(plan.resolvedRequest),
-    "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
-  );
-  assert.equal(
-    buildResolvePlan(new RawRequestInput("PSE:BDO", "price")).plannedRoute,
     "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
   );
 });

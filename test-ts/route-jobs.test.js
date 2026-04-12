@@ -8,7 +8,6 @@ const {
   buildTickerJobKey,
   createAttributeRouteJob,
     createQuoteRouteJob,
-    createResolvePlan,
     createResolverRouteJob,
     createRouteJob,
     getCurrentRouteNode,
@@ -101,20 +100,6 @@ test("createRouteJob initializes the mutable runtime fields predictably", () => 
   assert.equal(job.valueResolved, false);
 });
 
-test("createResolvePlan freezes the planner result shape", () => {
-  const requestInput = createRequestInput();
-  const plan = createResolvePlan({
-    debugValue: "EQUITY -> TICKER -> YAHOO",
-    plannedRoute: "EQUITY -> TICKER -> YAHOO",
-    requestInput,
-  });
-
-  assert.equal(Object.isFrozen(plan), true);
-  assert.equal(plan.debugValue, "EQUITY -> TICKER -> YAHOO");
-  assert.equal(plan.attributePlan, null);
-  assert.equal(plan.identifierPlan, null);
-  assert.equal(plan.requestInput, requestInput);
-});
 
 test("getCurrentRouteNode and mergeRouteState keep runtime job state synchronized", () => {
   const node = { name: "YAHOO" };

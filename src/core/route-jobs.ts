@@ -1,5 +1,4 @@
 import type {
-  ResolvePlan,
   RouteContext,
   RouteJob,
   RouteKind,
@@ -160,29 +159,3 @@ export function prepareRouteJob<RouteState extends Record<string, unknown>>(
   job.routePreferredLookupFailure = "";
 }
 
-export interface CreateResolvePlanOptions
-  extends Partial<Omit<ResolvePlan, "requestInput">> {
-  requestInput: ResolvePlan["requestInput"];
-}
-
-export function createResolvePlan(
-  options: CreateResolvePlanOptions,
-): Readonly<ResolvePlan> {
-  if (!options.requestInput) {
-    throw new Error("createResolvePlan requires requestInput.");
-  }
-
-  return Object.freeze({
-    attributePlan: options.attributePlan || null,
-    buildAttributePlan:
-      typeof options.buildAttributePlan === "function"
-        ? options.buildAttributePlan
-        : null,
-    debugValue: options.debugValue != null ? String(options.debugValue) : "",
-    identifierPlan: options.identifierPlan || null,
-    plannedRoute:
-      options.plannedRoute != null ? String(options.plannedRoute) : "",
-    requestInput: options.requestInput,
-    resolvedRequest: options.resolvedRequest || null,
-  }) as Readonly<ResolvePlan>;
-}

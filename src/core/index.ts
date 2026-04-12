@@ -26,7 +26,6 @@ export * from "./resolver-materialization";
 export * from "./resolver-registry";
 export * from "./routing-introspection";
 export * from "./spec-data";
-export * from "./resolve-plan";
 export { resolveRequestValue } from "./request-resolution";
 export type { RequestResolutionDependencies } from "./request-resolution";
 export * from "./route-jobs";

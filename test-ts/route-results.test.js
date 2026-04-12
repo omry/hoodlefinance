@@ -4,24 +4,14 @@ const test = require("node:test");
 const {
   applyRouteResult,
   collectFailedRouteLabels,
-  createDebugRoutePlan,
   createResolutionFailure,
   createResolutionSuccess,
   createRouteResult,
   defaultRouteFailureMessage,
   describePlanSource,
   formatRouteFailureMessage,
-  isDebugRoutePlan,
   shouldPreferLookupFailureMessage,
 } = require("../dist/ts/core/index.js");
-
-test("debug-route helpers preserve the current debug plan contract", () => {
-  const plan = createDebugRoutePlan("FX -> GOOGLE");
-
-  assert.equal(isDebugRoutePlan(plan), true);
-  assert.equal(describePlanSource(plan), "FX -> GOOGLE");
-  assert.equal(describePlanSource(null), "");
-});
 
 test("describePlanSource handles normal and forced route labels", () => {
   assert.equal(

@@ -1,6 +1,6 @@
 import type { RoutingNodeKind } from "./planner";
 import type { Resolver, ResolverPlan } from "./resolver-classes";
-import { RawRequestInput, type RequestClassification, type RequestInput } from "./request";
+import { RawRequestInput, type RequestClassification } from "./request";
 
 export interface RoutingTableExample {
   example: string;
@@ -9,7 +9,6 @@ export interface RoutingTableExample {
 export interface RoutingTableRow {
   classification: RequestClassification;
   example: string;
-  route: string;
 }
 
 export interface RoutingPlanTreeNode {
@@ -31,11 +30,7 @@ export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
 ];
 
 export interface RoutingIntrospectionDependencies {
-  buildResolvePlan(requestInput: RawRequestInput): {
-    debugValue: string;
-    plannedRoute: string;
-    requestInput: Pick<RequestInput, "classification">;
-  };
+  classifyRequest(requestInput: RawRequestInput): Pick<{ classification: RequestClassification }, "classification">;
 }
 
 interface RoutingPlanNodeLike {
@@ -74,14 +69,11 @@ export function buildRoutingTableRow(
   row: RoutingTableExample,
   deps: RoutingIntrospectionDependencies,
 ): RoutingTableRow {
-  const resolvePlan = deps.buildResolvePlan(
-    new RawRequestInput(row.example, "price"),
-  );
+  const classified = deps.classifyRequest(new RawRequestInput(row.example, "price"));
 
   return {
-    classification: resolvePlan.requestInput.classification,
+    classification: classified.classification,
     example: row.example,
-    route: resolvePlan.debugValue || resolvePlan.plannedRoute,
   };
 }
 
@@ -95,10 +87,10 @@ export function buildRoutingTableGrid(
   deps: RoutingIntrospectionDependencies,
 ): string[][] {
   const rows = getRoutingTableRows(deps);
-  const grid = [["classification", "example", "planned route"]];
+  const grid = [["classification", "example"]];
 
   for (const row of rows) {
-    grid.push([row.classification, row.example, row.route]);
+    grid.push([row.classification, row.example]);
   }
 
   return grid;
