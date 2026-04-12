@@ -38,6 +38,13 @@ These guidelines are intended to reduce common LLM coding mistakes. Apply them a
 - Do not delete unrelated pre-existing dead code unless asked.
 - Every changed line should trace directly to the user's request.
 
+### Prefer built-in tools over shell commands
+
+Use `Read`, `Grep`, `Glob`, `Edit`, and `Write` for file operations. Reserve
+`Bash` for things that genuinely require shell execution: git commands,
+deleting files, or `npm run <script>` for tests, linting, building, and other
+repo tooling.
+
 ### Goal-driven execution
 
 - Translate requests into concrete success criteria that can be verified.
