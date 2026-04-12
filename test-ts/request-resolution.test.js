@@ -37,18 +37,11 @@ function createEnv(overrides = {}) {
   });
 
   return {
-    classifyRawRequest(requestInput) {
-      if (typeof overrides.classifyRawRequest === "function") {
-        return overrides.classifyRawRequest(requestInput);
-      }
-
-      throw new Error("classifyRawRequest should not be called for this test");
-    },
-    selectLookupExecution() {
+    selectLookupExecution(rawInput) {
       counters.selectLookupExecution += 1;
 
       if (typeof overrides.selectLookupExecution === "function") {
-        return overrides.selectLookupExecution.apply(this, arguments);
+        return overrides.selectLookupExecution.call(this, rawInput);
       }
 
       throw new Error("selectLookupExecution should not be called for this test");
@@ -79,84 +72,60 @@ function createRequestInput(overrides = {}) {
 
 test("resolveRequestValue rejects deferred info modes before direct isin fast paths", () => {
   const infoModeResult = resolveRequestValue(
-    createEnv(),
-    createRequestInput({
-      attribute: "isin",
-      infoMode: "source-list",
-      ticker: "ISIN:US02079K1079",
+    createEnv({
+      selectLookupExecution() {
+        return {
+          attributePlan: null, buildAttributePlan: null, identifierPlan: null, resolvedRequest: null,
+          requestInput: createRequestInput({ attribute: "isin", infoMode: "source-list", ticker: "ISIN:US02079K1079" }),
+        };
+      },
     }),
+    new RawRequestInput("ISIN:US02079K1079", "isin"),
   );
 
   assert.equal(infoModeResult.status, "failure");
   assert.equal(infoModeResult.route, "(none)");
-  assert.match(
-    infoModeResult.error,
-    /Ticker route introspection is not yet available\./,
-  );
+  assert.match(infoModeResult.error, /Ticker route introspection is not yet available\./);
 
   const sourceOverrideResult = resolveRequestValue(
-    createEnv(),
-    createRequestInput({
-      attribute: "isin",
-      identifier: "PSE:BDO@YAHOO",
-      infoMode: "source-override",
-      ticker: "PSE:BDO",
+    createEnv({
+      selectLookupExecution() {
+        return {
+          attributePlan: null, buildAttributePlan: null, identifierPlan: null, resolvedRequest: null,
+          requestInput: createRequestInput({ attribute: "isin", identifier: "PSE:BDO@YAHOO", infoMode: "source-override", ticker: "PSE:BDO" }),
+        };
+      },
     }),
+    new RawRequestInput("PSE:BDO@YAHOO", "isin"),
   );
 
   assert.equal(sourceOverrideResult.status, "failure");
   assert.equal(sourceOverrideResult.route, "(none)");
-  assert.match(
-    sourceOverrideResult.error,
-    /"@YAHOO" is not available for this request\./,
-  );
+  assert.match(sourceOverrideResult.error, /"@YAHOO" is not available for this request\./);
 });
 
 test("resolveRequestValue records raw-input classification as part of lookup flow", () => {
-  let classifyRawRequestCalls = 0;
   let selectLookupExecutionCalls = 0;
   const env = createEnv({
-    classifyRawRequest(input) {
-      classifyRawRequestCalls += 1;
-      assert.equal(input instanceof RawRequestInput, true);
-
-      return createRequestInput({
-        attribute: input.attribute,
-        identifier: input.identifier,
-        ticker: input.identifier,
-      });
-    },
-    selectLookupExecution(requestInput) {
+    selectLookupExecution(rawInput) {
       selectLookupExecutionCalls += 1;
-      assert.equal(requestInput.ticker, "GOOG");
+      assert.equal(rawInput instanceof RawRequestInput, true);
+      assert.equal(rawInput.identifier, "GOOG");
       return {
         attributePlan: {
-          describe() {
-            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
-          },
-          resolve() {
-            return {
-              status: "success",
-              value: {
-                regularMarketPrice: 123.45,
-              },
-            };
-          },
+          describe() { return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
+          resolve() { return { status: "success", value: { regularMarketPrice: 123.45 } }; },
         },
         buildAttributePlan: null,
         identifierPlan: null,
-        resolvedRequest: {
-          attribute: "price",
-          classification: "equity",
-          identifier: "GOOG",
-        },
+        requestInput: createRequestInput({ attribute: rawInput.attribute, identifier: rawInput.identifier, ticker: rawInput.identifier }),
+        resolvedRequest: { attribute: "price", classification: "equity", identifier: "GOOG" },
       };
     },
   });
 
   const result = resolveRequestValue(env, new RawRequestInput("GOOG", "price"));
 
-  assert.equal(classifyRawRequestCalls, 1);
   assert.equal(selectLookupExecutionCalls, 1);
   assert.equal(result.status, "success");
   assert.equal(result.value, 123.45);
@@ -194,12 +163,15 @@ test("resolveRequestValue resolves direct isin requests without quote planning",
     },
   });
 
-  const pseResult = resolveRequestValue(
-    pseEnv,
-    createRequestInput({ attribute: "isin", ticker: "PSE:BDO" }),
-  );
+  pseEnv.selectLookupExecution = function() {
+    return {
+      attributePlan: null, buildAttributePlan: null, identifierPlan: null, resolvedRequest: null,
+      requestInput: createRequestInput({ attribute: "isin", ticker: "PSE:BDO" }),
+    };
+  };
 
-  assert.equal(pseEnv.counters.selectLookupExecution, 0);
+  const pseResult = resolveRequestValue(pseEnv, new RawRequestInput("PSE:BDO", "isin"));
+
   assert.equal(pseResult.status, "success");
   assert.equal(pseResult.value, "PHY077751022");
 
@@ -225,12 +197,15 @@ test("resolveRequestValue resolves direct isin requests without quote planning",
     },
   });
 
-  const lonResult = resolveRequestValue(
-    lonEnv,
-    createRequestInput({ attribute: "isin", ticker: "LON:SJPA" }),
-  );
+  lonEnv.selectLookupExecution = function() {
+    return {
+      attributePlan: null, buildAttributePlan: null, identifierPlan: null, resolvedRequest: null,
+      requestInput: createRequestInput({ attribute: "isin", ticker: "LON:SJPA" }),
+    };
+  };
 
-  assert.equal(lonEnv.counters.selectLookupExecution, 0);
+  const lonResult = resolveRequestValue(lonEnv, new RawRequestInput("LON:SJPA", "isin"));
+
   assert.equal(lonResult.status, "success");
   assert.equal(lonResult.value, "US0000000001");
 });
@@ -242,26 +217,13 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
       selectLookupExecutionCalls += 1;
       return {
         attributePlan: {
-          describe() {
-            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
-          },
-          resolve() {
-            return {
-              status: "success",
-              value: {
-                exchangeName: "NMS",
-                fullExchangeName: "NasdaqGS",
-                symbol: "GOOG",
-              },
-            };
-          },
+          describe() { return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
+          resolve() { return { status: "success", value: { exchangeName: "NMS", fullExchangeName: "NasdaqGS", symbol: "GOOG" } }; },
         },
         buildAttributePlan: null,
         identifierPlan: null,
-        resolvedRequest: {
-          attribute: "price",
-          identifier: "GOOG",
-        },
+        requestInput: createRequestInput({ attribute: "isin", ticker: "GOOG" }),
+        resolvedRequest: { attribute: "price", identifier: "GOOG" },
       };
     },
     httpFetch(url) {
@@ -279,10 +241,7 @@ test("resolveRequestValue still uses quote planning for ambiguous isin requests"
     },
   });
 
-  const result = resolveRequestValue(
-    env,
-    createRequestInput({ attribute: "isin", ticker: "GOOG" }),
-  );
+  const result = resolveRequestValue(env, new RawRequestInput("GOOG", "isin"));
 
   assert.equal(selectLookupExecutionCalls, 1);
   assert.equal(result.status, "success");
@@ -298,25 +257,13 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
       selectLookupExecutionCalls += 1;
       return {
         attributePlan: {
-          describe() {
-            return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER";
-          },
-          resolve() {
-            return {
-              status: "success",
-              value: {
-                exchangeName: "LSE",
-                symbol: "VOD.L",
-              },
-            };
-          },
+          describe() { return "DEFAULT-ATTRIBUTE:EQUITY -> QUOTE:TICKER"; },
+          resolve() { return { status: "success", value: { exchangeName: "LSE", symbol: "VOD.L" } }; },
         },
         buildAttributePlan: null,
         identifierPlan: null,
-        resolvedRequest: {
-          attribute: "price",
-          identifier: "VOD",
-        },
+        requestInput: createRequestInput({ attribute: "isin", ticker: "VOD" }),
+        resolvedRequest: { attribute: "price", identifier: "VOD" },
       };
     },
     httpFetch(url) {
@@ -349,14 +296,8 @@ test("resolveRequestValue supports quote-based LON isin resolution", () => {
     },
   });
 
-  const result = resolveRequestValue(
-    env,
-    createRequestInput({ attribute: "isin", ticker: "VOD" }),
-  );
-  const repeatedResult = resolveRequestValue(
-    env,
-    createRequestInput({ attribute: "isin", ticker: "VOD" }),
-  );
+  const result = resolveRequestValue(env, new RawRequestInput("VOD", "isin"));
+  const repeatedResult = resolveRequestValue(env, new RawRequestInput("VOD", "isin"));
 
   assert.equal(selectLookupExecutionCalls, 2);
   assert.equal(fetchCalls, 1);
@@ -397,18 +338,13 @@ test("resolveRequestValue uses the attribute plan for output-currency conversion
         },
         buildAttributePlan: null,
         identifierPlan: null,
-        resolvedRequest: {
-          attribute: "price@USD",
-          identifier: "BDO",
-        },
+        requestInput: createRequestInput({ attribute: "price@USD", ticker: "PSE:BDO" }),
+        resolvedRequest: { attribute: "price@USD", identifier: "BDO" },
       };
     },
   });
 
-  const result = resolveRequestValue(
-    env,
-    createRequestInput({ attribute: "price@USD", ticker: "PSE:BDO" }),
-  );
+  const result = resolveRequestValue(env, new RawRequestInput("PSE:BDO", "price@USD"));
 
   assert.equal(conversionCalls, 1);
   assert.equal(result.status, "success");
@@ -469,19 +405,13 @@ test("resolveRequestValue uses buildAttributePlan for identifier-first output-cu
             };
           },
         },
+        requestInput: createRequestInput({ attribute: "price@USD", ticker: "PHY077751022" }),
         resolvedRequest: null,
       };
     },
   });
 
-  const result = resolveRequestValue(
-    env,
-    createRequestInput({
-      attribute: "price@USD",
-      classification: "isin",
-      ticker: "PHY077751022",
-    }),
-  );
+  const result = resolveRequestValue(env, new RawRequestInput("PHY077751022", "price@USD"));
 
   assert.equal(conversionCalls, 1);
   assert.equal(result.status, "success");

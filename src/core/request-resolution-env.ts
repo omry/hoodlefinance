@@ -29,26 +29,6 @@ interface RequestResolutionEnvBuilderDependencies {
   resolverServices?: ResolverServices;
 }
 
-function classifyRawRequest(
-  rootClassifier: RequestResolutionRuntimeRefs["rootClassifier"],
-  requestInput: RawRequestInput,
-): ReturnType<
-  NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
-> {
-  if (!rootClassifier || typeof rootClassifier.resolve !== "function") {
-    throw new Error("Request classification failed.");
-  }
-
-  const outcome = rootClassifier.resolve(requestInput);
-
-  if (outcome.status !== "success") {
-    throw new Error(outcome.error || "Request classification failed.");
-  }
-
-  return outcome.value as ReturnType<
-    NonNullable<RequestResolutionDependencies["classifyRawRequest"]>
-  >;
-}
 
 function buildDefaultAttributePlan(
   defaultAttributeRoot: ResolverPlan,
@@ -74,8 +54,15 @@ function buildDefaultAttributePlan(
 
 function selectLookupExecution(
   refs: RequestResolutionRuntimeRefs,
-  requestInput: RequestInput,
+  rawRequestInput: RawRequestInput,
 ): LookupExecutionSelection {
+  const classifyOutcome = refs.rootClassifier.resolve(rawRequestInput);
+
+  if (classifyOutcome.status !== "success") {
+    throw new Error(classifyOutcome.error || "Request classification failed.");
+  }
+
+  const requestInput = classifyOutcome.value as RequestInput;
   const outcome = refs.directIdentifierResolver.resolve(requestInput);
   const resolvedRequest = outcome.status === "success" ? outcome.value : null;
 
@@ -87,6 +74,7 @@ function selectLookupExecution(
       ),
       buildAttributePlan: null,
       identifierPlan: null,
+      requestInput,
       resolvedRequest,
     };
   }
@@ -106,6 +94,7 @@ function selectLookupExecution(
         allowNone: true,
       },
     ) as ResolverPlan | null,
+    requestInput,
     resolvedRequest: null,
   };
 }
@@ -117,8 +106,6 @@ export function createRequestResolutionEnv(
   const resolverServices = deps.resolverServices || null;
 
   return {
-    classifyRawRequest: (requestInput) =>
-      classifyRawRequest(refs.rootClassifier, requestInput),
     getCachedString: (cacheKey) =>
       typeof resolverServices?.getCachedString === "function"
         ? resolverServices.getCachedString(cacheKey)

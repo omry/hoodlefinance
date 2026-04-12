@@ -32,6 +32,7 @@ export interface LookupExecutionSelection {
     | ((resolvedIdentifierRequest: ResolvedRequest) => ResolverPlan | null)
     | null;
   identifierPlan: ResolverPlan | null;
+  requestInput: RequestInput;
   resolvedRequest: ResolvedRequest | null;
 }
 
@@ -42,12 +43,11 @@ interface ResolvedQuoteLookup {
 }
 
 export interface RequestResolutionDependencies {
-  classifyRawRequest(requestInput: RawRequestInput): RequestInput;
   httpFetch(url: string): TextHttpResponse;
   getCachedString(cacheKey: string): string;
   looksLikeIsin(value: string): boolean;
   putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
-  selectLookupExecution(requestInput: RequestInput): LookupExecutionSelection;
+  selectLookupExecution(requestInput: RawRequestInput): LookupExecutionSelection;
 }
 
 export interface LookupResult {
@@ -117,16 +117,6 @@ function validateDeferredLookupModes(requestInput: RequestInput): void {
   }
 }
 
-function classifyLookupInput(
-  env: RequestResolutionDependencies,
-  requestInput: RawRequestInput | RequestInput,
-): RequestInput {
-  if (!(requestInput instanceof RawRequestInput)) {
-    return requestInput;
-  }
-
-  return env.classifyRawRequest(requestInput);
-}
 
 export function resolvePlannedQuoteResult(
   attributePlan: ResolverPlan,
@@ -324,15 +314,17 @@ function finalizeLookupValue(
 
 export function resolveRequestValue(
   env: RequestResolutionDependencies,
-  requestInput: RawRequestInput | RequestInput,
+  requestInput: RawRequestInput,
 ): LookupResult {
-  let normalizedRequestInput: RequestInput;
+  let lookupSelection: LookupExecutionSelection | null = null;
 
   try {
-    normalizedRequestInput = classifyLookupInput(env, requestInput);
+    lookupSelection = env.selectLookupExecution(requestInput);
   } catch (error) {
     return failureResult("(none)", error);
   }
+
+  const normalizedRequestInput = lookupSelection.requestInput;
 
   try {
     validateDeferredLookupModes(normalizedRequestInput);
@@ -346,14 +338,6 @@ export function resolveRequestValue(
     if (directResult) {
       return directResult;
     }
-  } catch (error) {
-    return failureResult("(none)", error);
-  }
-
-  let lookupSelection: LookupExecutionSelection | null = null;
-
-  try {
-    lookupSelection = env.selectLookupExecution(normalizedRequestInput);
   } catch (error) {
     return failureResult("(none)", error);
   }
