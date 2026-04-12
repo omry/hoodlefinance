@@ -1,6 +1,6 @@
 ---
 status: Active
-updated: 2026-04-12
+updated: 2026-04-13
 summary: Replace ad-hoc plan selection with a graph-driven driver that executes the descriptive graph directly.
 ---
 
@@ -252,7 +252,10 @@ Open design questions for the next pass:
 
 ## Rollout
 
-1. define the driver interface and the node execution contract
+1. ~~define the driver interface and the node execution contract~~ — done:
+   graph topology updated (ISIN-RECEIVER, ISIN/STOCK/FX groups), ROOT absorbs
+   `DirectIdentifierResolver` returning `ClassifiedInput`, `NodeResult` and
+   `NodeExecutor` types added in `driver-types.ts`
 2. implement the driver for representative request families
 3. wire the driver into `ResolveFlow.resolveAttribute` alongside the existing
    path
