@@ -8,10 +8,10 @@ import type {
   ResolutionResult,
   RouteClassResolver,
   RouteJob,
-  RoutingNodeKind,
   RoutePathResolver,
   RuntimePlan,
 } from "./planner";
+import { RoutingNodeKind } from "./planner";
 import { FxRequest, RequestInput } from "./request";
 import {
   extractAttributeValue,
@@ -98,7 +98,7 @@ export class Resolver {
   }
 
   getRoutingNodeKind(): RoutingNodeKind {
-    return "leaf";
+    return RoutingNodeKind.Leaf;
   }
 
   selectNext(
@@ -519,7 +519,7 @@ export abstract class ResolverPlan extends Resolver {
 
 export class SwitchPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
-    return "switch";
+    return RoutingNodeKind.Switch;
   }
 
   selectNext(
@@ -551,7 +551,7 @@ export class SwitchPlan extends ResolverPlan {
 
 export class StepPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
-    return "step";
+    return RoutingNodeKind.Step;
   }
 
   getNodesForRequest(_request: unknown): Resolver[] {
@@ -579,7 +579,7 @@ export class StepPlan extends ResolverPlan {
 
 export class FirstSuccessPlan extends ResolverPlan {
   getRoutingNodeKind(): RoutingNodeKind {
-    return "try each";
+    return RoutingNodeKind.TryEach;
   }
 
   selectNext(

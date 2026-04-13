@@ -1,4 +1,4 @@
-import type { RoutingNodeKind } from "./planner";
+import { RoutingNodeKind } from "./planner";
 import type { Resolver, ResolverPlan } from "./resolver-classes";
 import { RawRequestInput, type RequestClassification } from "./request";
 
@@ -102,7 +102,7 @@ export function buildRoutingPlanTreeNode(
   if (!node) {
     return {
       children: [],
-      kind: "leaf",
+      kind: RoutingNodeKind.Leaf,
       label: "NULL",
     };
   }
@@ -115,7 +115,9 @@ export function buildRoutingPlanTreeNode(
           .getRoutingNodes()
           .map((childNode) => buildRoutingPlanTreeNode(childNode))
       : [],
-    kind: node.getRoutingNodeKind ? node.getRoutingNodeKind() : "leaf",
+    kind: node.getRoutingNodeKind
+      ? node.getRoutingNodeKind()
+      : RoutingNodeKind.Leaf,
     label: isPlanNode
       ? formatRoutingPlanTreeLabel(node.name || "")
       : String(node.describeRoutingNode()),

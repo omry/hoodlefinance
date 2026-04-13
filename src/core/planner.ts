@@ -2,11 +2,12 @@ import type { Resolver } from "./resolver-classes";
 import type { ResolverServices } from "./resolver-services";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
-export type RoutingNodeKind =
-  | "leaf"
-  | "switch"
-  | "try each"
-  | "step";
+export enum RoutingNodeKind {
+  Leaf = "leaf",
+  Switch = "switch",
+  TryEach = "try each",
+  Step = "step",
+}
 
 export type ResolutionStatus = "success" | "failure";
 

@@ -1,4 +1,5 @@
 import { type Resolver, ResolverPlan } from "./resolver-classes";
+import { RoutingNodeKind } from "./planner";
 
 export interface SelectSinglePlanNodeOptions<TNode extends Resolver> {
   allowNone?: boolean;
@@ -73,7 +74,9 @@ export function resolveRoutingNode<TNode extends Resolver>(
 
   while (
     isResolverPlan(currentNode) &&
-    ["step", "switch"].includes(currentNode.getRoutingNodeKind())
+    [RoutingNodeKind.Step, RoutingNodeKind.Switch].includes(
+      currentNode.getRoutingNodeKind(),
+    )
   ) {
     const routingNode = currentNode;
 

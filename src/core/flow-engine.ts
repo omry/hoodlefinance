@@ -1,6 +1,7 @@
 import type { ResolveFlow } from "./resolve-flow";
 import type { Graph } from "./graph";
 import type { SelectNextContext } from "./core-resolvers";
+import { RoutingNodeKind } from "./planner";
 import { getGraphNodeNextIds } from "./graph";
 
 // ROOT (RequestClassifierResolver) outputs { requestInput, resolvedRequest }.
@@ -100,7 +101,7 @@ export class FlowEngine {
   async #executeRoutingNode(
     node: Graph.Node,
     resolver: {
-      getRoutingNodeKind(): string;
+      getRoutingNodeKind(): RoutingNodeKind;
       selectNext(
         request: unknown,
         context?: SelectNextContext,
@@ -126,13 +127,13 @@ export class FlowEngine {
         break;
       }
 
-      if (kind !== "step" && selectedChildren.length > 1) {
+      if (kind !== RoutingNodeKind.Step && selectedChildren.length > 1) {
         throw new Error(
           `Routing node "${node.id}" selected ${selectedChildren.length} children; expected at most 1.`,
         );
       }
 
-      if (kind === "step") {
+      if (kind === RoutingNodeKind.Step) {
         for (const selectedChild of selectedChildren) {
           const childResult = await this.#executeNode(
             selectedChild,
@@ -154,7 +155,7 @@ export class FlowEngine {
         graph,
       );
 
-      if (kind === "switch") {
+      if (kind === RoutingNodeKind.Switch) {
         return childResult;
       }
 
@@ -168,7 +169,7 @@ export class FlowEngine {
     }
 
     const exhaustedStatus =
-      kind === "try each"
+      kind === RoutingNodeKind.TryEach
         ? EnvelopeStatus.TerminalFailure
         : EnvelopeStatus.Failure;
     return { value: envelope.value, status: exhaustedStatus };
@@ -191,7 +192,7 @@ export class FlowEngine {
     // select a next child (switch), fan out to all children (step), or try
     // children in order (try each). Leaf nodes resolve values directly.
     let outEnvelope: Envelope;
-    if (kind !== "leaf") {
+    if (kind !== RoutingNodeKind.Leaf) {
       if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
         return { value: envelope.value, status: EnvelopeStatus.Failure };
       }
@@ -225,7 +226,7 @@ export class FlowEngine {
       };
     }
 
-    if (kind !== "leaf") {
+    if (kind !== RoutingNodeKind.Leaf) {
       return this.#executeRoutingNode(node, resolver, outEnvelope, graph);
     }
 
