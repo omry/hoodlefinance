@@ -10,6 +10,7 @@ export {
   FirstSuccessPlan,
   Resolver,
   ResolverPlan,
+  type SelectNextContext,
   StepPlan,
   SwitchPlan,
 } from "./core-resolvers";
@@ -17,6 +18,7 @@ import {
   FirstSuccessPlan,
   Resolver,
   ResolverPlanOptions,
+  type SelectNextContext,
   StepPlan,
   SwitchPlan,
   type PlanRuntimeRefs,
@@ -123,13 +125,26 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
     }
   }
 
-  getNodesForRequest(request: unknown): Resolver[] {
+  selectNext(
+    request: unknown,
+    context: SelectNextContext = {},
+  ): Resolver[] {
+    if (this.getSelectedNodeCodes(context).size > 0) {
+      return [];
+    }
+
     const localNode = this.nodes[0];
     if (localNode && (!localNode.canHandle || localNode.canHandle(request))) {
-      return [localNode];
+      const selectedNode = this.markSelectedNode(localNode, context);
+      return selectedNode ? [selectedNode] : [];
     }
     const resolverNode = this.nodes[1];
-    return resolverNode ? [resolverNode] : [];
+    if (!resolverNode) {
+      return [];
+    }
+
+    const selectedNode = this.markSelectedNode(resolverNode, context);
+    return selectedNode ? [selectedNode] : [];
   }
 
   getRoutingNodes(): Resolver[] {

@@ -1,5 +1,6 @@
 import type { ResolveFlow } from "./resolve-flow";
 import type { Graph } from "./graph";
+import type { SelectNextContext } from "./core-resolvers";
 import { getGraphNodeNextIds } from "./graph";
 
 // ROOT (RequestClassifierResolver) outputs { requestInput, resolvedRequest }.
@@ -46,6 +47,47 @@ export class FlowEngine {
     return !childResolver?.canHandle || childResolver.canHandle(value);
   }
 
+  #getSelectedChild(
+    node: Graph.Node,
+    resolver: {
+      selectNext(
+        request: unknown,
+        context?: SelectNextContext,
+      ): Array<{ code: string }>;
+    },
+    request: object,
+    childNodes: Graph.Node[],
+    context: SelectNextContext,
+  ): Graph.Node[] {
+    if (typeof resolver.selectNext !== "function") {
+      throw new Error(`Routing node "${node.id}" must implement selectNext().`);
+    }
+
+    const selectedResolvers = resolver.selectNext(request, context);
+    if (!selectedResolvers.length) {
+      return [];
+    }
+
+    return selectedResolvers.map((selectedResolver) => {
+      const selectedCode = String(selectedResolver.code || "").trim();
+      if (!selectedCode) {
+        throw new Error(`Routing node "${node.id}" selected a child without a code.`);
+      }
+
+      const selectedChild = childNodes.find(
+        (childNode) => childNode.id === selectedCode,
+      );
+
+      if (!selectedChild) {
+        throw new Error(
+          `Routing node "${node.id}" selected unknown child "${selectedCode}".`,
+        );
+      }
+
+      return selectedChild;
+    });
+  }
+
   async execute(input: Envelope): Promise<Envelope> {
     const graph = this.#flow.getGraph();
     const root = graph.getRoot();
@@ -53,6 +95,83 @@ export class FlowEngine {
       throw new Error("Graph has no ROOT node.");
     }
     return this.#executeNode(root, input, graph);
+  }
+
+  async #executeRoutingNode(
+    node: Graph.Node,
+    resolver: {
+      getRoutingNodeKind(): string;
+      selectNext(
+        request: unknown,
+        context?: SelectNextContext,
+      ): Array<{ code: string }>;
+    },
+    envelope: Envelope,
+    graph: Graph.View,
+  ): Promise<Envelope> {
+    const kind = resolver.getRoutingNodeKind();
+    const childNodes = this.#getChildNodes(node, graph);
+    const selectionContext: SelectNextContext = {};
+
+    while (true) {
+      const selectedChildren = this.#getSelectedChild(
+        node,
+        resolver,
+        envelope.value,
+        childNodes,
+        selectionContext,
+      );
+
+      if (!selectedChildren.length) {
+        break;
+      }
+
+      if (kind !== "step" && selectedChildren.length > 1) {
+        throw new Error(
+          `Routing node "${node.id}" selected ${selectedChildren.length} children; expected at most 1.`,
+        );
+      }
+
+      if (kind === "step") {
+        for (const selectedChild of selectedChildren) {
+          const childResult = await this.#executeNode(
+            selectedChild,
+            envelope,
+            graph,
+          );
+
+          if (childResult.status !== EnvelopeStatus.Success) {
+            return childResult;
+          }
+        }
+
+        return envelope;
+      }
+
+      const childResult = await this.#executeNode(
+        selectedChildren[0] as Graph.Node,
+        envelope,
+        graph,
+      );
+
+      if (kind === "switch") {
+        return childResult;
+      }
+
+      if (childResult.status === EnvelopeStatus.TerminalFailure) {
+        return childResult;
+      }
+
+      if (childResult.status !== EnvelopeStatus.Failure) {
+        return childResult;
+      }
+    }
+
+    const exhaustedStatus =
+      kind === "try each"
+        ? EnvelopeStatus.TerminalFailure
+        : EnvelopeStatus.Failure;
+    return { value: envelope.value, status: exhaustedStatus };
   }
 
   async #executeNode(
@@ -68,11 +187,9 @@ export class FlowEngine {
 
     const kind = resolver.getRoutingNodeKind();
 
-    // Plan nodes (switch / try-each / step) are routing containers; calling
-    // their legacy resolve() runs the full pipeline and breaks the model.
-    // Gate them via canHandle: pass the envelope through unchanged when the
-    // node can accept it, fail immediately when it cannot.
-    // Leaf nodes (resolvers that do real work) use resolve() as normal.
+    // Non-leaf routing nodes do not perform leaf resolution here. They either
+    // select a next child (switch), fan out to all children (step), or try
+    // children in order (try each). Leaf nodes resolve values directly.
     let outEnvelope: Envelope;
     if (kind !== "leaf") {
       if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
@@ -108,59 +225,11 @@ export class FlowEngine {
       };
     }
 
+    if (kind !== "leaf") {
+      return this.#executeRoutingNode(node, resolver, outEnvelope, graph);
+    }
+
     const childNodes = this.#getChildNodes(node, graph);
-
-    if (kind === "step") {
-      // step: fan out the current output to every next node. There is no
-      // request-based filtering yet; all next nodes are expected to accept the
-      // current output shape.
-      for (const childNode of childNodes) {
-        if (!this.#childCanHandle(childNode, outEnvelope.value)) {
-          throw new Error(
-            `Step node "${node.id}" has child "${childNode.id}" that cannot handle the current output.`,
-          );
-        }
-      }
-
-      for (const childNode of childNodes) {
-        const childResult = await this.#executeNode(
-          childNode,
-          outEnvelope,
-          graph,
-        );
-        if (childResult.status !== EnvelopeStatus.Success) {
-          return childResult;
-        }
-      }
-      return outEnvelope;
-    }
-
-    if (kind === "switch") {
-      // switch: route to the one matching child. This is selection, not
-      // failover; a selected child may fail and we do not try siblings.
-      const matchingChildren = childNodes.filter((childNode) =>
-        this.#childCanHandle(childNode, outEnvelope.value),
-      );
-
-      if (!matchingChildren.length) {
-        return { value: outEnvelope.value, status: EnvelopeStatus.Failure };
-      }
-
-      if (matchingChildren.length > 1) {
-        throw new Error(
-          `Switch node "${node.id}" matched multiple children: ${matchingChildren
-            .map((childNode) => childNode.id)
-            .join(", ")}.`,
-        );
-      }
-
-      const selectedChild = matchingChildren[0];
-      if (!selectedChild) {
-        return { value: outEnvelope.value, status: EnvelopeStatus.Failure };
-      }
-
-      return this.#executeNode(selectedChild, outEnvelope, graph);
-    }
 
     // try each: try each handleable child in declaration order until one
     // succeeds. Exhaustion is terminal. leaf nodes keep the same ordered
@@ -187,10 +256,6 @@ export class FlowEngine {
     // try each exhaustion is terminal because it is explicit failover. leaf
     // exhaustion remains a normal Failure so an ancestor try-each may keep
     // looking for another branch.
-    const exhaustedStatus =
-      kind === "try each"
-        ? EnvelopeStatus.TerminalFailure
-        : EnvelopeStatus.Failure;
-    return { value: outEnvelope.value, status: exhaustedStatus };
+    return { value: outEnvelope.value, status: EnvelopeStatus.Failure };
   }
 }

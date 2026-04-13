@@ -4,6 +4,7 @@ const test = require("node:test");
 const {
   FlowEngine,
   EnvelopeStatus,
+  Resolver,
 } = require("../dist/ts/core/index.js");
 
 // ---------------------------------------------------------------------------
@@ -12,11 +13,62 @@ const {
 
 /**
  * Build a minimal mock ResolveFlow for FlowEngine unit tests.
- * `nodes` is a map of id → { nextIds, resolveResult, kind?, canHandle? }
+ * `nodes` is a map of id → { nextIds, resolveResult, kind?, canHandle?, selectNext? }
  * resolveResult: { status: "success"|"failure", value? }
  * kind: RoutingNodeKind — "leaf" (default), "switch", "try each", "step"
  */
 function mockFlow(nodes) {
+  function getSelectedNodeCodes(context) {
+    if (!(context.selectedNodeCodes instanceof Set)) {
+      context.selectedNodeCodes = new Set();
+    }
+    return context.selectedNodeCodes;
+  }
+
+  function rememberSelected(context, code) {
+    const selectedNodeCodes = getSelectedNodeCodes(context);
+    selectedNodeCodes.add(code);
+    return { code };
+  }
+
+  function defaultSelectNext(nodeId, entry, request, context = {}) {
+    const nextIds = entry.nextIds || [];
+
+    if (entry.kind === "switch") {
+      return [];
+    }
+
+    if (entry.kind === "step") {
+      const blockingChildId = nextIds.find((nextId) => {
+        const childEntry = nodes[nextId];
+        return childEntry?.canHandle && !childEntry.canHandle(request);
+      });
+
+      if (blockingChildId) {
+        throw new Error(
+          `Resolver plan "${nodeId}" has child "${blockingChildId}" that cannot handle the current output.`,
+        );
+      }
+
+      return nextIds.map((nextId) => rememberSelected(context, nextId));
+    }
+
+    const selectableIds = nextIds.filter((nextId) => {
+      if (entry.kind !== "try each") {
+        return true;
+      }
+
+      const childEntry = nodes[nextId];
+      return !childEntry?.canHandle || childEntry.canHandle(request);
+    });
+
+    const selectedId = selectableIds.find(
+      (nextId) => !getSelectedNodeCodes(context).has(nextId),
+    );
+
+    return selectedId ? [rememberSelected(context, selectedId)] : [];
+  }
+
   function makeGraphNode(id) {
     const entry = nodes[id];
     return entry
@@ -44,6 +96,14 @@ function mockFlow(nodes) {
       return {
         resolve: () => entry.resolveResult,
         ...(entry.canHandle ? { canHandle: entry.canHandle } : {}),
+        ...((entry.selectNext || entry.kind === "step" || entry.kind === "try each" || entry.kind === "switch")
+          ? {
+              selectNext: entry.selectNext
+                ? entry.selectNext
+                : (request, context) =>
+                    defaultSelectNext(id, entry, request, context),
+            }
+          : {}),
         getRoutingNodeKind: () => entry.kind || "leaf",
       };
     },
@@ -344,15 +404,14 @@ test("execute() skips missing next node and continues to next valid sibling", as
 // The engine asks each resolved node for its RoutingNodeKind and dispatches
 // child traversal accordingly:
 //
-//   "switch"   — select exactly one matching child via child canHandle and
-//                route only to that child. No sibling failover is allowed.
+//   "switch"   — select exactly one child via selectNext() and route only to
+//                that child. No sibling failover is allowed.
 //
-//   "try each" — try handleable children in order until one succeeds; if all
-//                eligible children fail, the result is TerminalFailure.
+//   "try each" — select one handleable child per call and let the engine keep
+//                asking until one succeeds or all eligible children fail.
 //
-//   "step"     — fan out the current output to ALL next nodes. Every child
-//                must be able to handle the output; the driver does not merge
-//                child values and returns the parent output on total success.
+//   "step"     — select all children in one call after first asserting that
+//                every child can handle the current output.
 // ---------------------------------------------------------------------------
 
 test("switch node: engine routes only to the matching child", async () => {
@@ -372,12 +431,12 @@ test("switch node: engine routes only to the matching child", async () => {
     getResolver: (id) => {
       if (id === "SWITCH") {
         return {
+          selectNext: () => [{ code: "BRANCH-B" }],
           getRoutingNodeKind: () => "switch",
         };
       }
       if (id === "BRANCH-A") {
         return {
-          canHandle: (input) => input.kind === "a",
           resolve: (input) => {
             visited.push("BRANCH-A");
             return { status: "success", value: input };
@@ -387,7 +446,6 @@ test("switch node: engine routes only to the matching child", async () => {
       }
       if (id === "BRANCH-B") {
         return {
-          canHandle: (input) => input.kind === "b",
           resolve: (input) => {
             visited.push("BRANCH-B");
             return { status: "success", value: input };
@@ -412,6 +470,7 @@ test("switch node: engine returns Failure when no child can handle the output", 
     ROOT: {
       kind: "switch",
       nextIds: ["BRANCH-A", "BRANCH-B"],
+      selectNext: () => [],
       resolveResult: { status: "success", value: { kind: "c" } },
     },
     "BRANCH-A": {
@@ -434,7 +493,7 @@ test("switch node: engine returns Failure when no child can handle the output", 
   assert.equal(result.status, EnvelopeStatus.Failure);
 });
 
-test("switch node: engine throws when multiple children match the output", async () => {
+test("switch node: engine propagates selection errors from selectNext()", async () => {
   const flow = {
     getGraph: () => ({
       getRoot: () => ({ id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] }),
@@ -446,10 +505,16 @@ test("switch node: engine throws when multiple children match the output", async
       },
     }),
     getResolver: (id) => {
-      if (id === "SWITCH") return { getRoutingNodeKind: () => "switch" };
+      if (id === "SWITCH") {
+        return {
+          selectNext: () => {
+            throw new Error("ambiguous selection");
+          },
+          getRoutingNodeKind: () => "switch",
+        };
+      }
       if (id === "A" || id === "B") {
         return {
-          canHandle: () => true,
           resolve: () => ({ status: "success", value: {} }),
           getRoutingNodeKind: () => "leaf",
         };
@@ -461,7 +526,43 @@ test("switch node: engine throws when multiple children match the output", async
   const engine = new FlowEngine(flow);
   await assert.rejects(
     () => engine.execute({ value: {} }),
-    /matched multiple children/i,
+    /ambiguous selection/i,
+  );
+});
+
+test("routing node: engine throws when a non-leaf node inherits the base selectNext()", async () => {
+  const rootResolver = new Resolver("ROOT");
+  rootResolver.getRoutingNodeKind = () => "switch";
+
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "ROOT", type: "mock", next: ["A"] }),
+      getNode: (id) => {
+        if (id === "ROOT") return { id: "ROOT", type: "mock", next: ["A"] };
+        if (id === "A") return { id: "A", type: "mock", next: [] };
+        return null;
+      },
+    }),
+    getResolver: (id) => {
+      if (id === "ROOT") {
+        return rootResolver;
+      }
+
+      if (id === "A") {
+        return {
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+
+      return null;
+    },
+  };
+
+  const engine = new FlowEngine(flow);
+  await assert.rejects(
+    () => engine.execute({ value: {} }),
+    /does not support selectNext/i,
   );
 });
 
@@ -484,6 +585,22 @@ test("try-each node: engine tries children in order and returns first success", 
       if (id === "PARENT") return {
         resolve: () => ({ status: "success", value: { ticker: "GOOG" } }),
         getRoutingNodeKind: () => "try each",
+        selectNext: (_request, context = {}) => {
+          if (!(context.selectedNodeCodes instanceof Set)) {
+            context.selectedNodeCodes = new Set();
+          }
+
+          const nextCode = ["PROVIDER-A", "PROVIDER-B"].find(
+            (code) => !context.selectedNodeCodes.has(code),
+          );
+
+          if (!nextCode) {
+            return [];
+          }
+
+          context.selectedNodeCodes.add(nextCode);
+          return [{ code: nextCode }];
+        },
       };
       if (id === "PROVIDER-A") return {
         canHandle: () => true,
@@ -525,6 +642,27 @@ test("try-each node: engine skips children that cannot handle the output", async
       if (id === "PARENT") return {
         resolve: () => ({ status: "success", value: { provider: "B" } }),
         getRoutingNodeKind: () => "try each",
+        selectNext: (request, context = {}) => {
+          if (!(context.selectedNodeCodes instanceof Set)) {
+            context.selectedNodeCodes = new Set();
+          }
+
+          const nextCode = ["A", "B"].find((code) => {
+            if (context.selectedNodeCodes.has(code)) {
+              return false;
+            }
+
+            const childResolver = flow.getResolver(code);
+            return !childResolver?.canHandle || childResolver.canHandle(request);
+          });
+
+          if (!nextCode) {
+            return [];
+          }
+
+          context.selectedNodeCodes.add(nextCode);
+          return [{ code: nextCode }];
+        },
       };
       if (id === "A") return {
         canHandle: () => false,
@@ -598,12 +736,23 @@ test("try-each node: TerminalFailure propagates up through an ancestor switch", 
     }),
     getResolver: (id) => {
       if (id === "ROOT") return {
-        resolve: () => ({ status: "success", value: { route: "primary" } }),
+        selectNext: () => [{ code: "TRY-EACH-A" }],
         getRoutingNodeKind: () => "switch",
       };
       if (id === "TRY-EACH-A") return {
-        canHandle: (input) => input.route === "primary",
         getRoutingNodeKind: () => "try each",
+        selectNext: (_request, context = {}) => {
+          if (!(context.selectedNodeCodes instanceof Set)) {
+            context.selectedNodeCodes = new Set();
+          }
+
+          if (context.selectedNodeCodes.has("PROVIDER")) {
+            return [];
+          }
+
+          context.selectedNodeCodes.add("PROVIDER");
+          return [{ code: "PROVIDER" }];
+        },
       };
       if (id === "PROVIDER") return {
         canHandle: () => true,
@@ -756,7 +905,20 @@ test("step node: throws when a child cannot handle the output", async () => {
       },
     }),
     getResolver: (id) => {
-      if (id === "ROOT") return { getRoutingNodeKind: () => "step" };
+      if (id === "ROOT") {
+        return {
+          getRoutingNodeKind: () => "step",
+          selectNext: (request) => {
+            if (!flow.getResolver("STEP-B").canHandle(request)) {
+              throw new Error(
+                'Resolver plan "ROOT" has child "STEP-B" that cannot handle the current output.',
+              );
+            }
+
+            return [{ code: "STEP-A" }, { code: "STEP-B" }];
+          },
+        };
+      }
       if (id === "STEP-A") {
         return {
           canHandle: () => true,

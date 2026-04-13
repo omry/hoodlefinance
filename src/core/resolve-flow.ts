@@ -449,18 +449,28 @@ export class ResolveFlow {
       throw new Error(result.error || "Lookup failed.");
     }
 
+    const shadowExcludedRoutes = new Set([
+      "ATTRIBUTE-IDENTITY",
+      "LON",
+      "PSE",
+    ]);
+
     // Shadow run: execute via FlowEngine alongside the existing path.
     // Existing path is authoritative. Divergences are logged for parity tracking.
-    new FlowEngine(this).execute({ value: rawInput }).then((engineResult) => {
+    // Direct ISIN fast paths still bypass the graph today, so exclude those
+    // routes until the execution model covers them.
+    if (!shadowExcludedRoutes.has(String(result.route || "").trim())) {
+      new FlowEngine(this).execute({ value: rawInput }).then((engineResult) => {
       if (engineResult.status !== EnvelopeStatus.Success) {
         console.warn(
           `[FlowEngine] divergence for ${identifier}/${attribute}: engine=${engineResult.status}`,
         );
       }
       // Value comparison deferred until resolvers are adapted to the new interface.
-    }).catch((err: unknown) => {
-      console.warn(`[FlowEngine] error for ${identifier}/${attribute}:`, err);
-    });
+      }).catch((err: unknown) => {
+        console.warn(`[FlowEngine] error for ${identifier}/${attribute}:`, err);
+      });
+    }
 
     return result.value;
   }

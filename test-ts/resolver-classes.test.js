@@ -9,6 +9,7 @@ const {
   ResolverPlan,
   RouteExecutionResolver,
   StepPlan,
+  SwitchPlan,
   TickerQuoteResolutionPlan,
   buildPlanNodeFromSpec,
 } = require("../dist/ts/core/index.js");
@@ -95,6 +96,60 @@ test("StepPlan forwards to all children without request-based selection", () => 
   assert.deepEqual(
     plan.getNodesForRequest(createRequestInput()).map((node) => node.name),
     ["FIRST", "SECOND"],
+  );
+});
+
+test("SwitchPlan selectNext returns the selected child only once per context", () => {
+  const yahoo = createLeafResolver("YAHOO");
+  const ibkr = createLeafResolver("IBKR", {
+    canHandle() {
+      return false;
+    },
+  });
+  const plan = new SwitchPlan("QUOTE", [ibkr, yahoo]);
+  const context = {};
+
+  assert.deepEqual(plan.selectNext(createRequestInput(), context), [yahoo]);
+  assert.deepEqual(plan.selectNext(createRequestInput(), context), []);
+});
+
+test("FirstSuccessPlan selectNext advances across handleable children", () => {
+  const skipped = createLeafResolver("SKIPPED", {
+    canHandle() {
+      return false;
+    },
+  });
+  const yahoo = createLeafResolver("YAHOO");
+  const ibkr = createLeafResolver("IBKR");
+  const plan = new FirstSuccessPlan("QUOTE", [skipped, yahoo, ibkr]);
+  const context = {};
+  const request = createRequestInput();
+
+  assert.deepEqual(plan.selectNext(request, context), [yahoo]);
+  assert.deepEqual(plan.selectNext(request, context), [ibkr]);
+  assert.deepEqual(plan.selectNext(request, context), []);
+});
+
+test("StepPlan selectNext returns all children and rejects unhandleable output", () => {
+  const first = createLeafResolver("FIRST");
+  const second = createLeafResolver("SECOND");
+  const plan = new StepPlan("ROOT", [first, second]);
+  const request = createRequestInput();
+
+  assert.deepEqual(plan.selectNext(request, {}), [first, second]);
+
+  const failingPlan = new StepPlan("ROOT", [
+    createLeafResolver("FIRST"),
+    createLeafResolver("SECOND", {
+      canHandle() {
+        return false;
+      },
+    }),
+  ]);
+
+  assert.throws(
+    () => failingPlan.selectNext(request, {}),
+    /cannot handle the current output/i,
   );
 });
 
