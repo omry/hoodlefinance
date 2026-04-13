@@ -8,8 +8,7 @@
       "Bash(git commit -m ':*)",
       "Bash(npm run check: ':*)",
       "Bash(node --test ':*)",
-      "mcp__mempalace__mempalace_status",
-      "Read(//home/omry/.claude/plans/**)",
+      "mcp__mempalace__mempalace_status"
     ]
   },
   "hooks": {

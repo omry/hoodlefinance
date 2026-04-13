@@ -409,6 +409,17 @@ export class ResolveFlow {
     return this.graph;
   }
 
+  getResolver(id: string): Resolver | null {
+    const normalizedId = normalizeCode(id);
+    if (isTerminalNodeId(normalizedId)) {
+      return null;
+    }
+    if (!this.graph.getNode(normalizedId)) {
+      return null;
+    }
+    return this.#getRuntimeNode(normalizedId);
+  }
+
   private requireResolutionEnv(): RequestResolutionDependencies {
     if (!this.resolutionEnv) {
       throw new Error(
