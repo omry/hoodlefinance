@@ -257,11 +257,23 @@ Open design questions for the next pass:
    `DirectIdentifierResolver` returning `ClassifiedInput`
 2. implement the driver for representative request families
 3. wire the driver into `ResolveFlow.resolveAttribute` alongside the existing
-   path
-  - current parity mismatches to address:
-    - `GOOG :: symbol:google` — JS returns `NASDAQ:GOOG`, TS returns `GOOG`
-    - `GOOG :: exchange:yahoo` — JS returns `NMS`, TS returns `NASDAQ`
-    - `GOOG :: change/changepct` — numeric drift between JS and TS output
+   path — parity case list at `tools/parity-cases.txt`
+  - ~~`GOOG :: symbol:google`~~ — fixed: renders `NASDAQ:GOOG`
+  - ~~`GOOG :: exchange:yahoo`~~ — fixed: returns raw Yahoo identity `NMS`
+  - `GOOG :: change / changepct / volume / price` — sequential live-call
+    timing drift; not a code bug
+  - `TLV:KSMF59 :: symbol / exchange / exchange:yahoo` — JS returns `TLV`,
+    FE returns `TASE`; TradingView quote `exchangeName` maps to `TASE` but
+    JS normalises to `TLV` via `hf_resolveGoogleExchange_`
+  - `PSE:BDO / PHY077751022 :: symbol / symbol:yahoo / exchange / exchange:yahoo`
+    — PSE quotes carry no `exchangeName`; JS detects PSE context and
+    hard-codes exchange/symbol formatting; FE falls back to bare symbol /
+    empty exchange; applies to both direct PSE tickers and ISIN-routed PSE
+    lookups
+  - `EURUSD / BTCUSD :: symbol:yahoo` — JS appends `=X` for FX pairs; FE
+    returns the bare symbol without suffix
+  - `EURUSD :: exchange / exchange:yahoo` — JS returns `CURRENCY`; FE
+    returns empty; same missing FX-context check as symbol:yahoo above
 4. verify parity with existing integrated routing tests
 5. remove `selectLookupExecution`, `LookupExecutionSelection`, and
    `ResolveFlow` bootstrap scaffolding once parity is proven

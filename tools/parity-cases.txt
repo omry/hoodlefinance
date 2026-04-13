@@ -1,0 +1,93 @@
+# Comprehensive parity cases for compare-runtime-modes.
+# Format: ticker,attribute  (attribute defaults to price if omitted)
+# Run: npm run compare:modes -- --mode js-fe --cases-file tools/parity-cases.txt
+
+# --- US NASDAQ equity (GOOG) ---
+GOOG,price
+GOOG,name
+GOOG,currency
+GOOG,isin
+GOOG,symbol
+GOOG,symbol:google
+GOOG,symbol:yahoo
+GOOG,exchange
+GOOG,exchange:google
+GOOG,exchange:yahoo
+GOOG,change
+GOOG,changepct
+GOOG,close
+GOOG,high
+GOOG,low
+GOOG,volume
+GOOG,datadelay
+
+# --- US NASDAQ small-cap (VSTM) ---
+VSTM,price
+VSTM,symbol
+VSTM,symbol:yahoo
+VSTM,exchange
+VSTM,exchange:yahoo
+
+# --- Exchange-qualified US equity ---
+NASDAQ:GOOG,price
+NYSE:IBM,price
+
+# --- US NYSE equity (IBM) ---
+IBM,price
+IBM,name
+IBM,symbol
+IBM,symbol:google
+IBM,symbol:yahoo
+IBM,exchange
+IBM,exchange:google
+IBM,exchange:yahoo
+
+# --- Israeli equity (TLV suffix) ---
+TLV:KSMF59,price
+TLV:KSMF59,name
+TLV:KSMF59,currency
+TLV:KSMF59,symbol
+TLV:KSMF59,symbol:yahoo
+TLV:KSMF59,exchange
+TLV:KSMF59,exchange:yahoo
+
+# --- PSE equity (exchange-qualified) ---
+PSE:BDO,price
+PSE:BDO,name
+PSE:BDO,symbol
+PSE:BDO,symbol:yahoo
+PSE:BDO,exchange
+PSE:BDO,exchange:yahoo
+
+# --- FX pairs ---
+EURUSD,price
+EURUSD,currency
+EURUSD,symbol
+EURUSD,symbol:yahoo
+EURUSD,exchange
+EURUSD,exchange:yahoo
+USDUSD,price
+USDUSD,currency
+BTCUSD,price
+BTCUSD,name
+BTCUSD,symbol
+BTCUSD,symbol:yahoo
+
+# --- Preferred REIT (suffix normalization) ---
+NLY-I,price
+NLY-I,symbol:google
+NLY-I,symbol:yahoo
+
+# --- ISIN-driven routing (bare ISIN) ---
+US02079K1079,price
+PHY077751022,price
+
+# --- ISIN-driven routing (ISIN: prefix) ---
+ISIN:US02079K1079,price
+ISIN:PHY077751022,price
+
+# --- PSE ISIN (bare) ---
+PHY077751022,exchange
+PHY077751022,exchange:yahoo
+PHY077751022,symbol
+PHY077751022,symbol:yahoo
