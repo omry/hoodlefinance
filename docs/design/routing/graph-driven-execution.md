@@ -258,6 +258,10 @@ Open design questions for the next pass:
 2. implement the driver for representative request families
 3. wire the driver into `ResolveFlow.resolveAttribute` alongside the existing
    path
+  - current parity mismatches to address:
+    - `GOOG :: symbol:google` — JS returns `NASDAQ:GOOG`, TS returns `GOOG`
+    - `GOOG :: exchange:yahoo` — JS returns `NMS`, TS returns `NASDAQ`
+    - `GOOG :: change/changepct` — numeric drift between JS and TS output
 4. verify parity with existing integrated routing tests
 5. remove `selectLookupExecution`, `LookupExecutionSelection`, and
    `ResolveFlow` bootstrap scaffolding once parity is proven
