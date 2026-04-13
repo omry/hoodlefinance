@@ -41,7 +41,7 @@ These guidelines are intended to reduce common LLM coding mistakes. Apply them a
 ### Prefer built-in tools over shell commands
 
 Use `Read`, `Grep`, `Glob`, `Edit`, and `Write` for file operations. Reserve
-`Bash` for things that genuinely require shell execution: git commands,
+`Bash` for things that genuinely require shell execution: `sl` (Sapling) commands,
 deleting files, or `npm run <script>` for tests, linting, building, and other
 repo tooling.
 
@@ -79,16 +79,18 @@ repo tooling.
 
 ## Environment and hooks
 
-- When validating contributor setup, shell initialization, or git-hook behavior, verify it from the same environment a developer would actually use, such as a normal shell session or `git commit`, not only from a temporary sandbox-only environment.
+- When validating contributor setup, shell initialization, or hook behavior, verify it from the same environment a developer would actually use, such as a normal shell session or `sl commit`, not only from a temporary sandbox-only environment.
 - Prefer hooks that do not depend on nontrivial user-environment tooling.
 - If an environment override is required for one command, explain why it must be part of that same process invocation.
 - If a small system tool would materially simplify the workflow, it is fine to suggest it or ask the user to install it.
 
-## Git and escalation
+## Sapling and escalation
 
-- Keep escalated git commands minimal and single-purpose.
+This repo uses Sapling (`sl`) for source control, not `git` directly. Use `sl` for all VCS operations (status, log, commit, amend, etc.).
+
+- Keep escalated `sl` commands minimal and single-purpose.
 - Do not bundle staging, environment bootstrapping, dependency installation, and commit creation into one escalated shell command unless there is no practical alternative.
-- If a git operation requires escalation, ask only for the specific git action that needs it.
+- If an `sl` operation requires escalation, ask only for the specific action that needs it.
 
 ## Website
 
