@@ -1,7 +1,7 @@
 import { parseAttributeRequest } from "./request-parsing";
 export { parseAttributeRequest };
 import { stripTickerSourceOverride } from "./request-parsing";
-import { YAHOO_EXCHANGE_BY_META_NAME } from "./exchange-symbols";
+import { YAHOO_EXCHANGE_BY_META_NAME, isPrefixlessExchange, resolveExchangeSuffix } from "./exchange-symbols";
 
 interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
@@ -98,6 +98,35 @@ function isFxContext(quote: Record<string, unknown>): boolean {
   );
 }
 
+function resolveGoogleExchange(quote: Record<string, unknown>): string {
+  const rawExchange = String(
+    quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
+  ).trim().toUpperCase();
+  if (!rawExchange) return "";
+  return YAHOO_EXCHANGE_BY_META_NAME[rawExchange] || rawExchange;
+}
+
+function renderGoogleSymbol(quote: Record<string, unknown>, resolvedSymbol: string): string {
+  if (isFxContext(quote)) {
+    if (quote.hoodlefinanceFxGoogleSymbol) return String(quote.hoodlefinanceFxGoogleSymbol);
+    return "CURRENCY:" + resolvedSymbol.replace(/=X$/i, "");
+  }
+
+  const googleExchange = resolveGoogleExchange(quote);
+  if (!googleExchange) return resolvedSymbol;
+
+  if (isPrefixlessExchange(googleExchange)) {
+    return `${googleExchange}:${resolvedSymbol}`;
+  }
+
+  const suffix = resolveExchangeSuffix(googleExchange);
+  if (suffix && resolvedSymbol.toUpperCase().endsWith(suffix.toUpperCase())) {
+    return `${googleExchange}:${resolvedSymbol.slice(0, -suffix.length)}`;
+  }
+
+  return resolvedSymbol;
+}
+
 function resolveSymbolAttribute(
   quote: Record<string, unknown>,
   context: AttributeExtractionContext | null | undefined,
@@ -126,7 +155,7 @@ function resolveSymbolAttribute(
     return tickerInput;
   }
 
-  return resolvedSymbol;
+  return renderGoogleSymbol(quote, resolvedSymbol);
 }
 
 export function extractAttributeValue(
@@ -212,14 +241,19 @@ export function extractAttributeValue(
       value = resolveSymbolAttribute(quote, context, "yahoo");
       break;
     case "exchange":
-    case "exchange:google":
-    case "exchange:yahoo": {
+    case "exchange:google": {
       const exchangeName = String(
         quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
       )
         .trim()
         .toUpperCase();
       value = exchangeName ? YAHOO_EXCHANGE_BY_META_NAME[exchangeName] || exchangeName : exchangeName;
+      break;
+    }
+    case "exchange:yahoo": {
+      value = String(
+        quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
+      ).trim().toUpperCase();
       break;
     }
     default:
