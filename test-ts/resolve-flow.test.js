@@ -38,6 +38,10 @@ function createResolverMaterializationDependencies() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Smoke tests
+// ---------------------------------------------------------------------------
+
 test("ResolveFlow builds executable nodes directly from DagPlan", () => {
   const resolveFlow = new ResolveFlow(
     DagPlan,

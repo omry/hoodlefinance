@@ -12,7 +12,7 @@ const {
 
 /**
  * Build a minimal mock ResolveFlow for FlowEngine unit tests.
- * `nodes` is a map of id → { nextIds, resolveResult, kind? }
+ * `nodes` is a map of id → { nextIds, resolveResult, kind?, canHandle? }
  * resolveResult: { status: "success"|"failure", value? }
  * kind: RoutingNodeKind — "leaf" (default), "switch", "try each", "step"
  */
@@ -43,6 +43,7 @@ function mockFlow(nodes) {
       const entry = nodes[id];
       return {
         resolve: () => entry.resolveResult,
+        ...(entry.canHandle ? { canHandle: entry.canHandle } : {}),
         getRoutingNodeKind: () => entry.kind || "leaf",
       };
     },
@@ -343,21 +344,18 @@ test("execute() skips missing next node and continues to next valid sibling", as
 // The engine asks each resolved node for its RoutingNodeKind and dispatches
 // child traversal accordingly:
 //
-//   "switch"   — children self-select via fast-fail; engine tries each in
-//                order and returns first non-failure. Selection is expressed
-//                through Failure, not through an out-of-band routing signal.
+//   "switch"   — select exactly one matching child via child canHandle and
+//                route only to that child. No sibling failover is allowed.
 //
-//   "try each" — engine tries children in order, returns first non-failure.
-//                Mechanically identical to switch; semantically the children
-//                are willing but may be transiently unavailable.
+//   "try each" — try handleable children in order until one succeeds; if all
+//                eligible children fail, the result is TerminalFailure.
 //
-//   "step"     — engine runs ALL children in sequence; any child failure
-//                stops execution immediately (no fallback to next sibling).
+//   "step"     — fan out the current output to ALL next nodes. Every child
+//                must be able to handle the output; the driver does not merge
+//                child values and returns the parent output on total success.
 // ---------------------------------------------------------------------------
 
-test("switch node: engine routes to the matching child via fast-fail on wrong branch", async () => {
-  // Input carries { kind: "b" }. SWITCH is a routing container (no value transform).
-  // BRANCH-A rejects (Failure). BRANCH-B accepts.
+test("switch node: engine routes only to the matching child", async () => {
   const visited = [];
 
   const flow = {
@@ -374,15 +372,14 @@ test("switch node: engine routes to the matching child via fast-fail on wrong br
     getResolver: (id) => {
       if (id === "SWITCH") {
         return {
-          // Plan nodes (switch) are routing containers: canHandle gate, no value transform.
           getRoutingNodeKind: () => "switch",
         };
       }
       if (id === "BRANCH-A") {
         return {
+          canHandle: (input) => input.kind === "a",
           resolve: (input) => {
             visited.push("BRANCH-A");
-            if (input.kind !== "a") return { status: "failure", error: "wrong branch" };
             return { status: "success", value: input };
           },
           getRoutingNodeKind: () => "leaf",
@@ -390,9 +387,9 @@ test("switch node: engine routes to the matching child via fast-fail on wrong br
       }
       if (id === "BRANCH-B") {
         return {
+          canHandle: (input) => input.kind === "b",
           resolve: (input) => {
             visited.push("BRANCH-B");
-            if (input.kind !== "b") return { status: "failure", error: "wrong branch" };
             return { status: "success", value: input };
           },
           getRoutingNodeKind: () => "leaf",
@@ -403,11 +400,10 @@ test("switch node: engine routes to the matching child via fast-fail on wrong br
   };
 
   const engine = new FlowEngine(flow);
-  // Initial envelope carries { kind: "b" }. SWITCH passes it through unchanged.
   const result = await engine.execute({ value: { kind: "b" } });
 
   assert.equal(result.status, EnvelopeStatus.Success);
-  assert.deepEqual(visited, ["BRANCH-A", "BRANCH-B"]);
+  assert.deepEqual(visited, ["BRANCH-B"]);
   assert.deepEqual(result.value, { kind: "b" });
 });
 
@@ -421,11 +417,13 @@ test("switch node: engine returns Failure when no child can handle the output", 
     "BRANCH-A": {
       kind: "leaf",
       nextIds: [],
+      canHandle: () => false,
       resolveResult: { status: "failure", error: "wrong branch" },
     },
     "BRANCH-B": {
       kind: "leaf",
       nextIds: [],
+      canHandle: () => false,
       resolveResult: { status: "failure", error: "wrong branch" },
     },
   });
@@ -434,6 +432,37 @@ test("switch node: engine returns Failure when no child can handle the output", 
   const result = await engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
+});
+
+test("switch node: engine throws when multiple children match the output", async () => {
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] }),
+      getNode: (id) => {
+        if (id === "SWITCH") return { id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] };
+        if (id === "A") return { id: "A", type: "mock", next: [] };
+        if (id === "B") return { id: "B", type: "mock", next: [] };
+        return null;
+      },
+    }),
+    getResolver: (id) => {
+      if (id === "SWITCH") return { getRoutingNodeKind: () => "switch" };
+      if (id === "A" || id === "B") {
+        return {
+          canHandle: () => true,
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+      return null;
+    },
+  };
+
+  const engine = new FlowEngine(flow);
+  await assert.rejects(
+    () => engine.execute({ value: {} }),
+    /matched multiple children/i,
+  );
 });
 
 test("try-each node: engine tries children in order and returns first success", async () => {
@@ -457,10 +486,12 @@ test("try-each node: engine tries children in order and returns first success", 
         getRoutingNodeKind: () => "try each",
       };
       if (id === "PROVIDER-A") return {
+        canHandle: () => true,
         resolve: () => { visited.push("PROVIDER-A"); return { status: "failure", error: "unavailable" }; },
         getRoutingNodeKind: () => "leaf",
       };
       if (id === "PROVIDER-B") return {
+        canHandle: () => true,
         resolve: () => { visited.push("PROVIDER-B"); return { status: "success", value: { price: 180 } }; },
         getRoutingNodeKind: () => "leaf",
       };
@@ -473,6 +504,53 @@ test("try-each node: engine tries children in order and returns first success", 
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["PROVIDER-A", "PROVIDER-B"]);
+  assert.deepEqual(result.value, { price: 180 });
+});
+
+test("try-each node: engine skips children that cannot handle the output", async () => {
+  const visited = [];
+
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "PARENT", type: "FirstSuccessPlan", next: ["A", "B"] }),
+      getNode: (id) => {
+        if (id === "PARENT") return { id: "PARENT", type: "FirstSuccessPlan", next: ["A", "B"] };
+        if (id === "A") return { id: "A", type: "mock", next: [] };
+        if (id === "B") return { id: "B", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        return null;
+      },
+    }),
+    getResolver: (id) => {
+      if (id === "PARENT") return {
+        resolve: () => ({ status: "success", value: { provider: "B" } }),
+        getRoutingNodeKind: () => "try each",
+      };
+      if (id === "A") return {
+        canHandle: () => false,
+        resolve: () => {
+          visited.push("A");
+          return { status: "success", value: { wrong: true } };
+        },
+        getRoutingNodeKind: () => "leaf",
+      };
+      if (id === "B") return {
+        canHandle: () => true,
+        resolve: () => {
+          visited.push("B");
+          return { status: "success", value: { price: 180 } };
+        },
+        getRoutingNodeKind: () => "leaf",
+      };
+      return null;
+    },
+  };
+
+  const engine = new FlowEngine(flow);
+  const result = await engine.execute({ value: {} });
+
+  assert.equal(result.status, EnvelopeStatus.Success);
+  assert.deepEqual(visited, ["B"]);
   assert.deepEqual(result.value, { price: 180 });
 });
 
@@ -502,35 +580,47 @@ test("try-each node: engine returns TerminalFailure when all providers fail", as
 });
 
 test("try-each node: TerminalFailure propagates up through an ancestor switch", async () => {
-  // SWITCH → [TRY-EACH-A, FALLBACK]. TRY-EACH-A exhausts all children →
-  // TerminalFailure. Engine must not try FALLBACK — TerminalFailure short-circuits.
+  // SWITCH selects TRY-EACH-A. TRY-EACH-A exhausts all children →
+  // TerminalFailure. SWITCH must not fail over to FALLBACK.
   let fallbackCalled = false;
 
-  const flow = mockFlow({
-    ROOT: {
-      kind: "switch",
-      nextIds: ["TRY-EACH-A", "FALLBACK"],
-      resolveResult: { status: "success", value: {} },
-    },
-    "TRY-EACH-A": {
-      kind: "try each",
-      nextIds: ["PROVIDER"],
-      resolveResult: { status: "success", value: {} },
-    },
-    "PROVIDER": {
-      kind: "leaf",
-      nextIds: [],
-      resolveResult: { status: "failure", error: "unavailable" },
-    },
-    "FALLBACK": {
-      kind: "leaf",
-      nextIds: ["TERMINAL"],
-      get resolveResult() {
-        fallbackCalled = true;
-        return { status: "success", value: { fallback: true } };
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "ROOT", type: "SwitchPlan", next: ["TRY-EACH-A", "FALLBACK"] }),
+      getNode: (id) => {
+        if (id === "ROOT") return { id: "ROOT", type: "SwitchPlan", next: ["TRY-EACH-A", "FALLBACK"] };
+        if (id === "TRY-EACH-A") return { id: "TRY-EACH-A", type: "FirstSuccessPlan", next: ["PROVIDER"] };
+        if (id === "PROVIDER") return { id: "PROVIDER", type: "mock", next: [] };
+        if (id === "FALLBACK") return { id: "FALLBACK", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        return null;
       },
+    }),
+    getResolver: (id) => {
+      if (id === "ROOT") return {
+        resolve: () => ({ status: "success", value: { route: "primary" } }),
+        getRoutingNodeKind: () => "switch",
+      };
+      if (id === "TRY-EACH-A") return {
+        canHandle: (input) => input.route === "primary",
+        getRoutingNodeKind: () => "try each",
+      };
+      if (id === "PROVIDER") return {
+        canHandle: () => true,
+        resolve: () => ({ status: "failure", error: "unavailable" }),
+        getRoutingNodeKind: () => "leaf",
+      };
+      if (id === "FALLBACK") return {
+        canHandle: () => false,
+        resolve: () => {
+          fallbackCalled = true;
+          return { status: "success", value: { fallback: true } };
+        },
+        getRoutingNodeKind: () => "leaf",
+      };
+      return null;
     },
-  });
+  };
 
   const engine = new FlowEngine(flow);
   const result = await engine.execute({ value: {} });
@@ -574,8 +664,9 @@ test("try-each node: succeeding first provider short-circuits remaining siblings
 // Step node
 // ---------------------------------------------------------------------------
 
-test("step node: engine runs all children in sequence and succeeds when all pass", async () => {
+test("step node: engine fans out the same output to all children", async () => {
   const visited = [];
+  const seenInputs = [];
 
   const flow = mockFlow({
     ROOT: {
@@ -601,7 +692,11 @@ test("step node: engine runs all children in sequence and succeeds when all pass
     const r = base(id);
     if (r) {
       const orig = r.resolve.bind(r);
-      r.resolve = (input) => { visited.push(id); return orig(input); };
+      r.resolve = (input) => {
+        visited.push(id);
+        seenInputs.push([id, input]);
+        return orig(input);
+      };
     }
     return r;
   };
@@ -610,12 +705,15 @@ test("step node: engine runs all children in sequence and succeeds when all pass
   const result = await engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
-  // ROOT is a step plan node (routing container) — resolve() is not called on it.
-  // Only leaf nodes (STEP-A, STEP-B) have their resolve() invoked.
   assert.deepEqual(visited, ["STEP-A", "STEP-B"]);
+  assert.deepEqual(seenInputs, [
+    ["STEP-A", {}],
+    ["STEP-B", {}],
+  ]);
+  assert.deepEqual(result.value, {});
 });
 
-test("step node: engine stops immediately when a child fails, does not try next sibling", async () => {
+test("step node: engine stops immediately when a child fails, does not try later siblings", async () => {
   let bCalled = false;
 
   const flow = mockFlow({
@@ -644,6 +742,44 @@ test("step node: engine stops immediately when a child fails, does not try next 
 
   assert.equal(result.status, EnvelopeStatus.Failure);
   assert.equal(bCalled, false, "STEP-B should not be called when STEP-A fails");
+});
+
+test("step node: throws when a child cannot handle the output", async () => {
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "ROOT", type: "StepPlan", next: ["STEP-A", "STEP-B"] }),
+      getNode: (id) => {
+        if (id === "ROOT") return { id: "ROOT", type: "StepPlan", next: ["STEP-A", "STEP-B"] };
+        if (id === "STEP-A") return { id: "STEP-A", type: "mock", next: [] };
+        if (id === "STEP-B") return { id: "STEP-B", type: "mock", next: [] };
+        return null;
+      },
+    }),
+    getResolver: (id) => {
+      if (id === "ROOT") return { getRoutingNodeKind: () => "step" };
+      if (id === "STEP-A") {
+        return {
+          canHandle: () => true,
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+      if (id === "STEP-B") {
+        return {
+          canHandle: () => false,
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+      return null;
+    },
+  };
+
+  const engine = new FlowEngine(flow);
+  await assert.rejects(
+    () => engine.execute({ value: {} }),
+    /cannot handle the current output/i,
+  );
 });
 
 test("step node: TerminalFailure from a child propagates immediately and stops execution", async () => {
@@ -682,4 +818,66 @@ test("step node: TerminalFailure from a child propagates immediately and stops e
 
   assert.equal(result.status, EnvelopeStatus.TerminalFailure);
   assert.equal(bCalled, false, "STEP-B must not be called after TerminalFailure");
+});
+
+test("execute() only unwraps ClassifiedInput at the ROOT node", async () => {
+  let childInput = null;
+
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "ROOT", type: "mock", next: ["WRAPPER"] }),
+      getNode: (id) => {
+        if (id === "ROOT") return { id: "ROOT", type: "mock", next: ["WRAPPER"] };
+        if (id === "WRAPPER") return { id: "WRAPPER", type: "mock", next: ["LEAF"] };
+        if (id === "LEAF") return { id: "LEAF", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        return null;
+      },
+    }),
+    getResolver: (id) => {
+      if (id === "ROOT") {
+        return {
+          resolve: () => ({
+            status: "success",
+            value: {
+              requestInput: { ticker: "GOOG" },
+              resolvedRequest: { requestType: "equity", symbol: "GOOG" },
+            },
+          }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+      if (id === "WRAPPER") {
+        return {
+          resolve: () => ({
+            status: "success",
+            value: {
+              requestInput: { nested: true },
+              resolvedRequest: null,
+            },
+          }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+      if (id === "LEAF") {
+        return {
+          resolve: (input) => {
+            childInput = input;
+            return { status: "success", value: input };
+          },
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
+      return null;
+    },
+  };
+
+  const engine = new FlowEngine(flow);
+  const result = await engine.execute({ value: {} });
+
+  assert.equal(result.status, EnvelopeStatus.Success);
+  assert.deepEqual(childInput, {
+    requestInput: { nested: true },
+    resolvedRequest: null,
+  });
 });

@@ -35,6 +35,17 @@ export class FlowEngine {
     this.#flow = flow;
   }
 
+  #getChildNodes(node: Graph.Node, graph: Graph.View): Graph.Node[] {
+    return getGraphNodeNextIds(node)
+      .map((nextId) => graph.getNode(nextId))
+      .filter((nextNode): nextNode is Graph.Node => nextNode != null);
+  }
+
+  #childCanHandle(childNode: Graph.Node, value: object): boolean {
+    const childResolver = this.#flow.getResolver(childNode.id);
+    return !childResolver?.canHandle || childResolver.canHandle(value);
+  }
+
   async execute(input: Envelope): Promise<Envelope> {
     const graph = this.#flow.getGraph();
     const root = graph.getRoot();
@@ -86,7 +97,10 @@ export class FlowEngine {
 
     // Unwrap ClassifiedInput from ROOT: the classifier outputs
     // { requestInput, resolvedRequest } but children expect one type directly.
-    if (isClassifiedInput(outEnvelope.value)) {
+    if (
+      node.id === graph.getRoot()?.id &&
+      isClassifiedInput(outEnvelope.value)
+    ) {
       const { resolvedRequest, requestInput } = outEnvelope.value;
       outEnvelope = {
         ...outEnvelope,
@@ -94,33 +108,72 @@ export class FlowEngine {
       };
     }
 
-    const nextIds = getGraphNodeNextIds(node);
+    const childNodes = this.#getChildNodes(node, graph);
 
     if (kind === "step") {
-      // All next edges must succeed in sequence. First failure stops execution.
-      let current = outEnvelope;
-      for (const nextId of nextIds) {
-        const nextNode = graph.getNode(nextId);
-        if (!nextNode) {
-          continue;
+      // step: fan out the current output to every next node. There is no
+      // request-based filtering yet; all next nodes are expected to accept the
+      // current output shape.
+      for (const childNode of childNodes) {
+        if (!this.#childCanHandle(childNode, outEnvelope.value)) {
+          throw new Error(
+            `Step node "${node.id}" has child "${childNode.id}" that cannot handle the current output.`,
+          );
         }
-        const childResult = await this.#executeNode(nextNode, current, graph);
+      }
+
+      for (const childNode of childNodes) {
+        const childResult = await this.#executeNode(
+          childNode,
+          outEnvelope,
+          graph,
+        );
         if (childResult.status !== EnvelopeStatus.Success) {
           return childResult;
         }
-        current = childResult;
       }
-      return current;
+      return outEnvelope;
     }
 
-    // "switch", "try each", "leaf": try next edges in declaration order,
-    // return first non-failure.
-    for (const nextId of nextIds) {
-      const nextNode = graph.getNode(nextId);
-      if (!nextNode) {
+    if (kind === "switch") {
+      // switch: route to the one matching child. This is selection, not
+      // failover; a selected child may fail and we do not try siblings.
+      const matchingChildren = childNodes.filter((childNode) =>
+        this.#childCanHandle(childNode, outEnvelope.value),
+      );
+
+      if (!matchingChildren.length) {
+        return { value: outEnvelope.value, status: EnvelopeStatus.Failure };
+      }
+
+      if (matchingChildren.length > 1) {
+        throw new Error(
+          `Switch node "${node.id}" matched multiple children: ${matchingChildren
+            .map((childNode) => childNode.id)
+            .join(", ")}.`,
+        );
+      }
+
+      const selectedChild = matchingChildren[0];
+      if (!selectedChild) {
+        return { value: outEnvelope.value, status: EnvelopeStatus.Failure };
+      }
+
+      return this.#executeNode(selectedChild, outEnvelope, graph);
+    }
+
+    // try each: try each handleable child in declaration order until one
+    // succeeds. Exhaustion is terminal. leaf nodes keep the same ordered
+    // fallback behavior, but exhaustion is a normal Failure.
+    for (const childNode of childNodes) {
+      if (!this.#childCanHandle(childNode, outEnvelope.value)) {
         continue;
       }
-      const childResult = await this.#executeNode(nextNode, outEnvelope, graph);
+      const childResult = await this.#executeNode(
+        childNode,
+        outEnvelope,
+        graph,
+      );
       if (childResult.status === EnvelopeStatus.TerminalFailure) {
         return childResult;
       }
@@ -130,12 +183,10 @@ export class FlowEngine {
       // child subtree failed — try next sibling
     }
 
-    // All next edges exhausted.
-    // TerminalFailure is produced here and only here in the driver — when a
-    // "try each" node has tried every child and none succeeded. It signals that
-    // the attempt is unrecoverable: no ancestor switch or try-each may retry this
-    // branch. Failure (non-terminal) is returned for switch/leaf so an ancestor
-    // can still try another branch.
+    // All eligible next edges exhausted.
+    // try each exhaustion is terminal because it is explicit failover. leaf
+    // exhaustion remains a normal Failure so an ancestor try-each may keep
+    // looking for another branch.
     const exhaustedStatus =
       kind === "try each"
         ? EnvelopeStatus.TerminalFailure
