@@ -60,6 +60,33 @@ test("parseArgs accepts positional mode shorthand", () => {
   ]);
 });
 
+test("parseArgs accepts ts-fe mode", () => {
+  const options = parseArgs([
+    "--mode",
+    "ts-fe",
+    "--case",
+    "GOOG::price",
+  ]);
+
+  assert.equal(options.mode, "ts-fe");
+  assert.deepEqual(options.cases, [
+    { attribute: "price", ticker: "GOOG" },
+  ]);
+});
+
+test("parseArgs accepts js-fe positional shorthand", () => {
+  const options = parseArgs([
+    "js-fe",
+    "--case",
+    "GOOG::price",
+  ]);
+
+  assert.equal(options.mode, "js-fe");
+  assert.deepEqual(options.cases, [
+    { attribute: "price", ticker: "GOOG" },
+  ]);
+});
+
 test("parseArgs loads cases from file", () => {
   const filePath = path.join(
     os.tmpdir(),

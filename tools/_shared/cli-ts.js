@@ -119,15 +119,32 @@ function normalizeAttribute(attribute) {
   return String(attribute == null ? "price" : attribute).trim();
 }
 
-function resolveAttributeResultWithEnvironment(env, args) {
+function resolveAttributeResultWithEnvironment(env, args, options) {
   try {
+    const value = env.resolveAttribute(
+      args.ticker,
+      normalizeAttribute(args.attribute),
+      options || undefined,
+    );
+
+    if (value && typeof value.then === "function") {
+      return value
+        .then((resolvedValue) => ({
+          error: "",
+          status: "success",
+          value: resolvedValue,
+        }))
+        .catch((error) => ({
+          error: error instanceof Error ? error.message : String(error),
+          status: "failure",
+          value: null,
+        }));
+    }
+
     return {
       error: "",
       status: "success",
-      value: env.resolveAttribute(
-        args.ticker,
-        normalizeAttribute(args.attribute),
-      ),
+      value,
     };
   } catch (error) {
     return {

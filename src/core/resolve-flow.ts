@@ -34,59 +34,6 @@ function formatCodeList(codes: string[]): string {
   return codes.join(", ");
 }
 
-// TEMP(flow-engine-parity): Keep this only while legacy and FlowEngine
-// return shapes are being aligned for output parity checks.
-function isDateLike(value: unknown): value is Date {
-  return (
-    Object.prototype.toString.call(value) === "[object Date]" &&
-    typeof (value as Date).toISOString === "function"
-  );
-}
-
-// TEMP(flow-engine-parity): Remove once parity uses a shared comparator.
-function stableNormalize(value: unknown): unknown {
-  if (isDateLike(value)) {
-    return value.toISOString();
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((entry) => stableNormalize(entry));
-  }
-
-  if (value != null && typeof value === "object") {
-    const output: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-      output[key] = stableNormalize(
-        (value as Record<string, unknown>)[key],
-      );
-    }
-    return output;
-  }
-
-  return value;
-}
-
-// TEMP(flow-engine-parity): Remove after FlowEngine parity migration.
-function normalizeComparableValue(value: unknown): unknown {
-  if (value == null) {
-    return null;
-  }
-
-  if (isDateLike(value)) {
-    return value.toISOString();
-  }
-
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "string"
-  ) {
-    return value;
-  }
-
-  return JSON.stringify(stableNormalize(value));
-}
-
 interface GraphTopologyNode {
   node: Graph.Node;
   parentIds: string[];
@@ -397,6 +344,10 @@ export interface ResolveFlowDependencies
   looksLikeIsin(value: string): boolean;
 }
 
+export interface ResolveAttributeOptions {
+  engine?: "flow-engine" | "legacy";
+}
+
 export class ResolveFlow {
   readonly graph: Graph.View;
   private readonly runtimeRefs: PlanRuntimeRefs;
@@ -496,7 +447,7 @@ export class ResolveFlow {
     );
   }
 
-  private projectFlowEngineValueForParity(
+  private projectFlowEngineValue(
     rawInput: RawRequestInput,
     flowValue: unknown,
   ): unknown {
@@ -540,49 +491,43 @@ export class ResolveFlow {
     );
   }
 
-  resolveAttribute(identifier: string, attribute = "price"): unknown {
+  resolveAttribute(
+    identifier: string,
+    attribute = "price",
+    options?: ResolveAttributeOptions,
+  ): unknown {
     const rawInput = this.createRawRequestInput(identifier, attribute);
+    const selectedEngine = String(options?.engine || "legacy").trim();
+
+    if (selectedEngine !== "legacy" && selectedEngine !== "flow-engine") {
+      throw new Error(
+        `Unknown resolve engine "${selectedEngine}". Expected "legacy" or "flow-engine".`,
+      );
+    }
+
+    if (selectedEngine === "flow-engine") {
+      return this.resolveAttributeWithFlowEngine(rawInput);
+    }
+
     const result = resolveRequestValue(this.requireResolutionEnv(), rawInput);
 
     if (result.status !== "success") {
       throw new Error(result.error || "Lookup failed.");
     }
 
-    const shadowExcludedRoutes = new Set([
-      "ATTRIBUTE-IDENTITY",
-      "LON",
-      "PSE",
-    ]);
-
-    // Shadow run: execute via FlowEngine alongside the existing path.
-    // Existing path is authoritative. Divergences are logged for parity tracking.
-    // Direct ISIN fast paths still bypass the graph today, so exclude those
-    // routes until the execution model covers them.
-    // TEMP(flow-engine-parity): This shadow comparator is migration-only and
-    // should be removed once FlowEngine becomes the authoritative path.
-    if (!shadowExcludedRoutes.has(String(result.route || "").trim())) {
-      new FlowEngine(this).execute({ value: rawInput }).then((engineResult) => {
-      const projectedEngineValue =
-        engineResult.status === EnvelopeStatus.Success
-          ? this.projectFlowEngineValueForParity(rawInput, engineResult.value)
-          : engineResult.value;
-      const legacyValue = normalizeComparableValue(result.value);
-      const engineValue = normalizeComparableValue(projectedEngineValue);
-      const parityOk =
-        engineResult.status === EnvelopeStatus.Success &&
-        legacyValue === engineValue;
-
-      if (!parityOk) {
-        console.warn(
-          `[FlowEngine] divergence for ${identifier}/${attribute}: route=${String(result.route || "")} legacy=${String(result.status || "")} engine=${engineResult.status} valueMatch=${legacyValue === engineValue}`,
-        );
-      }
-      }).catch((err: unknown) => {
-        console.warn(`[FlowEngine] error for ${identifier}/${attribute}:`, err);
-      });
-    }
-
     return result.value;
+  }
+
+  private resolveAttributeWithFlowEngine(rawInput: RawRequestInput): unknown {
+    const engine = new FlowEngine(this);
+
+    return engine.execute({ value: rawInput }).then((engineResult) => {
+      if (engineResult.status !== EnvelopeStatus.Success) {
+        throw new Error("Lookup failed.");
+      }
+
+      return this.projectFlowEngineValue(rawInput, engineResult.value);
+    });
   }
 
   #getRuntimeNode(code: string): Resolver {

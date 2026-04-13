@@ -34,6 +34,14 @@ const DEFAULT_CASES = [
   { attribute: "symbol:yahoo", ticker: "NLY-I" },
 ];
 
+const MODE_PAIRS = Object.freeze({
+  "js-fe": ["js", "fe"],
+  "js-ts": ["js", "ts"],
+  "ts-fe": ["ts", "fe"],
+});
+
+const SUPPORTED_MODES = Object.freeze(Object.keys(MODE_PAIRS));
+
 function isDateLike(value) {
   return (
     Object.prototype.toString.call(value) === "[object Date]" &&
@@ -47,10 +55,10 @@ function printUsage(exitCode, error) {
   }
 
   console.error(
-    "Usage: npm run compare:modes -- --mode <js-ts> [--case <ticker>::<attribute>]... [--cases-file <path>]",
+    "Usage: npm run compare:modes -- --mode <js-ts|ts-fe|js-fe> [--case <ticker>::<attribute>]... [--cases-file <path>]",
   );
   console.error(
-    "   or: npm run compare:modes <js-ts>",
+    "   or: npm run compare:modes <js-ts|ts-fe|js-fe>",
   );
   console.error(
     "Example: npm run compare:modes -- --mode js-ts --case GOOG::price --case US02079K1079::price",
@@ -164,7 +172,7 @@ function parseArgs(argv) {
       printUsage(0);
     }
 
-    if (!options.mode && arg === "js-ts") {
+    if (!options.mode && SUPPORTED_MODES.includes(arg)) {
       options.mode = arg;
       continue;
     }
@@ -172,8 +180,8 @@ function parseArgs(argv) {
     printUsage(1, `Unknown argument: ${arg}`);
   }
 
-  if (options.mode !== "js-ts") {
-    printUsage(1, "--mode must be: js-ts");
+  if (!SUPPORTED_MODES.includes(options.mode)) {
+    printUsage(1, `--mode must be one of: ${SUPPORTED_MODES.join(", ")}`);
   }
 
   if (!options.cases.length) {
@@ -295,7 +303,7 @@ function normalizeComparableValue(value) {
   return JSON.stringify(stableNormalize(value));
 }
 
-function runLookup(mode, lookupCase) {
+async function runLookup(mode, lookupCase, tsCliEnv) {
   if (mode === "js") {
     const result = LegacyCli.runLookup(lookupCase.ticker, lookupCase.attribute);
     return {
@@ -306,8 +314,17 @@ function runLookup(mode, lookupCase) {
   }
 
   if (mode === "ts") {
-    const env = TsCli.createCliEnvironment();
-    return TsCli.resolveAttributeResultWithEnvironment(env, lookupCase);
+    return Promise.resolve(
+      TsCli.resolveAttributeResultWithEnvironment(tsCliEnv, lookupCase),
+    );
+  }
+
+  if (mode === "fe") {
+    return Promise.resolve(
+      TsCli.resolveAttributeResultWithEnvironment(tsCliEnv, lookupCase, {
+        engine: "flow-engine",
+      }),
+    );
   }
 
   throw new Error(`Unsupported lookup mode "${mode}".`);
@@ -332,6 +349,20 @@ function collectTrace(mode, lookupCase) {
             status: String((entry && entry.status) || ""),
           }))
         : [],
+    };
+  }
+
+  if (mode === "fe") {
+    return {
+      plannedRoute:
+        "(unavailable: FlowEngine runtime tracing is not implemented)",
+      runtimeTrace: [
+        {
+          elapsedMs: null,
+          label: "FlowEngine runtime trace unavailable",
+          status: "unavailable",
+        },
+      ],
     };
   }
 
@@ -427,16 +458,17 @@ function formatCaseResult(lookupCase, parity) {
   return `${status} ${lookupCase.ticker} ${lookupCase.attribute}`;
 }
 
-function main(argv = process.argv.slice(2)) {
+async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   ensureTsBuild();
 
-  const [leftMode, rightMode] = ["js", "ts"];
+  const [leftMode, rightMode] = MODE_PAIRS[options.mode];
+  const tsCliEnv = TsCli.createCliEnvironment();
   const failures = [];
 
   for (const lookupCase of options.cases) {
-    const left = runLookup(leftMode, lookupCase);
-    const right = runLookup(rightMode, lookupCase);
+    const left = await runLookup(leftMode, lookupCase, tsCliEnv);
+    const right = await runLookup(rightMode, lookupCase, tsCliEnv);
     const parity = compareResults(left, right);
 
     console.log(formatCaseResult(lookupCase, parity));
@@ -485,5 +517,8 @@ module.exports = {
 };
 
 if (require.main === module) {
-  main();
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
 }
