@@ -5,4 +5,5 @@
   "github-actions.workflows.pinned.workflows": [
     ".github/workflows/release-prepare.yml"
   ],
+  "git.decorations.enabled": false
 }
