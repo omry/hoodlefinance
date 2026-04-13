@@ -16,6 +16,7 @@ import {
   type RequestResolutionDependencies,
 } from "./request-resolution";
 import { createRequestResolutionEnv } from "./request-resolution-env";
+import { FlowEngine, EnvelopeStatus } from "./flow-engine";
 
 function isPlanResolverClass(nodeType: string): boolean {
   return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
@@ -441,14 +442,25 @@ export class ResolveFlow {
   }
 
   resolveAttribute(identifier: string, attribute = "price"): unknown {
-    const result = resolveRequestValue(
-      this.requireResolutionEnv(),
-      this.createRawRequestInput(identifier, attribute),
-    );
+    const rawInput = this.createRawRequestInput(identifier, attribute);
+    const result = resolveRequestValue(this.requireResolutionEnv(), rawInput);
 
     if (result.status !== "success") {
       throw new Error(result.error || "Lookup failed.");
     }
+
+    // Shadow run: execute via FlowEngine alongside the existing path.
+    // Existing path is authoritative. Divergences are logged for parity tracking.
+    new FlowEngine(this).execute({ value: rawInput }).then((engineResult) => {
+      if (engineResult.status !== EnvelopeStatus.Success) {
+        console.warn(
+          `[FlowEngine] divergence for ${identifier}/${attribute}: engine=${engineResult.status}`,
+        );
+      }
+      // Value comparison deferred until resolvers are adapted to the new interface.
+    }).catch((err: unknown) => {
+      console.warn(`[FlowEngine] error for ${identifier}/${attribute}:`, err);
+    });
 
     return result.value;
   }

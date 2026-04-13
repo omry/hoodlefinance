@@ -356,7 +356,8 @@ test("execute() skips missing next node and continues to next valid sibling", as
 // ---------------------------------------------------------------------------
 
 test("switch node: engine routes to the matching child via fast-fail on wrong branch", async () => {
-  // SWITCH outputs { kind: "b" }. BRANCH-A rejects (Failure). BRANCH-B accepts.
+  // Input carries { kind: "b" }. SWITCH is a routing container (no value transform).
+  // BRANCH-A rejects (Failure). BRANCH-B accepts.
   const visited = [];
 
   const flow = {
@@ -373,7 +374,7 @@ test("switch node: engine routes to the matching child via fast-fail on wrong br
     getResolver: (id) => {
       if (id === "SWITCH") {
         return {
-          resolve: () => ({ status: "success", value: { kind: "b" } }),
+          // Plan nodes (switch) are routing containers: canHandle gate, no value transform.
           getRoutingNodeKind: () => "switch",
         };
       }
@@ -402,7 +403,8 @@ test("switch node: engine routes to the matching child via fast-fail on wrong br
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  // Initial envelope carries { kind: "b" }. SWITCH passes it through unchanged.
+  const result = await engine.execute({ value: { kind: "b" } });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["BRANCH-A", "BRANCH-B"]);
@@ -608,7 +610,9 @@ test("step node: engine runs all children in sequence and succeeds when all pass
   const result = await engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
-  assert.deepEqual(visited, ["ROOT", "STEP-A", "STEP-B"]);
+  // ROOT is a step plan node (routing container) — resolve() is not called on it.
+  // Only leaf nodes (STEP-A, STEP-B) have their resolve() invoked.
+  assert.deepEqual(visited, ["STEP-A", "STEP-B"]);
 });
 
 test("step node: engine stops immediately when a child fails, does not try next sibling", async () => {

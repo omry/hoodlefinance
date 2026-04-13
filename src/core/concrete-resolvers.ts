@@ -68,7 +68,7 @@ import {
   createRouteResult,
   type RouteResult,
 } from "./route-results";
-import type { RouteJob, RuntimePlan } from "./planner";
+import type { ResolutionResult, RouteJob, RuntimePlan } from "./planner";
 import type { ResolverClass } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
 import {
@@ -219,6 +219,13 @@ export class RequestClassifierResolver extends IdentifierResolver {
 export class FirstSuccessReceiver extends IdentifierResolver {
   constructor(code = "ISIN-RECEIVER") {
     super(code);
+  }
+
+  // Pass-through: ISIN-RECEIVER is a convergence node. After an ISIN lookup
+  // produces a ResolvedRequest, it forwards it unchanged to the ATTRIBUTE branch.
+  override resolve(request: unknown): ResolutionResult<unknown> {
+    const startedAtMs = Date.now();
+    return createResolutionSuccess(request as object, Date.now() - startedAtMs);
   }
 
   static fromSpec(code: string): FirstSuccessReceiver {

@@ -2,6 +2,20 @@ import type { ResolveFlow } from "./resolve-flow";
 import type { Graph } from "./graph";
 import { getGraphNodeNextIds } from "./graph";
 
+// ROOT (RequestClassifierResolver) outputs { requestInput, resolvedRequest }.
+// Downstream nodes expect ResolvedRequest (non-ISIN) or RequestInput (ISIN).
+// Detect and unwrap so the correct type flows to plan-node canHandle checks.
+function isClassifiedInput(
+  value: unknown,
+): value is { requestInput: object; resolvedRequest: object | null } {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "requestInput" in (value as object) &&
+    "resolvedRequest" in (value as object)
+  );
+}
+
 export enum EnvelopeStatus {
   Success = "success",
   Failure = "failure",
@@ -41,24 +55,46 @@ export class FlowEngine {
       return envelope;
     }
 
-    const result = resolver.resolve(envelope.value);
+    const kind = resolver.getRoutingNodeKind();
 
+    // Plan nodes (switch / try-each / step) are routing containers; calling
+    // their legacy resolve() runs the full pipeline and breaks the model.
+    // Gate them via canHandle: pass the envelope through unchanged when the
+    // node can accept it, fail immediately when it cannot.
+    // Leaf nodes (resolvers that do real work) use resolve() as normal.
     let outEnvelope: Envelope;
-    if (result.status === "success") {
-      outEnvelope = {
-        value: result.value != null ? (result.value as object) : envelope.value,
-        status: EnvelopeStatus.Success,
-      };
+    if (kind !== "leaf") {
+      if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
+        return { value: envelope.value, status: EnvelopeStatus.Failure };
+      }
+      outEnvelope = { value: envelope.value, status: EnvelopeStatus.Success };
     } else {
-      outEnvelope = { value: envelope.value, status: EnvelopeStatus.Failure };
+      const result = resolver.resolve(envelope.value);
+      if (result.status === "success") {
+        outEnvelope = {
+          value: result.value != null ? (result.value as object) : envelope.value,
+          status: EnvelopeStatus.Success,
+        };
+      } else {
+        outEnvelope = { value: envelope.value, status: EnvelopeStatus.Failure };
+      }
     }
 
     if (outEnvelope.status !== EnvelopeStatus.Success) {
       return outEnvelope;
     }
 
+    // Unwrap ClassifiedInput from ROOT: the classifier outputs
+    // { requestInput, resolvedRequest } but children expect one type directly.
+    if (isClassifiedInput(outEnvelope.value)) {
+      const { resolvedRequest, requestInput } = outEnvelope.value;
+      outEnvelope = {
+        ...outEnvelope,
+        value: (resolvedRequest ?? requestInput) as object,
+      };
+    }
+
     const nextIds = getGraphNodeNextIds(node);
-    const kind = resolver.getRoutingNodeKind();
 
     if (kind === "step") {
       // All next edges must succeed in sequence. First failure stops execution.
