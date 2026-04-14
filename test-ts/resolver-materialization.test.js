@@ -15,12 +15,12 @@ const {
   FxRequest,
   EquityRequest,
   RequestInput,
+  ResolveFlow,
+  DagPlan,
   createConcreteResolverMaterializationDependencies,
-  getRegisteredResolverByName,
-  materializeResolversByCode,
 } = require("../dist/ts/core/index.js");
-const { createTextHttpResponse } = require("./resource-fixtures.js");
-const { createTestResolverServices } = require("./resolver-service-fixtures.js");
+const { createTextHttpResponse, createStaticResourceHttpFetch } = require("./resource-fixtures.js");
+const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
 class FakeResolver {
   constructor(code) {
@@ -45,38 +45,37 @@ class FakeResolver {
   }
 }
 
-test("materializeResolversByCode instantiates and registers resolvers by class name", () => {
-  const registry = materializeResolversByCode(
-    { YAHOO: "FakeResolver" },
-    {
-      resolverClassesByName: {
-        FakeResolver,
-        YahooEquityQuoteResolver,
-        YahooFxResolver,
-      },
-    },
-  );
+// Minimal two-node graph: ROOT(FakeResolver) -> TERMINAL
+const FAKE_GRAPH = {
+  ROOT: { id: "ROOT", type: "FakeResolver", next: ["TERMINAL"] },
+  TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
+};
 
-  const resolver = registry.byCode.YAHOO;
-  assert.equal(getRegisteredResolverByName(registry.byName, "YAHOO"), resolver);
-  assert.equal(resolver?.name, "YAHOO");
+test("materializeResolversByCode instantiates and registers resolvers by class name", () => {
+  const flow = new ResolveFlow(FAKE_GRAPH, {
+    looksLikeIsin: () => false,
+    resolverClassesByName: { FakeResolver },
+  });
+
+  const resolver = flow.getResolver("ROOT");
+  assert.ok(resolver instanceof FakeResolver);
+  assert.equal(resolver.name, "ROOT");
 });
 
 test("materializeResolversByCode rejects unknown class names", () => {
   assert.throws(
     () =>
-      materializeResolversByCode(
-        { YAHOO: "MissingResolver" },
-        {
-          resolverClassesByName: {},
-        },
-      ),
-    /Unknown resolver class "MissingResolver" for "YAHOO"\./,
+      new ResolveFlow(FAKE_GRAPH, {
+        looksLikeIsin: () => false,
+        resolverClassesByName: {},
+      }),
+    /Unknown resolver class "FakeResolver" for "ROOT"\./,
   );
 });
 
 test("materializeResolversByCode can instantiate concrete resolvers with class-specific dependencies", () => {
-  const services = createTestResolverServices({
+  const staticFetch = createStaticResourceHttpFetch();
+  const services = createStaticResolverServices({
     httpFetch(url) {
       if (String(url) === "https://www.google.com/finance/quote/EUR-USD") {
         return createTextHttpResponse(`AF_initDataCallback({data:${JSON.stringify([
@@ -171,25 +170,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
           `);
       }
 
-      return createTextHttpResponse(`
-          <html>
-            <div class="compInfo"><p>BDO Unibank, Inc.</p></div>
-            <select>
-              <option value="BDO" selected>BDO</option>
-            </select>
-            <table>
-              <tr><th>Previous Close and Date</th><td>9.75</td></tr>
-              <tr><th>Last Traded Price</th><td>9.87</td></tr>
-              <tr><th>Change(% Change)</th><td>up 0.12 (1.23%)</td></tr>
-              <tr><th>ISIN</th><td>PHY077751022</td></tr>
-              <tr><th>High</th><td>10.10</td></tr>
-              <tr><th>Low</th><td>9.60</td></tr>
-              <tr><th>Open</th><td>9.80</td></tr>
-              <tr><th>Volume</th><td>12345</td></tr>
-            </table>
-            As of Jan 2, 2024 3:00 PM
-          </html>
-        `);
+      return staticFetch(url);
     },
     getCachedJson() {
       return null;
@@ -205,42 +186,26 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     },
   });
 
-  const registry = materializeResolversByCode(
+  const flow = new ResolveFlow(
+    DagPlan,
     {
-      "ISIN-RECEIVER": "FirstSuccessReceiver",
-      LOCAL: "LocalFxResolver",
-      "ISIN:PSE": "PseIsinMapResolver",
-      "ISIN:YAHOO": "YahooIsinSearchResolver",
-      "YAHOO-QUOTE": "YahooEquityQuoteResolver",
-      "YAHOO-FX": "YahooFxResolver",
-      "TRADINGVIEW-FUND": "TradingviewFundResolver",
-      GOOGLE: "GoogleFxResolver",
-      "PSE-FRAMES": "PSEFramesResolver",
-      "PSE-EDGE": "PSEEdgeResolver",
+      looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(v)),
+      ...createConcreteResolverMaterializationDependencies(services),
     },
-    createConcreteResolverMaterializationDependencies(services),
   );
 
-  assert.equal(
-    registry.byCode["ISIN-RECEIVER"] instanceof FirstSuccessReceiver,
-    true,
-  );
-  assert.equal(registry.byCode.LOCAL instanceof LocalFxResolver, true);
-  assert.equal(registry.byCode.GOOGLE instanceof GoogleFxResolver, true);
-  assert.equal(registry.byCode["PSE-FRAMES"] instanceof PseFramesResolver, true);
-  assert.equal(registry.byCode["PSE-EDGE"] instanceof PseEdgeResolver, true);
-  assert.equal(registry.byCode["YAHOO-QUOTE"] instanceof YahooEquityQuoteResolver, true);
-  assert.equal(registry.byCode["YAHOO-FX"] instanceof YahooFxResolver, true);
-  assert.equal(
-    registry.byCode["TRADINGVIEW-FUND"] instanceof TradingviewFundResolver,
-    true,
-  );
-  assert.equal(registry.byCode["ISIN:PSE"] instanceof PseIsinMapResolver, true);
-  assert.equal(
-    registry.byCode["ISIN:YAHOO"] instanceof YahooIsinSearchResolver,
-    true,
-  );
-  const pseFramesResolved = registry.byCode["PSE-FRAMES"].resolve(
+  assert.ok(flow.getResolver("ISIN-RECEIVER") instanceof FirstSuccessReceiver);
+  assert.ok(flow.getResolver("FX-IDENTITY") instanceof LocalFxResolver);
+  assert.ok(flow.getResolver("GOOGLE-FX") instanceof GoogleFxResolver);
+  assert.ok(flow.getResolver("PSE-FRAMES") instanceof PseFramesResolver);
+  assert.ok(flow.getResolver("PSE-EDGE") instanceof PseEdgeResolver);
+  assert.ok(flow.getResolver("YAHOO-QUOTE") instanceof YahooEquityQuoteResolver);
+  assert.ok(flow.getResolver("YAHOO-FX") instanceof YahooFxResolver);
+  assert.ok(flow.getResolver("TRADINGVIEW-FUND") instanceof TradingviewFundResolver);
+  assert.ok(flow.getResolver("ISIN:PSE") instanceof PseIsinMapResolver);
+  assert.ok(flow.getResolver("ISIN:YAHOO") instanceof YahooIsinSearchResolver);
+
+  const pseFramesResolved = flow.getResolver("PSE-FRAMES").resolve(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: false,
@@ -255,7 +220,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(pseFramesResolved.status, "success");
   assert.equal(pseFramesResolved.value.symbol, "BDO.PS");
 
-  const pseEdgeResolved = registry.byCode["PSE-EDGE"].resolve(
+  const pseEdgeResolved = flow.getResolver("PSE-EDGE").resolve(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: false,
@@ -270,7 +235,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(pseEdgeResolved.status, "success");
   assert.equal(pseEdgeResolved.value.symbol, "BDO.PS");
 
-  const pseResolved = registry.byCode["ISIN:PSE"].resolve(
+  const pseResolved = flow.getResolver("ISIN:PSE").resolve(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -293,7 +258,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(pseResolved.status, "success");
   assert.equal(pseResolved.value.exchange, "PSE");
 
-  const yahooResolved = registry.byCode["ISIN:YAHOO"].resolve(
+  const yahooResolved = flow.getResolver("ISIN:YAHOO").resolve(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -315,7 +280,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   assert.equal(yahooResolved.status, "success");
   assert.equal(yahooResolved.value.yahooSymbol, "IBM");
 
-  const googleResolved = registry.byCode.GOOGLE.resolve(
+  const googleResolved = flow.getResolver("GOOGLE-FX").resolve(
     new FxRequest({
       attribute: "price",
       fxPair: {
@@ -344,7 +309,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
     "CURRENCY:EURUSD",
   );
 
-  const tradingviewResolved = registry.byCode["TRADINGVIEW-FUND"].resolve(
+  const tradingviewResolved = flow.getResolver("TRADINGVIEW-FUND").resolve(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: true,

@@ -10,9 +10,11 @@ import {
   PLAN_RESOLVER_CLASSES_BY_NAME,
 } from "./resolver-classes";
 import {
-  materializeResolversByCode,
-  type ResolverMaterializationDependencies,
-} from "./resolver-materialization";
+  registerResolver,
+  type MaterializedResolverRegistry,
+  type ResolverRegistryByCode,
+  type ResolverRegistryByName,
+} from "./resolver-registry";
 import type { RequestResolutionDependencies } from "./request-resolution";
 import { createRequestResolutionEnv } from "./request-resolution-env";
 import { FlowEngine, EnvelopeStatus } from "./flow-engine";
@@ -336,9 +338,47 @@ function isTerminalNodeId(code: string): boolean {
   return normalizeCode(code) === "TERMINAL";
 }
 
-interface ResolveFlowDependencies
-  extends ResolverMaterializationDependencies {
+interface ResolverClass {
+  fromSpec(code: string): Resolver;
+}
+
+interface ResolveFlowDependencies {
   looksLikeIsin(value: string): boolean;
+  registryByCode?: ResolverRegistryByCode;
+  registryByName?: ResolverRegistryByName;
+  resolverClassesByName: Record<string, ResolverClass | undefined>;
+  resolverServices?: import("./resolver-services").ResolverServices;
+}
+
+function materializeResolversByCode(
+  resolverSpecs: Record<string, string>,
+  deps: ResolveFlowDependencies,
+): MaterializedResolverRegistry {
+  const byCode = deps.registryByCode || {};
+  const byName = deps.registryByName || {};
+
+  Object.keys(resolverSpecs || {}).forEach((code) => {
+    const normalizedCode = normalizeCode(code);
+    const resolverClass = resolverSpecs[code] as string;
+    const ResolverClass = deps.resolverClassesByName[resolverClass] || null;
+
+    if (!ResolverClass) {
+      throw new Error(
+        `Unknown resolver class "${String(resolverClass || "")}" for "${normalizedCode}".`,
+      );
+    }
+
+    const resolver = ResolverClass.fromSpec(normalizedCode);
+
+    if (deps.resolverServices && typeof resolver.initEnv === "function") {
+      resolver.initEnv(deps.resolverServices);
+    }
+
+    registerResolver(byName, resolver);
+    byCode[normalizedCode] = resolver;
+  });
+
+  return { byCode, byName };
 }
 
 

@@ -10,7 +10,8 @@ import {
   buildIsinIdentifierRouteState,
   buildPseQuoteRouteState,
 } from "./route-state";
-import { IdentifierResolver, RouteExecutionResolver } from "./resolver-classes";
+import { IdentifierResolver, RouteExecutionResolver, type Resolver } from "./resolver-classes";
+interface ResolverClass { fromSpec(code: string): Resolver }
 import {
   createRequestInput,
   buildTypedRequestFromParsedInput,
@@ -69,7 +70,6 @@ import {
   type RouteResult,
 } from "./route-results";
 import type { ResolutionResult, RouteJob, RuntimePlan } from "./planner";
-import type { ResolverClass } from "./resolver-materialization";
 import { buildFxQuoteRouteState } from "./route-state";
 import {
   loadStoredTextResource,
