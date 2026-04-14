@@ -51,7 +51,7 @@ export function createRouteResult<StateChanges = Record<string, unknown>>(
   };
 }
 
-export function createResolutionResult<T extends Record<string, unknown>>(
+function createResolutionResult<T extends Record<string, unknown>>(
   status: ResolutionResult<unknown>["status"],
   options: T,
 ): { status: ResolutionResult<unknown>["status"] } & T {
@@ -90,7 +90,7 @@ export function defaultRouteFailureMessage(
     : "Quote lookup failed.";
 }
 
-export function collectFailedRouteLabels(
+function collectFailedRouteLabels(
   job: Pick<RouteJob, "routeRuntimeTrace"> | null | undefined,
 ): string[] {
   const trace =
@@ -124,7 +124,7 @@ export function formatRouteFailureMessage(
   return `${normalizedMessage} Failed nodes: ${failedLabels.join(", ")}.`;
 }
 
-export function shouldPreferLookupFailureMessage(message: unknown): boolean {
+function shouldPreferLookupFailureMessage(message: unknown): boolean {
   return /currently unavailable/i.test(String(message || ""));
 }
 

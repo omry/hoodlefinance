@@ -121,7 +121,7 @@ export function matchesResolverName(
   );
 }
 
-export function listSearchablePlanNodes(
+function listSearchablePlanNodes(
   node: ResolverPlan | null | undefined,
   request: unknown | null,
 ): Resolver[] {

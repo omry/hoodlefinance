@@ -48,7 +48,7 @@ export interface SelectNextContext {
   selectedNodeCodes?: Set<string>;
 }
 
-export type SelectedNodes = Resolver[];
+type SelectedNodes = Resolver[];
 
 function formatRoutingPlanTreeLabel(value: unknown): string {
   return String(value || "")

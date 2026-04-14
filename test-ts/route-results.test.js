@@ -3,14 +3,12 @@ const test = require("node:test");
 
 const {
   applyRouteResult,
-  collectFailedRouteLabels,
   createResolutionFailure,
   createResolutionSuccess,
   createRouteResult,
   defaultRouteFailureMessage,
   describePlanSource,
   formatRouteFailureMessage,
-  shouldPreferLookupFailureMessage,
 } = require("../dist/ts/core/index.js");
 
 test("describePlanSource handles normal and forced route labels", () => {
@@ -55,7 +53,6 @@ test("route failure helpers preserve trace-based label reporting", () => {
     ],
   };
 
-  assert.deepEqual(collectFailedRouteLabels(job), ["YAHOO", "PSE"]);
   assert.equal(defaultRouteFailureMessage(job), "Quote lookup failed.");
   assert.equal(
     formatRouteFailureMessage(job, "Market data unavailable."),
@@ -135,10 +132,3 @@ test("applyRouteResult updates job state for success, lookup failure, and termin
   assert.equal(terminalJob.error, "Boom Failed nodes: YAHOO.");
 });
 
-test("shouldPreferLookupFailureMessage keeps the current availability heuristic", () => {
-  assert.equal(
-    shouldPreferLookupFailureMessage("Service currently unavailable"),
-    true,
-  );
-  assert.equal(shouldPreferLookupFailureMessage("Bad ticker"), false);
-});

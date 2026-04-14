@@ -233,17 +233,11 @@ export class FirstSuccessReceiver extends IdentifierResolver {
   }
 }
 
-export interface YahooIsinSearchRequest {
+interface YahooIsinSearchRequest {
   cacheKey: string;
   index: number;
   isin: string;
   url: string;
-}
-
-export interface YahooIsinSearchBatchResponse {
-  error?: unknown;
-  request: YahooIsinSearchRequest;
-  response?: TextHttpResponse;
 }
 
 interface SequentialFetchRequestLike {

@@ -24,20 +24,20 @@ interface CurrencyUnit {
   factor: number;
 }
 
-export interface CurrencyCodeDataPayload {
+interface CurrencyCodeDataPayload {
   aliases?: Record<string, CurrencyCodeAliasEntry>;
   canonicalCodes?: string[];
   cryptoCodes?: string[];
 }
 
-export const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
-export const CURRENCY_CODES_CACHE_TTL_SECONDS = 6 * 60 * 60;
-export const CURRENCY_CODES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
-export const CURRENCY_CODES_STORED_KEY = "hoodlefinance.currencyCodes";
+const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
+const CURRENCY_CODES_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const CURRENCY_CODES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const CURRENCY_CODES_STORED_KEY = "hoodlefinance.currencyCodes";
 export const CURRENCY_CODES_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/currency-codes.json";
 
-export function buildCurrencyUnits(
+function buildCurrencyUnits(
   payload: CurrencyCodePayload,
 ): Record<string, CurrencyUnit> {
   const unitsByCode: Record<string, CurrencyUnit> = {};
@@ -288,7 +288,7 @@ function findCompactFxPairCandidatesWithUnits(
   return candidates;
 }
 
-export function createFxTickerParser(
+function createFxTickerParser(
   unitsByCode: Record<string, CurrencyUnit>,
 ): (ticker: string) => FxPair | null {
   return function parseFxTickerWithUnits(ticker: string): FxPair | null {
@@ -353,7 +353,7 @@ export function createFxTickerParser(
   };
 }
 
-export function loadCurrencyCodeUnits(
+function loadCurrencyCodeUnits(
   services: ResolverServices,
 ): Record<string, CurrencyUnit> {
   if (typeof services.httpFetch !== "function") {

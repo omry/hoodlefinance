@@ -30,7 +30,7 @@ export interface ParsedTickerRequest {
   ticker: string;
 }
 
-export interface RequestInputInit {
+interface RequestInputInit {
   attribute: string;
   attributeRequest: AttributeRequest;
   attributeType: AttributeType;
@@ -41,7 +41,7 @@ export interface RequestInputInit {
   ticker: string;
 }
 
-export interface RequestInputRuntimeDependencies {
+interface RequestInputRuntimeDependencies {
   looksLikeIsin(value: string): boolean;
   normalizeAttribute(attribute: unknown): string;
   parseAttributeRequest(attribute: string): AttributeRequest;
@@ -189,12 +189,12 @@ export function classifyRequestInput(
   );
 }
 
-export interface BaseRequestInputSnapshot {
+interface BaseRequestInputSnapshot {
   attribute: string;
   identifier: string;
 }
 
-export class BaseRequest {
+class BaseRequest {
   identifierResolutionMs: number;
   readonly input: BaseRequestInputSnapshot;
 
@@ -210,7 +210,7 @@ export class BaseRequest {
   }
 }
 
-export interface EquityRequestInit extends BaseRequestInputSnapshot {
+interface EquityRequestInit extends BaseRequestInputSnapshot {
   allowTradingviewFallback?: boolean;
   exchange?: string;
   identifierResolutionMs?: number;
@@ -235,7 +235,7 @@ export class EquityRequest extends BaseRequest {
   }
 }
 
-export interface FxRequestInit extends BaseRequestInputSnapshot {
+interface FxRequestInit extends BaseRequestInputSnapshot {
   fxPair: FxPair;
   identifierResolutionMs?: number;
 }
@@ -256,4 +256,3 @@ export class FxRequest extends BaseRequest {
 }
 
 export type ResolvedRequest = EquityRequest | FxRequest;
-export type PlannerRequest = RawRequestInput | RequestInput | ResolvedRequest;

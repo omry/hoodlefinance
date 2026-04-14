@@ -25,7 +25,7 @@ import {
 } from "./fx-normalization";
 import { normalizeTickerWithoutIsin } from "./ticker-normalization";
 
-export interface RequestBuildingDependencies {
+interface RequestBuildingDependencies {
   extractTickerExchange(ticker: string): string;
   extractYahooExchangeFromSymbol(symbol: string): string;
   looksLikeIsraeliFundYahooSymbol(symbol: string): boolean;

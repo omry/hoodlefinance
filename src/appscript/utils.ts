@@ -1,9 +1,5 @@
-import { parsePreferredReitTickerSet } from "../core/preferred-yahoo-symbols";
 import type { StoredTextResource } from "../runtime/ResolverServices";
-import type {
-  AppsScriptCache,
-  AppsScriptUrlFetchApp,
-} from "./host-types";
+import type { AppsScriptCache } from "./host-types";
 
 export interface StringCacheAdapter {
   getCachedString(key: string): string;
@@ -42,15 +38,6 @@ export function createStringCache(
       return normalized;
     },
   };
-}
-
-export function cacheTextResource(
-  stringCache: StringCacheAdapter,
-  cacheKey: string,
-  cacheTtlSeconds: number,
-  text: string,
-): string {
-  return stringCache.putCachedString(cacheKey, text, cacheTtlSeconds);
 }
 
 export function createJsonCache(cache: AppsScriptCache): JsonCacheAdapter {
@@ -95,77 +82,7 @@ export function createStoredTextState(
   };
 }
 
-export function createFetchAllInChunks(urlFetchApp: AppsScriptUrlFetchApp) {
-  return function fetchAllInChunks<TRequest extends { url: string }>(
-    _source: string,
-    requests: TRequest[],
-  ) {
-    try {
-      const responses = urlFetchApp.fetchAll(
-        requests.map((request) => ({
-          muteHttpExceptions: true,
-          url: request.url,
-        })),
-      );
-
-      return requests.map((request, index) => ({
-        ...(responses[index]
-          ? {
-              request,
-              response: responses[index],
-            }
-          : {
-              error: new Error(`Missing fetchAll response for ${request.url}`),
-              request,
-            }),
-      }));
-    } catch {
-      return requests.map((request) => {
-        try {
-          return {
-            request,
-            response: urlFetchApp.fetch(request.url),
-          };
-        } catch (error) {
-          return {
-            error,
-            request,
-          };
-        }
-      });
-    }
-  };
-}
-
-export function parsePreferredReitTickerSetIfValid(
-  text: string | null | undefined,
-) {
-  const rawText = String(text || "");
-
-  if (!rawText) {
-    return null;
-  }
-
-  try {
-    JSON.parse(rawText);
-  } catch {
-    return null;
-  }
-
-  return parsePreferredReitTickerSet(rawText);
-}
-
-export function parsePreferredReitTickerSetOrThrow(text: string) {
-  const preferredReitTickerSet = parsePreferredReitTickerSetIfValid(text);
-
-  if (!preferredReitTickerSet) {
-    throw new Error("Invalid preferred REIT whitelist payload.");
-  }
-
-  return preferredReitTickerSet;
-}
-
-export function parseStoredTextResourcePayload(text: string | null | undefined) {
+function parseStoredTextResourcePayload(text: string | null | undefined) {
   const rawText = String(text || "");
 
   if (!rawText) {

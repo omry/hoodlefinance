@@ -336,7 +336,7 @@ function isTerminalNodeId(code: string): boolean {
   return normalizeCode(code) === "TERMINAL";
 }
 
-export interface ResolveFlowDependencies
+interface ResolveFlowDependencies
   extends ResolverMaterializationDependencies {
   looksLikeIsin(value: string): boolean;
 }
