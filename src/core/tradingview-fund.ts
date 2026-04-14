@@ -1,4 +1,5 @@
 import type { TextHttpResponse } from "./text-http-response";
+import { StockQuote } from "./quote";
 
 const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
 
@@ -69,7 +70,7 @@ export function extractTradingviewFundQuote(
   html: string,
   yahooSymbol: string,
   expectedSymbol: string,
-): Record<string, unknown> {
+): StockQuote {
   const symbolInfo = extractTradingviewSymbolInfo(html);
   const resolvedSymbol =
     symbolInfo && symbolInfo.resolved_symbol
@@ -110,7 +111,7 @@ export function extractTradingviewFundQuote(
     );
   }
 
-  return {
+  return new StockQuote({
     currency,
     exchangeName: "TASE",
     financialCurrency: currency,
@@ -120,14 +121,14 @@ export function extractTradingviewFundQuote(
     shortName:
       symbolInfo && symbolInfo.short_name ? String(symbolInfo.short_name) : "",
     symbol: String(yahooSymbol || "").trim().toUpperCase(),
-  };
+  });
 }
 
 export function extractTradingviewFundQuoteFromResponse(
   response: TextHttpResponse,
   yahooSymbol: string,
   expectedSymbol: string,
-): Record<string, unknown> {
+): StockQuote {
   if (response.getResponseCode() !== 200) {
     throw new Error(
       `TradingView quote lookup failed for "${expectedSymbol}" (${response.getResponseCode()}).`,

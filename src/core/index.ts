@@ -7,6 +7,7 @@ export * from "./planner";
 export * from "./request";
 export * from "./exchange-symbols";
 export * from "./fx-normalization";
+export * from "./quote";
 export * from "./fx-quotes";
 export * from "./google-fx";
 export * from "./pse-isin-map";

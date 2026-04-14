@@ -1,54 +1,34 @@
-import { parseAttributeRequest } from "./request-parsing";
+import { YAHOO_EXCHANGE_BY_META_NAME, extractYahooExchangeFromSymbol, isPrefixlessExchange, resolveExchangeSuffix } from "./exchange-symbols";
+import { FxQuote, StockQuote } from "./quote";
+import { parseAttributeRequest, stripTickerSourceOverride } from "./request-parsing";
+
 export { parseAttributeRequest };
-import { stripTickerSourceOverride } from "./request-parsing";
-import { YAHOO_EXCHANGE_BY_META_NAME, isPrefixlessExchange, resolveExchangeSuffix, extractYahooExchangeFromSymbol } from "./exchange-symbols";
 
 interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
   tickerInput?: string | null;
 }
 
-function normalizeCurrency(currency: unknown): string {
-  return currency === "GBp"
-    ? "GBP"
-    : currency === "ILA"
-      ? "ILS"
-      : String(currency || "");
-}
-
-function normalizeMoney(
-  quote: Record<string, unknown>,
-  value: unknown,
-): number {
-  const rawCurrency = quote.currency || quote.financialCurrency || "";
-  const normalizedCurrency = normalizeCurrency(rawCurrency);
-  const fxScale =
-    quote.hoodlefinanceFxUnitScale != null
-      ? Number(quote.hoodlefinanceFxUnitScale)
-      : null;
+function normalizeMoney(quote: StockQuote | FxQuote, value: unknown): number {
   const numericValue = Number(value);
 
   if (value == null || !Number.isFinite(numericValue)) {
     throw new Error("No value is available for this ticker.");
   }
 
-  if (fxScale != null && Number.isFinite(fxScale)) {
-    return numericValue * fxScale;
+  if (quote instanceof FxQuote && Number.isFinite(quote.fxUnitScale)) {
+    return numericValue * quote.fxUnitScale;
   }
 
-  return (normalizedCurrency === "GBP" &&
-    (quote.currency === "GBp" || quote.financialCurrency === "GBp")) ||
-    (normalizedCurrency === "ILS" &&
-      (quote.currency === "ILA" || quote.financialCurrency === "ILA"))
-    ? numericValue / 100
-    : numericValue;
+  return numericValue;
 }
 
-function pickPrice(quote: Record<string, unknown>): number {
+function pickPrice(quote: StockQuote | FxQuote): number {
+  const stockQuote = quote as StockQuote;
   const candidates = [
-    quote.regularMarketPrice,
-    quote.postMarketPrice,
-    quote.preMarketPrice,
+    stockQuote.regularMarketPrice,
+    stockQuote.postMarketPrice,
+    stockQuote.preMarketPrice,
   ];
 
   for (const candidate of candidates) {
@@ -61,11 +41,12 @@ function pickPrice(quote: Record<string, unknown>): number {
   throw new Error("No price is available for this ticker.");
 }
 
-function previousClose(quote: Record<string, unknown>): number {
+function previousClose(quote: StockQuote | FxQuote): number {
+  const stockQuote = quote as StockQuote;
   const candidates = [
-    quote.regularMarketPreviousClose,
-    quote.previousClose,
-    quote.chartPreviousClose,
+    stockQuote.regularMarketPreviousClose,
+    stockQuote.previousClose,
+    stockQuote.chartPreviousClose,
   ];
 
   for (const candidate of candidates) {
@@ -78,44 +59,42 @@ function previousClose(quote: Record<string, unknown>): number {
   throw new Error("No previous close is available for this ticker.");
 }
 
-function change(quote: Record<string, unknown>): number {
+function change(quote: StockQuote | FxQuote): number {
   return pickPrice(quote) - previousClose(quote);
 }
 
-export function extractCurrencyValue(quote: Record<string, unknown>): string {
-  if (quote.hoodlefinanceFxDisplayCurrency != null) {
-    return String(quote.hoodlefinanceFxDisplayCurrency);
+function resolveGoogleExchange(quote: StockQuote): string {
+  const suffixExchange = extractYahooExchangeFromSymbol(String(quote.symbol || "").trim());
+  if (suffixExchange) {
+    return YAHOO_EXCHANGE_BY_META_NAME[suffixExchange] || suffixExchange;
   }
 
-  return normalizeCurrency(quote.currency || quote.financialCurrency || "");
-}
-
-function isFxContext(quote: Record<string, unknown>): boolean {
-  return Boolean(
-    quote.hoodlefinanceFxDisplayCurrency != null ||
-      quote.hoodlefinanceFxGoogleSymbol ||
-      /^[A-Z]{6}(=X)?$/.test(String(quote.symbol || "").trim().toUpperCase()),
-  );
-}
-
-function resolveGoogleExchange(quote: Record<string, unknown>): string {
-  const suffixExchange = extractYahooExchangeFromSymbol(String(quote.symbol || "").trim());
-  if (suffixExchange) return YAHOO_EXCHANGE_BY_META_NAME[suffixExchange] || suffixExchange;
   const rawExchange = String(
     quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
-  ).trim().toUpperCase();
-  if (!rawExchange) return "";
+  )
+    .trim()
+    .toUpperCase();
+
+  if (!rawExchange) {
+    return "";
+  }
+
   return YAHOO_EXCHANGE_BY_META_NAME[rawExchange] || rawExchange;
 }
 
-function renderGoogleSymbol(quote: Record<string, unknown>, resolvedSymbol: string): string {
-  if (isFxContext(quote)) {
-    if (quote.hoodlefinanceFxGoogleSymbol) return String(quote.hoodlefinanceFxGoogleSymbol);
+function renderGoogleSymbol(quote: StockQuote | FxQuote, resolvedSymbol: string): string {
+  if (quote instanceof FxQuote) {
+    if (quote.googleSymbol) {
+      return String(quote.googleSymbol);
+    }
+
     return "CURRENCY:" + resolvedSymbol.replace(/=X$/i, "");
   }
 
   const googleExchange = resolveGoogleExchange(quote);
-  if (!googleExchange) return resolvedSymbol;
+  if (!googleExchange) {
+    return resolvedSymbol;
+  }
 
   if (isPrefixlessExchange(googleExchange)) {
     return `${googleExchange}:${resolvedSymbol}`;
@@ -130,16 +109,17 @@ function renderGoogleSymbol(quote: Record<string, unknown>, resolvedSymbol: stri
 }
 
 function resolveSymbolAttribute(
-  quote: Record<string, unknown>,
+  quote: StockQuote | FxQuote,
   context: AttributeExtractionContext | null | undefined,
   style: "google" | "yahoo",
 ): string {
   const resolvedSymbol = String(quote.symbol || "").trim();
 
   if (style === "yahoo") {
-    if (isFxContext(quote)) {
+    if (quote instanceof FxQuote) {
       return resolvedSymbol.replace(/=X$/i, "") + "=X";
     }
+
     return resolvedSymbol;
   }
 
@@ -164,49 +144,49 @@ function resolveSymbolAttribute(
 }
 
 export function extractAttributeValue(
-  quote: Record<string, unknown>,
+  quote: StockQuote | FxQuote,
   attribute: string,
   context?: AttributeExtractionContext,
 ): unknown {
   const attributeRequest = parseAttributeRequest(attribute);
   const baseAttribute = attributeRequest.baseAttribute;
- 
+
   let value: unknown;
- 
+
   if (
     (baseAttribute === "high" ||
       baseAttribute === "low" ||
       baseAttribute === "volume") &&
-    isFxContext(quote)
+    quote instanceof FxQuote
   ) {
     throw new Error(
       `Attribute "${baseAttribute}" is not available for currency-pair identifiers.`,
     );
   }
- 
+
   switch (baseAttribute) {
     case "price":
       value = normalizeMoney(quote, pickPrice(quote));
       break;
     case "name":
       value =
-        quote.longName ||
+        (quote as StockQuote).longName ||
         quote.shortName ||
-        quote.displayName ||
+        (quote as StockQuote).displayName ||
         quote.symbol ||
         "";
       break;
     case "currency":
-      value = extractCurrencyValue(quote);
+      value = quote.currency;
       break;
     case "isin":
-      value = quote.isin || "";
+      value = (quote as StockQuote).isin || "";
       break;
     case "high":
-      value = normalizeMoney(quote, quote.regularMarketDayHigh);
+      value = normalizeMoney(quote, (quote as StockQuote).regularMarketDayHigh);
       break;
     case "low":
-      value = normalizeMoney(quote, quote.regularMarketDayLow);
+      value = normalizeMoney(quote, (quote as StockQuote).regularMarketDayLow);
       break;
     case "close":
       value = normalizeMoney(quote, previousClose(quote));
@@ -218,25 +198,31 @@ export function extractAttributeValue(
       value = change(quote) / previousClose(quote);
       break;
     case "volume":
-      if (quote.regularMarketVolume == null) {
+      if ((quote as StockQuote).regularMarketVolume == null) {
         throw new Error("No volume is available for this ticker.");
       }
-      value = quote.regularMarketVolume;
+      value = (quote as StockQuote).regularMarketVolume;
       break;
     case "tradetime": {
+      const stockQuote = quote as StockQuote;
       const timestamp =
-        quote.regularMarketTime || quote.postMarketTime || quote.preMarketTime;
+        stockQuote.regularMarketTime ||
+        stockQuote.postMarketTime ||
+        stockQuote.preMarketTime;
       const numericTimestamp = Number(timestamp);
- 
+
       if (timestamp == null || !Number.isFinite(numericTimestamp)) {
         throw new Error("No trade time is available for this ticker.");
       }
- 
+
       value = new Date(numericTimestamp * 1000);
       break;
     }
     case "datadelay":
-      value = quote.exchangeDataDelayedBy != null ? quote.exchangeDataDelayedBy : 0;
+      value =
+        (quote as StockQuote).exchangeDataDelayedBy != null
+          ? (quote as StockQuote).exchangeDataDelayedBy
+          : 0;
       break;
     case "symbol":
     case "symbol:google":
@@ -247,62 +233,57 @@ export function extractAttributeValue(
       break;
     case "exchange":
     case "exchange:google": {
-      if (isFxContext(quote)) {
+      if (quote instanceof FxQuote) {
         value = "CURRENCY";
         break;
       }
+
       value = resolveGoogleExchange(quote);
       break;
     }
     case "exchange:yahoo": {
-      if (isFxContext(quote)) {
+      if (quote instanceof FxQuote) {
         value = "CURRENCY";
         break;
       }
-      const suffixExchangeYahoo = extractYahooExchangeFromSymbol(String(quote.symbol || "").trim());
+
+      const stockQuote = quote as StockQuote;
+      const suffixExchangeYahoo = extractYahooExchangeFromSymbol(String(stockQuote.symbol || "").trim());
       if (suffixExchangeYahoo) {
         value = suffixExchangeYahoo;
         break;
       }
-      value = String(
-        quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
-      ).trim().toUpperCase();
+
+      value = String(stockQuote.exchangeName || stockQuote.fullExchangeName || stockQuote.quoteSourceName || "")
+        .trim()
+        .toUpperCase();
       break;
     }
     default:
       throw new Error(`Unsupported attribute "${attribute}".`);
   }
- 
+
   if (!attributeRequest.wantsOutputCurrency) {
     return value;
   }
- 
+
   if (baseAttribute === "currency") {
-    throw new Error(
-      'Attribute "currency" does not support output-currency conversion.',
-    );
+    throw new Error('Attribute "currency" does not support output-currency conversion.');
   }
- 
+
   if (baseAttribute !== "price") {
     throw new Error(
       `Attribute "${baseAttribute}" does not support output-currency conversion. Supported attribute is: price.`,
     );
   }
- 
-  const quoteCurrency = extractCurrencyValue(quote);
+
+  const quoteCurrency = quote.currency;
   const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
- 
+
   if (quoteCurrency === targetCurrency) {
     return value;
   }
- 
-  const fxScale = quote.hoodlefinanceFxUnitScale != null ? Number(quote.hoodlefinanceFxUnitScale) : null;
-  const isCorrectScale = fxScale != null && Number.isFinite(fxScale);
- 
-  if (isCorrectScale) {
-    return value;
-  }
- 
+
   throw new Error(
     `Output-currency conversion from "${quoteCurrency}" to "${targetCurrency}" is currently unavailable. No valid FX rate was successfully resolved for this ticker.`,
   );

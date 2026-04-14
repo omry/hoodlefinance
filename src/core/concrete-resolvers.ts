@@ -23,6 +23,7 @@ import {
   extractRawQuote,
   isSameCurrencyFxPair,
 } from "./fx-quotes";
+import { StockQuote } from "./quote";
 import {
   buildGoogleFinanceQuoteUrl,
   extractGoogleFinanceFxPairQuote,
@@ -711,7 +712,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
 
         if (cached) {
           results[i] = createRouteResult("success", {
-            quote: decorateFxQuote(cached as Record<string, unknown>, fxPair),
+            quote: decorateFxQuote(new StockQuote(cached as never), fxPair),
           });
           continue;
         }
@@ -720,7 +721,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
           this.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
           fxPair,
         );
-        this.putCachedJson(cacheKey, quote, 60);
+        this.putCachedJson(cacheKey, extractRawQuote(quote), 60);
         results[i] = createRouteResult("success", {
           quote: decorateFxQuote(quote, fxPair),
         });
@@ -886,7 +887,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
         );
         this.putCachedJson(
           responseItem.request.cacheKey,
-          quote,
+          extractRawQuote(quote),
           PSE_QUOTE_CACHE_TTL_SECONDS,
         );
         results[responseItem.request.index] = createRouteResult("success", {
@@ -1135,7 +1136,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
         this.putCachedJson(
           responseItem.request.cacheKey,
-          quote,
+          extractRawQuote(quote),
           PSE_QUOTE_CACHE_TTL_SECONDS,
         );
         results[responseItem.request.index] = createRouteResult("success", {
@@ -1283,13 +1284,12 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
       const lookupYahooSymbol = preferredYahooSymbol || yahooSymbol;
       const cacheKey = `hoodlefinance:${lookupYahooSymbol}`;
       const cached = this.getCachedJson(cacheKey);
+      const fxPair = (job.routeState.fxPair as FxRequest["fxPair"] | null) || null;
+      const cachedQuote = cached ? new StockQuote(cached as never) : null;
 
       if (cached) {
         results[i] = createRouteResult("success", {
-          quote: decorateFxQuote(
-            cached as Record<string, unknown>,
-            (job.routeState.fxPair as FxRequest["fxPair"] | null) || null,
-          ),
+          quote: fxPair && cachedQuote ? decorateFxQuote(cachedQuote, fxPair) : cachedQuote,
         });
         continue;
       }
@@ -1313,14 +1313,13 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
           if (!job) {
             throw new Error("Route job is missing for Yahoo quote response.");
           }
+          const fxPair = (job.routeState.fxPair as FxRequest["fxPair"] | null) || null;
 
-          const quote = decorateFxQuote(
-            extractYahooQuoteMetaFromResponse(
-              responseItem.response as TextHttpResponse,
-              job.tickerInput || responseItem.request.yahooSymbol,
-            ),
-            (job.routeState.fxPair as FxRequest["fxPair"] | null) || null,
+          const stockQuote = extractYahooQuoteMetaFromResponse(
+            responseItem.response as TextHttpResponse,
+            job.tickerInput || responseItem.request.yahooSymbol,
           );
+          const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
           this.putCachedJson(
             responseItem.request.cacheKey,
             extractRawQuote(quote),
@@ -1519,8 +1518,8 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
           responseItem.request.yahooSymbol,
           responseItem.request.expectedSymbol,
         );
-        this.putCachedJson(responseItem.request.cacheKey, quote, 60);
-        this.putCachedJson(responseItem.request.primaryCacheKey, quote, 60);
+        this.putCachedJson(responseItem.request.cacheKey, quote.rawQuote, 60);
+        this.putCachedJson(responseItem.request.primaryCacheKey, quote.rawQuote, 60);
         results[responseItem.request.index] = createRouteResult("success", {
           quote,
         });

@@ -13,11 +13,7 @@ import type {
 } from "./planner";
 import { RoutingNodeKind } from "./planner";
 import { FxRequest, RequestInput } from "./request";
-import {
-  extractAttributeValue,
-  extractCurrencyValue,
-  parseAttributeRequest,
-} from "./attribute-extraction";
+import { extractAttributeValue, parseAttributeRequest } from "./attribute-extraction";
 import { buildFxPairFromCodes } from "./fx-normalization";
 import {
   createResolutionFailure,
@@ -30,6 +26,7 @@ import {
   resolvePlannedQuoteResult,
   type LookupResult,
 } from "./request-resolution";
+import type { StockQuote } from "./quote";
 import type { ResolverServices } from "./resolver-services";
 
 // TEMPORARY: threads the runtime FX root plan into plan nodes for
@@ -398,7 +395,7 @@ export abstract class ResolverPlan extends Resolver {
 
   resolveOutputCurrencyResult(
     requestInput: RequestInput,
-    quote: Record<string, unknown>,
+    quote: StockQuote,
   ): LookupResult | null {
     const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
 
@@ -406,7 +403,7 @@ export abstract class ResolverPlan extends Resolver {
       const nestedResolver = singleNode as Resolver & {
         resolveOutputCurrencyResult?: (
           request: RequestInput,
-          value: Record<string, unknown>,
+          value: StockQuote,
         ) => LookupResult | null;
       };
 
@@ -428,15 +425,14 @@ export abstract class ResolverPlan extends Resolver {
       return null;
     }
 
-    const sourceCurrency = extractCurrencyValue(quote);
+    const sourceCurrency = quote.currency;
     const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
 
     if (
       !sourceCurrency ||
       !targetCurrency ||
       sourceCurrency === targetCurrency ||
-      (quote.hoodlefinanceFxUnitScale != null &&
-        Number.isFinite(Number(quote.hoodlefinanceFxUnitScale)))
+      (quote.fxUnitScale != null && Number.isFinite(Number(quote.fxUnitScale)))
     ) {
       return null;
     }
@@ -461,7 +457,7 @@ export abstract class ResolverPlan extends Resolver {
     if (fxResult.status === "success") {
       const rate = Number(
         extractAttributeValue(
-          fxResult.value as Record<string, unknown>,
+          fxResult.value as StockQuote,
           "price",
         ),
       );

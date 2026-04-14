@@ -1,4 +1,5 @@
 import type { TextHttpResponse } from "./text-http-response";
+import { StockQuote } from "./quote";
 
 const PSE_SEARCH_URL = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const PSE_STOCK_DATA_URL = "https://edge.pse.com.ph/companyPage/stockData.do";
@@ -278,21 +279,21 @@ function buildPseQuote(fields: {
   regularMarketVolume: number | null;
   shortName: string;
   symbol: string;
-}): Record<string, unknown> {
-  return {
+}): StockQuote {
+  return new StockQuote({
     currency: "PHP",
     exchangeDataDelayedBy: 0,
     exchangeName: "PSE",
     financialCurrency: "PHP",
     ...fields,
     symbol: fields.symbol + ".PS",
-  };
+  });
 }
 
 function extractPseQuote(
   html: string,
   listing: Pick<PseListing, "name" | "symbol"> | null | undefined,
-): Record<string, unknown> {
+): StockQuote {
   const previousClose = parseNumber(
     extractPseField(html, "Previous Close and Date"),
   );
@@ -329,7 +330,7 @@ function extractPseQuote(
 export function extractPseQuoteFromResponse(
   response: TextHttpResponse,
   listing: Pick<PseListing, "name" | "symbol"> | null | undefined,
-): Record<string, unknown> {
+): StockQuote {
   if (response.getResponseCode() !== 200) {
     throw buildPseUnavailableError(
       buildPseHttpErrorMessage(response.getResponseCode()),
@@ -342,7 +343,7 @@ export function extractPseQuoteFromResponse(
 export function extractPseFrameQuote(
   html: string,
   symbol: string,
-): Record<string, unknown> {
+): StockQuote {
   const expectedSymbol = String(symbol || "")
     .trim()
     .toUpperCase();
@@ -397,7 +398,7 @@ export function extractPseFrameQuote(
 export function extractPseFrameQuoteFromResponse(
   response: TextHttpResponse,
   symbol: string,
-): Record<string, unknown> {
+): StockQuote {
   if (response.getResponseCode() !== 200) {
     throw buildPseUnavailableError(
       buildPseHttpErrorMessage(response.getResponseCode()),

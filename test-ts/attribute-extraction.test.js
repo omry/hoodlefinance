@@ -3,21 +3,23 @@ const test = require("node:test");
 
 const {
   extractAttributeValue,
+  FxQuote,
+  StockQuote,
 } = require("../dist/ts/core/index.js");
 
 test("extractAttributeValue handles standard numeric and text fields", () => {
-  const quote = {
-    regularMarketPrice: 150.25,
-    regularMarketPreviousClose: 148.50,
-    longName: "Apple Inc.",
-    symbol: "AAPL",
+  const quote = new StockQuote({
     currency: "USD",
-    regularMarketDayHigh: 151.00,
-    regularMarketDayLow: 149.00,
-    regularMarketVolume: 1000000,
-    regularMarketTime: 1625097600, // 2021-06-30
     exchangeDataDelayedBy: 15,
-  };
+    longName: "Apple Inc.",
+    regularMarketDayHigh: 151.0,
+    regularMarketDayLow: 149.0,
+    regularMarketPreviousClose: 148.5,
+    regularMarketPrice: 150.25,
+    regularMarketTime: 1625097600, // 2021-06-30
+    regularMarketVolume: 1000000,
+    symbol: "AAPL",
+  });
 
   assert.equal(extractAttributeValue(quote, "price"), 150.25);
   assert.equal(extractAttributeValue(quote, "name"), "Apple Inc.");
@@ -33,10 +35,14 @@ test("extractAttributeValue handles standard numeric and text fields", () => {
 });
 
 test("extractAttributeValue rejects high/low/volume for FX pairs (Parity)", () => {
-  const fxQuote = {
+  const fxQuote = new FxQuote({
+    currency: "USD",
+    googleSymbol: "CURRENCY:EURUSD",
+    regularMarketPrice: 1.25,
+    regularMarketPreviousClose: 1.24,
+    shortName: "EURUSD",
     symbol: "EURUSD=X",
-    hoodlefinanceFxDisplayCurrency: "USD",
-  };
+  });
 
   assert.throws(() => extractAttributeValue(fxQuote, "high"), /is not available for currency-pair identifiers/);
   assert.throws(() => extractAttributeValue(fxQuote, "low"), /is not available for currency-pair identifiers/);
@@ -45,51 +51,41 @@ test("extractAttributeValue rejects high/low/volume for FX pairs (Parity)", () =
 
 
 test("extractAttributeValue handles Google-style exchange mapping (e.g. NasdaqGS -> NASDAQ)", () => {
-  const quote = {
-    symbol: "AAPL",
+  const quote = new StockQuote({
+    currency: "USD",
     fullExchangeName: "NasdaqGS",
-  };
+    symbol: "AAPL",
+  });
 
   assert.equal(extractAttributeValue(quote, "exchange:google"), "NASDAQ");
 });
 
 test("extractAttributeValue handles isin attribute extraction", () => {
-  const quote = {
-    symbol: "AAPL",
+  const quote = new StockQuote({
+    currency: "USD",
     isin: "US0378331005",
-  };
+    symbol: "AAPL",
+  });
 
   assert.equal(extractAttributeValue(quote, "isin"), "US0378331005");
 });
 
 test("extractAttributeValue handles output-currency conversion (identity, direct, inverse, and hub)", () => {
-  const usdQuote = {
-    symbol: "AAPL",
-    regularMarketPrice: 150,
+  const usdQuote = new StockQuote({
     currency: "USD",
-  };
- 
-  const gbpQuote = {
-    symbol: "TSCO.L",
-    regularMarketPrice: 200,
+    regularMarketPrice: 150,
+    symbol: "AAPL",
+  });
+
+  const gbpQuote = new StockQuote({
     currency: "GBP",
-  };
- 
-  const phpQuote = {
-    symbol: "BDO.PS",
-    regularMarketPrice: 100,
-    currency: "PHP",
-  };
- 
+    regularMarketPrice: 200,
+    symbol: "TSCO.L",
+  });
+
   // --- Identity: USD -> USD should just return the price ---
   assert.equal(extractAttributeValue(usdQuote, "price@USD"), 150);
- 
-  // --- Direct/Manual Scale Injection (Verified for Area 4 Logic) ---
-  // In the real engine, request-resolution.ts injects this scale.
-  // We test the extractor's ability to recognize it.
-  const scaledPhpQuote = { ...phpQuote, hoodlefinanceFxUnitScale: 0.052 }; // PHP -> ILS approx
-  assert.equal(extractAttributeValue(scaledPhpQuote, "price@ILS"), 5.2);
- 
+
   // --- Error Handling for Unsupported Attributes ---
   assert.throws(() => extractAttributeValue(usdQuote, "price@EUR"), /currently unavailable/);
   assert.throws(() => extractAttributeValue(usdQuote, "currency@USD"), /does not support output-currency conversion/);

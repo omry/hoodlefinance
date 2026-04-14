@@ -1,4 +1,5 @@
 import type { FxPair } from "./request";
+import { FxQuote, StockQuote } from "./quote";
 
 function resolveFxPairMetadata(fxPair: FxPair): {
   canonicalPair: string;
@@ -63,65 +64,75 @@ export function isSameCurrencyFxPair(fxPair: FxPair | null | undefined): boolean
   );
 }
 
-export function buildSameCurrencyQuote(fxPair: FxPair): Record<string, unknown> {
+export function buildSameCurrencyQuote(fxPair: FxPair): FxQuote {
   const quoteCurrency = String(fxPair.quoteCanonicalCode || "")
     .trim()
     .toUpperCase();
   const metadata = resolveFxPairMetadata(fxPair);
   const nowSeconds = Math.floor(Date.now() / 1000);
 
-  return {
+  return new FxQuote({
     currency: quoteCurrency,
     exchangeDataDelayedBy: 0,
-    financialCurrency: quoteCurrency,
-    hoodlefinanceFxDisplayCurrency: metadata.displayQuoteCode,
-    hoodlefinanceFxGoogleSymbol: metadata.googleSymbol,
-    hoodlefinanceFxUnitScale: metadata.scale,
     previousClose: 1,
-    regularMarketDayHigh: 1,
-    regularMarketDayLow: 1,
     regularMarketPreviousClose: 1,
     regularMarketPrice: 1,
     regularMarketTime: nowSeconds,
     shortName: metadata.pairDisplay,
+    googleSymbol: metadata.googleSymbol,
+    fxUnitScale: metadata.scale,
     symbol: metadata.canonicalPair,
-  };
+  });
 }
 
 export function decorateFxQuote(
-  quote: Record<string, unknown>,
+  quote: StockQuote | Record<string, unknown>,
   fxPair: FxPair | null | undefined,
-): Record<string, unknown> {
+): FxQuote {
+  const stockQuote = quote instanceof StockQuote ? quote : new StockQuote(quote as never);
+
   if (!fxPair) {
-    return quote;
+    return new FxQuote({
+      currency: stockQuote.currency,
+      exchangeDataDelayedBy: stockQuote.exchangeDataDelayedBy,
+      fxUnitScale: stockQuote.fxUnitScale,
+      googleSymbol: String((quote as Record<string, unknown>).googleSymbol || ""),
+      previousClose: stockQuote.previousClose,
+      regularMarketPreviousClose: stockQuote.regularMarketPreviousClose,
+      regularMarketPrice: stockQuote.regularMarketPrice,
+      regularMarketTime: stockQuote.regularMarketTime,
+      shortName: stockQuote.shortName || "",
+      symbol: stockQuote.symbol,
+    });
   }
 
   const metadata = resolveFxPairMetadata(fxPair);
-  return {
-    ...quote,
-    hoodlefinanceFxDisplayCurrency: metadata.displayQuoteCode,
-    hoodlefinanceFxGoogleSymbol: metadata.googleSymbol,
-    hoodlefinanceFxUnitScale: metadata.scale,
+  return new FxQuote({
+    currency: stockQuote.currency || metadata.displayQuoteCode,
+    exchangeDataDelayedBy: stockQuote.exchangeDataDelayedBy,
+    fxUnitScale: metadata.scale,
+    googleSymbol: metadata.googleSymbol,
+    previousClose: stockQuote.previousClose,
+    regularMarketPreviousClose: stockQuote.regularMarketPreviousClose,
+    regularMarketPrice: stockQuote.regularMarketPrice,
+    regularMarketTime: stockQuote.regularMarketTime,
     shortName: metadata.pairDisplay,
     symbol: metadata.canonicalPair,
-  };
+  });
 }
 
 export function extractRawQuote(
-  quote: Record<string, unknown> | null | undefined,
+  quote: StockQuote | FxQuote | Record<string, unknown> | null | undefined,
 ): Record<string, unknown> | null | undefined {
-  if (
-    !quote ||
-    (quote.hoodlefinanceFxDisplayCurrency == null &&
-      quote.hoodlefinanceFxGoogleSymbol == null &&
-      quote.hoodlefinanceFxUnitScale == null)
-  ) {
+  if (!quote) {
     return quote;
   }
 
-  const rawQuote = { ...quote };
-  delete rawQuote.hoodlefinanceFxDisplayCurrency;
-  delete rawQuote.hoodlefinanceFxGoogleSymbol;
-  delete rawQuote.hoodlefinanceFxUnitScale;
-  return rawQuote;
+  if ("rawQuote" in quote && quote.rawQuote) {
+    return quote.rawQuote as Record<string, unknown>;
+  }
+
+  return Object.fromEntries(
+    Object.entries(quote).filter(([, value]) => value !== undefined),
+  );
 }

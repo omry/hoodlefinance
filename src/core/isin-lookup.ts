@@ -10,6 +10,7 @@ import {
   resolveLonIsin,
   resolvePseIsinBySymbol,
 } from "./isin-sources";
+import { FxQuote, StockQuote } from "./quote";
 
 const TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE: Record<string, string> = {
   AMEX: "AMEX",
@@ -104,11 +105,11 @@ const ISIN_SOURCE_BY_EXCHANGE: Record<string, string> = {
   WSE: "TRADINGVIEW",
 };
 
-function extractQuoteSymbol(quote: Record<string, unknown>): string {
+function extractQuoteSymbol(quote: StockQuote | FxQuote): string {
   return String(quote.symbol || "").trim().toUpperCase();
 }
 
-function extractYahooExchangeFromQuote(quote: Record<string, unknown>): string {
+function extractYahooExchangeFromQuote(quote: StockQuote): string {
   const exchangeName = String(
     quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
   )
@@ -116,14 +117,6 @@ function extractYahooExchangeFromQuote(quote: Record<string, unknown>): string {
     .toUpperCase();
 
   return exchangeName ? YAHOO_EXCHANGE_BY_META_NAME[exchangeName] || "" : "";
-}
-
-function isFxContext(quote: Record<string, unknown>): boolean {
-  return Boolean(
-    quote.hoodlefinanceFxDisplayCurrency != null ||
-      quote.hoodlefinanceFxGoogleSymbol != null ||
-      /^[A-Z]{6}(=X)?$/.test(extractQuoteSymbol(quote)),
-  );
 }
 
 export function extractDirectIsinInput(
@@ -137,7 +130,7 @@ export function extractDirectIsinInput(
 }
 
 export function inferIsinExchange(
-  quote: Record<string, unknown>,
+  quote: StockQuote | FxQuote,
   tickerInput: string,
 ): string {
   const normalizedTickerInput = String(tickerInput || "").trim().toUpperCase();
@@ -146,7 +139,7 @@ export function inferIsinExchange(
   const suffixExchange = extractYahooExchangeFromSymbol(
     resolvedSymbol || normalizedTickerInput,
   );
-  const metaExchange = extractYahooExchangeFromQuote(quote);
+  const metaExchange = quote instanceof StockQuote ? extractYahooExchangeFromQuote(quote) : "";
 
   if (normalizedTickerInput.startsWith("PSE:")) {
     return "PSE";
@@ -168,7 +161,7 @@ export function inferIsinExchange(
 }
 
 function inferTradingviewExchange(
-  quote: Record<string, unknown>,
+  quote: StockQuote | FxQuote,
   tickerInput: string,
 ): string {
   const yahooExchange = inferIsinExchange(quote, tickerInput);
@@ -178,7 +171,7 @@ function inferTradingviewExchange(
 }
 
 export function extractTradingviewCode(
-  quote: Record<string, unknown>,
+  quote: StockQuote | FxQuote,
   tickerInput: string,
 ): string {
   const candidates = [
@@ -222,7 +215,7 @@ export function extractTradingviewCode(
 }
 
 export function resolveIsinAttributeValue(
-  quote: Record<string, unknown>,
+  quote: StockQuote | FxQuote,
   context: { tickerInput?: string },
   deps: {
     fetchText(url: string): string;
@@ -244,7 +237,7 @@ export function resolveIsinAttributeValue(
     return directIsinInput;
   }
 
-  if (isFxContext(quote)) {
+  if (quote instanceof FxQuote) {
     throw new Error("ISIN is not available for currency pairs.");
   }
 

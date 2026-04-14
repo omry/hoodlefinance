@@ -1,5 +1,6 @@
 import type { FxPair } from "./request";
 import type { TextHttpResponse } from "./text-http-response";
+import { StockQuote } from "./quote";
 
 export function buildGoogleFinanceQuoteUrl(pairSlug: string): string {
   return `https://www.google.com/finance/quote/${encodeURIComponent(
@@ -63,7 +64,7 @@ function extractGoogleFinancePairTuple(
 export function extractGoogleFinanceFxPairQuote(
   response: TextHttpResponse,
   fxPair: FxPair,
-): Record<string, unknown> {
+): StockQuote {
   const pairSlug = String(fxPair.googlePairSlug || "")
     .trim()
     .toUpperCase();
@@ -89,7 +90,7 @@ export function extractGoogleFinanceFxPairQuote(
     );
   }
 
-  return {
+  return new StockQuote({
     currency: quoteCode,
     exchangeDataDelayedBy: 0,
     financialCurrency: quoteCode,
@@ -106,5 +107,5 @@ export function extractGoogleFinanceFxPairQuote(
     shortName:
       `${baseName} (${fxPair.baseDisplayCode} / ${fxPair.displayQuoteCode})`,
     symbol: `${baseCode}${quoteCode}`,
-  };
+  });
 }

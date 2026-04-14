@@ -326,7 +326,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   );
   assert.equal(googleResolved.status, "success");
   assert.equal(googleResolved.value.regularMarketPrice, 1.25);
-  assert.equal(googleResolved.value.hoodlefinanceFxGoogleSymbol, "CURRENCY:EURUSD");
+  assert.equal(googleResolved.value.googleSymbol, "CURRENCY:EURUSD");
 
   const tradingviewResolved = flow.getResolver("TRADINGVIEW-FUND").resolve(
     new EquityRequest({

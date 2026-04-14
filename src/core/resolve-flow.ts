@@ -5,6 +5,7 @@ import { RawRequestInput } from "./request";
 import { extractAttributeValue } from "./attribute-extraction";
 import { resolveIsinAttributeValue } from "./isin-lookup";
 import { type PlanRuntimeRefs } from "./core-resolvers";
+import type { StockQuote } from "./quote";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -496,7 +497,7 @@ export class ResolveFlow {
             .buildRuntimePlan(lookupSelection.resolvedRequest)
             .routeState || null
         : null;
-    const quote = flowValue as Record<string, unknown>;
+    const quote = flowValue as StockQuote;
 
     if (requestInput.attributeType === "isin") {
       return resolveIsinAttributeValue(

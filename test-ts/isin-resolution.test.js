@@ -6,6 +6,8 @@ const {
   extractDirectIsinInput,
   inferIsinExchange,
   resolveIsinAttributeValue,
+  FxQuote,
+  StockQuote,
 } = require("../dist/ts/core/index.js");
 
 test("extractIsinCountryCode handles bare and prefixed ISIN requests", () => {
@@ -28,11 +30,11 @@ test("extractDirectIsinInput validates and cleanses ISIN identifiers", () => {
 });
 
 test("inferIsinExchange deduces exchange from quote metadata and ticker suffixes", () => {
-  assert.equal(inferIsinExchange({ symbol: "BDO.PS" }, "PSE:BDO"), "PSE");
-  assert.equal(inferIsinExchange({ symbol: "AAPL", fullExchangeName: "NasdaqGS" }, "AAPL"), "NASDAQ");
-  assert.equal(inferIsinExchange({ symbol: "VOD.L" }, "VOD.L"), "LON");
-  assert.equal(inferIsinExchange({ symbol: "AMZN" }, "NASDAQ:AMZN"), "NASDAQ");
-  assert.equal(inferIsinExchange({ symbol: "REIT.TA" }, "REIT"), "TLV");
+  assert.equal(inferIsinExchange(new StockQuote({ symbol: "BDO.PS" }), "PSE:BDO"), "PSE");
+  assert.equal(inferIsinExchange(new StockQuote({ symbol: "AAPL", fullExchangeName: "NasdaqGS" }), "AAPL"), "NASDAQ");
+  assert.equal(inferIsinExchange(new StockQuote({ symbol: "VOD.L" }), "VOD.L"), "LON");
+  assert.equal(inferIsinExchange(new StockQuote({ symbol: "AMZN" }), "NASDAQ:AMZN"), "NASDAQ");
+  assert.equal(inferIsinExchange(new StockQuote({ symbol: "REIT.TA" }), "REIT"), "TLV");
 });
 
 test("resolveIsinAttributeValue preserves legacy error for currency pairs", () => {
@@ -43,14 +45,15 @@ test("resolveIsinAttributeValue preserves legacy error for currency pairs", () =
     putCachedString: () => "",
   };
 
-  const fxQuote = {
+  const fxQuote = new FxQuote({
+    currency: "USD",
+    googleSymbol: "CURRENCY:EURUSD",
+    shortName: "EURUSD",
     symbol: "EURUSD=X",
-    hoodlefinanceFxDisplayCurrency: "USD",
-  };
+  });
 
   assert.throws(
     () => resolveIsinAttributeValue(fxQuote, { tickerInput: "EURUSD" }, deps),
     /ISIN is not available for currency pairs\./
   );
 });
-

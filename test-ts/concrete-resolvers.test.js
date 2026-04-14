@@ -233,10 +233,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   assert.equal(fetchedResults[0].quote.regularMarketPrice, 1.25);
   assert.equal(fetchedResults[0].quote.symbol, "EURUSD");
   assert.equal(fetchedResults[0].quote.shortName, "EURUSD");
-  assert.equal(
-    fetchedResults[0].quote.hoodlefinanceFxGoogleSymbol,
-    "CURRENCY:EURUSD",
-  );
+  assert.equal(fetchedResults[0].quote.googleSymbol, "CURRENCY:EURUSD");
   assert.deepEqual(cachedWrite, {
     cacheKey: "hoodlefinance:google-finance:EUR-USD",
     ttlSeconds: 60,
@@ -271,10 +268,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   assert.equal(cachedResults[0].status, "success");
   assert.equal(cachedResults[0].quote.regularMarketPrice, 1.25);
   assert.equal(cachedResults[0].quote.shortName, "EURUSD");
-  assert.equal(
-    cachedResults[0].quote.hoodlefinanceFxGoogleSymbol,
-    "CURRENCY:EURUSD",
-  );
+  assert.equal(cachedResults[0].quote.googleSymbol, "CURRENCY:EURUSD");
 });
 
 test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {

@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  FxQuote,
   buildSameCurrencyQuote,
   decorateFxQuote,
   extractRawQuote,
@@ -22,8 +23,10 @@ test("fx quote helpers preserve runtime-style FX metadata", () => {
   };
 
   const quote = buildSameCurrencyQuote(fxPair);
+  assert.ok(quote instanceof FxQuote);
   assert.equal(quote.currency, "USD");
-  assert.equal(quote.hoodlefinanceFxGoogleSymbol, "CURRENCY:USDUSD");
+  assert.equal(quote.googleSymbol, "CURRENCY:USDUSD");
+  assert.equal(quote.fxUnitScale, 1);
   assert.equal(quote.symbol, "USDUSD");
 
   const decorated = decorateFxQuote(
@@ -32,10 +35,15 @@ test("fx quote helpers preserve runtime-style FX metadata", () => {
     },
     fxPair,
   );
-  assert.equal(decorated.hoodlefinanceFxDisplayCurrency, "USD");
+  assert.ok(decorated instanceof FxQuote);
+  assert.equal(decorated.currency, "USD");
+  assert.equal(decorated.googleSymbol, "CURRENCY:USDUSD");
   assert.equal(decorated.shortName, "USDUSD");
 
   assert.deepEqual(extractRawQuote(decorated), {
+    currency: "USD",
+    fxUnitScale: 1,
+    googleSymbol: "CURRENCY:USDUSD",
     regularMarketPrice: 1.25,
     shortName: "USDUSD",
     symbol: "USDUSD",
