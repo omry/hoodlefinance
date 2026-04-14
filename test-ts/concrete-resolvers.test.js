@@ -309,7 +309,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   const fetchedResult = resolver.resolve(request);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.regularMarketPrice, 9.87);
-  assert.equal(fetchedResult.value.symbol, "BDO");
+  assert.equal(fetchedResult.value.symbol, "BDO.PS");
   assert.equal(fetchedResult.value.shortName, "BDO Unibank, Inc.");
   assert.deepEqual(cachedWrite, {
     cacheKey: "hoodlefinance:pse:BDO",
@@ -317,6 +317,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
     value: {
       currency: "PHP",
       exchangeDataDelayedBy: 0,
+      exchangeName: "PSE",
       financialCurrency: "PHP",
       isin: "PHY077751022",
       longName: "BDO Unibank, Inc.",
@@ -332,7 +333,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
       ),
       regularMarketVolume: 12345,
       shortName: "BDO Unibank, Inc.",
-      symbol: "BDO",
+      symbol: "BDO.PS",
     },
   });
 
@@ -350,7 +351,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
 
   const cachedResult = cachedResolver.resolve(request);
   assert.equal(cachedResult.status, "success");
-  assert.equal(cachedResult.value.symbol, "BDO");
+  assert.equal(cachedResult.value.symbol, "BDO.PS");
   assert.equal(cachedResult.value.regularMarketPrice, 9.87);
 });
 
@@ -396,7 +397,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   const fetchedResult = resolver.resolve(request);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.regularMarketPrice, 9.87);
-  assert.equal(fetchedResult.value.symbol, "BDO");
+  assert.equal(fetchedResult.value.symbol, "BDO.PS");
   assert.equal(fetchedResult.value.shortName, "BDO Unibank, Inc.");
   assert.deepEqual(listingCacheWrite, {
     cacheKey: "hoodlefinance:pse:listing:BDO",
@@ -414,6 +415,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
     value: {
       currency: "PHP",
       exchangeDataDelayedBy: 0,
+      exchangeName: "PSE",
       financialCurrency: "PHP",
       isin: "PHY077751022",
       longName: "BDO Unibank, Inc.",
@@ -429,7 +431,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
       ),
       regularMarketVolume: 12345,
       shortName: "BDO Unibank, Inc.",
-      symbol: "BDO",
+      symbol: "BDO.PS",
     },
   });
 });

@@ -260,20 +260,15 @@ Open design questions for the next pass:
    path — parity case list at `tools/parity-cases.txt`
   - ~~`GOOG :: symbol:google`~~ — fixed: renders `NASDAQ:GOOG`
   - ~~`GOOG :: exchange:yahoo`~~ — fixed: returns raw Yahoo identity `NMS`
-  - `GOOG :: change / changepct / volume / price` — sequential live-call
-    timing drift; not a code bug
-  - `TLV:KSMF59 :: symbol / exchange / exchange:yahoo` — JS returns `TLV`,
-    FE returns `TASE`; TradingView quote `exchangeName` maps to `TASE` but
-    JS normalises to `TLV` via `hf_resolveGoogleExchange_`
-  - `PSE:BDO / PHY077751022 :: symbol / symbol:yahoo / exchange / exchange:yahoo`
-    — PSE quotes carry no `exchangeName`; JS detects PSE context and
-    hard-codes exchange/symbol formatting; FE falls back to bare symbol /
-    empty exchange; applies to both direct PSE tickers and ISIN-routed PSE
-    lookups
-  - `EURUSD / BTCUSD :: symbol:yahoo` — JS appends `=X` for FX pairs; FE
-    returns the bare symbol without suffix
-  - `EURUSD :: exchange / exchange:yahoo` — JS returns `CURRENCY`; FE
-    returns empty; same missing FX-context check as symbol:yahoo above
+  - ~~`TLV:KSMF59 :: symbol / exchange / exchange:yahoo`~~ — fixed: symbol-suffix
+    priority (`extractYahooExchangeFromSymbol`) used before `exchangeName`; renders `TLV:KSMF59`, returns `TLV`
+  - ~~`PSE:BDO / PHY077751022 :: symbol / symbol:yahoo / exchange / exchange:yahoo`~~ —
+    fixed: PSE quotes now set `exchangeName: "PSE"` and suffix `symbol` with
+    `.PS`; generic exchange/symbol resolution handles PSE without special-casing
+  - ~~`EURUSD / BTCUSD :: symbol:yahoo`~~ — fixed: appends `=X` for FX context
+  - ~~`EURUSD :: exchange / exchange:yahoo`~~ — fixed: returns `CURRENCY` for FX context
+  - `GOOG / NASDAQ:GOOG / US02079K1079 / ISIN:US02079K1079 :: price / change / changepct / volume` —
+    sequential live-call timing drift; not a code bug
 4. verify parity with existing integrated routing tests
 5. remove `selectLookupExecution`, `LookupExecutionSelection`, and
    `ResolveFlow` bootstrap scaffolding once parity is proven

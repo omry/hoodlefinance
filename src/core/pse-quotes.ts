@@ -264,6 +264,31 @@ function extractPseChangePercent(
   return null;
 }
 
+function buildPseQuote(fields: {
+  isin: string;
+  longName: string;
+  regularMarketChange: number | null;
+  regularMarketChangePercent: number | null;
+  regularMarketDayHigh: number | null;
+  regularMarketDayLow: number | null;
+  regularMarketOpen: number | null;
+  regularMarketPreviousClose: number | null;
+  regularMarketPrice: number | null;
+  regularMarketTime: number | null;
+  regularMarketVolume: number | null;
+  shortName: string;
+  symbol: string;
+}): Record<string, unknown> {
+  return {
+    currency: "PHP",
+    exchangeDataDelayedBy: 0,
+    exchangeName: "PSE",
+    financialCurrency: "PHP",
+    ...fields,
+    symbol: fields.symbol + ".PS",
+  };
+}
+
 function extractPseQuote(
   html: string,
   listing: Pick<PseListing, "name" | "symbol"> | null | undefined,
@@ -282,12 +307,11 @@ function extractPseQuote(
     previousClose,
   );
 
-  return {
-    currency: "PHP",
-    exchangeDataDelayedBy: 0,
-    financialCurrency: "PHP",
+  const name = extractPseCompanyName(html) || (listing && listing.name) || "";
+
+  return buildPseQuote({
     isin: extractPseField(html, "ISIN").toUpperCase(),
-    longName: extractPseCompanyName(html) || (listing && listing.name) || "",
+    longName: name,
     regularMarketChange: change,
     regularMarketChangePercent: changePercent,
     regularMarketDayHigh: parseNumber(extractPseField(html, "High")),
@@ -297,9 +321,9 @@ function extractPseQuote(
     regularMarketPrice: price,
     regularMarketTime: asOf ? Math.floor(asOf.getTime() / 1000) : null,
     regularMarketVolume: parseNumber(extractPseField(html, "Volume")),
-    shortName: extractPseCompanyName(html) || (listing && listing.name) || "",
+    shortName: name,
     symbol: extractPseSelectedSymbol(html) || (listing && listing.symbol) || "",
-  };
+  });
 }
 
 export function extractPseQuoteFromResponse(
@@ -352,10 +376,7 @@ export function extractPseFrameQuote(
     throw new Error(`No PSE listing was found for "${expectedSymbol}".`);
   }
 
-  return {
-    currency: "PHP",
-    exchangeDataDelayedBy: 0,
-    financialCurrency: "PHP",
+  return buildPseQuote({
     isin,
     longName: fullName,
     regularMarketChange: change,
@@ -370,7 +391,7 @@ export function extractPseFrameQuote(
     regularMarketVolume: parseNumber(extractPseFrameField(html, "Volume")),
     shortName: fullName,
     symbol: extractedSymbol,
-  };
+  });
 }
 
 export function extractPseFrameQuoteFromResponse(

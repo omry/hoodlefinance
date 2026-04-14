@@ -1,7 +1,7 @@
 import { parseAttributeRequest } from "./request-parsing";
 export { parseAttributeRequest };
 import { stripTickerSourceOverride } from "./request-parsing";
-import { YAHOO_EXCHANGE_BY_META_NAME, isPrefixlessExchange, resolveExchangeSuffix } from "./exchange-symbols";
+import { YAHOO_EXCHANGE_BY_META_NAME, isPrefixlessExchange, resolveExchangeSuffix, extractYahooExchangeFromSymbol } from "./exchange-symbols";
 
 interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
@@ -99,6 +99,8 @@ function isFxContext(quote: Record<string, unknown>): boolean {
 }
 
 function resolveGoogleExchange(quote: Record<string, unknown>): string {
+  const suffixExchange = extractYahooExchangeFromSymbol(String(quote.symbol || "").trim());
+  if (suffixExchange) return YAHOO_EXCHANGE_BY_META_NAME[suffixExchange] || suffixExchange;
   const rawExchange = String(
     quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
   ).trim().toUpperCase();
@@ -135,6 +137,9 @@ function resolveSymbolAttribute(
   const resolvedSymbol = String(quote.symbol || "").trim();
 
   if (style === "yahoo") {
+    if (isFxContext(quote)) {
+      return resolvedSymbol.replace(/=X$/i, "") + "=X";
+    }
     return resolvedSymbol;
   }
 
@@ -242,15 +247,23 @@ export function extractAttributeValue(
       break;
     case "exchange":
     case "exchange:google": {
-      const exchangeName = String(
-        quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
-      )
-        .trim()
-        .toUpperCase();
-      value = exchangeName ? YAHOO_EXCHANGE_BY_META_NAME[exchangeName] || exchangeName : exchangeName;
+      if (isFxContext(quote)) {
+        value = "CURRENCY";
+        break;
+      }
+      value = resolveGoogleExchange(quote);
       break;
     }
     case "exchange:yahoo": {
+      if (isFxContext(quote)) {
+        value = "CURRENCY";
+        break;
+      }
+      const suffixExchangeYahoo = extractYahooExchangeFromSymbol(String(quote.symbol || "").trim());
+      if (suffixExchangeYahoo) {
+        value = suffixExchangeYahoo;
+        break;
+      }
       value = String(
         quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
       ).trim().toUpperCase();

@@ -255,7 +255,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   );
 
   assert.equal(pseFramesResolved.status, "success");
-  assert.equal(pseFramesResolved.value.symbol, "BDO");
+  assert.equal(pseFramesResolved.value.symbol, "BDO.PS");
 
   const pseEdgeResolved = registry.byCode["PSE-EDGE"].resolve(
     new EquityRequest({
@@ -270,7 +270,7 @@ test("materializeResolversByCode can instantiate concrete resolvers with class-s
   );
 
   assert.equal(pseEdgeResolved.status, "success");
-  assert.equal(pseEdgeResolved.value.symbol, "BDO");
+  assert.equal(pseEdgeResolved.value.symbol, "BDO.PS");
 
   const pseResolved = registry.byCode["ISIN:PSE"].resolve(
     new RequestInput({
