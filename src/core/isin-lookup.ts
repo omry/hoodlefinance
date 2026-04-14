@@ -8,7 +8,6 @@ import {
   buildTradingviewIsinLookupUrl,
   extractTradingviewIsinFromHtml,
   resolveLonIsin,
-  resolveLonIsinByTickerInput,
   resolvePseIsinBySymbol,
 } from "./isin-sources";
 
@@ -116,10 +115,6 @@ interface ResolveIsinAttributeContext {
   tickerInput?: string;
 }
 
-interface DirectIsinAttributeResolution {
-  route: string;
-  value: string;
-}
 
 function extractQuoteSymbol(quote: Record<string, unknown>): string {
   return String(quote.symbol || "").trim().toUpperCase();
@@ -326,42 +321,3 @@ export function resolveIsinAttributeValue(
   );
 }
 
-export function resolveDirectIsinAttributeValue(
-  context: ResolveIsinAttributeContext,
-  deps: ResolveIsinAttributeDependencies,
-): DirectIsinAttributeResolution | null {
-  const tickerInput = String(context.tickerInput || "").trim();
-  const directIsinInput = extractDirectIsinInput(tickerInput, deps.looksLikeIsin);
-
-  if (directIsinInput) {
-    return {
-      route: "ATTRIBUTE-IDENTITY",
-      value: directIsinInput,
-    };
-  }
-
-  const normalizedTicker = tickerInput.toUpperCase();
-
-  if (normalizedTicker.startsWith("PSE:")) {
-    return {
-      route: "PSE",
-      value: resolvePseIsinBySymbol(
-        normalizedTicker.slice(4).trim().toUpperCase(),
-        deps.fetchText,
-      ),
-    };
-  }
-
-  if (normalizedTicker.startsWith("LON:") || normalizedTicker.endsWith(".L")) {
-    return {
-      route: "LON",
-      value: resolveLonIsinByTickerInput(tickerInput, {
-        fetchText: deps.fetchText,
-        getCachedString: deps.getCachedString,
-        putCachedString: deps.putCachedString,
-      }),
-    };
-  }
-
-  return null;
-}

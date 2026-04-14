@@ -6,8 +6,6 @@ const {
   extractDirectIsinInput,
   inferIsinExchange,
   resolveIsinAttributeValue,
-  resolveDirectIsinAttributeValue,
-  RequestInput,
 } = require("../dist/ts/core/index.js");
 
 test("extractIsinCountryCode handles bare and prefixed ISIN requests", () => {
@@ -56,40 +54,3 @@ test("resolveIsinAttributeValue preserves legacy error for currency pairs", () =
   );
 });
 
-test("resolveDirectIsinAttributeValue matches legacy direct resolution routes", () => {
-  const deps = {
-    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
-    fetchText: (url) => {
-      if (url.includes("frames.pse.com.ph")) {
-        return `
-          <input id="symbol-json" value="BDO">
-          <input id="stock-json" value="{&quot;name&quot;:&quot;BDO&quot;,&quot;full_name&quot;:&quot;BDO Unibank, Inc.&quot;}">
-          <table>
-            <tr><td>ISIN</td><td>PHY077751022</td></tr>
-          </table>
-          <a href="companyDisclosures/form.do?cmpy_id=123">link</a>
-        `;
-      }
-      if (url.includes("londonstockexchange")) {
-        return `UpdateOpener('','GB00B1YW4409|||||VOD')`;
-      }
-      return "";
-    },
-    getCachedString: () => "",
-    putCachedString: () => "",
-  };
-
-  // Note: These mock deep dependencies of resolveDirectIsinAttributeValue may need more robust mocks
-  // if the underlying functions (resolvePseIsinBySymbol, etc.) are called and expect specific HTML.
-  // For now, testing the route matching.
-
-  const isinRes = resolveDirectIsinAttributeValue({ tickerInput: "ISIN:PHY077751022" }, deps);
-  assert.equal(isinRes.route, "ATTRIBUTE-IDENTITY");
-  assert.equal(isinRes.value, "PHY077751022");
-
-  const pseRes = resolveDirectIsinAttributeValue({ tickerInput: "PSE:BDO" }, deps);
-  assert.equal(pseRes.route, "PSE");
-  
-  const lonRes = resolveDirectIsinAttributeValue({ tickerInput: "LON:VOD" }, deps);
-  assert.equal(lonRes.route, "LON");
-});

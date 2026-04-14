@@ -123,14 +123,6 @@ export function resolvePseIsinBySymbol(
   return isin;
 }
 
-export function resolveLonIsinByTickerInput(
-  tickerInput: string,
-  deps: CachedStringDependencies,
-): string {
-  const code = extractLonCodeFromContext(tickerInput, "");
-
-  return resolveLonIsinByCode(code, deps);
-}
 
 function resolveLonIsinByCode(
   code: string,
