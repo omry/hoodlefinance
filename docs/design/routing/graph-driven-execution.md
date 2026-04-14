@@ -255,30 +255,42 @@ Open design questions for the next pass:
 1. ~~define the driver interface and the node execution contract~~ — done:
    graph topology updated (ISIN-RECEIVER, ISIN/STOCK/FX groups), ROOT absorbs
    `DirectIdentifierResolver` returning `ClassifiedInput`
-2. implement the driver for representative request families
-3. wire the driver into `ResolveFlow.resolveAttribute` alongside the existing
-   path — parity case list at `tools/parity-cases.txt`
-  - ~~`GOOG :: symbol:google`~~ — fixed: renders `NASDAQ:GOOG`
-  - ~~`GOOG :: exchange:yahoo`~~ — fixed: returns raw Yahoo identity `NMS`
-  - ~~`TLV:KSMF59 :: symbol / exchange / exchange:yahoo`~~ — fixed: symbol-suffix
-    priority (`extractYahooExchangeFromSymbol`) used before `exchangeName`; renders `TLV:KSMF59`, returns `TLV`
-  - ~~`PSE:BDO / PHY077751022 :: symbol / symbol:yahoo / exchange / exchange:yahoo`~~ —
-    fixed: PSE quotes now set `exchangeName: "PSE"` and suffix `symbol` with
-    `.PS`; generic exchange/symbol resolution handles PSE without special-casing
-  - ~~`EURUSD / BTCUSD :: symbol:yahoo`~~ — fixed: appends `=X` for FX context
-  - ~~`EURUSD :: exchange / exchange:yahoo`~~ — fixed: returns `CURRENCY` for FX context
-  - `GOOG / NASDAQ:GOOG / US02079K1079 / ISIN:US02079K1079 :: price / change / changepct / volume` —
-    sequential live-call timing drift; not a code bug
-4. verify parity with existing integrated routing tests
-5. remove `selectLookupExecution`, `LookupExecutionSelection`, and
-   `ResolveFlow` bootstrap scaffolding once parity is proven
+2. ~~implement the driver for representative request families~~ — done
+3. ~~wire the driver into `ResolveFlow.resolveAttribute` alongside the existing
+   path~~ — done: parity verified across all 68 cases in `tools/parity-cases.txt`
+   (68/68 pass, including US/Israeli/PSE/FX/ISIN-routed/preferred-REIT families)
+4. ~~verify parity with existing integrated routing tests~~ — done
+5. **remove the old pipeline** — current focus; see plan below
+
+## Cleanup Plan
+
+Remove the legacy pipeline and all code it made reachable. Work in passes:
+
+### Pass 1 — delete the old execution path
+
+- Remove the `legacy` branch from `ResolveFlow.resolveAttribute` and the
+  `engine` option; make `flow-engine` the only path
+- Remove `selectLookupExecution`, `LookupExecutionSelection`, and any
+  scaffolding that only existed to support the legacy branch
+- Run `check:ts` — TypeScript will surface the first wave of now-unused exports
+  and types
+
+### Pass 2+ — dead code elimination
+
+- Delete each unused export/type/function the compiler flags
+- Re-run `check:ts` after each deletion pass; new dead code will surface as
+  previously-live callers are removed
+- Repeat until `check:ts` reports no unused declarations
+- If a symbol is nearly dead but removal requires non-trivial work (e.g. a
+  public API surface, a partially-shared abstraction), note it here and skip it
+
+### Acceptance
+
+- `check:ts` clean
+- `npm run compare:modes -- --mode js-fe --cases-file tools/parity-cases.txt`
+  still 68/68
 
 ## Test Plan
 
 - preserve current integrated routing results for representative requests
 - preserve current route strings where they are part of the public contract
-- add driver tests that assert correct fallback behavior when first-choice
-  nodes fail
-- add tests that prove execution no longer depends on authored-id bootstrap
-  coupling outside ROOT
-- verify the real CLI smoke path once the driver is wired in
