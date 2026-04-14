@@ -1,4 +1,4 @@
-export type AttributeType = "quote" | "isin";
+type AttributeType = "quote" | "isin";
 
 export type RequestClassification = "equity" | "fx" | "isin";
 

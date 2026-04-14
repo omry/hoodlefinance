@@ -9,7 +9,7 @@ import {
   type ResolvedRequest,
 } from "./request";
 
-export interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
+interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
   attribute?: string;
   key?: string;
   plan?: RouteJob<RouteState>["plan"];
@@ -23,7 +23,7 @@ export interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
 }
 
 
-export function cloneRouteState<RouteState extends Record<string, unknown>>(
+function cloneRouteState<RouteState extends Record<string, unknown>>(
   state: RouteState,
 ): RouteState {
   return { ...state };

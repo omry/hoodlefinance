@@ -29,7 +29,7 @@ function findGoogleFinancePairTuple(
   return null;
 }
 
-export function extractGoogleFinancePairTuple(
+function extractGoogleFinancePairTuple(
   response: TextHttpResponse,
   pairSlug: string,
 ): unknown[] {

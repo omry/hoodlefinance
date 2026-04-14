@@ -1,4 +1,4 @@
-export type PseTickerByIsin = Record<string, string | undefined>;
+type PseTickerByIsin = Record<string, string | undefined>;
 
 export function resolvePseTickerFromLookupMap(
   isin: string,

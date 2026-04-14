@@ -1,6 +1,6 @@
 import type { Graph } from "./graph";
 
-export interface MermaidFlowchartRenderOptions {
+interface MermaidFlowchartRenderOptions {
   direction?: "TD" | "LR";
 }
 

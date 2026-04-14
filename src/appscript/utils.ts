@@ -1,12 +1,12 @@
 import type { StoredTextResource } from "../runtime/ResolverServices";
 import type { AppsScriptCache } from "./host-types";
 
-export interface StringCacheAdapter {
+interface StringCacheAdapter {
   getCachedString(key: string): string;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
 }
 
-export interface JsonCacheAdapter {
+interface JsonCacheAdapter {
   getCachedJson(key: string): unknown;
   putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
 }

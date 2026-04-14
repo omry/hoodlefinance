@@ -2,7 +2,7 @@ import { RoutingNodeKind } from "./planner";
 import type { Resolver } from "./resolver-classes";
 import { RawRequestInput, type RequestClassification } from "./request";
 
-export interface RoutingTableExample {
+interface RoutingTableExample {
   example: string;
 }
 
@@ -17,7 +17,7 @@ export interface RoutingPlanTreeNode {
   label: string;
 }
 
-export type RoutingPlanNodeKind = RoutingNodeKind;
+type RoutingPlanNodeKind = RoutingNodeKind;
 
 export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
   { example: "GOOG" },
@@ -29,7 +29,7 @@ export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
   { example: "PHY077751022" },
 ];
 
-export interface RoutingIntrospectionDependencies {
+interface RoutingIntrospectionDependencies {
   classifyRequest(requestInput: RawRequestInput): Pick<{ classification: RequestClassification }, "classification">;
 }
 

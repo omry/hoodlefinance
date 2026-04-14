@@ -1,4 +1,4 @@
-export interface AppsScriptUrlFetchApp {
+interface AppsScriptUrlFetchApp {
   fetch(url: string): {
     getContentText(): string;
     getResponseCode(): number;

@@ -26,7 +26,7 @@ import {
 
 export class IdentifierResolver extends Resolver {}
 
-export class AttributeResolver extends Resolver {}
+class AttributeResolver extends Resolver {}
 
 export class RouteExecutionResolver extends AttributeResolver {
   readonly traceLabel: string;
@@ -165,7 +165,7 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   TickerQuoteResolutionPlan,
 } as const;
 
-export type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
+type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
 
 export function buildPlanNodeFromSpec(
   code: string,

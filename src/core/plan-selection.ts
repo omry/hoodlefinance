@@ -4,7 +4,7 @@ import {
 import type { RequestInput, ResolvedRequest } from "./request";
 import type { Resolver, ResolverPlan } from "./resolver-classes";
 
-export interface PlanSelectionDependencies {
+interface PlanSelectionDependencies {
   buildSelectedIdentifierPlan(
     resolverOrPlan: Resolver,
     request: RequestInput,

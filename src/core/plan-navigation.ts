@@ -1,19 +1,19 @@
 import { type Resolver, ResolverPlan } from "./resolver-classes";
 import { RoutingNodeKind } from "./planner";
 
-export interface SelectSinglePlanNodeOptions<TNode extends Resolver> {
+interface SelectSinglePlanNodeOptions<TNode extends Resolver> {
   allowNone?: boolean;
   onMultiple?: (selectedNodes: TNode[]) => Error;
   onNone?: () => Error;
 }
 
-export interface ResolveRoutingNodeOptions<TNode extends Resolver> {
+interface ResolveRoutingNodeOptions<TNode extends Resolver> {
   allowNone?: boolean;
   onMultiple?: (routingNode: ResolverPlan, selectedNodes: TNode[]) => Error;
   onNone?: (routingNode: ResolverPlan) => Error;
 }
 
-export interface FindNamedResolverOptions {
+interface FindNamedResolverOptions {
   requireCanHandle?: boolean;
 }
 

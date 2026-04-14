@@ -22,7 +22,7 @@ function buildPreferredFallbackSymbol(ticker: string): string {
   return normalized ? normalized.replace(/-([A-Z])$/, "-P$1") : "";
 }
 
-export function parsePreferredReitTickerSet(text: string): Set<string> {
+function parsePreferredReitTickerSet(text: string): Set<string> {
   let payload: Record<string, unknown> | null = null;
 
   try {

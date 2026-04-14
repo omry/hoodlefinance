@@ -8,7 +8,7 @@ import {
   type StandAloneResolverServicesOptions,
 } from "./StandAloneResolverServices";
 
-export interface TestResolverServicesOptions
+interface TestResolverServicesOptions
   extends Omit<Partial<StandAloneResolverServicesOptions>, "httpFetch"> {
   httpFetch?(url: string): TextHttpResponse;
   getCachedJson?(cacheKey: string): unknown;

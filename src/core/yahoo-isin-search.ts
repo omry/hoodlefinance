@@ -102,7 +102,7 @@ export function inferYahooExchangeFromSearchQuote(
   return "";
 }
 
-export function scoreYahooIsinSearchQuote(
+function scoreYahooIsinSearchQuote(
   quote: Record<string, unknown> | null | undefined,
 ): number {
   const symbol =

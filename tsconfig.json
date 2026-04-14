@@ -3,8 +3,12 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2024"],
-    "types": ["google-apps-script"],
+    "lib": [
+      "ES2024"
+    ],
+    "types": [
+      "google-apps-script"
+    ],
     "strict": true,
     "noEmit": true,
     "isolatedModules": true,
@@ -14,5 +18,7 @@
     "skipLibCheck": true,
     "allowJs": false
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

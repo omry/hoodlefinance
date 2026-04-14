@@ -1176,7 +1176,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
   }
 }
 
-export abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
+abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedString?: ResolverServices["getCachedString"];
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
@@ -1549,7 +1549,7 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
   }
 }
 
-export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
+const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   FirstSuccessReceiver,
   LocalFxResolver,
   GoogleFxResolver,
