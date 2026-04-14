@@ -8,21 +8,9 @@ export enum RoutingNodeKind {
   Step = "step",
 }
 
-export type ResolutionStatus = "success" | "failure";
-
-export interface ResolutionSuccess<T> {
-  elapsedMs: number;
-  status: "success";
-  value: T;
-}
-
-export interface ResolutionFailure {
-  elapsedMs: number;
-  error: string;
-  status: "failure";
-}
-
-export type ResolutionResult<T> = ResolutionSuccess<T> | ResolutionFailure;
+export type ResolutionResult<T> =
+  | { elapsedMs: number; status: "success"; value: T }
+  | { elapsedMs: number; error: string; status: "failure" };
 
 export interface RuntimePlan<RouteState = Record<string, unknown>> {
   nodes: Resolver[];
@@ -45,16 +33,11 @@ export interface RouteJob<RouteState = Record<string, unknown>> {
   routeLastLookupFailure: string;
   routeNodes: Resolver[];
   routePreferredLookupFailure: string;
-  routeRuntimeTrace: RouteTraceEntry[];
+  routeRuntimeTrace: Array<{ elapsedMs: number | null; label: string; status: string }>;
   routeState: RouteState;
   tickerInput: string;
   value: unknown;
   valueResolved: boolean;
 }
 
-export interface RouteTraceEntry {
-  elapsedMs: number | null;
-  label: string;
-  status: string;
-}
 
