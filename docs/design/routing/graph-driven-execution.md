@@ -286,6 +286,19 @@ Remove the legacy pipeline and all code it made reachable. Work in passes:
 
 ### Followup items (nearly dead, non-trivial to remove)
 
+#### `selectLookupExecution` / `projectFlowEngineValue` stench
+
+`projectFlowEngineValue` in `resolve-flow.ts` still calls `env.selectLookupExecution`
+to obtain `routeState` (for `extractAttributeValue`) and `requestInput.attributeType`
+(for the isin branch). This keeps the entire `request-resolution-env.ts`,
+`plan-selection.ts`, `plan-navigation.ts`, and `LookupExecutionSelection`
+infrastructure alive even though the FlowEngine no longer uses them for routing.
+
+Removing this requires either:
+- Threading `routeState` out of the FlowEngine execution trace so `projectFlowEngineValue`
+  can derive it without calling `selectLookupExecution`; or
+- Moving attribute-value projection into the graph itself (e.g. a post-TERMINAL step)
+
 #### Direct ISIN attribute resolution (LON:, PSE: with `isin` attribute)
 
 `resolveDirectIsinAttributeValue` in `isin-lookup.ts` handles requests like
