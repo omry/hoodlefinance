@@ -15,12 +15,6 @@ function normalizeKey(value: string): string {
     .toUpperCase();
 }
 
-export function getResolverByCode(
-  registry: ResolverRegistryByCode,
-  code: string,
-): Resolver | null {
-  return registry[normalizeKey(code)] || null;
-}
 
 export function getRegisteredResolverByName(
   registry: ResolverRegistryByName,

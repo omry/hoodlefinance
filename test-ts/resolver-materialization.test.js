@@ -16,7 +16,6 @@ const {
   EquityRequest,
   RequestInput,
   createConcreteResolverMaterializationDependencies,
-  getMaterializedResolverByCode,
   getRegisteredResolverByName,
   materializeResolversByCode,
 } = require("../dist/ts/core/index.js");
@@ -58,8 +57,7 @@ test("materializeResolversByCode instantiates and registers resolvers by class n
     },
   );
 
-  const resolver = getMaterializedResolverByCode(registry, "yahoo");
-  assert.equal(registry.byCode.YAHOO, resolver);
+  const resolver = registry.byCode.YAHOO;
   assert.equal(getRegisteredResolverByName(registry.byName, "YAHOO"), resolver);
   assert.equal(resolver?.name, "YAHOO");
 });

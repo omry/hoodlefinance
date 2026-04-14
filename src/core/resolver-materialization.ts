@@ -1,6 +1,5 @@
 import type { Resolver } from "./resolver-classes";
 import {
-  getResolverByCode,
   registerResolver,
   type MaterializedResolverRegistry,
   type ResolverRegistryByCode,
@@ -59,9 +58,3 @@ export function materializeResolversByCode(
   };
 }
 
-export function getMaterializedResolverByCode(
-  registry: MaterializedResolverRegistry,
-  code: string,
-): Resolver | null {
-  return getResolverByCode(registry.byCode, code);
-}
