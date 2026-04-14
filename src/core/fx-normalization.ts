@@ -2,7 +2,6 @@ import type { FxPair } from "./request";
 import {
   loadStoredTextResource,
   type ResolverServices,
-  type StoredTextResource,
 } from "./resolver-services";
 
 declare function require(path: string): unknown;

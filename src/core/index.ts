@@ -27,7 +27,6 @@ export * from "./spec-data";
 export * from "./route-jobs";
 export * from "./route-execution";
 export * from "./route-results";
-export * from "./quote-routing";
 export * from "./route-state";
 export * from "./text-http-response";
 // Provisional: FlowEngine is a work-in-progress driver (Step 2). Not yet

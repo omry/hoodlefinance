@@ -1,5 +1,4 @@
 import type { Resolver } from "./resolver-classes";
-import type { ResolverServices } from "./resolver-services";
 
 export type RouteKind = "attribute" | "identifier" | "quote";
 export enum RoutingNodeKind {
@@ -36,29 +35,18 @@ export type RouteClassResolver = (request: unknown) => string;
 
 export type RoutePathResolver = (request: unknown) => string;
 
-export interface RouteContext {
-  outputCurrencyCache?: {
-    conversionRateByPair: Record<string, number>;
-    unitByCode: Record<string, string>;
-  };
-  plan?: RuntimePlan;
-  tickerInput?: string;
-}
-
 export interface RouteJob<RouteState = Record<string, unknown>> {
   attribute: string;
   error: string | null;
   key: string;
   plan: RuntimePlan<RouteState> | null;
   quote: unknown;
-  routeContext: RouteContext | null;
   routeKind: RouteKind;
   routeLastLookupFailure: string;
   routeNodes: Resolver[];
   routePreferredLookupFailure: string;
   routeRuntimeTrace: RouteTraceEntry[];
   routeState: RouteState;
-  sourceQuote: unknown;
   tickerInput: string;
   value: unknown;
   valueResolved: boolean;

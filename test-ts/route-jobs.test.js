@@ -5,15 +5,12 @@ const {
   EquityRequest,
   RawRequestInput,
   RequestInput,
-  buildTickerJobKey,
-  createAttributeRouteJob,
-    createQuoteRouteJob,
-    createResolverRouteJob,
-    createRouteJob,
-    getCurrentRouteNode,
-    mergeRouteState,
-    prepareRouteJob,
-  } = require("../dist/ts/core/index.js");
+  createResolverRouteJob,
+  createRouteJob,
+  getCurrentRouteNode,
+  mergeRouteState,
+  prepareRouteJob,
+} = require("../dist/ts/core/index.js");
 
 function createRequestInput(init = {}) {
   return new RequestInput({
@@ -35,28 +32,7 @@ function createRequestInput(init = {}) {
   });
 }
 
-test("buildTickerJobKey and createQuoteRouteJob preserve the existing key contract", () => {
-  assert.equal(buildTickerJobKey(" GOOG ", "PRICE"), "GOOG\nprice");
-
-  const job = createQuoteRouteJob(" GOOG ", " PRICE ");
-  assert.equal(job.key, "GOOG\nprice");
-  assert.equal(job.attribute, "PRICE");
-  assert.equal(job.routeKind, "quote");
-  assert.equal(job.tickerInput, "GOOG");
-});
-
-test("createAttributeRouteJob and createResolverRouteJob build the expected route kinds", () => {
-  const attributeJob = createAttributeRouteJob(
-    "marketcap",
-    { price: 10 },
-    {
-      tickerInput: "PSE:BDO",
-    },
-  );
-  assert.equal(attributeJob.routeKind, "attribute");
-  assert.equal(attributeJob.tickerInput, "PSE:BDO");
-  assert.deepEqual(attributeJob.sourceQuote, { price: 10 });
-
+test("createResolverRouteJob builds the expected route kinds", () => {
   const identifierJob = createResolverRouteJob(
     createRequestInput({ identifier: "US02079K1079", ticker: "US02079K1079" }),
   );

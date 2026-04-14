@@ -1,5 +1,4 @@
 import type {
-  RouteContext,
   RouteJob,
   RouteKind,
   RuntimePlan,
@@ -15,19 +14,14 @@ export interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
   key?: string;
   plan?: RouteJob<RouteState>["plan"];
   quote?: unknown;
-  routeContext?: RouteContext | null;
   routeKind?: RouteKind;
   routeNodes?: RouteJob<RouteState>["routeNodes"];
   routeState?: RouteState;
-  sourceQuote?: unknown;
   tickerInput?: string;
   value?: unknown;
   valueResolved?: boolean;
 }
 
-export function buildTickerJobKey(ticker: string, attribute: string): string {
-  return `${String(ticker).trim()}\n${String(attribute).trim().toLowerCase()}`;
-}
 
 export function cloneRouteState<RouteState extends Record<string, unknown>>(
   state: RouteState,
@@ -44,50 +38,18 @@ export function createRouteJob<RouteState extends Record<string, unknown>>(
     key: options.key || "",
     plan: options.plan || null,
     quote: options.quote || null,
-    routeContext: options.routeContext || null,
     routeKind: options.routeKind || "quote",
     routeLastLookupFailure: "",
     routeNodes: options.routeNodes || [],
     routePreferredLookupFailure: "",
     routeRuntimeTrace: [],
     routeState: options.routeState || ({} as RouteState),
-    sourceQuote: options.sourceQuote || null,
     tickerInput: options.tickerInput ? String(options.tickerInput).trim() : "",
     value: options.value || null,
     valueResolved: options.valueResolved === true,
   };
 }
 
-export function createQuoteRouteJob(
-  ticker: string,
-  attribute: string,
-): RouteJob<Record<string, unknown>> {
-  const normalizedTicker = String(ticker).trim();
-  const normalizedAttribute = String(
-    attribute == null ? "price" : attribute,
-  ).trim();
-
-  return createRouteJob({
-    attribute: normalizedAttribute,
-    key: buildTickerJobKey(normalizedTicker, normalizedAttribute),
-    tickerInput: normalizedTicker,
-  });
-}
-
-export function createAttributeRouteJob(
-  attribute: string,
-  quote: unknown,
-  context: RouteContext = {},
-  routeKind: RouteKind = "attribute",
-): RouteJob<Record<string, unknown>> {
-  return createRouteJob({
-    attribute: String(attribute == null ? "" : attribute).trim(),
-    routeContext: context,
-    routeKind,
-    sourceQuote: quote,
-    tickerInput: context.tickerInput ? String(context.tickerInput).trim() : "",
-  });
-}
 
 export function createResolverRouteJob(
   request: RawRequestInput | RequestInput | ResolvedRequest,

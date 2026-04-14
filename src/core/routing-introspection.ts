@@ -1,5 +1,5 @@
 import { RoutingNodeKind } from "./planner";
-import type { Resolver, ResolverPlan } from "./resolver-classes";
+import type { Resolver } from "./resolver-classes";
 import { RawRequestInput, type RequestClassification } from "./request";
 
 export interface RoutingTableExample {
@@ -39,23 +39,10 @@ interface RoutingPlanNodeLike {
   name: string;
 }
 
-interface DescribableRoutingNode {
-  describeRoutingNode(): string;
-}
-
 function isRoutingPlanNode(node: unknown): node is RoutingPlanNodeLike {
   return (
     !!node &&
     typeof (node as RoutingPlanNodeLike).getRoutingNodes === "function"
-  );
-}
-
-function isDescribableRoutingNode(
-  node: unknown,
-): node is DescribableRoutingNode {
-  return (
-    !!node &&
-    typeof (node as DescribableRoutingNode).describeRoutingNode === "function"
   );
 }
 
