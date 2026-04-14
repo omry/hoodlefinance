@@ -11,7 +11,6 @@ import {
   buildPseQuoteRouteState,
 } from "./route-state";
 import { IdentifierResolver, RouteExecutionResolver, type Resolver } from "./resolver-classes";
-interface ResolverClass { fromSpec(code: string): Resolver }
 import {
   createRequestInput,
   buildTypedRequestFromParsedInput,
@@ -1566,7 +1565,7 @@ const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
 export function createConcreteResolverMaterializationDependencies(
   resolverServices: ResolverServices,
 ): {
-  resolverClassesByName: Record<string, ResolverClass>;
+  resolverClassesByName: Record<string, { fromSpec(code: string): Resolver }>;
   resolverServices: ResolverServices;
 } {
   return {

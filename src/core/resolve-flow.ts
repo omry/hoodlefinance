@@ -338,15 +338,11 @@ function isTerminalNodeId(code: string): boolean {
   return normalizeCode(code) === "TERMINAL";
 }
 
-interface ResolverClass {
-  fromSpec(code: string): Resolver;
-}
-
 interface ResolveFlowDependencies {
   looksLikeIsin(value: string): boolean;
   registryByCode?: ResolverRegistryByCode;
   registryByName?: ResolverRegistryByName;
-  resolverClassesByName: Record<string, ResolverClass | undefined>;
+  resolverClassesByName: Record<string, { fromSpec(code: string): Resolver } | undefined>;
   resolverServices?: import("./resolver-services").ResolverServices;
 }
 
