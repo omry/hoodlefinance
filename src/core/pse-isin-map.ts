@@ -1,8 +1,6 @@
-type PseTickerByIsin = Record<string, string | undefined>;
-
 export function resolvePseTickerFromLookupMap(
   isin: string,
-  tickerByIsin: PseTickerByIsin,
+  tickerByIsin: Record<string, string | undefined>,
 ): string {
   const normalizedIsin = String(isin || "")
     .trim()

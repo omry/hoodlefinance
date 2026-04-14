@@ -6,13 +6,8 @@ import {
 
 declare function require(path: string): unknown;
 
-interface CurrencyCodeAliasEntry {
-  canonicalCode?: string;
-  factor?: number;
-}
-
 interface CurrencyCodePayload {
-  aliases?: Record<string, CurrencyCodeAliasEntry>;
+  aliases?: Record<string, { canonicalCode?: string; factor?: number }>;
   canonicalCodes?: string[];
   cryptoCodes?: string[];
 }
@@ -22,12 +17,6 @@ interface CurrencyUnit {
   canonicalCode: string;
   displayCode: string;
   factor: number;
-}
-
-interface CurrencyCodeDataPayload {
-  aliases?: Record<string, CurrencyCodeAliasEntry>;
-  canonicalCodes?: string[];
-  cryptoCodes?: string[];
 }
 
 const CURRENCY_CODES_CACHE_KEY = "hoodlefinance:currencyCodes";
@@ -123,7 +112,7 @@ function buildCurrencyUnits(
 export function parseCurrencyCodeDataResource(
   sourceText: string,
 ): Record<string, CurrencyUnit> {
-  const payload = JSON.parse(sourceText) as CurrencyCodeDataPayload;
+  const payload = JSON.parse(sourceText) as CurrencyCodePayload;
   const unitsByCode: Record<string, CurrencyUnit> = {};
   const aliasPayload =
     payload && payload.aliases && typeof payload.aliases === "object"

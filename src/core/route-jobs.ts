@@ -9,20 +9,6 @@ import {
   type ResolvedRequest,
 } from "./request";
 
-interface CreateRouteJobOptions<RouteState = Record<string, unknown>> {
-  attribute?: string;
-  key?: string;
-  plan?: RouteJob<RouteState>["plan"];
-  quote?: unknown;
-  routeKind?: RouteKind;
-  routeNodes?: RouteJob<RouteState>["routeNodes"];
-  routeState?: RouteState;
-  tickerInput?: string;
-  value?: unknown;
-  valueResolved?: boolean;
-}
-
-
 function cloneRouteState<RouteState extends Record<string, unknown>>(
   state: RouteState,
 ): RouteState {
@@ -30,7 +16,18 @@ function cloneRouteState<RouteState extends Record<string, unknown>>(
 }
 
 export function createRouteJob<RouteState extends Record<string, unknown>>(
-  options: CreateRouteJobOptions<RouteState> = {},
+  options: {
+    attribute?: string;
+    key?: string;
+    plan?: RouteJob<RouteState>["plan"];
+    quote?: unknown;
+    routeKind?: RouteKind;
+    routeNodes?: RouteJob<RouteState>["routeNodes"];
+    routeState?: RouteState;
+    tickerInput?: string;
+    value?: unknown;
+    valueResolved?: boolean;
+  } = {},
 ): RouteJob<RouteState> {
   return {
     attribute: options.attribute || "price",
@@ -120,4 +117,3 @@ export function prepareRouteJob<RouteState extends Record<string, unknown>>(
   job.routeLastLookupFailure = "";
   job.routePreferredLookupFailure = "";
 }
-

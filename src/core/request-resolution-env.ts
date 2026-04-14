@@ -21,12 +21,6 @@ interface RequestResolutionRuntimeRefs {
   };
 }
 
-interface RequestResolutionEnvBuilderDependencies {
-  looksLikeIsin(value: string): boolean;
-  resolverServices?: ResolverServices;
-}
-
-
 function buildDefaultAttributePlan(
   defaultAttributeRoot: ResolverPlan,
   resolvedRequest: ResolvedRequest,
@@ -96,7 +90,10 @@ function selectLookupExecution(
 
 export function createRequestResolutionEnv(
   refs: RequestResolutionRuntimeRefs,
-  deps: RequestResolutionEnvBuilderDependencies,
+  deps: {
+    looksLikeIsin(value: string): boolean;
+    resolverServices?: ResolverServices;
+  },
 ): RequestResolutionDependencies {
   const resolverServices = deps.resolverServices || null;
 

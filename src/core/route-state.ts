@@ -1,34 +1,15 @@
 import type { FxPair, RequestInput, ResolvedRequest } from "./request";
 
-export interface PseQuoteRouteState extends Record<string, unknown> {
-  symbol: string;
-}
-
-export interface IsinIdentifierRouteState extends Record<string, unknown> {
-  input: RequestInput;
-  isin: string;
-}
-
-export interface FxQuoteRouteState extends Record<string, unknown> {
-  fxPair: FxPair;
-}
-
-export interface EquityYahooQuoteRouteState extends Record<string, unknown> {
-  fxPair: null;
-  preferredYahooSymbol: string;
-  yahooSymbol: string;
-}
-
 export function buildPseQuoteRouteState(
   request: Pick<Extract<ResolvedRequest, { requestType: "equity" }>, "symbol">,
-): PseQuoteRouteState {
+): { symbol: string } {
   return { symbol: request.symbol };
 }
 
 export function buildIsinIdentifierRouteState(
   request: RequestInput,
   extractIsinFromRequestInput: (input: RequestInput) => string,
-): IsinIdentifierRouteState {
+): { input: RequestInput; isin: string } {
   return {
     input: request,
     isin: extractIsinFromRequestInput(request),
@@ -37,7 +18,7 @@ export function buildIsinIdentifierRouteState(
 
 export function buildFxQuoteRouteState(
   request: Pick<Extract<ResolvedRequest, { requestType: "fx" }>, "fxPair">,
-): FxQuoteRouteState {
+): { fxPair: FxPair } {
   return { fxPair: request.fxPair };
 }
 
@@ -47,7 +28,7 @@ export function buildEquityYahooQuoteRouteState(
     "yahooSymbol"
   >,
   preferredYahooSymbol = "",
-): EquityYahooQuoteRouteState {
+): { fxPair: null; preferredYahooSymbol: string; yahooSymbol: string } {
   return {
     fxPair: null,
     yahooSymbol: request.yahooSymbol,

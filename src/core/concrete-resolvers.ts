@@ -232,24 +232,13 @@ export class FirstSuccessReceiver extends IdentifierResolver {
   }
 }
 
-interface YahooIsinSearchRequest {
-  cacheKey: string;
-  index: number;
-  isin: string;
-  url: string;
-}
-
-interface SequentialFetchRequestLike {
-  url: string;
-}
-
 const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
 const PSE_ISIN_MAP_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const PSE_ISIN_MAP_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PSE_ISIN_MAP_STORED_KEY = "hoodlefinance.pseIsinMap";
 const PSE_ISIN_MAP_URL =
   "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties";
-function fetchRequestsSequentially<TRequest extends SequentialFetchRequestLike>(
+function fetchRequestsSequentially<TRequest extends { url: string }>(
   httpFetch: (url: string) => TextHttpResponse,
   requests: TRequest[],
 ): Array<{
@@ -493,7 +482,12 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
 
   executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
     const results: Array<RouteResult | null> = jobs.map(() => null);
-    const requests: YahooIsinSearchRequest[] = [];
+    const requests: Array<{
+      cacheKey: string;
+      index: number;
+      isin: string;
+      url: string;
+    }> = [];
 
     for (let i = 0; i < jobs.length; i += 1) {
       const job = jobs[i];

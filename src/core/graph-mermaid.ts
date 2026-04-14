@@ -1,9 +1,5 @@
 import type { Graph } from "./graph";
 
-interface MermaidFlowchartRenderOptions {
-  direction?: "TD" | "LR";
-}
-
 function escapeMermaidLabel(value: string): string {
   return String(value || "")
     .replace(/\\/g, "\\\\")
@@ -22,7 +18,7 @@ function formatNodeLabel(node: { id: string; type?: string }): string {
 
 export function renderGraphAsMermaidFlowchart(
   graph: Graph.View,
-  options: MermaidFlowchartRenderOptions = {},
+  options: { direction?: "TD" | "LR" } = {},
 ): string {
   const direction = options.direction === "LR" ? "LR" : "TD";
   const orderedNodes = graph.getTopologicalOrder();

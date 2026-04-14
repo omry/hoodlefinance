@@ -13,11 +13,9 @@ export interface RoutingTableRow {
 
 export interface RoutingPlanTreeNode {
   children: RoutingPlanTreeNode[];
-  kind: RoutingPlanNodeKind;
+  kind: RoutingNodeKind;
   label: string;
 }
-
-type RoutingPlanNodeKind = RoutingNodeKind;
 
 export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
   { example: "GOOG" },

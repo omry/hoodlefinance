@@ -34,15 +34,25 @@ const DEFAULT_CRITERION: ReferenceCriterion = {
 
 function parseCriterionValue(value: string): ReferenceCriterion {
   const trimmed = String(value || "").trim();
-  const match = trimmed.match(/^(gr|gte|eq|lt|lte)(?:[:=](\d+))?$/i);
+  const match = trimmed.match(/^(<=|>=|<|>|eq|gr|gte|lt|lte)(?:[:=]?(\d+))?$/i);
 
   if (!match) {
     throw new Error(
-      `Invalid criteria "${value}". Expected forms like gr=2, gte=2, eq=1, lt=3, or lte=3.`,
+      `Invalid criteria "${value}". Expected forms like <=2, >=2, gr=2, gte=2, eq=1, lt=3, or lte=3.`,
     );
   }
 
-  const operator = match[1]?.toLowerCase() as ReferenceCriterion["operator"];
+  const rawOperator = match[1]?.toLowerCase();
+  const operator =
+    rawOperator === "<="
+      ? "lte"
+      : rawOperator === ">="
+        ? "gte"
+        : rawOperator === "<"
+          ? "lt"
+          : rawOperator === ">"
+            ? "gr"
+            : (rawOperator as ReferenceCriterion["operator"]);
   const count = Number(match[2] || 1);
 
   if (!Number.isInteger(count) || count < 0) {
@@ -104,6 +114,10 @@ function matchesCriterion(
 
   if (criterion.operator === "gte") {
     return count >= criterion.count;
+  }
+
+  if (criterion.operator === "lte") {
+    return count <= criterion.count;
   }
 
   return count < criterion.count;

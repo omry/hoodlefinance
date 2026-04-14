@@ -1,33 +1,12 @@
 import type { StoredTextResource } from "../runtime/ResolverServices";
 import type { AppsScriptCache } from "./host-types";
 
-interface StringCacheAdapter {
-  getCachedString(key: string): string;
-  putCachedString(key: string, value: string, ttlSeconds: number): string;
-}
-
-interface JsonCacheAdapter {
-  getCachedJson(key: string): unknown;
-  putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
-}
-
-export interface StoredTextState {
-  fallbackText: string;
-  freshText: string;
-}
-
-export interface StoredTextResourceStore {
-  getStoredTextResource(key: string): StoredTextResource | null;
-  putStoredTextResource(
-    key: string,
-    text: string,
-    fetchedAtMs: number,
-  ): StoredTextResource | null;
-}
-
 export function createStringCache(
   cache: AppsScriptCache,
-): StringCacheAdapter {
+): {
+  getCachedString(key: string): string;
+  putCachedString(key: string, value: string, ttlSeconds: number): string;
+} {
   return {
     getCachedString(key) {
       return String(cache.get(key) || "");
@@ -40,7 +19,10 @@ export function createStringCache(
   };
 }
 
-export function createJsonCache(cache: AppsScriptCache): JsonCacheAdapter {
+export function createJsonCache(cache: AppsScriptCache): {
+  getCachedJson(key: string): unknown;
+  putCachedJson(key: string, value: unknown, ttlSeconds: number): unknown;
+} {
   return {
     getCachedJson(key) {
       const raw = cache.get(key);
@@ -68,7 +50,7 @@ export function createStoredTextState(
   fetchedAtMs: number,
   nowMs: number,
   refreshIntervalMs: number,
-): StoredTextState {
+): { fallbackText: string; freshText: string } {
   const fallbackText = String(text || "");
 
   return {
@@ -104,7 +86,14 @@ export function createStoredTextResourceStore(
     getProperty(key: string): string | null;
     setProperty(key: string, value: string): void;
   } | null,
-): StoredTextResourceStore {
+): {
+  getStoredTextResource(key: string): StoredTextResource | null;
+  putStoredTextResource(
+    key: string,
+    text: string,
+    fetchedAtMs: number,
+  ): StoredTextResource | null;
+} {
   return {
     getStoredTextResource(key) {
       if (!properties) {

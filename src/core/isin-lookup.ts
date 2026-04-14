@@ -104,18 +104,6 @@ const ISIN_SOURCE_BY_EXCHANGE: Record<string, string> = {
   WSE: "TRADINGVIEW",
 };
 
-interface ResolveIsinAttributeDependencies {
-  fetchText(url: string): string;
-  getCachedString(cacheKey: string): string;
-  looksLikeIsin(value: string): boolean;
-  putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
-}
-
-interface ResolveIsinAttributeContext {
-  tickerInput?: string;
-}
-
-
 function extractQuoteSymbol(quote: Record<string, unknown>): string {
   return String(quote.symbol || "").trim().toUpperCase();
 }
@@ -235,8 +223,17 @@ export function extractTradingviewCode(
 
 export function resolveIsinAttributeValue(
   quote: Record<string, unknown>,
-  context: ResolveIsinAttributeContext,
-  deps: ResolveIsinAttributeDependencies,
+  context: { tickerInput?: string },
+  deps: {
+    fetchText(url: string): string;
+    getCachedString(cacheKey: string): string;
+    looksLikeIsin(value: string): boolean;
+    putCachedString(
+      cacheKey: string,
+      value: string,
+      ttlSeconds?: number,
+    ): string;
+  },
 ): string {
   const tickerInput = String(context.tickerInput || "").trim();
   const directIsinInput = extractDirectIsinInput(tickerInput, deps.looksLikeIsin);
@@ -320,4 +317,3 @@ export function resolveIsinAttributeValue(
     `${source} ISIN lookup is not yet supported in the TypeScript CLI.`,
   );
 }
-

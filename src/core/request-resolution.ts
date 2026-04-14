@@ -7,12 +7,6 @@ import {
 } from "./request";
 import type { TextHttpResponse } from "./text-http-response";
 
-interface QuotePlanOutcome {
-  error?: unknown;
-  status: "failure" | "success";
-  value?: unknown;
-}
-
 interface ResolvablePlan<TRequest, TValue> {
   describe(request: TRequest): string;
   resolve(request: TRequest): ResolutionResult<TValue>;
@@ -47,7 +41,11 @@ export interface LookupResult {
 
 function normalizePlanOutcome(
   route: string,
-  outcome: QuotePlanOutcome,
+  outcome: {
+    error?: unknown;
+    status: "failure" | "success";
+    value?: unknown;
+  },
 ): LookupResult {
   const normalized: LookupResult = {
     route,
@@ -98,5 +96,4 @@ export function resolvePlannedQuoteResult(
     value: outcome.status === "success" ? outcome.value : null,
   });
 }
-
 

@@ -210,14 +210,6 @@ class BaseRequest {
   }
 }
 
-interface EquityRequestInit extends BaseRequestInputSnapshot {
-  allowTradingviewFallback?: boolean;
-  exchange?: string;
-  identifierResolutionMs?: number;
-  symbol?: string;
-  yahooSymbol?: string;
-}
-
 export class EquityRequest extends BaseRequest {
   readonly allowTradingviewFallback: boolean;
   readonly classification = "equity";
@@ -226,18 +218,21 @@ export class EquityRequest extends BaseRequest {
   readonly symbol: string;
   readonly yahooSymbol: string;
 
-  constructor(init: EquityRequestInit) {
+  constructor(
+    init: BaseRequestInputSnapshot & {
+      allowTradingviewFallback?: boolean;
+      exchange?: string;
+      identifierResolutionMs?: number;
+      symbol?: string;
+      yahooSymbol?: string;
+    },
+  ) {
     super(init, init.identifierResolutionMs);
     this.allowTradingviewFallback = init.allowTradingviewFallback === true;
     this.exchange = init.exchange || "";
     this.symbol = init.symbol || "";
     this.yahooSymbol = init.yahooSymbol || "";
   }
-}
-
-interface FxRequestInit extends BaseRequestInputSnapshot {
-  fxPair: FxPair;
-  identifierResolutionMs?: number;
 }
 
 export class FxRequest extends BaseRequest {
@@ -247,7 +242,12 @@ export class FxRequest extends BaseRequest {
   readonly quoteCurrency: string;
   readonly requestType = "fx";
 
-  constructor(init: FxRequestInit) {
+  constructor(
+    init: BaseRequestInputSnapshot & {
+      fxPair: FxPair;
+      identifierResolutionMs?: number;
+    },
+  ) {
     super(init, init.identifierResolutionMs);
     this.baseCurrency = init.fxPair.baseCanonicalCode;
     this.fxPair = init.fxPair;

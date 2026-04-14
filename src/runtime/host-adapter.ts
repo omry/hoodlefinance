@@ -3,7 +3,6 @@ import { ResolveFlow } from "../core/resolve-flow";
 import { looksLikeIsin } from "../core/request";
 import { DagPlan } from "../core/spec-data";
 import { ResolverServices } from "./ResolverServices";
-export type HoodlefinanceRuntime = Pick<ResolveFlow, "getGraph" | "resolveAttribute">;
 
 function createResolveFlow(
   resolverServices: ResolverServices,
@@ -19,7 +18,7 @@ function createResolveFlow(
 
 export function createHoodlefinanceRuntime(
   resolverServices: ResolverServices,
-): HoodlefinanceRuntime {
+): Pick<ResolveFlow, "getGraph" | "resolveAttribute"> {
   const resolveFlow = createResolveFlow(resolverServices);
 
   return {

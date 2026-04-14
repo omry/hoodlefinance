@@ -165,8 +165,6 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   TickerQuoteResolutionPlan,
 } as const;
 
-type PlanResolverClassName = keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME;
-
 export function buildPlanNodeFromSpec(
   code: string,
   spec: Graph.Node,
@@ -175,7 +173,9 @@ export function buildPlanNodeFromSpec(
   deps: PlanRuntimeRefs,
 ): Resolver {
   const PlanClass =
-    PLAN_RESOLVER_CLASSES_BY_NAME[spec.type as PlanResolverClassName];
+    PLAN_RESOLVER_CLASSES_BY_NAME[
+      spec.type as keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME
+    ];
 
   if (!PlanClass) {
     throw new Error(

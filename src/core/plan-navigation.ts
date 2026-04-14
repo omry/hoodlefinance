@@ -1,22 +1,6 @@
 import { type Resolver, ResolverPlan } from "./resolver-classes";
 import { RoutingNodeKind } from "./planner";
 
-interface SelectSinglePlanNodeOptions<TNode extends Resolver> {
-  allowNone?: boolean;
-  onMultiple?: (selectedNodes: TNode[]) => Error;
-  onNone?: () => Error;
-}
-
-interface ResolveRoutingNodeOptions<TNode extends Resolver> {
-  allowNone?: boolean;
-  onMultiple?: (routingNode: ResolverPlan, selectedNodes: TNode[]) => Error;
-  onNone?: (routingNode: ResolverPlan) => Error;
-}
-
-interface FindNamedResolverOptions {
-  requireCanHandle?: boolean;
-}
-
 function formatNodeName(node: Resolver | null | undefined): string {
   return String((node && node.name) || "").trim() || "<unknown>";
 }
@@ -34,7 +18,11 @@ export function selectSinglePlanNode<TNode extends Resolver>(
     | null
     | undefined,
   request: unknown,
-  options: SelectSinglePlanNodeOptions<TNode> = {},
+  options: {
+    allowNone?: boolean;
+    onMultiple?: (selectedNodes: TNode[]) => Error;
+    onNone?: () => Error;
+  } = {},
 ): TNode | null {
   const selectedNodes = plan
     ? (plan.getNodesForRequest(request) as TNode[])
@@ -68,7 +56,11 @@ export function selectSinglePlanNode<TNode extends Resolver>(
 export function resolveRoutingNode<TNode extends Resolver>(
   node: Resolver | null | undefined,
   request: unknown,
-  options: ResolveRoutingNodeOptions<TNode> = {},
+  options: {
+    allowNone?: boolean;
+    onMultiple?: (routingNode: ResolverPlan, selectedNodes: TNode[]) => Error;
+    onNone?: (routingNode: ResolverPlan) => Error;
+  } = {},
 ): TNode | Resolver | null {
   let currentNode = node;
 
@@ -142,7 +134,7 @@ export function findNamedResolver(
   node: Resolver | null | undefined,
   name: string,
   request: unknown | null,
-  options: FindNamedResolverOptions = {},
+  options: { requireCanHandle?: boolean } = {},
 ): Resolver | null {
   const requireCanHandle = options.requireCanHandle !== false;
   let nodes: Resolver[];
