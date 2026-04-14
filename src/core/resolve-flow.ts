@@ -13,10 +13,7 @@ import {
   materializeResolversByCode,
   type ResolverMaterializationDependencies,
 } from "./resolver-materialization";
-import {
-  resolveRequestValue,
-  type RequestResolutionDependencies,
-} from "./request-resolution";
+import type { RequestResolutionDependencies } from "./request-resolution";
 import { createRequestResolutionEnv } from "./request-resolution-env";
 import { FlowEngine, EnvelopeStatus } from "./flow-engine";
 
@@ -344,9 +341,6 @@ export interface ResolveFlowDependencies
   looksLikeIsin(value: string): boolean;
 }
 
-export interface ResolveAttributeOptions {
-  engine?: "flow-engine" | "legacy";
-}
 
 export class ResolveFlow {
   readonly graph: Graph.View;
@@ -491,43 +485,16 @@ export class ResolveFlow {
     );
   }
 
-  resolveAttribute(
-    identifier: string,
-    attribute = "price",
-    options?: ResolveAttributeOptions,
-  ): unknown {
+  resolveAttribute(identifier: string, attribute = "price"): unknown {
     const rawInput = this.createRawRequestInput(identifier, attribute);
-    const selectedEngine = String(options?.engine || "legacy").trim();
-
-    if (selectedEngine !== "legacy" && selectedEngine !== "flow-engine") {
-      throw new Error(
-        `Unknown resolve engine "${selectedEngine}". Expected "legacy" or "flow-engine".`,
-      );
-    }
-
-    if (selectedEngine === "flow-engine") {
-      return this.resolveAttributeWithFlowEngine(rawInput);
-    }
-
-    const result = resolveRequestValue(this.requireResolutionEnv(), rawInput);
-
-    if (result.status !== "success") {
-      throw new Error(result.error || "Lookup failed.");
-    }
-
-    return result.value;
-  }
-
-  private resolveAttributeWithFlowEngine(rawInput: RawRequestInput): unknown {
     const engine = new FlowEngine(this);
+    const engineResult = engine.execute({ value: rawInput });
 
-    return engine.execute({ value: rawInput }).then((engineResult) => {
-      if (engineResult.status !== EnvelopeStatus.Success) {
-        throw new Error("Lookup failed.");
-      }
+    if (engineResult.status !== EnvelopeStatus.Success) {
+      throw new Error("Lookup failed.");
+    }
 
-      return this.projectFlowEngineValue(rawInput, engineResult.value);
-    });
+    return this.projectFlowEngineValue(rawInput, engineResult.value);
   }
 
   #getRuntimeNode(code: string): Resolver {

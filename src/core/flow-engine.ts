@@ -89,7 +89,7 @@ export class FlowEngine {
     });
   }
 
-  async execute(input: Envelope): Promise<Envelope> {
+  execute(input: Envelope): Envelope {
     const graph = this.#flow.getGraph();
     const root = graph.getRoot();
     if (!root) {
@@ -98,7 +98,7 @@ export class FlowEngine {
     return this.#executeNode(root, input, graph);
   }
 
-  async #executeRoutingNode(
+  #executeRoutingNode(
     node: Graph.Node,
     resolver: {
       getRoutingNodeKind(): RoutingNodeKind;
@@ -109,7 +109,7 @@ export class FlowEngine {
     },
     envelope: Envelope,
     graph: Graph.View,
-  ): Promise<Envelope> {
+  ): Envelope {
     const kind = resolver.getRoutingNodeKind();
     const childNodes = this.#getChildNodes(node, graph);
     const selectionContext: SelectNextContext = {};
@@ -135,7 +135,7 @@ export class FlowEngine {
 
       if (kind === RoutingNodeKind.Step) {
         for (const selectedChild of selectedChildren) {
-          const childResult = await this.#executeNode(
+          const childResult = this.#executeNode(
             selectedChild,
             envelope,
             graph,
@@ -149,7 +149,7 @@ export class FlowEngine {
         return envelope;
       }
 
-      const childResult = await this.#executeNode(
+      const childResult = this.#executeNode(
         selectedChildren[0] as Graph.Node,
         envelope,
         graph,
@@ -175,11 +175,11 @@ export class FlowEngine {
     return { value: envelope.value, status: exhaustedStatus };
   }
 
-  async #executeNode(
+  #executeNode(
     node: Graph.Node,
     envelope: Envelope,
     graph: Graph.View,
-  ): Promise<Envelope> {
+  ): Envelope {
     const resolver = this.#flow.getResolver(node.id);
     if (!resolver) {
       // TERMINAL or unresolvable node — return current envelope as final result.
@@ -239,7 +239,7 @@ export class FlowEngine {
       if (!this.#childCanHandle(childNode, outEnvelope.value)) {
         continue;
       }
-      const childResult = await this.#executeNode(
+      const childResult = this.#executeNode(
         childNode,
         outEnvelope,
         graph,

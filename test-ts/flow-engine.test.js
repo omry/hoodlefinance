@@ -114,7 +114,7 @@ function mockFlow(nodes) {
 // Engine behaviour when flow returns null resolver (terminal node)
 // ---------------------------------------------------------------------------
 
-test("execute() treats a node with null resolver as terminal, returns current envelope", async () => {
+test("execute() treats a node with null resolver as terminal, returns current envelope", () => {
   // ROOT has a next edge to a node whose resolver is null — engine should stop
   // and return the envelope produced by ROOT.
   const flow = {
@@ -133,13 +133,13 @@ test("execute() treats a node with null resolver as terminal, returns current en
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(result.value, { done: true });
 });
 
-test("execute() treats a node with null resolver as terminal even when it has siblings", async () => {
+test("execute() treats a node with null resolver as terminal even when it has siblings", () => {
   // ROOT → [NULL-RESOLVER, REAL]. NULL-RESOLVER returns null from getResolver,
   // so engine sees it as terminal and returns success without trying REAL.
   let realCalled = false;
@@ -162,27 +162,27 @@ test("execute() treats a node with null resolver as terminal even when it has si
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.equal(realCalled, false, "sibling after null-resolver node should not be reached");
 });
 
-test("execute() throws when graph has no ROOT node", async () => {
+test("execute() throws when graph has no ROOT node", () => {
   const flow = {
     getGraph: () => ({ getRoot: () => null, getNode: () => null }),
     getResolver: () => null,
   };
 
   const engine = new FlowEngine(flow);
-  await assert.rejects(() => engine.execute({ value: {} }), /ROOT/);
+  assert.throws(() => engine.execute({ value: {} }), /ROOT/);
 });
 
 // ---------------------------------------------------------------------------
 // FlowEngine.execute()
 // ---------------------------------------------------------------------------
 
-test("execute() returns success envelope when single node succeeds and reaches TERMINAL", async () => {
+test("execute() returns success envelope when single node succeeds and reaches TERMINAL", () => {
   const flow = mockFlow({
     ROOT: {
       nextIds: ["TERMINAL"],
@@ -191,12 +191,12 @@ test("execute() returns success envelope when single node succeeds and reaches T
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
 });
 
-test("execute() falls back to second next node when first fails", async () => {
+test("execute() falls back to second next node when first fails", () => {
   const flow = mockFlow({
     ROOT: {
       nextIds: ["A", "B"],
@@ -213,12 +213,12 @@ test("execute() falls back to second next node when first fails", async () => {
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
 });
 
-test("execute() returns failure when all next nodes fail", async () => {
+test("execute() returns failure when all next nodes fail", () => {
   const flow = mockFlow({
     ROOT: {
       nextIds: ["A", "B"],
@@ -235,12 +235,12 @@ test("execute() returns failure when all next nodes fail", async () => {
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
 });
 
-test("execute() does not try next edges when ROOT itself fails", async () => {
+test("execute() does not try next edges when ROOT itself fails", () => {
   let nextCalled = false;
 
   const flow = {
@@ -263,7 +263,7 @@ test("execute() does not try next edges when ROOT itself fails", async () => {
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
   assert.equal(nextCalled, false, "next edge should not be tried when ROOT fails");
@@ -275,7 +275,7 @@ test("execute() does not try next edges when ROOT itself fails", async () => {
 // Value threading
 // ---------------------------------------------------------------------------
 
-test("execute() passes the resolver output value into the next node", async () => {
+test("execute() passes the resolver output value into the next node", () => {
   const receivedValues = [];
 
   const flow = {
@@ -312,7 +312,7 @@ test("execute() passes the resolver output value into the next node", async () =
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: { initial: true } });
+  const result = engine.execute({ value: { initial: true } });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.equal(receivedValues[0].node, "ROOT");
@@ -321,7 +321,7 @@ test("execute() passes the resolver output value into the next node", async () =
   assert.deepEqual(receivedValues[1].input, { fromRoot: true });
 });
 
-test("execute() retains the previous value when resolver returns null value", async () => {
+test("execute() retains the previous value when resolver returns null value", () => {
   const flow = mockFlow({
     ROOT: {
       nextIds: ["TERMINAL"],
@@ -331,7 +331,7 @@ test("execute() retains the previous value when resolver returns null value", as
 
   const engine = new FlowEngine(flow);
   const input = { kept: true };
-  const result = await engine.execute({ value: input });
+  const result = engine.execute({ value: input });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(result.value, input);
@@ -341,7 +341,7 @@ test("execute() retains the previous value when resolver returns null value", as
 // Deep graph (multi-level)
 // ---------------------------------------------------------------------------
 
-test("execute() walks a three-level graph to TERMINAL", async () => {
+test("execute() walks a three-level graph to TERMINAL", () => {
   const visited = [];
 
   const flow = {
@@ -368,13 +368,13 @@ test("execute() walks a three-level graph to TERMINAL", async () => {
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["A", "B", "C"]);
 });
 
-test("execute() skips missing next node and continues to next valid sibling", async () => {
+test("execute() skips missing next node and continues to next valid sibling", () => {
   const flow = {
     getGraph: () => ({
       getRoot: () => ({ id: "ROOT", type: "mock", next: ["GHOST", "REAL"] }),
@@ -393,7 +393,7 @@ test("execute() skips missing next node and continues to next valid sibling", as
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
 });
@@ -414,7 +414,7 @@ test("execute() skips missing next node and continues to next valid sibling", as
 //                every child can handle the current output.
 // ---------------------------------------------------------------------------
 
-test("switch node: engine routes only to the matching child", async () => {
+test("switch node: engine routes only to the matching child", () => {
   const visited = [];
 
   const flow = {
@@ -458,14 +458,14 @@ test("switch node: engine routes only to the matching child", async () => {
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: { kind: "b" } });
+  const result = engine.execute({ value: { kind: "b" } });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["BRANCH-B"]);
   assert.deepEqual(result.value, { kind: "b" });
 });
 
-test("switch node: engine returns Failure when no child can handle the output", async () => {
+test("switch node: engine returns Failure when no child can handle the output", () => {
   const flow = mockFlow({
     ROOT: {
       kind: "switch",
@@ -488,12 +488,12 @@ test("switch node: engine returns Failure when no child can handle the output", 
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
 });
 
-test("switch node: engine propagates selection errors from selectNext()", async () => {
+test("switch node: engine propagates selection errors from selectNext()", () => {
   const flow = {
     getGraph: () => ({
       getRoot: () => ({ id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] }),
@@ -524,13 +524,13 @@ test("switch node: engine propagates selection errors from selectNext()", async 
   };
 
   const engine = new FlowEngine(flow);
-  await assert.rejects(
+  assert.throws(
     () => engine.execute({ value: {} }),
     /ambiguous selection/i,
   );
 });
 
-test("routing node: engine throws when a non-leaf node inherits the base selectNext()", async () => {
+test("routing node: engine throws when a non-leaf node inherits the base selectNext()", () => {
   const rootResolver = new Resolver("ROOT");
   rootResolver.getRoutingNodeKind = () => "switch";
 
@@ -560,13 +560,13 @@ test("routing node: engine throws when a non-leaf node inherits the base selectN
   };
 
   const engine = new FlowEngine(flow);
-  await assert.rejects(
+  assert.throws(
     () => engine.execute({ value: {} }),
     /does not support selectNext/i,
   );
 });
 
-test("try-each node: engine tries children in order and returns first success", async () => {
+test("try-each node: engine tries children in order and returns first success", () => {
   // PARENT → [PROVIDER-A, PROVIDER-B]: A fails transiently, B succeeds.
   const visited = [];
 
@@ -617,14 +617,14 @@ test("try-each node: engine tries children in order and returns first success", 
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["PROVIDER-A", "PROVIDER-B"]);
   assert.deepEqual(result.value, { price: 180 });
 });
 
-test("try-each node: engine skips children that cannot handle the output", async () => {
+test("try-each node: engine skips children that cannot handle the output", () => {
   const visited = [];
 
   const flow = {
@@ -685,14 +685,14 @@ test("try-each node: engine skips children that cannot handle the output", async
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["B"]);
   assert.deepEqual(result.value, { price: 180 });
 });
 
-test("try-each node: engine returns TerminalFailure when all providers fail", async () => {
+test("try-each node: engine returns TerminalFailure when all providers fail", () => {
   const flow = mockFlow({
     ROOT: {
       kind: "try each",
@@ -712,12 +712,12 @@ test("try-each node: engine returns TerminalFailure when all providers fail", as
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.TerminalFailure);
 });
 
-test("try-each node: TerminalFailure propagates up through an ancestor switch", async () => {
+test("try-each node: TerminalFailure propagates up through an ancestor switch", () => {
   // SWITCH selects TRY-EACH-A. TRY-EACH-A exhausts all children →
   // TerminalFailure. SWITCH must not fail over to FALLBACK.
   let fallbackCalled = false;
@@ -772,13 +772,13 @@ test("try-each node: TerminalFailure propagates up through an ancestor switch", 
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.TerminalFailure);
   assert.equal(fallbackCalled, false, "FALLBACK must not be called after TerminalFailure");
 });
 
-test("try-each node: succeeding first provider short-circuits remaining siblings", async () => {
+test("try-each node: succeeding first provider short-circuits remaining siblings", () => {
   let bCalled = false;
 
   const flow = mockFlow({
@@ -803,7 +803,7 @@ test("try-each node: succeeding first provider short-circuits remaining siblings
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.equal(bCalled, false, "PROVIDER-B should not be called when PROVIDER-A succeeds");
@@ -813,7 +813,7 @@ test("try-each node: succeeding first provider short-circuits remaining siblings
 // Step node
 // ---------------------------------------------------------------------------
 
-test("step node: engine fans out the same output to all children", async () => {
+test("step node: engine fans out the same output to all children", () => {
   const visited = [];
   const seenInputs = [];
 
@@ -851,7 +851,7 @@ test("step node: engine fans out the same output to all children", async () => {
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(visited, ["STEP-A", "STEP-B"]);
@@ -862,7 +862,7 @@ test("step node: engine fans out the same output to all children", async () => {
   assert.deepEqual(result.value, {});
 });
 
-test("step node: engine stops immediately when a child fails, does not try later siblings", async () => {
+test("step node: engine stops immediately when a child fails, does not try later siblings", () => {
   let bCalled = false;
 
   const flow = mockFlow({
@@ -887,13 +887,13 @@ test("step node: engine stops immediately when a child fails, does not try later
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
   assert.equal(bCalled, false, "STEP-B should not be called when STEP-A fails");
 });
 
-test("step node: throws when a child cannot handle the output", async () => {
+test("step node: throws when a child cannot handle the output", () => {
   const flow = {
     getGraph: () => ({
       getRoot: () => ({ id: "ROOT", type: "StepPlan", next: ["STEP-A", "STEP-B"] }),
@@ -938,13 +938,13 @@ test("step node: throws when a child cannot handle the output", async () => {
   };
 
   const engine = new FlowEngine(flow);
-  await assert.rejects(
+  assert.throws(
     () => engine.execute({ value: {} }),
     /cannot handle the current output/i,
   );
 });
 
-test("step node: TerminalFailure from a child propagates immediately and stops execution", async () => {
+test("step node: TerminalFailure from a child propagates immediately and stops execution", () => {
   // ROOT (step) → [TRY-EACH, STEP-B]. TRY-EACH exhausts its only provider →
   // TerminalFailure. Engine must not call STEP-B.
   let bCalled = false;
@@ -976,13 +976,13 @@ test("step node: TerminalFailure from a child propagates immediately and stops e
   });
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.TerminalFailure);
   assert.equal(bCalled, false, "STEP-B must not be called after TerminalFailure");
 });
 
-test("execute() only unwraps ClassifiedInput at the ROOT node", async () => {
+test("execute() only unwraps ClassifiedInput at the ROOT node", () => {
   let childInput = null;
 
   const flow = {
@@ -1035,7 +1035,7 @@ test("execute() only unwraps ClassifiedInput at the ROOT node", async () => {
   };
 
   const engine = new FlowEngine(flow);
-  const result = await engine.execute({ value: {} });
+  const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
   assert.deepEqual(childInput, {

@@ -284,6 +284,24 @@ Remove the legacy pipeline and all code it made reachable. Work in passes:
 - If a symbol is nearly dead but removal requires non-trivial work (e.g. a
   public API surface, a partially-shared abstraction), note it here and skip it
 
+### Followup items (nearly dead, non-trivial to remove)
+
+#### Direct ISIN attribute resolution (LON:, PSE: with `isin` attribute)
+
+`resolveDirectIsinAttributeValue` in `isin-lookup.ts` handles requests like
+`LON:SJPA, isin` and `PSE:BDO, isin` by fetching the ISIN directly from the
+exchange (LSE or PSE site) without going through a Yahoo quote fetch.
+
+The legacy `resolveRequestValue` path called this as a short-circuit before
+invoking any resolvers. The FlowEngine has no equivalent node — these tickers
+route through the standard equity quote path, which fails when the mock or
+real environment only provides the LSE/PSE URL, not a Yahoo quote.
+
+The test `"HOODLEFINANCE supports direct ISIN attribute lookups that only need
+fetchText"` in `appscript.test.js` is marked `todo` pending a graph node that
+handles this case (e.g. a new `ISIN-DIRECT` leaf node checked before the quote
+path, or a pre-engine hook in `resolveAttribute`).
+
 ### Acceptance
 
 - `check:ts` clean
