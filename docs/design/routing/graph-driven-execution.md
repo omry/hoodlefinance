@@ -1,6 +1,6 @@
 ---
 status: Active
-updated: 2026-04-13
+updated: 2026-04-14
 summary: Replace ad-hoc plan selection with a graph-driven driver that executes the descriptive graph directly.
 ---
 
@@ -298,22 +298,6 @@ Removing this requires either:
 - Threading `routeState` out of the FlowEngine execution trace so `projectFlowEngineValue`
   can derive it without calling `selectLookupExecution`; or
 - Moving attribute-value projection into the graph itself (e.g. a post-TERMINAL step)
-
-#### Direct ISIN attribute resolution (LON:, PSE: with `isin` attribute)
-
-`resolveDirectIsinAttributeValue` in `isin-lookup.ts` handles requests like
-`LON:SJPA, isin` and `PSE:BDO, isin` by fetching the ISIN directly from the
-exchange (LSE or PSE site) without going through a Yahoo quote fetch.
-
-The legacy `resolveRequestValue` path called this as a short-circuit before
-invoking any resolvers. The FlowEngine has no equivalent node — these tickers
-route through the standard equity quote path, which fails when the mock or
-real environment only provides the LSE/PSE URL, not a Yahoo quote.
-
-The test `"HOODLEFINANCE supports direct ISIN attribute lookups that only need
-fetchText"` in `appscript.test.js` is marked `todo` pending a graph node that
-handles this case (e.g. a new `ISIN-DIRECT` leaf node checked before the quote
-path, or a pre-engine hook in `resolveAttribute`).
 
 ### Acceptance
 
