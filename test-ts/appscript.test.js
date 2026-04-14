@@ -149,11 +149,20 @@ test("HOODLEFINANCE falls back to stored currency code data when the refresh pay
   );
 });
 
-// TODO: FlowEngine has no direct-ISIN node for LON:/PSE: tickers with `isin`
-// attribute. These tickers route through the standard equity path, which needs
-// a Yahoo quote before it can extract the ISIN. A future graph node (e.g.
-// ISIN-DIRECT) could fetch the ISIN from the exchange directly without Yahoo.
-test.todo("HOODLEFINANCE supports direct ISIN attribute lookups that only need fetchText");
+// The old JS path had a pre-routing short-circuit for `isin` attribute on
+// LON:-prefixed tickers: it called resolveLonIsinByTickerInput directly,
+// hitting LSE without a Yahoo quote. The FlowEngine has no equivalent —
+// LON: tickers route through QUOTE:TICKER → YAHOO-QUOTE first.
+//
+// For tickers Yahoo covers: performance regression (2 HTTP calls vs 1).
+// For tickers Yahoo doesn't cover: functional regression (request fails).
+//
+// PSE:ticker,isin is NOT affected — PSE-FRAMES returns quote.isin directly
+// without Yahoo, so it works in both paths.
+//
+// Fix: a graph node that recognises attribute=isin + LON exchange and
+// short-circuits to LSE before the quote path runs.
+test.todo("HOODLEFINANCE supports LON:ticker,isin without a Yahoo quote (LSE direct fetch)");
 
 test("HOODLEFINANCE uses the preferred REIT Yahoo fallback symbol", () => {
   const services = createServices({

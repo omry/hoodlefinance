@@ -286,6 +286,31 @@ Remove the legacy pipeline and all code it made reachable. Work in passes:
 
 ### Followup items (nearly dead, non-trivial to remove)
 
+#### LON:ticker, isin attribute — performance and functional regression
+
+The old JS path had a pre-routing short-circuit for the `isin` attribute on
+`LON:`-prefixed tickers: it called `resolveLonIsinByTickerInput` directly,
+hitting LSE without fetching a Yahoo quote first. The FlowEngine has no
+equivalent — `LON:` tickers route through `QUOTE:TICKER → YAHOO-QUOTE`, so a
+Yahoo fetch always happens before ISIN extraction.
+
+Consequence:
+
+- **Yahoo covers the ticker** (e.g. `VOD.L`): performance regression — old
+  path made 1 HTTP call (LSE), new path makes 2 (Yahoo then LSE).
+- **Yahoo does not cover the ticker**: functional regression — `YAHOO-QUOTE`
+  returns `lookup_failure`, `TRADINGVIEW-FUND` also fails, and the request
+  errors. The old path would have succeeded via LSE alone.
+
+`PSE:ticker, isin` is not affected — `PSE-FRAMES` returns `quote.isin`
+directly without Yahoo, so both paths produce the same result.
+
+Fix: a graph node that recognises `attribute=isin` + LON exchange and
+short-circuits to LSE before the quote path runs (e.g. an `ISIN-DIRECT` leaf
+inserted before `QUOTE:TICKER`, or a dedicated `QUOTE:LON-ISIN` branch).
+
+Tracked as `test.todo` in `test-ts/appscript.test.js`.
+
 #### `selectLookupExecution` / `projectFlowEngineValue` stench
 
 `projectFlowEngineValue` in `resolve-flow.ts` still calls `env.selectLookupExecution`
