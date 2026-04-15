@@ -26,8 +26,13 @@ export enum EnvelopeStatus {
 
 export interface Envelope {
   value: object;
+  error?: string;
   // status is absent on input; the driver always sets it on output.
   status?: EnvelopeStatus;
+}
+
+export interface ExecutionTrace {
+  visitedNodeIds: string[];
 }
 
 export class FlowEngine {
@@ -89,13 +94,13 @@ export class FlowEngine {
     });
   }
 
-  execute(input: Envelope): Envelope {
+  execute(input: Envelope, trace?: ExecutionTrace): Envelope {
     const graph = this.#flow.getGraph();
     const root = graph.getRoot();
     if (!root) {
       throw new Error("Graph has no ROOT node.");
     }
-    return this.#executeNode(root, input, graph);
+    return this.#executeNode(root, input, graph, trace);
   }
 
   #executeRoutingNode(
@@ -109,10 +114,12 @@ export class FlowEngine {
     },
     envelope: Envelope,
     graph: Graph.View,
+    trace?: ExecutionTrace,
   ): Envelope {
     const kind = resolver.getRoutingNodeKind();
     const childNodes = this.#getChildNodes(node, graph);
     const selectionContext: SelectNextContext = {};
+    let lastFailureError = "";
 
     while (true) {
       const selectedChildren = this.#getSelectedChild(
@@ -139,9 +146,13 @@ export class FlowEngine {
             selectedChild,
             envelope,
             graph,
+            trace,
           );
 
           if (childResult.status !== EnvelopeStatus.Success) {
+            if (childResult.error) {
+              lastFailureError = childResult.error;
+            }
             return childResult;
           }
         }
@@ -153,6 +164,7 @@ export class FlowEngine {
         selectedChildren[0] as Graph.Node,
         envelope,
         graph,
+        trace,
       );
 
       if (kind === RoutingNodeKind.Switch) {
@@ -166,24 +178,40 @@ export class FlowEngine {
       if (childResult.status !== EnvelopeStatus.Failure) {
         return childResult;
       }
+
+      if (childResult.error) {
+        lastFailureError = childResult.error;
+      }
     }
 
     const exhaustedStatus =
       kind === RoutingNodeKind.TryEach
         ? EnvelopeStatus.TerminalFailure
         : EnvelopeStatus.Failure;
-    return { value: envelope.value, status: exhaustedStatus };
+    return {
+      value: envelope.value,
+      ...(lastFailureError ? { error: lastFailureError } : {}),
+      status: exhaustedStatus,
+    };
   }
 
   #executeNode(
     node: Graph.Node,
     envelope: Envelope,
     graph: Graph.View,
+    trace?: ExecutionTrace,
   ): Envelope {
     const resolver = this.#flow.getResolver(node.id);
     if (!resolver) {
+      if (trace) {
+        trace.visitedNodeIds.push(node.id);
+      }
       // TERMINAL or unresolvable node — return current envelope as final result.
       return envelope;
+    }
+
+    if (trace) {
+      trace.visitedNodeIds.push(node.id);
     }
 
     const kind = resolver.getRoutingNodeKind();
@@ -205,7 +233,12 @@ export class FlowEngine {
           status: EnvelopeStatus.Success,
         };
       } else {
-        outEnvelope = { value: envelope.value, status: EnvelopeStatus.Failure };
+        const error = String(result.error || "").trim();
+        outEnvelope = {
+          value: envelope.value,
+          ...(error ? { error } : {}),
+          status: EnvelopeStatus.Failure,
+        };
       }
     }
 
@@ -227,10 +260,11 @@ export class FlowEngine {
     }
 
     if (kind !== RoutingNodeKind.Leaf) {
-      return this.#executeRoutingNode(node, resolver, outEnvelope, graph);
+      return this.#executeRoutingNode(node, resolver, outEnvelope, graph, trace);
     }
 
     const childNodes = this.#getChildNodes(node, graph);
+    let lastFailureError = "";
 
     // try each: try each handleable child in declaration order until one
     // succeeds. Exhaustion is terminal. leaf nodes keep the same ordered
@@ -243,12 +277,16 @@ export class FlowEngine {
         childNode,
         outEnvelope,
         graph,
+        trace,
       );
       if (childResult.status === EnvelopeStatus.TerminalFailure) {
         return childResult;
       }
       if (childResult.status !== EnvelopeStatus.Failure) {
         return childResult;
+      }
+      if (childResult.error) {
+        lastFailureError = childResult.error;
       }
       // child subtree failed — try next sibling
     }
@@ -257,6 +295,10 @@ export class FlowEngine {
     // try each exhaustion is terminal because it is explicit failover. leaf
     // exhaustion remains a normal Failure so an ancestor try-each may keep
     // looking for another branch.
-    return { value: outEnvelope.value, status: EnvelopeStatus.Failure };
+    return {
+      value: outEnvelope.value,
+      ...(lastFailureError ? { error: lastFailureError } : {}),
+      status: EnvelopeStatus.Failure,
+    };
   }
 }

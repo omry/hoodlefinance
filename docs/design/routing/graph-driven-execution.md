@@ -88,8 +88,9 @@ the next fallback edge. Execution ends when TERMINAL is reached or all options
 are exhausted.
 
 The try-each fallback structure is not hidden. It is real graph structure —
-`QUOTE:TICKER → [YAHOO-QUOTE, TRADINGVIEW-FUND]` means try YAHOO-QUOTE first,
-then TRADINGVIEW-FUND on failure. The driver follows these edges directly.
+`QUOTE:TICKER → [LON-ISIN, YAHOO-QUOTE, TRADINGVIEW-FUND]` means try LON-ISIN
+first (for LON exchange + isin requests), then YAHOO-QUOTE, then TRADINGVIEW-FUND
+on failure. The driver follows these edges directly.
 
 The hardcoded queries to ROOT and RESOLVED-IDENTIFIER that currently live in
 `selectLookupExecution` become ordinary driver steps — ROOT is just the first
@@ -134,6 +135,7 @@ flowchart LR
     N13["PSE-EDGE<br/>PSEEdgeResolver"]
     N14["YAHOO-QUOTE<br/>YahooEquityQuoteResolver"]
     N15["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
+    N19["LON-ISIN<br/>LonIsinResolver"]
   end
   subgraph N7SG["FX"]
     direction LR
@@ -158,6 +160,7 @@ flowchart LR
   N7 --> N11
   N8 --> N12
   N8 --> N13
+  N9 --> N19
   N9 --> N14
   N9 --> N15
   N10 --> N18
@@ -167,6 +170,7 @@ flowchart LR
   N13 --> N18
   N14 --> N18
   N15 --> N18
+  N19 --> N18
   N16 --> N18
   N17 --> N18
 ```
@@ -289,31 +293,6 @@ Work in passes:
   public API surface, a partially-shared abstraction), note it here and skip it
 
 ### Followup items (nearly dead, non-trivial to remove)
-
-#### LON:ticker, isin attribute — performance and functional regression
-
-The old JS path had a pre-routing short-circuit for the `isin` attribute on
-`LON:`-prefixed tickers: it called `resolveLonIsinByTickerInput` directly,
-hitting LSE without fetching a Yahoo quote first. The FlowEngine has no
-equivalent — `LON:` tickers route through `QUOTE:TICKER → YAHOO-QUOTE`, so a
-Yahoo fetch always happens before ISIN extraction.
-
-Consequence:
-
-- **Yahoo covers the ticker** (e.g. `VOD.L`): performance regression — old
-  path made 1 HTTP call (LSE), new path makes 2 (Yahoo then LSE).
-- **Yahoo does not cover the ticker**: functional regression — `YAHOO-QUOTE`
-  returns `lookup_failure`, `TRADINGVIEW-FUND` also fails, and the request
-  errors. The old path would have succeeded via LSE alone.
-
-`PSE:ticker, isin` is not affected — `PSE-FRAMES` returns `quote.isin`
-directly without Yahoo, so both paths produce the same result.
-
-Fix: a graph node that recognises `attribute=isin` + LON exchange and
-short-circuits to LSE before the quote path runs (e.g. an `ISIN-DIRECT` leaf
-inserted before `QUOTE:TICKER`, or a dedicated `QUOTE:LON-ISIN` branch).
-
-Tracked as `test.todo` in `test-ts/appscript.test.js`.
 
 #### ~~`selectLookupExecution` / `projectFlowEngineValue` stench~~ — addressed in Pass 1
 

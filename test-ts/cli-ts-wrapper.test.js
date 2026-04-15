@@ -11,6 +11,7 @@ test("cli-ts wrapper exposes the CLI entrypoints", () => {
   assert.equal(typeof cli.main, "function");
   assert.equal(typeof cli.parseGraphCommandOptions, "function");
   assert.equal(typeof cli.resolveAttributeResultWithEnvironment, "function");
+  assert.equal(typeof cli.resolveAttributeTraceWithEnvironment, "function");
   assert.equal(typeof cli.renderGraphMermaidWithEnvironment, "function");
   assert.equal(typeof cli.renderGraphSvgWithEnvironment, "function");
   assert.equal(typeof cli.renderGraphTextWithEnvironment, "function");

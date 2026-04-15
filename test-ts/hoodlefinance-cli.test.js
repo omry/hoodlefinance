@@ -9,6 +9,7 @@ const {
   openFileInBrowserWithSpawn,
   parseGraphCommandOptions,
   resolveAttributeResultWithEnvironment,
+  resolveAttributeTraceWithEnvironment,
   renderGraphMermaidWithEnvironment,
   renderGraphSvgWithEnvironment,
   renderGraphTextWithEnvironment,
@@ -47,6 +48,15 @@ function createFakeLookupEnv() {
       }
 
       throw new Error(`not found: ${ticker}`);
+    },
+    resolveAttributeWithTrace(identifier, attribute) {
+      const value = this.resolveAttribute(identifier, attribute);
+      return {
+        error: "",
+        path: ["ROOT", "ATTRIBUTE", "QUOTE:TICKER", "YAHOO-QUOTE", "EXTRACT:EQUITY", "TERMINAL"],
+        status: "success",
+        value,
+      };
     },
   };
 }
@@ -121,6 +131,54 @@ test("resolveAttributeResultWithEnvironment normalizes the attribute and delegat
   });
   assert.equal(result.status, "success");
   assert.equal(result.value, 123.45);
+});
+
+test("resolveAttributeTraceWithEnvironment delegates to env.resolveAttributeWithTrace", () => {
+  const result = resolveAttributeTraceWithEnvironment(createFakeLookupEnv(), {
+    attribute: "  isin  ",
+    ticker: "GOOG",
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value, "US02079K1079");
+  assert.equal(result.failure, "");
+  assert.deepEqual(result.path, [
+    "ROOT",
+    "ATTRIBUTE",
+    "QUOTE:TICKER",
+    "YAHOO-QUOTE",
+    "EXTRACT:EQUITY",
+    "TERMINAL",
+  ]);
+});
+
+test("resolveAttributeTraceWithEnvironment preserves a user-facing failure message", () => {
+  const result = resolveAttributeTraceWithEnvironment(
+    {
+      resolveAttributeWithTrace() {
+        return {
+          error: 'No LON ISIN is available for "SJPA".',
+          path: ["ROOT", "ATTRIBUTE", "ATTRIBUTE:EQUITY", "QUOTE:TICKER", "LON-ISIN"],
+          status: "failure",
+          value: null,
+        };
+      },
+    },
+    {
+      attribute: "isin",
+      ticker: "LON:SJPA",
+    },
+  );
+
+  assert.equal(result.status, "failure");
+  assert.equal(result.failure, 'No LON ISIN is available for "SJPA".');
+  assert.deepEqual(result.path, [
+    "ROOT",
+    "ATTRIBUTE",
+    "ATTRIBUTE:EQUITY",
+    "QUOTE:TICKER",
+    "LON-ISIN",
+  ]);
 });
 
 test("runSmokeSuite validates the supported CLI smoke cases", () => {

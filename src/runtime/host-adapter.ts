@@ -16,11 +16,12 @@ function createResolveFlow(
 
 export function createHoodlefinanceRuntime(
   resolverServices: ResolverServices,
-): Pick<ResolveFlow, "getGraph" | "resolveAttribute"> {
+): Pick<ResolveFlow, "getGraph" | "resolveAttribute" | "resolveAttributeWithTrace"> {
   const resolveFlow = createResolveFlow(resolverServices);
 
   return {
     getGraph: resolveFlow.getGraph.bind(resolveFlow),
     resolveAttribute: resolveFlow.resolveAttribute.bind(resolveFlow),
+    resolveAttributeWithTrace: resolveFlow.resolveAttributeWithTrace.bind(resolveFlow),
   };
 }

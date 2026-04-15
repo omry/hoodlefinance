@@ -110,6 +110,7 @@ function createCliEnvironment() {
   Object.assign(env, {
     getGraph: runtime.getGraph,
     resolveAttribute: runtime.resolveAttribute,
+    resolveAttributeWithTrace: runtime.resolveAttributeWithTrace,
   });
 
   return env;
@@ -149,6 +150,31 @@ function resolveAttributeResultWithEnvironment(env, args, options) {
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : String(error),
+      status: "failure",
+      value: null,
+    };
+  }
+}
+
+function resolveAttributeTraceWithEnvironment(env, args) {
+  try {
+    const result = env.resolveAttributeWithTrace(
+      args.ticker,
+      normalizeAttribute(args.attribute),
+    );
+
+    return {
+      error: "",
+      failure: result.error || "",
+      path: result.path,
+      status: result.status,
+      value: result.value,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      failure: "",
+      path: [],
       status: "failure",
       value: null,
     };
@@ -601,12 +627,15 @@ function printUsage() {
   console.error(
     "       npm run hoodlefinance.ts -- --graph [--output=mermaid|svg] [--browser]",
   );
+  console.error(
+    "       npm run hoodlefinance.ts -- --trace-route <ticker> [attribute]",
+  );
   console.error("       npm run hoodlefinance.ts -- --mermaid");
   console.error("       npm run smoke.ts -- --smoke");
 }
 
 async function main(argv = process.argv.slice(2)) {
-  const [firstArg, secondArg] = argv;
+  const [firstArg, secondArg, thirdArg] = argv;
   let env = null;
   function getEnv() {
     if (!env) {
@@ -634,6 +663,37 @@ async function main(argv = process.argv.slice(2)) {
 
   if (firstArg === "--graph") {
     console.log(await handleGraphCommand(getEnv(), argv.slice(1)));
+    return;
+  }
+
+  if (firstArg === "--trace-route") {
+    if (!secondArg) {
+      printUsage();
+      process.exit(1);
+    }
+
+    const traced = resolveAttributeTraceWithEnvironment(getEnv(), {
+      attribute: thirdArg,
+      ticker: secondArg,
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          ...(traced.failure ? { error: traced.failure } : {}),
+          path: traced.path,
+          status: traced.status,
+          value: formatResolvedValue(traced.value),
+        },
+        null,
+        2,
+      ),
+    );
+
+    if (traced.status !== "success") {
+      process.exit(1);
+    }
+
     return;
   }
 
@@ -680,6 +740,7 @@ module.exports = {
   handleGraphCommand,
   parseGraphCommandOptions,
   resolveAttributeResultWithEnvironment,
+  resolveAttributeTraceWithEnvironment,
   renderGraphMermaidWithEnvironment,
   renderGraphSvgWithEnvironment,
   renderGraphTextWithEnvironment,

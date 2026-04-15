@@ -149,20 +149,81 @@ test("HOODLEFINANCE falls back to stored currency code data when the refresh pay
   );
 });
 
-// The old JS path had a pre-routing short-circuit for `isin` attribute on
-// LON:-prefixed tickers: it called resolveLonIsinByTickerInput directly,
-// hitting LSE without a Yahoo quote. The FlowEngine has no equivalent —
-// LON: tickers route through QUOTE:TICKER → YAHOO-QUOTE first.
-//
-// For tickers Yahoo covers: performance regression (2 HTTP calls vs 1).
-// For tickers Yahoo doesn't cover: functional regression (request fails).
-//
-// PSE:ticker,isin is NOT affected — PSE-FRAMES returns quote.isin directly
-// without Yahoo, so it works in both paths.
-//
-// Fix: a graph node that recognises attribute=isin + LON exchange and
-// short-circuits to LSE before the quote path runs.
-test.todo("HOODLEFINANCE supports LON:ticker,isin without a Yahoo quote (LSE direct fetch)");
+const LON_SEARCH_SJPA_HTML = `
+<tbody>
+  <tr class="medium-font-weight slide-panel">
+    <td>SJPA</td>
+    <td class="clickable td-with-link"><a class="dash-link blue-text bold-font-weight" href="javascript: UpdateOpener('ISHARES III PLC ISHRS CORE MSCI JAPAN IMI ETF USD (ACC)', '						IE00B4L5YX21|ZZ|GBX|EUE2|B4L61L2|SJPA
+');" title="Select">ISHARES III PLC ISHRS CORE MSCI JAPAN IMI ETF USD (ACC)</a></td>
+  </tr>
+</tbody>
+`;
+
+const LON_SEARCH_EMPTY_HTML = `
+<tbody>
+  <tr class="medium-font-weight slide-panel">
+    <td>OTHER</td>
+    <td class="clickable td-with-link"><a class="dash-link blue-text bold-font-weight" href="javascript: UpdateOpener('Other Listing', 'IE0000000000|ZZ|GBX|EUE2|B4L61L2|OTHER
+');" title="Select">Other Listing</a></td>
+  </tr>
+</tbody>
+`;
+
+// LON:ticker,isin goes directly to LSE — no Yahoo call. Covers both:
+//   - tickers Yahoo covers (performance: was 2 calls, now 1)
+//   - tickers Yahoo doesn't cover (functional: no longer errors)
+test("HOODLEFINANCE resolves LON:ticker,isin via LSE without a Yahoo quote", () => {
+  const services = createServices({
+    "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA":
+      LON_SEARCH_SJPA_HTML,
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE("LON:SJPA", "isin"), "IE00B4L5YX21");
+  // Verify Yahoo was never called — only LSE (plus the always-fetched currency codes).
+  const yahooCall = services.fetchCalls.find((url) =>
+    url.includes("finance.yahoo.com"),
+  );
+  assert.equal(yahooCall, undefined, "Yahoo should not be called for LON:ticker,isin");
+  assert.ok(
+    services.fetchCalls.some((url) => url.includes("londonstockexchange.com")),
+    "LSE should be called for LON:ticker,isin",
+  );
+});
+
+test("HOODLEFINANCE resolves ticker.L,isin via LSE using the .L suffix form", () => {
+  // SJPA.L uses the Yahoo-suffix form. exchange is inferred as "LON" from the .L
+  // suffix at parse time, so LON-ISIN still fires — Yahoo is never called.
+  const services = createServices({
+    "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA":
+      LON_SEARCH_SJPA_HTML,
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.equal(bindings.HOODLEFINANCE("SJPA.L", "isin"), "IE00B4L5YX21");
+  const yahooCall = services.fetchCalls.find((url) =>
+    url.includes("finance.yahoo.com"),
+  );
+  assert.equal(yahooCall, undefined, "Yahoo should not be called for ticker.L,isin");
+});
+
+test("HOODLEFINANCE does not fall through to quote providers when LON ISIN lookup fails", () => {
+  const services = createServices({
+    "https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=SJPA":
+      LON_SEARCH_EMPTY_HTML,
+  });
+  const bindings = createHoodlefinanceAppScriptBindings(services);
+
+  assert.throws(
+    () => bindings.HOODLEFINANCE("LON:SJPA", "isin"),
+    /No LON ISIN is available for "SJPA"\./,
+  );
+
+  const yahooCall = services.fetchCalls.find((url) =>
+    url.includes("finance.yahoo.com"),
+  );
+  assert.equal(yahooCall, undefined, "Yahoo should not be called after an LSE failure");
+});
 
 test("HOODLEFINANCE uses the preferred REIT Yahoo fallback symbol", () => {
   const services = createServices({

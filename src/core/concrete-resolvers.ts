@@ -52,6 +52,7 @@ import {
 } from "./yahoo-quote";
 import { extractAttributeValue } from "./attribute-extraction";
 import { resolveIsinAttributeValue } from "./isin-lookup";
+import { resolveLonIsin } from "./isin-sources";
 import {
   createPreferredYahooSymbolResolver,
   PREFERRED_REIT_WHITELIST_CACHE_KEY,
@@ -1371,6 +1372,7 @@ export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
     return (
       request instanceof EquityRequest &&
       request.exchange !== "PSE" &&
+      !isLonIsinAttributeRequest(request) &&
       !!request.yahooSymbol
     );
   }
@@ -1444,7 +1446,11 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
-    return request instanceof EquityRequest && request.allowTradingviewFallback;
+    return (
+      request instanceof EquityRequest &&
+      !isLonIsinAttributeRequest(request) &&
+      request.allowTradingviewFallback
+    );
   }
 
   buildRouteState(
@@ -1599,6 +1605,74 @@ export class EquityAttributeExtractResolver extends Resolver {
   }
 }
 
+function isLonIsinAttributeRequest(request: unknown): boolean {
+  if (!(request instanceof EquityRequest)) {
+    return false;
+  }
+
+  if (request.exchange !== "LON") {
+    return false;
+  }
+
+  return String(request.input.attribute || "").toLowerCase() === "isin";
+}
+
+export class LonIsinResolver extends Resolver {
+  private httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  private getCachedStringFn!: ResolverServices["getCachedString"];
+  private putCachedStringFn!: ResolverServices["putCachedString"];
+
+  constructor() {
+    super("LON-ISIN");
+  }
+
+  initEnv(services: ResolverServices): void {
+    this.httpFetch = services.httpFetch.bind(services);
+    this.getCachedStringFn = services.getCachedString.bind(services);
+    this.putCachedStringFn = services.putCachedString.bind(services);
+  }
+
+  canHandle(input: unknown): boolean {
+    return isLonIsinAttributeRequest(input);
+  }
+
+  buildRuntimePlan(_request: unknown): RuntimePlan {
+    return {
+      nodes: [this],
+      routeClass: this.name,
+      routePath: "LSE",
+      routeState: {},
+    };
+  }
+
+  resolve(input: unknown): ResolutionResult<unknown> {
+    const req = input as Record<string, unknown>;
+    const inputObj = req.input as Record<string, unknown> | null | undefined;
+    const tickerInput = String(inputObj?.identifier || req.ticker || "");
+    const quoteSymbol = String(req.symbol || "");
+
+    try {
+      const isin = resolveLonIsin(tickerInput, quoteSymbol, {
+        fetchText: (url) => this.httpFetch(url).getContentText(),
+        getCachedString: (key) => this.getCachedStringFn(key),
+        putCachedString: (key, val, ttl) =>
+          this.putCachedStringFn(key, val, ttl ?? 0),
+      });
+      return createResolutionSuccess({ extractedValue: isin }, 0);
+    } catch (error) {
+      return createResolutionFailure(
+        error,
+        0,
+        (e) => String(e instanceof Error ? e.message : (e ?? "")),
+      );
+    }
+  }
+
+  static fromSpec(_code: string): LonIsinResolver {
+    return new this();
+  }
+}
+
 export class FxAttributeExtractResolver extends Resolver {
   constructor() {
     super("EXTRACT:FX");
@@ -1627,6 +1701,7 @@ export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   FirstSuccessReceiver,
   FxAttributeExtractResolver,
   LocalFxResolver,
+  LonIsinResolver,
   GoogleFxResolver,
   PSEFramesResolver: PseFramesResolver,
   PSEEdgeResolver: PseEdgeResolver,

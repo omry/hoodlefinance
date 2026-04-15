@@ -13,7 +13,11 @@ import {
   type ResolverRegistryByCode,
   type ResolverRegistryByName,
 } from "./resolver-registry";
-import { FlowEngine, EnvelopeStatus } from "./flow-engine";
+import {
+  FlowEngine,
+  EnvelopeStatus,
+  type ExecutionTrace,
+} from "./flow-engine";
 
 function isPlanResolverClass(nodeType: string): boolean {
   return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
@@ -440,10 +444,43 @@ export class ResolveFlow {
     const engineResult = engine.execute({ value: rawInput });
 
     if (engineResult.status !== EnvelopeStatus.Success) {
-      throw new Error("Lookup failed.");
+      throw new Error(
+        String(engineResult.error || "").trim() || "Lookup failed.",
+      );
     }
 
     return (engineResult.value as { extractedValue: unknown }).extractedValue;
+  }
+
+  resolveAttributeWithTrace(
+    identifier: string,
+    attribute = "price",
+  ): {
+    error?: string;
+    path: string[];
+    status: EnvelopeStatus;
+    value: unknown;
+  } {
+    const rawInput = this.createRawRequestInput(identifier, attribute);
+    const engine = new FlowEngine(this);
+    const trace: ExecutionTrace = { visitedNodeIds: [] };
+    const engineResult = engine.execute({ value: rawInput }, trace);
+
+    if (engineResult.status !== EnvelopeStatus.Success) {
+      const error = String(engineResult.error || "").trim();
+      return {
+        ...(error ? { error } : {}),
+        path: trace.visitedNodeIds,
+        status: engineResult.status || EnvelopeStatus.Failure,
+        value: null,
+      };
+    }
+
+    return {
+      path: trace.visitedNodeIds,
+      status: EnvelopeStatus.Success,
+      value: (engineResult.value as { extractedValue: unknown }).extractedValue,
+    };
   }
 
   #getRuntimeNode(code: string): Resolver {

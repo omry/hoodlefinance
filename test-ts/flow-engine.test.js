@@ -238,6 +238,30 @@ test("execute() returns failure when all next nodes fail", () => {
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
+  assert.equal(result.error, "B failed");
+});
+
+test("execute() preserves the last user-facing leaf failure message", () => {
+  const flow = mockFlow({
+    ROOT: {
+      nextIds: ["A", "B"],
+      resolveResult: { status: "success", value: {} },
+    },
+    A: {
+      nextIds: [],
+      resolveResult: { status: "failure", error: "Yahoo quote lookup failed." },
+    },
+    B: {
+      nextIds: [],
+      resolveResult: { status: "failure", error: 'No LON ISIN is available for "SJPA".' },
+    },
+  });
+
+  const engine = new FlowEngine(flow);
+  const result = engine.execute({ value: {} });
+
+  assert.equal(result.status, EnvelopeStatus.Failure);
+  assert.equal(result.error, 'No LON ISIN is available for "SJPA".');
 });
 
 test("execute() does not try next edges when ROOT itself fails", () => {

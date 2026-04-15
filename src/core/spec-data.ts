@@ -38,8 +38,14 @@ export const DagPlan: Graph.Definition = {
   "QUOTE:TICKER": {
     group: "STOCK",
     id: "QUOTE:TICKER",
-    next: ["YAHOO-QUOTE", "TRADINGVIEW-FUND"],
+    next: ["LON-ISIN", "YAHOO-QUOTE", "TRADINGVIEW-FUND"],
     type: "TickerQuoteResolutionPlan",
+  },
+  "LON-ISIN": {
+    group: "STOCK",
+    id: "LON-ISIN",
+    next: ["TERMINAL"],
+    type: "LonIsinResolver",
   },
   "IDENTIFIER:ISIN": {
     group: "ISIN",
