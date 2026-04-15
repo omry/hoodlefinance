@@ -15,6 +15,20 @@ function scaleMoney(value: unknown, scale: number): number | undefined {
   return numericValue == null ? undefined : numericValue * scale;
 }
 
+function objectFromPresentEntries(
+  entries: Array<readonly [string, unknown]>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of entries) {
+    if (value != null && value !== "") {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
 export interface StockQuoteInit {
   chartPreviousClose?: number | null | undefined;
   currency?: string | null | undefined;
@@ -46,8 +60,6 @@ export interface StockQuoteInit {
 }
 
 export class StockQuote {
-  private readonly rawQuoteSnapshot: Record<string, unknown>;
-
   readonly symbol: string;
   readonly currency: string;
   readonly financialCurrency: string | undefined;
@@ -76,10 +88,6 @@ export class StockQuote {
   readonly quoteSourceName: string | undefined;
   readonly fxUnitScale: number | undefined;
 
-  get rawQuote(): Record<string, unknown> {
-    return this.rawQuoteSnapshot;
-  }
-
   constructor(fields: StockQuoteInit) {
     const rawCurrency = fields.currency || fields.financialCurrency || "";
     const moneyScale =
@@ -101,7 +109,10 @@ export class StockQuote {
     this.regularMarketPrice = scaleMoney(fields.regularMarketPrice, moneyScale);
     this.postMarketPrice = scaleMoney(fields.postMarketPrice, moneyScale);
     this.preMarketPrice = scaleMoney(fields.preMarketPrice, moneyScale);
-    this.regularMarketPreviousClose = scaleMoney(fields.regularMarketPreviousClose, moneyScale);
+    this.regularMarketPreviousClose = scaleMoney(
+      fields.regularMarketPreviousClose,
+      moneyScale,
+    );
     this.previousClose = scaleMoney(fields.previousClose, moneyScale);
     this.chartPreviousClose = scaleMoney(fields.chartPreviousClose, moneyScale);
     this.regularMarketDayHigh = scaleMoney(fields.regularMarketDayHigh, moneyScale);
@@ -118,16 +129,25 @@ export class StockQuote {
     this.fullExchangeName = fields.fullExchangeName ?? undefined;
     this.quoteSourceName = fields.quoteSourceName ?? undefined;
     this.fxUnitScale = normalizeNumber(fields.fxUnitScale);
+  }
 
-    this.rawQuoteSnapshot = Object.fromEntries(
-      Object.entries(fields).filter(([, value]) => value != null),
-    );
+  toJSON(): Record<string, unknown> {
+    return objectFromPresentEntries(Object.entries(this));
+  }
+
+  get rawQuote(): Record<string, unknown> {
+    return this.toJSON();
+  }
+
+  static fromJSON(value: unknown): StockQuote {
+    return new StockQuote((value || {}) as never);
   }
 }
 
 export interface FxQuoteInit {
   currency?: string | null | undefined;
   exchangeDataDelayedBy?: number | null | undefined;
+  financialCurrency?: string | null | undefined;
   fxUnitScale?: number | null | undefined;
   googleSymbol?: string | null | undefined;
   previousClose?: number | null | undefined;
@@ -139,10 +159,9 @@ export interface FxQuoteInit {
 }
 
 export class FxQuote {
-  private readonly rawQuoteSnapshot: Record<string, unknown>;
-
   readonly symbol: string;
   readonly currency: string;
+  readonly financialCurrency: string;
   readonly shortName: string;
   readonly googleSymbol: string;
   readonly fxUnitScale: number;
@@ -152,24 +171,27 @@ export class FxQuote {
   readonly regularMarketTime: number | undefined;
   readonly exchangeDataDelayedBy: number | undefined;
 
-  get rawQuote(): Record<string, unknown> {
-    return this.rawQuoteSnapshot;
-  }
-
   constructor(fields: FxQuoteInit) {
     this.symbol = String(fields.symbol || "");
-    this.currency = normalizeCurrencyCode(fields.currency || "");
+    this.currency = normalizeCurrencyCode(fields.currency || fields.financialCurrency || "");
+    this.financialCurrency = this.currency;
     this.shortName = String(fields.shortName || "");
     this.googleSymbol = String(fields.googleSymbol || "");
     this.fxUnitScale = normalizeNumber(fields.fxUnitScale) ?? 1;
     this.regularMarketPrice = normalizeNumber(fields.regularMarketPrice);
-    this.regularMarketPreviousClose = normalizeNumber(fields.regularMarketPreviousClose);
+    this.regularMarketPreviousClose = normalizeNumber(
+      fields.regularMarketPreviousClose,
+    );
     this.previousClose = normalizeNumber(fields.previousClose);
     this.regularMarketTime = normalizeNumber(fields.regularMarketTime);
     this.exchangeDataDelayedBy = normalizeNumber(fields.exchangeDataDelayedBy);
+  }
 
-    this.rawQuoteSnapshot = Object.fromEntries(
-      Object.entries(fields).filter(([, value]) => value != null),
-    );
+  toJSON(): Record<string, unknown> {
+    return objectFromPresentEntries(Object.entries(this));
+  }
+
+  static fromJSON(value: unknown): FxQuote {
+    return new FxQuote((value || {}) as never);
   }
 }

@@ -1518,8 +1518,16 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
           responseItem.request.yahooSymbol,
           responseItem.request.expectedSymbol,
         );
-        this.putCachedJson(responseItem.request.cacheKey, quote.rawQuote, 60);
-        this.putCachedJson(responseItem.request.primaryCacheKey, quote.rawQuote, 60);
+        this.putCachedJson(
+          responseItem.request.cacheKey,
+          extractRawQuote(quote),
+          60,
+        );
+        this.putCachedJson(
+          responseItem.request.primaryCacheKey,
+          extractRawQuote(quote),
+          60,
+        );
         results[responseItem.request.index] = createRouteResult("success", {
           quote,
         });

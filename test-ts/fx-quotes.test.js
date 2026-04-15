@@ -42,6 +42,7 @@ test("fx quote helpers preserve runtime-style FX metadata", () => {
 
   assert.deepEqual(extractRawQuote(decorated), {
     currency: "USD",
+    financialCurrency: "USD",
     fxUnitScale: 1,
     googleSymbol: "CURRENCY:USDUSD",
     regularMarketPrice: 1.25,
