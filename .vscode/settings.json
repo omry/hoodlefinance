@@ -5,5 +5,11 @@
   "github-actions.workflows.pinned.workflows": [
     ".github/workflows/release-prepare.yml"
   ],
-  "git.decorations.enabled": false
+  "git.decorations.enabled": false,
+  "chat.tools.terminal.autoApprove": {
+    "/^(cd \/home\/omry\/dev\/hoodlefinance && )?npm run (hoodlefinance|smoke)\\.ts -- .+$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
 }
