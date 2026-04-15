@@ -1,12 +1,11 @@
-import { YAHOO_EXCHANGE_BY_META_NAME, extractYahooExchangeFromSymbol, isPrefixlessExchange, resolveExchangeSuffix } from "./exchange-symbols";
+import { extractYahooExchangeFromSymbol, isPrefixlessExchange, resolveExchangeSuffix, resolveGoogleExchange } from "./exchange-symbols";
 import { FxQuote, StockQuote } from "./quote";
-import { parseAttributeRequest, stripTickerSourceOverride } from "./request-parsing";
+import { parseAttributeRequest } from "./request-parsing";
 
 export { parseAttributeRequest };
 
 interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
-  tickerInput?: string | null;
 }
 
 function normalizeMoney(quote: StockQuote | FxQuote, value: unknown): number {
@@ -41,25 +40,6 @@ function change(quote: StockQuote | FxQuote): number {
   return price - previousClose(quote);
 }
 
-function resolveGoogleExchange(quote: StockQuote): string {
-  const suffixExchange = extractYahooExchangeFromSymbol(String(quote.symbol || "").trim());
-  if (suffixExchange) {
-    return YAHOO_EXCHANGE_BY_META_NAME[suffixExchange] || suffixExchange;
-  }
-
-  const rawExchange = String(
-    quote.exchangeName || quote.fullExchangeName || quote.quoteSourceName || "",
-  )
-    .trim()
-    .toUpperCase();
-
-  if (!rawExchange) {
-    return "";
-  }
-
-  return YAHOO_EXCHANGE_BY_META_NAME[rawExchange] || rawExchange;
-}
-
 function renderGoogleSymbol(quote: StockQuote | FxQuote, resolvedSymbol: string): string {
   if (quote instanceof FxQuote) {
     if (quote.googleSymbol) {
@@ -69,7 +49,10 @@ function renderGoogleSymbol(quote: StockQuote | FxQuote, resolvedSymbol: string)
     return "CURRENCY:" + resolvedSymbol.replace(/=X$/i, "");
   }
 
-  const googleExchange = resolveGoogleExchange(quote);
+  const googleExchange = resolveGoogleExchange(
+    resolvedSymbol,
+    String((quote as StockQuote).exchangeName || (quote as StockQuote).fullExchangeName || (quote as StockQuote).quoteSourceName || ""),
+  );
   if (!googleExchange) {
     return resolvedSymbol;
   }
@@ -101,21 +84,11 @@ function resolveSymbolAttribute(
     return resolvedSymbol;
   }
 
-  const preferredYahooSymbol = String(
-    context && context.routeState ? context.routeState.preferredYahooSymbol || "" : "",
-  )
-    .trim()
-    .toUpperCase();
-  const tickerInput = stripTickerSourceOverride(
-    String(context && context.tickerInput ? context.tickerInput : ""),
+  const displaySymbol = String(
+    context && context.routeState ? context.routeState.displaySymbol || "" : "",
   ).trim();
-
-  if (
-    preferredYahooSymbol &&
-    tickerInput &&
-    resolvedSymbol.toUpperCase() === preferredYahooSymbol
-  ) {
-    return tickerInput;
+  if (displaySymbol) {
+    return displaySymbol;
   }
 
   return renderGoogleSymbol(quote, resolvedSymbol);
@@ -213,7 +186,11 @@ export function extractAttributeValue(
         break;
       }
 
-      value = resolveGoogleExchange(quote);
+      const googleStockQuote = quote as StockQuote;
+      value = resolveGoogleExchange(
+        String(googleStockQuote.symbol || "").trim(),
+        String(googleStockQuote.exchangeName || googleStockQuote.fullExchangeName || googleStockQuote.quoteSourceName || ""),
+      );
       break;
     }
     case "exchange:yahoo": {

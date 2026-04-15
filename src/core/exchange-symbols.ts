@@ -198,6 +198,20 @@ export function normalizeYahooStyleIsraeliFundTicker(ticker: string): string {
   return `${normalizeIsraeliFundCode(match[1] || "")}.TA`;
 }
 
+export function resolveGoogleExchange(symbol: string, exchangeMeta: string): string {
+  const suffixExchange = extractYahooExchangeFromSymbol(symbol);
+  if (suffixExchange) {
+    return YAHOO_EXCHANGE_BY_META_NAME[suffixExchange] || suffixExchange;
+  }
+
+  const rawExchange = exchangeMeta.trim().toUpperCase();
+  if (!rawExchange) {
+    return "";
+  }
+
+  return YAHOO_EXCHANGE_BY_META_NAME[rawExchange] || rawExchange;
+}
+
 export function normalizeExchangeSymbol(exchange: string, symbol: string): string {
   return exchange === "TLV" || exchange === "TASE"
     ? normalizeIsraeliFundCode(symbol)

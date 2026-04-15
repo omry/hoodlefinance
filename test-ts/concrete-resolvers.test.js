@@ -448,6 +448,7 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
   assert.deepEqual(cachedResolver.buildRouteState(cachedRequest), {
+    displaySymbol: "",
     fxPair: null,
     preferredYahooSymbol: "",
     yahooSymbol: "GOOG",
@@ -551,6 +552,7 @@ test("YahooEquityQuoteResolver owns preferred equity fallback symbols without af
   });
 
   assert.deepEqual(resolver.buildRouteState(equityRequest), {
+    displaySymbol: "NLY-I",
     fxPair: null,
     preferredYahooSymbol: "NLY-PI",
     yahooSymbol: "NLY-I",
@@ -640,6 +642,7 @@ test("YahooEquityQuoteResolver falls back to stored preferred whitelist data whe
   );
 
   assert.deepEqual(routeState, {
+    displaySymbol: "NLY-I",
     fxPair: null,
     preferredYahooSymbol: "NLY-PI",
     yahooSymbol: "NLY-I",

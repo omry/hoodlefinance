@@ -28,8 +28,9 @@ export function buildEquityYahooQuoteRouteState(
     "yahooSymbol"
   >,
   preferredYahooSymbol = "",
-): { fxPair: null; preferredYahooSymbol: string; yahooSymbol: string } {
+): { displaySymbol: string; fxPair: null; preferredYahooSymbol: string; yahooSymbol: string } {
   return {
+    displaySymbol: preferredYahooSymbol ? request.yahooSymbol : "",
     fxPair: null,
     yahooSymbol: request.yahooSymbol,
     preferredYahooSymbol: String(preferredYahooSymbol || ""),

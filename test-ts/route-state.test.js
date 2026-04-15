@@ -39,12 +39,14 @@ test("route-state builders preserve the small planner state payloads", () => {
   assert.deepEqual(
     buildEquityYahooQuoteRouteState(equityRequest, "BDO.PS:ALT"),
     {
+      displaySymbol: "BDO.PS",
       fxPair: null,
       preferredYahooSymbol: "BDO.PS:ALT",
       yahooSymbol: "BDO.PS",
     },
   );
   assert.deepEqual(buildEquityYahooQuoteRouteState(equityRequest), {
+    displaySymbol: "",
     fxPair: null,
     preferredYahooSymbol: "",
     yahooSymbol: "BDO.PS",
@@ -111,6 +113,7 @@ test("preferred REIT route-state keeps the original symbol alongside the Yahoo f
   assert.deepEqual(
     buildEquityYahooQuoteRouteState(preferredReitRequest, "NLY-PI"),
     {
+      displaySymbol: "NLY-I",
       fxPair: null,
       preferredYahooSymbol: "NLY-PI",
       yahooSymbol: "NLY-I",

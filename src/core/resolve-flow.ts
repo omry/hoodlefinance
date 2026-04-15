@@ -515,10 +515,7 @@ export class ResolveFlow {
     return extractAttributeValue(
       quote,
       requestInput.attribute,
-      {
-        routeState,
-        tickerInput: requestInput.ticker,
-      },
+      { routeState },
     );
   }
 
