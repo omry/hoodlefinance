@@ -72,7 +72,11 @@ import {
   createRouteResult,
   type RouteResult,
 } from "./route-results";
-import type { ResolutionResult, RouteJob, RuntimePlan } from "./planner";
+import type {
+  ResolutionResult,
+  ResolverExecutionContext,
+  RuntimePlan,
+} from "./planner";
 import { buildFxQuoteRouteState } from "./route-state";
 import {
   loadStoredTextResource,
@@ -385,42 +389,33 @@ export class PseIsinMapResolver extends IdentifierResolver {
     };
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results = [];
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    try {
+      const isin = String(context.routeState.isin || "").trim();
+      const pseTicker =
+        this.ensurePseIsinMap()[
+          String(isin || "")
+            .trim()
+            .toUpperCase()
+        ] || "";
 
-    for (const job of jobs) {
-      try {
-        const isin = String(job.routeState.isin || "").trim();
-        const pseTicker =
-          this.ensurePseIsinMap()[
-            String(isin || "")
-              .trim()
-              .toUpperCase()
-          ] || "";
-
-        if (!pseTicker) {
-          results.push(createRouteResult("lookup_failure"));
-          continue;
-        }
-
-        results.push(
-          createRouteResult("success", {
-            value: buildTypedRequestFromResolvedTicker(
-              job.routeState.input as Pick<
-                RequestInput,
-                "attribute" | "identifier"
-              >,
-              pseTicker,
-              0,
-            ),
-          }),
-        );
-      } catch (error) {
-        results.push(createRouteResult("terminal_error", { error }));
+      if (!pseTicker) {
+        return createRouteResult("lookup_failure");
       }
-    }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+      return createRouteResult("success", {
+        value: buildTypedRequestFromResolvedTicker(
+          context.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+          pseTicker,
+          0,
+        ),
+      });
+    } catch (error) {
+      return createRouteResult("terminal_error", { error });
+    }
   }
 
   static fromSpec(_code: string): PseIsinMapResolver {
@@ -484,101 +479,54 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     };
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results: Array<RouteResult | null> = jobs.map(() => null);
-    const requests: Array<{
-      cacheKey: string;
-      index: number;
-      isin: string;
-      url: string;
-    }> = [];
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    const cacheKey = `hoodlefinance:isin:${context.routeState.isin}`;
+    const cached = this.getCachedString(cacheKey);
 
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) {
-        continue;
-      }
-
-      const cacheKey = `hoodlefinance:isin:${job.routeState.isin}`;
-      const cached = this.getCachedString(cacheKey);
-
-      if (cached) {
-        results[i] = createRouteResult("success", {
-          value: buildTypedRequestFromResolvedTicker(
-            job.routeState.input as Pick<
-              RequestInput,
-              "attribute" | "identifier"
-            >,
-            cached,
-            0,
-          ),
-        });
-        continue;
-      }
-
-      requests.push({
-        cacheKey,
-        index: i,
-        isin: String(job.routeState.isin || "").trim(),
-        url: buildYahooIsinSearchUrl(String(job.routeState.isin || "").trim()),
+    if (cached) {
+      return createRouteResult("success", {
+        value: buildTypedRequestFromResolvedTicker(
+          context.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+          cached,
+          0,
+        ),
       });
     }
 
-    const responses = fetchRequestsSequentially(this.httpFetch, requests);
+    const isin = String(context.routeState.isin || "").trim();
+    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+      {
+        cacheKey,
+        isin,
+        url: buildYahooIsinSearchUrl(isin),
+      },
+    ])[0];
 
-    for (const responseItem of responses) {
-      if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult(
-          "lookup_failure",
-          {
-            error: responseItem.error,
-          },
-        );
-        continue;
-      }
-
-      try {
-        const job = jobs[responseItem.request.index];
-        if (!job) {
-          results[responseItem.request.index] = createRouteResult(
-            "terminal_error",
-            {
-              error: "Route job is missing for Yahoo ISIN search response.",
-            },
-          );
-          continue;
-        }
-
-        const resolvedTicker = extractYahooSymbolFromSearchResponse(
-          responseItem.response as TextHttpResponse,
-          responseItem.request.isin,
-        );
-        this.putCachedString(
-          responseItem.request.cacheKey,
-          resolvedTicker,
-          21600,
-        );
-        results[responseItem.request.index] = createRouteResult("success", {
-          value: buildTypedRequestFromResolvedTicker(
-            job.routeState.input as Pick<
-              RequestInput,
-              "attribute" | "identifier"
-            >,
-            resolvedTicker,
-            0,
-          ),
-        });
-      } catch (error) {
-        results[responseItem.request.index] = createRouteResult(
-          "lookup_failure",
-          {
-            error,
-          },
-        );
-      }
+    if (responseItem?.error) {
+      return createRouteResult("lookup_failure", {
+        error: responseItem.error,
+      });
     }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+    try {
+      const resolvedTicker = extractYahooSymbolFromSearchResponse(
+        responseItem?.response as TextHttpResponse,
+        isin,
+      );
+      this.putCachedString(cacheKey, resolvedTicker, 21600);
+      return createRouteResult("success", {
+        value: buildTypedRequestFromResolvedTicker(
+          context.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+          resolvedTicker,
+          0,
+        ),
+      });
+    } catch (error) {
+      return createRouteResult("lookup_failure", { error });
+    }
   }
 
   static fromSpec(_code: string): YahooIsinSearchResolver {
@@ -622,24 +570,19 @@ export class LocalFxResolver extends RouteExecutionResolver {
     };
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results = [];
-
-    for (const job of jobs) {
-      try {
-        results.push(
-          createRouteResult("success", {
-            quote: buildSameCurrencyQuote(
-              job.routeState.fxPair as import("./request").FxPair,
-            ),
-          }),
-        );
-      } catch (error) {
-        results.push(createRouteResult("terminal_error", { error }));
-      }
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    try {
+      return createRouteResult("success", {
+        quote: buildSameCurrencyQuote(
+          context.routeState.fxPair as import("./request").FxPair,
+        ),
+      });
+    } catch (error) {
+      return createRouteResult("terminal_error", { error });
     }
-
-    return results as unknown as Array<Record<string, unknown> | null>;
   }
 
   static fromSpec(_code: string): LocalFxResolver {
@@ -698,42 +641,33 @@ export class GoogleFxResolver extends RouteExecutionResolver {
     return buildFxQuoteRouteState(request);
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results: Array<RouteResult | null> = jobs.map(() => null);
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    try {
+      const fxPair = context.routeState.fxPair as FxRequest["fxPair"];
+      const pairSlug = String(fxPair.googlePairSlug || "").trim();
+      const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
+      const cached = this.getCachedJson(cacheKey);
 
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) {
-        continue;
-      }
-
-      try {
-        const fxPair = job.routeState.fxPair as FxRequest["fxPair"];
-        const pairSlug = String(fxPair.googlePairSlug || "").trim();
-        const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
-        const cached = this.getCachedJson(cacheKey);
-
-        if (cached) {
-          results[i] = createRouteResult("success", {
-            quote: decorateFxQuote(new StockQuote(cached as never), fxPair),
-          });
-          continue;
-        }
-
-        const quote = extractGoogleFinanceFxPairQuote(
-          this.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
-          fxPair,
-        );
-        this.putCachedJson(cacheKey, quote.toJSON(), 60);
-        results[i] = createRouteResult("success", {
-          quote: decorateFxQuote(quote, fxPair),
+      if (cached) {
+        return createRouteResult("success", {
+          quote: decorateFxQuote(new StockQuote(cached as never), fxPair),
         });
-      } catch (error) {
-        results[i] = createRouteResult("terminal_error", { error });
       }
-    }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+      const quote = extractGoogleFinanceFxPairQuote(
+        this.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
+        fxPair,
+      );
+      this.putCachedJson(cacheKey, quote.toJSON(), 60);
+      return createRouteResult("success", {
+        quote: decorateFxQuote(quote, fxPair),
+      });
+    } catch (error) {
+      return createRouteResult("terminal_error", { error });
+    }
   }
 
   static fromSpec(_code: string): GoogleFxResolver {
@@ -826,97 +760,60 @@ export class PseFramesResolver extends RouteExecutionResolver {
     return "EQUITY -> PSE";
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results: Array<RouteResult | null> = jobs.map(() => null);
-    const requests: Array<{
-      cacheKey: string;
-      index: number;
-      symbol: string;
-      url: string;
-    }> = [];
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    const symbol = String(context.routeState.symbol || "")
+      .trim()
+      .toUpperCase();
+    const cacheKey = buildPseQuoteCacheKey(symbol);
+    const cached = this.getCachedJson(cacheKey);
 
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) {
-        continue;
-      }
-
-      const symbol = String(job.routeState.symbol || "")
-        .trim()
-        .toUpperCase();
-      const cacheKey = buildPseQuoteCacheKey(symbol);
-      const cached = this.getCachedJson(cacheKey);
-
-      if (cached) {
-        results[i] = createRouteResult("success", {
-          quote: cached,
-        });
-        continue;
-      }
-
-      requests.push({
-        cacheKey,
-        index: i,
-        symbol,
-        url: buildPseSecurityFrameUrl(symbol),
+    if (cached) {
+      return createRouteResult("success", {
+        quote: cached,
       });
     }
 
-    if (!requests.length) {
-      return results as unknown as Array<Record<string, unknown> | null>;
+    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+      {
+        cacheKey,
+        symbol,
+        url: buildPseSecurityFrameUrl(symbol),
+      },
+    ])[0];
+
+    if (responseItem?.error) {
+      return createRouteResult("lookup_failure", {
+        error: buildPseUnavailableError(
+          responseItem.error instanceof Error && responseItem.error.message
+            ? responseItem.error.message
+            : responseItem.error,
+        ),
+      });
     }
 
-    const responses = fetchRequestsSequentially(this.httpFetch, requests);
-
-    for (const responseItem of responses) {
-      if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult(
-          "lookup_failure",
-          {
-            error: buildPseUnavailableError(
-              responseItem.error instanceof Error && responseItem.error.message
-                ? responseItem.error.message
-                : responseItem.error,
-            ),
-          },
-        );
-        continue;
-      }
-
-      try {
-        const quote = extractPseFrameQuoteFromResponse(
-          responseItem.response as TextHttpResponse,
-          responseItem.request.symbol,
-        );
-        this.putCachedJson(
-          responseItem.request.cacheKey,
-          quote.toJSON(),
-          PSE_QUOTE_CACHE_TTL_SECONDS,
-        );
-        results[responseItem.request.index] = createRouteResult("success", {
-          quote,
+    try {
+      const quote = extractPseFrameQuoteFromResponse(
+        responseItem?.response as TextHttpResponse,
+        symbol,
+      );
+      this.putCachedJson(cacheKey, quote.toJSON(), PSE_QUOTE_CACHE_TTL_SECONDS);
+      return createRouteResult("success", {
+        quote,
+      });
+    } catch (error) {
+      if (isPseListingNotFoundError(error) || isPseUnavailableError(error)) {
+        return createRouteResult("lookup_failure", {
+          error,
         });
-      } catch (error) {
-        if (isPseListingNotFoundError(error) || isPseUnavailableError(error)) {
-          results[responseItem.request.index] = createRouteResult(
-            "lookup_failure",
-            {
-              error,
-            },
-          );
-          continue;
-        }
-
-        results[responseItem.request.index] = createRouteResult(
-          "terminal_error",
-          {
-            error,
-          },
-        );
       }
-    }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+      return createRouteResult("terminal_error", {
+        error,
+      });
+    }
   }
 
   static fromSpec(_code: string): PseFramesResolver {
@@ -975,197 +872,124 @@ export class PseEdgeResolver extends RouteExecutionResolver {
     return "EQUITY -> PSE";
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results: Array<RouteResult | null> = jobs.map(() => null);
-    const searchRequests: Array<{
-      cacheKey: string;
-      index: number;
-      symbol: string;
-      url: string;
-    }> = [];
-    const stockRequests: Array<{
-      cacheKey: string;
-      index: number;
-      listing: PseListing;
-      symbol: string;
-      url: string;
-    }> = [];
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    const symbol = String(context.routeState.symbol || "")
+      .trim()
+      .toUpperCase();
+    const quoteCacheKey = buildPseQuoteCacheKey(symbol);
+    const cachedQuote = this.getCachedJson(quoteCacheKey);
 
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) {
-        continue;
-      }
-
-      const symbol = String(job.routeState.symbol || "")
-        .trim()
-        .toUpperCase();
-      const cacheKey = buildPseQuoteCacheKey(symbol);
-      const cached = this.getCachedJson(cacheKey);
-
-      if (cached) {
-        results[i] = createRouteResult("success", {
-          quote: cached,
-        });
-        continue;
-      }
-
-      const cachedListing = normalizePseListing(
-        this.getCachedJson(buildPseListingCacheKey(symbol)),
-      );
-
-      if (cachedListing) {
-        job.routeState.listing = cachedListing;
-        stockRequests.push({
-          cacheKey,
-          index: i,
-          listing: cachedListing,
-          symbol,
-          url: buildPseStockDataUrl(cachedListing),
-        });
-        continue;
-      }
-
-      searchRequests.push({
-        cacheKey: buildPseListingCacheKey(symbol),
-        index: i,
-        symbol,
-        url: buildPseSearchUrl(symbol),
+    if (cachedQuote) {
+      return createRouteResult("success", {
+        quote: cachedQuote,
       });
     }
 
-    if (!searchRequests.length && !stockRequests.length) {
-      return results as unknown as Array<Record<string, unknown> | null>;
-    }
+    let listing = normalizePseListing(context.routeState.listing);
+    if (!listing) {
+      const listingCacheKey = buildPseListingCacheKey(symbol);
+      listing = normalizePseListing(this.getCachedJson(listingCacheKey));
 
-    const searchResponses = fetchRequestsSequentially(
-      this.httpFetch,
-      searchRequests,
-    );
-
-    for (const responseItem of searchResponses) {
-      if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult(
-          "lookup_failure",
+      if (!listing) {
+        const searchResponse = fetchRequestsSequentially(this.httpFetch, [
           {
+            cacheKey: listingCacheKey,
+            symbol,
+            url: buildPseSearchUrl(symbol),
+          },
+        ])[0];
+
+        if (searchResponse?.error) {
+          return createRouteResult("lookup_failure", {
             error: buildPseUnavailableError(
-              responseItem.error instanceof Error && responseItem.error.message
-                ? responseItem.error.message
-                : responseItem.error,
+              searchResponse.error instanceof Error && searchResponse.error.message
+                ? searchResponse.error.message
+                : searchResponse.error,
             ),
-          },
-        );
-        continue;
-      }
+          });
+        }
 
-      try {
-        const listing = tryResolvePseListingFromHtml(
-          responseItem.response ? responseItem.response.getContentText() : "",
-          responseItem.request.symbol,
-        );
-
-        if (!listing) {
-          results[responseItem.request.index] = createRouteResult(
-            "lookup_failure",
-            {
-              error: new Error(
-                `No PSE listing was found for "${responseItem.request.symbol}".`,
-              ),
-            },
+        try {
+          listing = tryResolvePseListingFromHtml(
+            searchResponse?.response ? searchResponse.response.getContentText() : "",
+            symbol,
           );
-          continue;
-        }
 
-        this.putCachedJson(
-          responseItem.request.cacheKey,
-          listing,
-          PSE_LISTING_CACHE_TTL_SECONDS,
-        );
-        const searchJob = jobs[responseItem.request.index];
-        if (!searchJob) {
-          throw new Error("Route job is missing for PSE listing response.");
-        }
+          if (!listing) {
+            return createRouteResult("lookup_failure", {
+              error: new Error(`No PSE listing was found for "${symbol}".`),
+            });
+          }
 
-        searchJob.routeState.listing = listing;
-        stockRequests.push({
-          cacheKey: buildPseQuoteCacheKey(responseItem.request.symbol),
-          index: responseItem.request.index,
-          listing,
-          symbol: responseItem.request.symbol,
-          url: buildPseStockDataUrl(listing),
-        });
-      } catch (error) {
-        results[responseItem.request.index] = createRouteResult(
-          "terminal_error",
-          {
+          this.putCachedJson(
+            listingCacheKey,
+            listing,
+            PSE_LISTING_CACHE_TTL_SECONDS,
+          );
+        } catch (error) {
+          return createRouteResult("terminal_error", {
             error,
-          },
-        );
+          });
+        }
       }
     }
 
-    const stockResponses = fetchRequestsSequentially(
-      this.httpFetch,
-      stockRequests,
-    );
+    context.routeState.listing = listing;
 
-    for (const responseItem of stockResponses) {
-      if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult(
-          "lookup_failure",
-          {
-            error: buildPseUnavailableError(
-              responseItem.error instanceof Error && responseItem.error.message
-                ? responseItem.error.message
-                : responseItem.error,
-            ),
-          },
-        );
-        continue;
-      }
+    const stockResponse = fetchRequestsSequentially(this.httpFetch, [
+      {
+        cacheKey: quoteCacheKey,
+        listing,
+        symbol,
+        url: buildPseStockDataUrl(listing),
+      },
+    ])[0];
 
-      try {
-        const listing = normalizePseListing(responseItem.request.listing);
-        const quote = extractPseQuoteFromResponse(
-          responseItem.response as TextHttpResponse,
-          listing,
-        );
-        const stockJob = jobs[responseItem.request.index];
-
-        if (!quote || !quote.symbol) {
-          const tickerInput = stockJob ? stockJob.tickerInput : "";
-          throw new Error(`No PSE quote data was found for ${tickerInput}.`);
-        }
-
-        this.putCachedJson(
-          responseItem.request.cacheKey,
-          quote.toJSON(),
-          PSE_QUOTE_CACHE_TTL_SECONDS,
-        );
-        results[responseItem.request.index] = createRouteResult("success", {
-          quote,
-        });
-      } catch (error) {
-        if (isPseListingNotFoundError(error) || isPseUnavailableError(error)) {
-          results[responseItem.request.index] = createRouteResult(
-            "lookup_failure",
-            {
-              error,
-            },
-          );
-          continue;
-        }
-
-        results[responseItem.request.index] = createRouteResult(
-          "terminal_error",
-          {
-            error,
-          },
-        );
-      }
+    if (stockResponse?.error) {
+      return createRouteResult("lookup_failure", {
+        error: buildPseUnavailableError(
+          stockResponse.error instanceof Error && stockResponse.error.message
+            ? stockResponse.error.message
+            : stockResponse.error,
+        ),
+      });
     }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+    try {
+      const normalizedListing = normalizePseListing(listing);
+      const quote = extractPseQuoteFromResponse(
+        stockResponse?.response as TextHttpResponse,
+        normalizedListing,
+      );
+
+      if (!quote || !quote.symbol) {
+        throw new Error(
+          `No PSE quote data was found for ${context.tickerInput}.`,
+        );
+      }
+
+      this.putCachedJson(
+        quoteCacheKey,
+        quote.toJSON(),
+        PSE_QUOTE_CACHE_TTL_SECONDS,
+      );
+      return createRouteResult("success", {
+        quote,
+      });
+    } catch (error) {
+      if (isPseListingNotFoundError(error) || isPseUnavailableError(error)) {
+        return createRouteResult("lookup_failure", {
+          error,
+        });
+      }
+
+      return createRouteResult("terminal_error", {
+        error,
+      });
+    }
   }
 
   static fromSpec(_code: string): PseEdgeResolver {
@@ -1265,92 +1089,63 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
 
 
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results: Array<RouteResult | null> = jobs.map(() => null);
-    const requests: Array<{
-      cacheKey: string;
-      index: number;
-      url: string;
-      yahooSymbol: string;
-    }> = [];
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    const yahooSymbol = String(context.routeState.yahooSymbol || "").trim();
+    const preferredYahooSymbol = String(
+      context.routeState.preferredYahooSymbol || "",
+    ).trim();
+    const lookupYahooSymbol = preferredYahooSymbol || yahooSymbol;
+    const cacheKey = `hoodlefinance:${lookupYahooSymbol}`;
+    const cached = this.getCachedJson(cacheKey);
+    const fxPair =
+      (context.routeState.fxPair as FxRequest["fxPair"] | null) || null;
+    const cachedQuote = cached ? new StockQuote(cached as never) : null;
 
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) {
-        continue;
-      }
-
-      const yahooSymbol = String(job.routeState.yahooSymbol || "").trim();
-      const preferredYahooSymbol = String(
-        job.routeState.preferredYahooSymbol || "",
-      ).trim();
-      const lookupYahooSymbol = preferredYahooSymbol || yahooSymbol;
-      const cacheKey = `hoodlefinance:${lookupYahooSymbol}`;
-      const cached = this.getCachedJson(cacheKey);
-      const fxPair = (job.routeState.fxPair as FxRequest["fxPair"] | null) || null;
-      const cachedQuote = cached ? new StockQuote(cached as never) : null;
-
-      if (cached) {
-        results[i] = createRouteResult("success", {
-          quote: fxPair && cachedQuote ? decorateFxQuote(cachedQuote, fxPair) : cachedQuote,
-        });
-        continue;
-      }
-
-      requests.push({
-        cacheKey,
-        index: i,
-        url: buildYahooChartUrl(lookupYahooSymbol),
-        yahooSymbol: lookupYahooSymbol,
+    if (cached) {
+      return createRouteResult("success", {
+        quote: fxPair && cachedQuote ? decorateFxQuote(cachedQuote, fxPair) : cachedQuote,
       });
     }
 
-    const responses = fetchRequestsSequentially(this.httpFetch, requests);
+    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+      {
+        cacheKey,
+        url: buildYahooChartUrl(lookupYahooSymbol),
+        yahooSymbol: lookupYahooSymbol,
+      },
+    ])[0];
+    let error: unknown = responseItem?.error || null;
 
-    for (const responseItem of responses) {
-      let error: unknown = responseItem.error || null;
-
-      if (!error) {
-        try {
-          const job = jobs[responseItem.request.index];
-          if (!job) {
-            throw new Error("Route job is missing for Yahoo quote response.");
-          }
-          const fxPair = (job.routeState.fxPair as FxRequest["fxPair"] | null) || null;
-
-          const stockQuote = extractYahooQuoteMetaFromResponse(
-            responseItem.response as TextHttpResponse,
-            job.tickerInput || responseItem.request.yahooSymbol,
-          );
-          const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
-          this.putCachedJson(
-            responseItem.request.cacheKey,
-            quote.toJSON(),
-            60,
-          );
-          results[responseItem.request.index] = createRouteResult("success", {
-            quote,
-          });
-          continue;
-        } catch (extractError) {
-          error = extractError;
-        }
+    if (!error) {
+      try {
+        const stockQuote = extractYahooQuoteMetaFromResponse(
+          responseItem?.response as TextHttpResponse,
+          context.tickerInput || lookupYahooSymbol,
+        );
+        const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
+        this.putCachedJson(cacheKey, quote.toJSON(), 60);
+        return createRouteResult("success", {
+          quote,
+        });
+      } catch (extractError) {
+        error = extractError;
       }
-
-      const errorMessage = String(
-        error instanceof Error ? error.message : (error ?? ""),
-      );
-      results[responseItem.request.index] = createRouteResult(
-        /No quote data was found|Quote lookup failed/i.test(errorMessage)
-          ? "lookup_failure"
-          : "terminal_error",
-        {
-          error,
-        },
-      );
     }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+    const errorMessage = String(
+      error instanceof Error ? error.message : (error ?? ""),
+    );
+    return createRouteResult(
+      /No quote data was found|Quote lookup failed/i.test(errorMessage)
+        ? "lookup_failure"
+        : "terminal_error",
+      {
+        error,
+      },
+    );
   }
 
 }
@@ -1465,91 +1260,61 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
     };
   }
 
-  executeBatch(jobs: RouteJob<Record<string, unknown>>[]) {
-    const results: Array<RouteResult | null> = jobs.map(() => null);
-    const requests: Array<{
-      cacheKey: string;
-      expectedSymbol: string;
-      index: number;
-      primaryCacheKey: string;
-      url: string;
-      yahooSymbol: string;
-    }> = [];
+  override executeRouteRequest(
+    _request: RequestInput | ResolvedRequest,
+    context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    const fallbackInfo = buildIsraeliFundTradingviewFallbackInfo(
+      String(context.routeState.yahooSymbol || ""),
+    );
+    const cacheKey = `hoodlefinance:tradingview:quote:${fallbackInfo.yahooSymbol}`;
+    const primaryCacheKey = `hoodlefinance:${fallbackInfo.yahooSymbol}`;
+    const cached = this.getCachedJson(cacheKey);
 
-    for (let i = 0; i < jobs.length; i += 1) {
-      const job = jobs[i];
-      if (!job) {
-        continue;
-      }
-
-      const fallbackInfo = buildIsraeliFundTradingviewFallbackInfo(
-        String(job.routeState.yahooSymbol || ""),
-      );
-      const cacheKey = `hoodlefinance:tradingview:quote:${fallbackInfo.yahooSymbol}`;
-      const primaryCacheKey = `hoodlefinance:${fallbackInfo.yahooSymbol}`;
-      const cached = this.getCachedJson(cacheKey);
-
-      if (cached) {
-        this.putCachedJson(primaryCacheKey, cached, 60);
-        results[i] = createRouteResult("success", {
-          quote: cached,
-        });
-        continue;
-      }
-
-      requests.push({
-        cacheKey,
-        expectedSymbol: fallbackInfo.expectedSymbol,
-        index: i,
-        primaryCacheKey,
-        url: fallbackInfo.url,
-        yahooSymbol: fallbackInfo.yahooSymbol,
+    if (cached) {
+      this.putCachedJson(primaryCacheKey, cached, 60);
+      return createRouteResult("success", {
+        quote: cached,
       });
     }
 
-    const responses = fetchRequestsSequentially(this.httpFetch, requests);
+    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+      {
+        expectedSymbol: fallbackInfo.expectedSymbol,
+        url: fallbackInfo.url,
+        yahooSymbol: fallbackInfo.yahooSymbol,
+      },
+    ])[0];
 
-    for (const responseItem of responses) {
-      if (responseItem.error) {
-        results[responseItem.request.index] = createRouteResult(
-          "terminal_error",
-          {
-            error: responseItem.error,
-          },
-        );
-        continue;
-      }
-
-      try {
-        const quote = extractTradingviewFundQuoteFromResponse(
-          responseItem.response as TextHttpResponse,
-          responseItem.request.yahooSymbol,
-          responseItem.request.expectedSymbol,
-        );
-        this.putCachedJson(
-          responseItem.request.cacheKey,
-          quote.toJSON(),
-          60,
-        );
-        this.putCachedJson(
-          responseItem.request.primaryCacheKey,
-          quote.toJSON(),
-          60,
-        );
-        results[responseItem.request.index] = createRouteResult("success", {
-          quote,
-        });
-      } catch (error) {
-        results[responseItem.request.index] = createRouteResult(
-          "terminal_error",
-          {
-            error,
-          },
-        );
-      }
+    if (responseItem?.error) {
+      return createRouteResult("terminal_error", {
+        error: responseItem.error,
+      });
     }
 
-    return results as unknown as Array<Record<string, unknown> | null>;
+    try {
+      const quote = extractTradingviewFundQuoteFromResponse(
+        responseItem?.response as TextHttpResponse,
+        fallbackInfo.yahooSymbol,
+        fallbackInfo.expectedSymbol,
+      );
+      this.putCachedJson(cacheKey, quote.toJSON(), 60);
+      this.putCachedJson(primaryCacheKey, quote.toJSON(), 60);
+      return createRouteResult("success", {
+        quote,
+      });
+    } catch (error) {
+      return createRouteResult(
+        /No quote data was found|Quote lookup failed/i.test(
+          String(error instanceof Error ? error.message : (error ?? "")),
+        )
+          ? "lookup_failure"
+          : "terminal_error",
+        {
+          error,
+        },
+      );
+    }
   }
 
   static fromSpec(_code: string): TradingviewFundResolver {

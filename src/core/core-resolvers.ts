@@ -7,21 +7,23 @@ import {
 import type {
   ResolutionResult,
   RouteClassResolver,
-  RouteJob,
   RoutePathResolver,
+  ResolverExecutionContext,
   RuntimePlan,
 } from "./planner";
 import { RoutingNodeKind } from "./planner";
-import { FxRequest, RequestInput } from "./request";
+import { FxRequest, RawRequestInput, RequestInput } from "./request";
 import { extractAttributeValue, parseAttributeRequest } from "./attribute-extraction";
 import { buildFxPairFromCodes } from "./fx-normalization";
 import {
+  createRouteResult,
   createResolutionFailure,
   createResolutionSuccess,
+  defaultRouteFailureMessage,
   describePlanSource,
+  formatRouteFailureMessage,
+  type RouteResult,
 } from "./route-results";
-import { createResolverRouteJob, prepareRouteJob } from "./route-jobs";
-import { executeRouteJobs } from "./route-execution";
 import {
   resolvePlannedQuoteResult,
   type LookupResult,
@@ -57,11 +59,92 @@ function normalizeNodeCode(nodeCode: string): string {
   return normalizeGraphNodeId(nodeCode);
 }
 
+function formatResolverError(error: unknown): string {
+  return String(error instanceof Error ? error.message : (error ?? ""));
+}
+
+function createResolverExecutionContext(
+  request: unknown,
+  routeState: Record<string, unknown>,
+): ResolverExecutionContext<Record<string, unknown>> {
+  if (request instanceof RawRequestInput || request instanceof RequestInput) {
+    return {
+      attribute: request.attribute,
+      routeKind: "identifier",
+      routeState,
+      tickerInput: request.identifier,
+    };
+  }
+
+  const resolvedRequest = request as {
+    input?: { attribute?: unknown; identifier?: unknown };
+  };
+
+  return {
+    attribute: String(resolvedRequest.input?.attribute || "price"),
+    routeKind: "quote",
+    routeState,
+    tickerInput: String(resolvedRequest.input?.identifier || ""),
+  };
+}
+
+function normalizeRouteResult(
+  result: RouteResult | null | undefined,
+): RouteResult {
+  return (
+    result ||
+    createRouteResult("terminal_error", {
+      error: "Resolver returned no result.",
+    })
+  );
+}
+
+function applyStateChanges(
+  context: ResolverExecutionContext<Record<string, unknown>>,
+  result: RouteResult,
+): void {
+  if (!result.stateChanges || typeof result.stateChanges !== "object") {
+    return;
+  }
+
+  Object.assign(context.routeState, result.stateChanges);
+}
+
+function getResolvedRouteValue(result: RouteResult): unknown {
+  if (Object.prototype.hasOwnProperty.call(result, "value")) {
+    return result.value;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(result, "quote")) {
+    return result.quote;
+  }
+
+  return null;
+}
+
+function formatExecutionFailureMessage(
+  resolver: Pick<Resolver, "name" | "traceLabel">,
+  context: ResolverExecutionContext<Record<string, unknown>>,
+  result: RouteResult,
+): string {
+  const message =
+    formatResolverError(result.error) || defaultRouteFailureMessage(context);
+  const label = String(resolver.traceLabel || resolver.name || "").trim();
+
+  return formatRouteFailureMessage(
+    {
+      routeRuntimeTrace: label
+        ? [{ elapsedMs: null, label, status: result.status }]
+        : [],
+    },
+    message,
+  );
+}
+
 export class Resolver {
   readonly code: string;
   readonly name: string;
   readonly traceLabel?: string;
-  executeBatch?(jobs: RouteJob[]): Array<Record<string, unknown> | null>;
 
   constructor(code = "") {
     this.code = code || "";
@@ -141,41 +224,48 @@ export class Resolver {
     const startedAtMs = Date.now();
 
     try {
-      const plan = this.buildRuntimePlan(request);
-      const job = createResolverRouteJob(request as Parameters<typeof createResolverRouteJob>[0]);
-      job.plan = plan;
-      prepareRouteJob(job, plan);
-      executeRouteJobs([job], (error) =>
-        String(error instanceof Error ? error.message : (error ?? "")),
+      const context = createResolverExecutionContext(
+        request,
+        this.buildRouteState(request),
       );
+      const result = normalizeRouteResult(
+        this.executeRouteRequest(request, context),
+      );
+      applyStateChanges(context, result);
 
-      if (job.error) {
+      if (result.status !== "success") {
         return createResolutionFailure(
-          job.error,
+          formatExecutionFailureMessage(this, context, result),
           Date.now() - startedAtMs,
-          (error) =>
-            String(error instanceof Error ? error.message : (error ?? "")),
+          formatResolverError,
         );
       }
 
-      const rawValue = job.valueResolved ? job.value : job.quote;
-      const value = this.resolveTransformValue(rawValue, job);
+      const rawValue = getResolvedRouteValue(result);
+      const value = this.resolveTransformValue(rawValue, context);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
         error,
         Date.now() - startedAtMs,
-        (caughtError) =>
-          String(
-            caughtError instanceof Error
-              ? caughtError.message
-              : (caughtError ?? ""),
-          ),
+        formatResolverError,
       );
     }
   }
 
-  protected resolveTransformValue(value: unknown, _job: RouteJob<Record<string, unknown>>): unknown {
+  executeRouteRequest(
+    _request: unknown,
+    _context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    throw new Error(
+      `Resolver "${this.name}" must implement executeRouteRequest().`,
+    );
+  }
+
+  protected resolveTransformValue(
+    value: unknown,
+    _context: ResolverExecutionContext<Record<string, unknown>>,
+  ): unknown {
     return value;
   }
 
@@ -396,6 +486,83 @@ export abstract class ResolverPlan extends Resolver {
       routePath: this.buildRoutePath(request),
       routeState,
     };
+  }
+
+  override resolve(request: unknown): ResolutionResult<unknown> {
+    const startedAtMs = Date.now();
+
+    try {
+      const plan = this.buildRuntimePlan(request);
+      const trace: Array<{
+        elapsedMs: number | null;
+        label: string;
+        status: string;
+      }> = [];
+      let lastLookupFailure = "";
+
+      for (const node of plan.nodes || []) {
+        const context = createResolverExecutionContext(
+          request,
+          node.buildRouteState(request),
+        );
+        const nodeStartedAtMs = Date.now();
+        const result = normalizeRouteResult(
+          node.executeRouteRequest(request, context),
+        );
+        const elapsedMs = Date.now() - nodeStartedAtMs;
+        const label = String(node.traceLabel || node.name || "").trim();
+
+        if (label) {
+          trace.push({
+            elapsedMs: Math.max(0, elapsedMs),
+            label,
+            status: result.status,
+          });
+        }
+
+        applyStateChanges(context, result);
+
+        if (result.status === "success") {
+          return createResolutionSuccess(
+            getResolvedRouteValue(result),
+            Date.now() - startedAtMs,
+          );
+        }
+
+        const errorMessage = formatResolverError(result.error);
+        if (result.status === "lookup_failure") {
+          lastLookupFailure =
+            errorMessage ||
+            lastLookupFailure ||
+            defaultRouteFailureMessage(context);
+          continue;
+        }
+
+        return createResolutionFailure(
+          formatRouteFailureMessage(
+            { routeRuntimeTrace: trace },
+            errorMessage || defaultRouteFailureMessage(context),
+          ),
+          Date.now() - startedAtMs,
+          formatResolverError,
+        );
+      }
+
+      return createResolutionFailure(
+        formatRouteFailureMessage(
+          { routeRuntimeTrace: trace },
+          lastLookupFailure || defaultRouteFailureMessage({ routeKind: "quote" }),
+        ),
+        Date.now() - startedAtMs,
+        formatResolverError,
+      );
+    } catch (error) {
+      return createResolutionFailure(
+        error,
+        Date.now() - startedAtMs,
+        formatResolverError,
+      );
+    }
   }
 
   resolveOutputCurrencyResult(

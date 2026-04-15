@@ -306,20 +306,30 @@ Resolved by moving attribute projection into the graph (EXTRACT:EQUITY / EXTRACT
 nodes), which eliminates the need for `projectFlowEngineValue` and
 `selectLookupExecution` entirely.
 
-#### `RouteExecutionResolver` and `RouteJob` — obsolete abstraction
+#### `RouteExecutionResolver` and `RouteJob` — obsolete abstraction (**in progress**)
 
 `RouteExecutionResolver` is the base class for all concrete quote-fetching leaf
 resolvers. Its name is a leftover from the old execution model where leaf
-resolvers were tightly coupled to `RouteJob` and `RuntimePlan`. Now that the
-FlowEngine drives execution, the class is just a base for "leaf resolvers that
-fetch quotes via `executeBatch`". The name is misleading and the abstraction
-(including `RouteJob`, `RuntimePlan`, and the `executeRouteJobs` loop) exists
-only to service the internal batch-execution mechanism that `executeBatch`
-subclasses use.
+resolvers were tightly coupled to `RouteJob` and `RuntimePlan`.
 
-Long-term these should be collapsed: leaf resolvers should receive their input
-directly and return a quote, without the `RouteJob` scaffolding in the middle.
-Track as a future cleanup pass after the dead code from Pass 2+ is removed.
+Current status:
+
+- Leaf execution now uses direct per-request execution (`executeRouteRequest`)
+  and no longer executes through `executeBatch` in the live path
+- Plan fallback traversal is owned by plan execution, not the old
+  `executeRouteJobs` loop
+- A transitional context object (`ResolverExecutionContext`) is still present
+  and carries execution-side metadata (`attribute`, `routeKind`, `routeState`,
+  `tickerInput`)
+
+Follow-up for the next cleanup pass:
+
+- collapse `ResolverExecutionContext` by moving remaining mutable
+  `routeState` fields into explicit edge payloads between graph nodes
+- remove now-unused `RouteJob`/`route-jobs.ts`/`route-execution.ts` exports and
+  helpers once call sites are gone
+- run `check:ts` after each deletion step and remove newly-surfaced unused
+  symbols until clean
 
 #### Resolver self-registration — eliminate `CONCRETE_RESOLVER_CLASSES_BY_NAME`
 

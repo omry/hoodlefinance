@@ -161,12 +161,10 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
     fxPair: request.fxPair,
   });
 
-  const results = resolver.executeBatch([
-    { routeState: { fxPair: request.fxPair } },
-  ]);
-  assert.equal(results[0].status, "success");
-  assert.equal(results[0].quote.regularMarketPrice, 1);
-  assert.equal(results[0].quote.symbol, "USDUSD");
+  const outcome = resolver.resolve(request);
+  assert.equal(outcome.status, "success");
+  assert.equal(outcome.value.quote.regularMarketPrice, 1);
+  assert.equal(outcome.value.quote.symbol, "USDUSD");
 });
 
 test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", () => {
@@ -228,12 +226,12 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   assert.equal(resolver.canHandle(request), true);
   assert.deepEqual(resolver.buildRouteState(request), { fxPair });
 
-  const fetchedResults = resolver.executeBatch([{ routeState: { fxPair } }]);
-  assert.equal(fetchedResults[0].status, "success");
-  assert.equal(fetchedResults[0].quote.regularMarketPrice, 1.25);
-  assert.equal(fetchedResults[0].quote.symbol, "EURUSD");
-  assert.equal(fetchedResults[0].quote.shortName, "EURUSD");
-  assert.equal(fetchedResults[0].quote.googleSymbol, "CURRENCY:EURUSD");
+  const fetchedOutcome = resolver.resolve(request);
+  assert.equal(fetchedOutcome.status, "success");
+  assert.equal(fetchedOutcome.value.quote.regularMarketPrice, 1.25);
+  assert.equal(fetchedOutcome.value.quote.symbol, "EURUSD");
+  assert.equal(fetchedOutcome.value.quote.shortName, "EURUSD");
+  assert.equal(fetchedOutcome.value.quote.googleSymbol, "CURRENCY:EURUSD");
   assert.deepEqual(cachedWrite, {
     cacheKey: "hoodlefinance:google-finance:EUR-USD",
     ttlSeconds: 60,
@@ -261,13 +259,11 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     },
   }));
 
-  const cachedResults = cachedResolver.executeBatch([
-    { routeState: { fxPair } },
-  ]);
-  assert.equal(cachedResults[0].status, "success");
-  assert.equal(cachedResults[0].quote.regularMarketPrice, 1.25);
-  assert.equal(cachedResults[0].quote.shortName, "EURUSD");
-  assert.equal(cachedResults[0].quote.googleSymbol, "CURRENCY:EURUSD");
+  const cachedOutcome = cachedResolver.resolve(request);
+  assert.equal(cachedOutcome.status, "success");
+  assert.equal(cachedOutcome.value.quote.regularMarketPrice, 1.25);
+  assert.equal(cachedOutcome.value.quote.shortName, "EURUSD");
+  assert.equal(cachedOutcome.value.quote.googleSymbol, "CURRENCY:EURUSD");
 });
 
 test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {

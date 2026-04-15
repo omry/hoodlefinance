@@ -85,7 +85,7 @@ export function createResolutionFailure(
 export function defaultRouteFailureMessage(
   job: { routeKind?: string } | null | undefined,
 ): string {
-  return job && job.routeKind === "isin"
+  return job && (job.routeKind === "isin" || job.routeKind === "identifier")
     ? "ISIN lookup failed."
     : "Quote lookup failed.";
 }

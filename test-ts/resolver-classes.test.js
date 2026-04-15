@@ -50,13 +50,41 @@ function createLeafResolver(name, extra = {}) {
         : true;
     }
 
-    executeBatch(jobs) {
-      return jobs.map(() => ({ quote: name, status: "success" }));
+    executeRouteRequest() {
+      return { quote: name, status: "success" };
     }
   }
 
   return new LeafResolver();
 }
+
+test("ResolverPlan resolve falls through lookup failures without route jobs", () => {
+  class TestLeafResolver extends RouteExecutionResolver {
+    constructor(name, result) {
+      super(name);
+      this.result = result;
+    }
+
+    executeRouteRequest() {
+      return this.result;
+    }
+  }
+
+  const plan = new FirstSuccessPlan("QUOTE", [
+    new TestLeafResolver("YAHOO", {
+      error: "Yahoo unavailable",
+      status: "lookup_failure",
+    }),
+    new TestLeafResolver("IBKR", {
+      quote: 10,
+      status: "success",
+    }),
+  ]);
+
+  const outcome = plan.resolve(createRequestInput());
+  assert.equal(outcome.status, "success");
+  assert.equal(outcome.value, 10);
+});
 
 test("ResolverPlan maintains standard fallback sequence and full routing-tree visibility", () => {
   const yahoo = createLeafResolver("YAHOO");

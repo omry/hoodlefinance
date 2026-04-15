@@ -62,6 +62,10 @@ test("route failure helpers preserve trace-based label reporting", () => {
     defaultRouteFailureMessage({ routeKind: "isin", routeRuntimeTrace: [] }),
     "ISIN lookup failed.",
   );
+  assert.equal(
+    defaultRouteFailureMessage({ routeKind: "identifier", routeRuntimeTrace: [] }),
+    "ISIN lookup failed.",
+  );
 });
 
 test("createRouteResult preserves the open-ended route adapter payload shape", () => {

@@ -1,9 +1,10 @@
-import type { RouteJob, RuntimePlan } from "./planner";
+import type { ResolverExecutionContext, RuntimePlan } from "./planner";
 import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
+import type { RouteResult } from "./route-results";
 
 export type { PlanRuntimeRefs, ResolverPlanOptions } from "./core-resolvers";
 export {
@@ -40,12 +41,17 @@ export class RouteExecutionResolver extends AttributeResolver {
     return {};
   }
 
-  batchKey(_job: RouteJob, _attempt: unknown): string {
+  batchKey(_job: unknown, _attempt: unknown): string {
     return "";
   }
 
-  executeBatch(_jobs: RouteJob[]): Array<Record<string, unknown> | null> {
-    throw new Error(`Resolver "${this.name}" must implement executeBatch().`);
+  override executeRouteRequest(
+    _request: unknown,
+    _context: ResolverExecutionContext<Record<string, unknown>>,
+  ): RouteResult {
+    throw new Error(
+      `Resolver "${this.name}" must implement executeRouteRequest().`,
+    );
   }
 
   getRouteClass(_request: unknown): string {
@@ -67,14 +73,14 @@ export class RouteExecutionResolver extends AttributeResolver {
 
   protected override resolveTransformValue(
     value: unknown,
-    job: RouteJob<Record<string, unknown>>,
+    context: ResolverExecutionContext<Record<string, unknown>>,
   ): unknown {
     if (value == null) return value;
     return {
       quote: value,
-      routeState: job.routeState,
-      attribute: job.attribute,
-      tickerInput: job.tickerInput,
+      routeState: context.routeState,
+      attribute: context.attribute,
+      tickerInput: context.tickerInput,
     };
   }
 

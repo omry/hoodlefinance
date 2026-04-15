@@ -23,6 +23,15 @@ export type RouteClassResolver = (request: unknown) => string;
 
 export type RoutePathResolver = (request: unknown) => string;
 
+export interface ResolverExecutionContext<
+  RouteState = Record<string, unknown>,
+> {
+  attribute: string;
+  routeKind: RouteKind;
+  routeState: RouteState;
+  tickerInput: string;
+}
+
 export interface RouteJob<RouteState = Record<string, unknown>> {
   attribute: string;
   error: string | null;
