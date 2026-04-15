@@ -8,8 +8,8 @@ The goal is to keep current docs easy to find without turning a one-person proje
 
 - `Draft`: useful work-in-progress notes that are not yet the default reference
 - `Active`: current guidance
-- `Superseded`: replaced by a newer doc or decision
-- `Archived`: historical context only
+- `Superseded`: replaced by a newer doc or decision, but still kept nearby as a predecessor
+- `Archived`: historical context only, usually moved under `docs/design/archive/`
 
 Not every repo doc needs lifecycle metadata.
 
@@ -52,7 +52,9 @@ That can live in:
 - the metadata block
 - a short note near the top of the file
 
-Archived docs are historical only. They should not be treated as current guidance unless a newer doc points back to them for context.
+Archived docs are historical only. They should use `status: Archived` in frontmatter and a short archive note near the top of the file.
+
+They should not be treated as current guidance unless a newer doc points back to them for context.
 
 ## Update Expectations
 
