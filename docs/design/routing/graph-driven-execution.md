@@ -1,6 +1,6 @@
 ---
 status: Active
-updated: 2026-04-14
+updated: 2026-04-15
 summary: Replace ad-hoc plan selection with a graph-driven driver that executes the descriptive graph directly.
 ---
 
@@ -260,20 +260,24 @@ Open design questions for the next pass:
    path~~ — done: parity verified across all 68 cases in `tools/parity-cases.txt`
    (68/68 pass, including US/Israeli/PSE/FX/ISIN-routed/preferred-REIT families)
 4. ~~verify parity with existing integrated routing tests~~ — done
-5. **remove the old pipeline** — current focus; see plan below
+5. ~~remove the old pipeline~~ — done; `FlowEngine` is the only execution path
+   in `ResolveFlow.resolveAttribute`; the `legacy` branch and `engine` option
+   are gone
 
 ## Cleanup Plan
 
-Remove the legacy pipeline and all code it made reachable. Work in passes:
+Remove remaining scaffolding left alive by the `selectLookupExecution` stench.
+Work in passes:
 
-### Pass 1 — delete the old execution path
+### Pass 1 — move attribute projection into the graph (**current focus**)
 
-- Remove the `legacy` branch from `ResolveFlow.resolveAttribute` and the
-  `engine` option; make `flow-engine` the only path
-- Remove `selectLookupExecution`, `LookupExecutionSelection`, and any
-  scaffolding that only existed to support the legacy branch
-- Run `check:ts` — TypeScript will surface the first wave of now-unused exports
-  and types
+- Add EXTRACT:EQUITY and EXTRACT:FX resolver nodes inside their respective
+  subgraphs; each receives `{ quote, routeState }` on the edge from its
+  upstream resolvers and calls `extractAttributeValue` directly
+- Remove `projectFlowEngineValue` and its call to `selectLookupExecution`
+- Run `check:ts` — `LookupExecutionSelection`, `selectLookupExecution`,
+  `RequestResolutionDependencies`, and the plan-selection / plan-navigation
+  infrastructure should surface as unused
 
 ### Pass 2+ — dead code elimination
 
@@ -311,18 +315,17 @@ inserted before `QUOTE:TICKER`, or a dedicated `QUOTE:LON-ISIN` branch).
 
 Tracked as `test.todo` in `test-ts/appscript.test.js`.
 
-#### `selectLookupExecution` / `projectFlowEngineValue` stench
+#### ~~`selectLookupExecution` / `projectFlowEngineValue` stench~~ — addressed in Pass 1
 
-`projectFlowEngineValue` in `resolve-flow.ts` still calls `env.selectLookupExecution`
+~~`projectFlowEngineValue` in `resolve-flow.ts` still calls `env.selectLookupExecution`
 to obtain `routeState` (for `extractAttributeValue`) and `requestInput.attributeType`
 (for the isin branch). This keeps the entire `request-resolution-env.ts`,
 `plan-selection.ts`, `plan-navigation.ts`, and `LookupExecutionSelection`
-infrastructure alive even though the FlowEngine no longer uses them for routing.
+infrastructure alive even though the FlowEngine no longer uses them for routing.~~
 
-Removing this requires either:
-- Threading `routeState` out of the FlowEngine execution trace so `projectFlowEngineValue`
-  can derive it without calling `selectLookupExecution`; or
-- Moving attribute-value projection into the graph itself (e.g. a post-TERMINAL step)
+Resolved by moving attribute projection into the graph (EXTRACT:EQUITY / EXTRACT:FX
+nodes), which eliminates the need for `projectFlowEngineValue` and
+`selectLookupExecution` entirely.
 
 ### Acceptance
 
