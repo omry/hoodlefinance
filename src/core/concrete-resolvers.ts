@@ -20,7 +20,6 @@ import {
 import {
   buildSameCurrencyQuote,
   decorateFxQuote,
-  extractRawQuote,
   isSameCurrencyFxPair,
 } from "./fx-quotes";
 import { StockQuote } from "./quote";
@@ -721,7 +720,7 @@ export class GoogleFxResolver extends RouteExecutionResolver {
           this.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
           fxPair,
         );
-        this.putCachedJson(cacheKey, extractRawQuote(quote), 60);
+        this.putCachedJson(cacheKey, quote.toJSON(), 60);
         results[i] = createRouteResult("success", {
           quote: decorateFxQuote(quote, fxPair),
         });
@@ -887,7 +886,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
         );
         this.putCachedJson(
           responseItem.request.cacheKey,
-          extractRawQuote(quote),
+          quote.toJSON(),
           PSE_QUOTE_CACHE_TTL_SECONDS,
         );
         results[responseItem.request.index] = createRouteResult("success", {
@@ -1136,7 +1135,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
         this.putCachedJson(
           responseItem.request.cacheKey,
-          extractRawQuote(quote),
+          quote.toJSON(),
           PSE_QUOTE_CACHE_TTL_SECONDS,
         );
         results[responseItem.request.index] = createRouteResult("success", {
@@ -1322,7 +1321,7 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
           const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
           this.putCachedJson(
             responseItem.request.cacheKey,
-            extractRawQuote(quote),
+            quote.toJSON(),
             60,
           );
           results[responseItem.request.index] = createRouteResult("success", {
@@ -1520,12 +1519,12 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
         );
         this.putCachedJson(
           responseItem.request.cacheKey,
-          extractRawQuote(quote),
+          quote.toJSON(),
           60,
         );
         this.putCachedJson(
           responseItem.request.primaryCacheKey,
-          extractRawQuote(quote),
+          quote.toJSON(),
           60,
         );
         results[responseItem.request.index] = createRouteResult("success", {

@@ -121,18 +121,4 @@ export function decorateFxQuote(
   });
 }
 
-export function extractRawQuote(
-  quote: StockQuote | FxQuote | Record<string, unknown> | null | undefined,
-): Record<string, unknown> | null | undefined {
-  if (!quote) {
-    return quote;
-  }
 
-  if ("rawQuote" in quote && quote.rawQuote) {
-    return quote.rawQuote as Record<string, unknown>;
-  }
-
-  return Object.fromEntries(
-    Object.entries(quote).filter(([, value]) => value !== undefined),
-  );
-}

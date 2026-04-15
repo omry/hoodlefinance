@@ -135,10 +135,6 @@ export class StockQuote {
     return objectFromPresentEntries(Object.entries(this));
   }
 
-  get rawQuote(): Record<string, unknown> {
-    return this.toJSON();
-  }
-
   static fromJSON(value: unknown): StockQuote {
     return new StockQuote((value || {}) as never);
   }
@@ -161,7 +157,6 @@ export interface FxQuoteInit {
 export class FxQuote {
   readonly symbol: string;
   readonly currency: string;
-  readonly financialCurrency: string;
   readonly shortName: string;
   readonly googleSymbol: string;
   readonly fxUnitScale: number;
@@ -174,7 +169,6 @@ export class FxQuote {
   constructor(fields: FxQuoteInit) {
     this.symbol = String(fields.symbol || "");
     this.currency = normalizeCurrencyCode(fields.currency || fields.financialCurrency || "");
-    this.financialCurrency = this.currency;
     this.shortName = String(fields.shortName || "");
     this.googleSymbol = String(fields.googleSymbol || "");
     this.fxUnitScale = normalizeNumber(fields.fxUnitScale) ?? 1;

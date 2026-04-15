@@ -5,7 +5,6 @@ const {
   FxQuote,
   buildSameCurrencyQuote,
   decorateFxQuote,
-  extractRawQuote,
   isSameCurrencyFxPair,
 } = require("../dist/ts/core/index.js");
 
@@ -40,9 +39,8 @@ test("fx quote helpers preserve runtime-style FX metadata", () => {
   assert.equal(decorated.googleSymbol, "CURRENCY:USDUSD");
   assert.equal(decorated.shortName, "USDUSD");
 
-  assert.deepEqual(extractRawQuote(decorated), {
+  assert.deepEqual(decorated.toJSON(), {
     currency: "USD",
-    financialCurrency: "USD",
     fxUnitScale: 1,
     googleSymbol: "CURRENCY:USDUSD",
     regularMarketPrice: 1.25,
