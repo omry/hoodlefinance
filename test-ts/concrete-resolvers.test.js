@@ -301,9 +301,9 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
 
   const fetchedResult = resolver.resolve(request);
   assert.equal(fetchedResult.status, "success");
-  assert.equal(fetchedResult.value.regularMarketPrice, 9.87);
-  assert.equal(fetchedResult.value.symbol, "BDO.PS");
-  assert.equal(fetchedResult.value.shortName, "BDO Unibank, Inc.");
+  assert.equal(fetchedResult.value.quote.regularMarketPrice, 9.87);
+  assert.equal(fetchedResult.value.quote.symbol, "BDO.PS");
+  assert.equal(fetchedResult.value.quote.shortName, "BDO Unibank, Inc.");
   assert.deepEqual(cachedWrite, {
     cacheKey: "hoodlefinance:pse:BDO",
     ttlSeconds: 300,
@@ -341,8 +341,8 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
 
   const cachedResult = cachedResolver.resolve(request);
   assert.equal(cachedResult.status, "success");
-  assert.equal(cachedResult.value.symbol, "BDO.PS");
-  assert.equal(cachedResult.value.regularMarketPrice, 9.87);
+  assert.equal(cachedResult.value.quote.symbol, "BDO.PS");
+  assert.equal(cachedResult.value.quote.regularMarketPrice, 9.87);
 });
 
 test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
@@ -386,9 +386,9 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
 
   const fetchedResult = resolver.resolve(request);
   assert.equal(fetchedResult.status, "success");
-  assert.equal(fetchedResult.value.regularMarketPrice, 9.87);
-  assert.equal(fetchedResult.value.symbol, "BDO.PS");
-  assert.equal(fetchedResult.value.shortName, "BDO Unibank, Inc.");
+  assert.equal(fetchedResult.value.quote.regularMarketPrice, 9.87);
+  assert.equal(fetchedResult.value.quote.symbol, "BDO.PS");
+  assert.equal(fetchedResult.value.quote.shortName, "BDO Unibank, Inc.");
   assert.deepEqual(listingCacheWrite, {
     cacheKey: "hoodlefinance:pse:listing:BDO",
     ttlSeconds: 21600,
@@ -456,7 +456,7 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
 
   const cachedResult = cachedResolver.resolve(cachedRequest);
   assert.equal(cachedResult.status, "success");
-  assert.equal(cachedResult.value.regularMarketPrice, 123.45);
+  assert.equal(cachedResult.value.quote.regularMarketPrice, 123.45);
 
   let cachedWrite = null;
   const fetchedResolver = initResolver(new YahooEquityQuoteResolver(), createTestResolverServices({
@@ -485,7 +485,7 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
 
   const fetchedResult = fetchedResolver.resolve(cachedRequest);
   assert.equal(fetchedResult.status, "success");
-  assert.equal(fetchedResult.value.regularMarketPrice, 99.5);
+  assert.equal(fetchedResult.value.quote.regularMarketPrice, 99.5);
   assert.deepEqual(cachedWrite, {
     cacheKey: "hoodlefinance:GOOG",
     ttlSeconds: 60,
@@ -713,8 +713,8 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   const cachedResult = cachedResolver.resolve(cachedRequest);
   assert.equal(cachedResult.status, "success");
-  assert.equal(cachedResult.value.regularMarketPrice, 17.25);
-  assert.equal(cachedResult.value.symbol, "KSMF59.TA");
+  assert.equal(cachedResult.value.quote.regularMarketPrice, 17.25);
+  assert.equal(cachedResult.value.quote.symbol, "KSMF59.TA");
   assert.deepEqual(cachedWrites, [
     {
       cacheKey: "hoodlefinance:KSMF59.TA",
@@ -747,8 +747,8 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   const fetchedResult = fetchedResolver.resolve(cachedRequest);
   assert.equal(fetchedResult.status, "success");
-  assert.equal(fetchedResult.value.regularMarketPrice, 17.25);
-  assert.equal(fetchedResult.value.longName, "KSM KSMF59");
+  assert.equal(fetchedResult.value.quote.regularMarketPrice, 17.25);
+  assert.equal(fetchedResult.value.quote.longName, "KSM KSMF59");
   assert.deepEqual(fetchedWrites, [
     {
       cacheKey: "hoodlefinance:tradingview:quote:KSMF59.TA",

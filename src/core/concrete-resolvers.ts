@@ -1,6 +1,7 @@
 import {
   EquityRequest,
   FxRequest,
+  looksLikeIsin,
   RawRequestInput,
   RequestInput,
   type ResolvedRequest,
@@ -10,7 +11,7 @@ import {
   buildIsinIdentifierRouteState,
   buildPseQuoteRouteState,
 } from "./route-state";
-import { IdentifierResolver, RouteExecutionResolver, type Resolver } from "./resolver-classes";
+import { IdentifierResolver, Resolver, RouteExecutionResolver } from "./resolver-classes";
 import {
   createRequestInput,
   buildTypedRequestFromParsedInput,
@@ -22,7 +23,7 @@ import {
   decorateFxQuote,
   isSameCurrencyFxPair,
 } from "./fx-quotes";
-import { StockQuote } from "./quote";
+import { StockQuote, FxQuote } from "./quote";
 import {
   buildGoogleFinanceQuoteUrl,
   extractGoogleFinanceFxPairQuote,
@@ -49,6 +50,8 @@ import {
   buildYahooChartUrl,
   extractYahooQuoteMetaFromResponse,
 } from "./yahoo-quote";
+import { extractAttributeValue } from "./attribute-extraction";
+import { resolveIsinAttributeValue } from "./isin-lookup";
 import {
   createPreferredYahooSymbolResolver,
   PREFERRED_REIT_WHITELIST_CACHE_KEY,
@@ -1548,8 +1551,81 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
   }
 }
 
-const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
+export class EquityAttributeExtractResolver extends Resolver {
+  private httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
+  private getCachedStringFn!: ResolverServices["getCachedString"];
+  private putCachedStringFn!: ResolverServices["putCachedString"];
+
+  constructor() {
+    super("EXTRACT:EQUITY");
+  }
+
+  initEnv(services: ResolverServices): void {
+    this.httpFetch = services.httpFetch.bind(services);
+    this.getCachedStringFn = services.getCachedString.bind(services);
+    this.putCachedStringFn = services.putCachedString.bind(services);
+  }
+
+  resolve(input: unknown): ResolutionResult<unknown> {
+    const { quote, routeState, attribute, tickerInput } = input as {
+      quote: StockQuote | FxQuote;
+      routeState: Record<string, unknown>;
+      attribute: string;
+      tickerInput: string;
+    };
+
+    let value: unknown;
+    if (String(attribute || "").toLowerCase() === "isin") {
+      value = resolveIsinAttributeValue(
+        quote,
+        { tickerInput },
+        {
+          fetchText: (url) => this.httpFetch(url).getContentText(),
+          getCachedString: (key) => this.getCachedStringFn(key),
+          looksLikeIsin,
+          putCachedString: (key, val, ttl) =>
+            this.putCachedStringFn(key, val, ttl ?? 0),
+        },
+      );
+    } else {
+      value = extractAttributeValue(quote, attribute, { routeState });
+    }
+
+    return createResolutionSuccess({ extractedValue: value }, 0);
+  }
+
+  static fromSpec(_code: string): EquityAttributeExtractResolver {
+    return new this();
+  }
+}
+
+export class FxAttributeExtractResolver extends Resolver {
+  constructor() {
+    super("EXTRACT:FX");
+  }
+
+  resolve(input: unknown): ResolutionResult<unknown> {
+    const { quote, routeState, attribute } = input as {
+      quote: StockQuote | FxQuote;
+      routeState: Record<string, unknown>;
+      attribute: string;
+    };
+
+    const value = extractAttributeValue(quote, attribute, { routeState });
+    return createResolutionSuccess({ extractedValue: value }, 0);
+  }
+
+  static fromSpec(_code: string): FxAttributeExtractResolver {
+    return new this();
+  }
+}
+
+// TODO: replace with self-registration pattern so new resolvers don't require
+// editing this map. See "Resolver self-registration" in graph-driven-execution.md.
+export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
+  EquityAttributeExtractResolver,
   FirstSuccessReceiver,
+  FxAttributeExtractResolver,
   LocalFxResolver,
   GoogleFxResolver,
   PSEFramesResolver: PseFramesResolver,
@@ -1561,17 +1637,3 @@ const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
   YahooFxResolver,
   TradingviewFundResolver,
 } as const;
-
-export function createConcreteResolverMaterializationDependencies(
-  resolverServices: ResolverServices,
-): {
-  resolverClassesByName: Record<string, { fromSpec(code: string): Resolver }>;
-  resolverServices: ResolverServices;
-} {
-  return {
-    resolverClassesByName: {
-      ...CONCRETE_RESOLVER_CLASSES_BY_NAME,
-    },
-    resolverServices,
-  };
-}

@@ -65,6 +65,19 @@ export class RouteExecutionResolver extends AttributeResolver {
     };
   }
 
+  protected override resolveTransformValue(
+    value: unknown,
+    job: RouteJob<Record<string, unknown>>,
+  ): unknown {
+    if (value == null) return value;
+    return {
+      quote: value,
+      routeState: job.routeState,
+      attribute: job.attribute,
+      tickerInput: job.tickerInput,
+    };
+  }
+
   initEnv(_services: ResolverServices): void {}
 }
 

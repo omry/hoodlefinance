@@ -158,7 +158,8 @@ export class Resolver {
         );
       }
 
-      const value = job.valueResolved ? job.value : job.quote;
+      const rawValue = job.valueResolved ? job.value : job.quote;
+      const value = this.resolveTransformValue(rawValue, job);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
@@ -172,6 +173,10 @@ export class Resolver {
           ),
       );
     }
+  }
+
+  protected resolveTransformValue(value: unknown, _job: RouteJob<Record<string, unknown>>): unknown {
+    return value;
   }
 
   initEnv(_services: ResolverServices): void {}

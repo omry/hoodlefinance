@@ -3,7 +3,9 @@ const test = require("node:test");
 
 const {
   DagPlan,
+  EquityAttributeExtractResolver,
   FirstSuccessReceiver,
+  FxAttributeExtractResolver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -18,7 +20,7 @@ const {
   FxRequest,
   EquityRequest,
   RequestInput,
-  createConcreteResolverMaterializationDependencies,
+  CONCRETE_RESOLVER_CLASSES_BY_NAME,
 } = require("../dist/ts/core/index.js");
 const { createTextHttpResponse, createStaticResourceHttpFetch } = require("./resource-fixtures.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
@@ -27,7 +29,9 @@ function createResolverMaterializationDependencies() {
   return {
     looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
     resolverClassesByName: {
+      EquityAttributeExtractResolver,
       FirstSuccessReceiver,
+      FxAttributeExtractResolver,
       GoogleFxResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,
@@ -227,7 +231,8 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     DagPlan,
     {
       looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(v)),
-      ...createConcreteResolverMaterializationDependencies(services),
+      resolverClassesByName: CONCRETE_RESOLVER_CLASSES_BY_NAME,
+      resolverServices: services,
     },
   );
 
@@ -254,7 +259,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     }),
   );
   assert.equal(pseFramesResolved.status, "success");
-  assert.equal(pseFramesResolved.value.symbol, "BDO.PS");
+  assert.equal(pseFramesResolved.value.quote.symbol, "BDO.PS");
 
   const pseEdgeResolved = flow.getResolver("PSE-EDGE").resolve(
     new EquityRequest({
@@ -268,7 +273,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     }),
   );
   assert.equal(pseEdgeResolved.status, "success");
-  assert.equal(pseEdgeResolved.value.symbol, "BDO.PS");
+  assert.equal(pseEdgeResolved.value.quote.symbol, "BDO.PS");
 
   const pseResolved = flow.getResolver("ISIN:PSE").resolve(
     new RequestInput({
@@ -325,8 +330,8 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     }),
   );
   assert.equal(googleResolved.status, "success");
-  assert.equal(googleResolved.value.regularMarketPrice, 1.25);
-  assert.equal(googleResolved.value.googleSymbol, "CURRENCY:EURUSD");
+  assert.equal(googleResolved.value.quote.regularMarketPrice, 1.25);
+  assert.equal(googleResolved.value.quote.googleSymbol, "CURRENCY:EURUSD");
 
   const tradingviewResolved = flow.getResolver("TRADINGVIEW-FUND").resolve(
     new EquityRequest({
@@ -340,6 +345,6 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     }),
   );
   assert.equal(tradingviewResolved.status, "success");
-  assert.equal(tradingviewResolved.value.regularMarketPrice, 17.25);
-  assert.equal(tradingviewResolved.value.symbol, "KSMF59.TA");
+  assert.equal(tradingviewResolved.value.quote.regularMarketPrice, 17.25);
+  assert.equal(tradingviewResolved.value.quote.symbol, "KSMF59.TA");
 });

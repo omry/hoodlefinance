@@ -2,10 +2,7 @@ import { isResolverPlan } from "./plan-navigation";
 import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
 import type { Resolver, ResolverPlan } from "./resolver-classes";
 import { RawRequestInput } from "./request";
-import { extractAttributeValue } from "./attribute-extraction";
-import { resolveIsinAttributeValue } from "./isin-lookup";
 import { type PlanRuntimeRefs } from "./core-resolvers";
-import type { StockQuote } from "./quote";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -16,8 +13,6 @@ import {
   type ResolverRegistryByCode,
   type ResolverRegistryByName,
 } from "./resolver-registry";
-import type { RequestResolutionDependencies } from "./request-resolution";
-import { createRequestResolutionEnv } from "./request-resolution-env";
 import { FlowEngine, EnvelopeStatus } from "./flow-engine";
 
 function isPlanResolverClass(nodeType: string): boolean {
@@ -382,7 +377,6 @@ function materializeResolversByCode(
 export class ResolveFlow {
   readonly graph: Graph.View;
   private readonly runtimeRefs: PlanRuntimeRefs;
-  private readonly resolutionEnv: RequestResolutionDependencies | null;
   #nodesByCode: Record<string, Resolver>;
 
   constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
@@ -413,34 +407,6 @@ export class ResolveFlow {
       }
     }
 
-    const supportsRuntimeLookup =
-      !!this.graph.getNode("ROOT") &&
-      !!this.graph.getNode("ATTRIBUTE") &&
-      !!this.graph.getNode("IDENTIFIER:ISIN") &&
-      !!this.graph.getNode("ATTRIBUTE:FX");
-
-    if (!supportsRuntimeLookup) {
-      this.resolutionEnv = null;
-      return;
-    }
-
-    this.resolutionEnv = createRequestResolutionEnv(
-      {
-        defaultAttributeRoot: this.#getRuntimePlanNode("ATTRIBUTE"),
-        identifierPlan: this.#getRuntimePlanNode("IDENTIFIER:ISIN"),
-        rootClassifier: this.#getRuntimeNode("ROOT") as {
-          resolve(
-            requestInput: import("./request").RawRequestInput,
-          ): import("./planner").ResolutionResult<import("./concrete-resolvers").ClassifiedInput>;
-        },
-      },
-      {
-        looksLikeIsin: deps.looksLikeIsin,
-        ...(deps.resolverServices
-          ? { resolverServices: deps.resolverServices }
-          : {}),
-      },
-    );
   }
 
   getGraph(): Graph.View {
@@ -458,16 +424,6 @@ export class ResolveFlow {
     return this.#getRuntimeNode(normalizedId);
   }
 
-  private requireResolutionEnv(): RequestResolutionDependencies {
-    if (!this.resolutionEnv) {
-      throw new Error(
-        "ResolveFlow does not include the HOODLEFINANCE runtime entry nodes required for lookup.",
-      );
-    }
-
-    return this.resolutionEnv;
-  }
-
   private createRawRequestInput(
     identifier: string,
     attribute?: string,
@@ -475,47 +431,6 @@ export class ResolveFlow {
     return new RawRequestInput(
       String(identifier || ""),
       String(attribute == null ? "price" : attribute).trim(),
-    );
-  }
-
-  private projectFlowEngineValue(
-    rawInput: RawRequestInput,
-    flowValue: unknown,
-  ): unknown {
-    if (flowValue == null || typeof flowValue !== "object") {
-      return flowValue;
-    }
-
-    const env = this.requireResolutionEnv();
-    const lookupSelection = env.selectLookupExecution(rawInput);
-    const requestInput = lookupSelection.requestInput;
-    const routeState =
-      lookupSelection.attributePlan &&
-      lookupSelection.resolvedRequest &&
-      typeof lookupSelection.attributePlan.buildRuntimePlan === "function"
-        ? lookupSelection.attributePlan
-            .buildRuntimePlan(lookupSelection.resolvedRequest)
-            .routeState || null
-        : null;
-    const quote = flowValue as StockQuote;
-
-    if (requestInput.attributeType === "isin") {
-      return resolveIsinAttributeValue(
-        quote,
-        { tickerInput: requestInput.ticker },
-        {
-          fetchText: (url) => env.httpFetch(url).getContentText(),
-          getCachedString: env.getCachedString,
-          looksLikeIsin: env.looksLikeIsin,
-          putCachedString: env.putCachedString,
-        },
-      );
-    }
-
-    return extractAttributeValue(
-      quote,
-      requestInput.attribute,
-      { routeState },
     );
   }
 
@@ -528,7 +443,7 @@ export class ResolveFlow {
       throw new Error("Lookup failed.");
     }
 
-    return this.projectFlowEngineValue(rawInput, engineResult.value);
+    return (engineResult.value as { extractedValue: unknown }).extractedValue;
   }
 
   #getRuntimeNode(code: string): Resolver {

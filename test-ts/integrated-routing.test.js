@@ -3,8 +3,10 @@ const test = require("node:test");
 
 const {
   DirectIdentifierResolver,
+  EquityAttributeExtractResolver,
   FirstSuccessPlan,
   FirstSuccessReceiver,
+  FxAttributeExtractResolver,
   GoogleFxResolver,
   LocalFxResolver,
   PseEdgeResolver,
@@ -28,7 +30,9 @@ const { createStaticResolverServices } = require("./resolver-service-fixtures.js
 function createResolverMaterializationDependencies() {
   return {
     resolverClassesByName: {
+      EquityAttributeExtractResolver,
       FirstSuccessReceiver,
+      FxAttributeExtractResolver,
       GoogleFxResolver,
       LocalFxResolver,
       PSEEdgeResolver: PseEdgeResolver,

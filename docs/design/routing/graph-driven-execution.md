@@ -327,6 +327,38 @@ Resolved by moving attribute projection into the graph (EXTRACT:EQUITY / EXTRACT
 nodes), which eliminates the need for `projectFlowEngineValue` and
 `selectLookupExecution` entirely.
 
+#### `RouteExecutionResolver` and `RouteJob` — obsolete abstraction
+
+`RouteExecutionResolver` is the base class for all concrete quote-fetching leaf
+resolvers. Its name is a leftover from the old execution model where leaf
+resolvers were tightly coupled to `RouteJob` and `RuntimePlan`. Now that the
+FlowEngine drives execution, the class is just a base for "leaf resolvers that
+fetch quotes via `executeBatch`". The name is misleading and the abstraction
+(including `RouteJob`, `RuntimePlan`, and the `executeRouteJobs` loop) exists
+only to service the internal batch-execution mechanism that `executeBatch`
+subclasses use.
+
+Long-term these should be collapsed: leaf resolvers should receive their input
+directly and return a quote, without the `RouteJob` scaffolding in the middle.
+Track as a future cleanup pass after the dead code from Pass 2+ is removed.
+
+#### Resolver self-registration — eliminate `CONCRETE_RESOLVER_CLASSES_BY_NAME`
+
+`CONCRETE_RESOLVER_CLASSES_BY_NAME` in `concrete-resolvers.ts` is an explicit
+registry mapping class name strings to class objects. This is the JS equivalent
+of listing every implementation in a factory — an OCP violation that requires
+touching the map every time a new resolver is added.
+
+The right fix is self-registration: each resolver class registers itself into a
+shared neutral registry at module load time (e.g. a `@RegisterResolver` decorator
+or an explicit `resolverRegistry.register(MyResolver)` call at the bottom of each
+resolver file). `ResolveFlow` reads that registry without knowing what is in it.
+The consumer (composition root) is still responsible for importing the resolver
+modules to trigger registration, but no explicit map is maintained.
+
+Defer until resolver classes are split into their own files or a decorator
+pattern is adopted.
+
 ### Acceptance
 
 - `check:ts` clean
