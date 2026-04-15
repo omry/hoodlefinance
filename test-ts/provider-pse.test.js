@@ -42,12 +42,7 @@ test("extractPseFrameQuote extracts company name from header if metadata is blan
 
 // --- RECORDED GAPS (EXPECTED TO FAIL) ---
 
-test("GAP: PSE ISIN map caching and freshness logic", { skip: "not yet implemented" }, () => {
-  // This is hard to test as a pure scraper unit test, but we record the intent.
-  // We expect the system to skip the GitHub fetch if a local cache is fresh.
-  // Since this logic is typically in the resolver/service layer, we denote it here.
-  assert.ok(false, "Caching/Freshness logic for PSE ISIN map is likely missing in TS core");
-});
+test.todo("GAP: PSE ISIN map caching and freshness logic");
 
 test("GAP: Handling of missing ISIN in PSE frames (Strict Parity)", () => {
   const html = `

@@ -32,21 +32,4 @@ export interface ResolverExecutionContext<
   tickerInput: string;
 }
 
-export interface RouteJob<RouteState = Record<string, unknown>> {
-  attribute: string;
-  error: string | null;
-  key: string;
-  plan: RuntimePlan<RouteState> | null;
-  quote: unknown;
-  routeKind: RouteKind;
-  routeLastLookupFailure: string;
-  routeNodes: Resolver[];
-  routePreferredLookupFailure: string;
-  routeRuntimeTrace: Array<{ elapsedMs: number | null; label: string; status: string }>;
-  routeState: RouteState;
-  tickerInput: string;
-  value: unknown;
-  valueResolved: boolean;
-}
-
 

@@ -15,24 +15,6 @@ test("GAP: OTCMKTS specific 404 error messaging", () => {
   );
 });
 
-test("GAP: ISIN search ambiguity error messaging", { skip: "not yet implemented" }, () => {
-  // Legacy hf_extractExactPseListingMatch_ (in PSE search logic) throws specific errors.
-  // We expect standard error messages for "multiple matches found" or "no matches found".
-  assert.ok(typeof Core.buildAmbiguityErrorMessage === "function", "buildAmbiguityErrorMessage should be exported");
-  
-  const message = Core.buildAmbiguityErrorMessage("AAPL", ["NASDAQ:AAPL", "NYSE:AAPL"]);
-  assert.equal(
-    message,
-    "Multiple matches for \"AAPL\" were found. Please use a more specific identifier."
-  );
-});
+test.todo("GAP: ISIN search ambiguity error messaging");
 
-test("GAP: Provider-specific not-found error parity", { skip: "not yet implemented" }, () => {
-  // Legacy hf_resolvePseFramesQuote_ (and others) throw specific errors.
-  // We expect standard error messaging for provider misses.
-  const message = Core.buildProviderNotFoundError("PSE", "AAPL");
-  assert.equal(
-    message,
-    "No PSE listing was found for \"AAPL\"."
-  );
-});
+test.todo("GAP: Provider-specific not-found error parity");

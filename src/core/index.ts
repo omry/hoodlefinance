@@ -24,8 +24,6 @@ export * from "./resolver-classes";
 export * from "./resolver-registry";
 export * from "./routing-introspection";
 export * from "./spec-data";
-export * from "./route-jobs";
-export * from "./route-execution";
 export * from "./route-results";
 export * from "./route-state";
 export * from "./text-http-response";

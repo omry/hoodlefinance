@@ -1,9 +1,4 @@
-import type {
-  ResolutionResult,
-  RouteJob,
-} from "./planner";
-import type { Resolver } from "./resolver-classes";
-import { getCurrentRouteNode, mergeRouteState } from "./route-jobs";
+import type { ResolutionResult } from "./planner";
 
 export interface RouteResult<StateChanges = Record<string, unknown>> {
   error?: unknown;
@@ -91,7 +86,16 @@ export function defaultRouteFailureMessage(
 }
 
 function collectFailedRouteLabels(
-  job: Pick<RouteJob, "routeRuntimeTrace"> | null | undefined,
+  job:
+    | {
+        routeRuntimeTrace?: Array<{
+          elapsedMs?: number | null;
+          label?: string;
+          status?: string;
+        }>;
+      }
+    | null
+    | undefined,
 ): string[] {
   const trace =
     job && Array.isArray(job.routeRuntimeTrace) ? job.routeRuntimeTrace : [];
@@ -111,7 +115,16 @@ function collectFailedRouteLabels(
 }
 
 export function formatRouteFailureMessage(
-  job: Pick<RouteJob, "routeRuntimeTrace"> | null | undefined,
+  job:
+    | {
+        routeRuntimeTrace?: Array<{
+          elapsedMs?: number | null;
+          label?: string;
+          status?: string;
+        }>;
+      }
+    | null
+    | undefined,
   message: unknown,
 ): string {
   const normalizedMessage = String(message || "").trim();
@@ -122,89 +135,4 @@ export function formatRouteFailureMessage(
   }
 
   return `${normalizedMessage} Failed nodes: ${failedLabels.join(", ")}.`;
-}
-
-function shouldPreferLookupFailureMessage(message: unknown): boolean {
-  return /currently unavailable/i.test(String(message || ""));
-}
-
-export function applyRouteResult(
-  job: RouteJob<Record<string, unknown>>,
-  node: Resolver | null | undefined,
-  result: RouteResult | null | undefined,
-  elapsedMs: number | null | undefined,
-  errorMessage: (error: unknown) => string,
-): void {
-  const normalizedResult =
-    result ||
-    createRouteResult("terminal_error", {
-      error: "Route adapter returned no result.",
-    });
-  const resolvedErrorMessage = normalizedResult.error
-    ? errorMessage(normalizedResult.error)
-    : "";
-
-  if (!job.routeRuntimeTrace) {
-    job.routeRuntimeTrace = [];
-  }
-
-  job.routeRuntimeTrace.push({
-    elapsedMs:
-      elapsedMs != null && Number.isFinite(elapsedMs)
-        ? Math.max(0, elapsedMs)
-        : null,
-    label: node ? node.traceLabel || node.name || "" : "",
-    status: normalizedResult.status,
-  });
-
-  mergeRouteState(job, normalizedResult.stateChanges);
-
-  if (normalizedResult.status === "success") {
-    if (Object.prototype.hasOwnProperty.call(normalizedResult, "quote")) {
-      job.quote = normalizedResult.quote || null;
-      return;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(normalizedResult, "value")) {
-      job.value = normalizedResult.value;
-      job.valueResolved = true;
-      return;
-    }
-
-    return;
-  }
-
-  if (normalizedResult.status === "lookup_failure") {
-    if (resolvedErrorMessage) {
-      job.routeLastLookupFailure = resolvedErrorMessage;
-
-      if (
-        shouldPreferLookupFailureMessage(resolvedErrorMessage) &&
-        !job.routePreferredLookupFailure
-      ) {
-        job.routePreferredLookupFailure = resolvedErrorMessage;
-      }
-    }
-
-    if (job.routeNodes && job.routeNodes.length) {
-      job.routeNodes.shift();
-    }
-
-    if (!getCurrentRouteNode(job)) {
-      job.error = formatRouteFailureMessage(
-        job,
-        job.routePreferredLookupFailure ||
-          job.routeLastLookupFailure ||
-          resolvedErrorMessage ||
-          defaultRouteFailureMessage(job),
-      );
-    }
-
-    return;
-  }
-
-  job.error = formatRouteFailureMessage(
-    job,
-    resolvedErrorMessage || defaultRouteFailureMessage(job),
-  );
 }
