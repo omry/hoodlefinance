@@ -30,7 +30,6 @@ function objectFromPresentEntries(
 }
 
 export interface StockQuoteInit {
-  chartPreviousClose?: number | null | undefined;
   currency?: string | null | undefined;
   displayName?: string | null | undefined;
   exchangeDataDelayedBy?: number | null | undefined;
@@ -40,17 +39,9 @@ export interface StockQuoteInit {
   fxUnitScale?: number | null | undefined;
   isin?: string | null | undefined;
   longName?: string | null | undefined;
-  postMarketPrice?: number | null | undefined;
-  postMarketTime?: number | null | undefined;
-  preMarketPrice?: number | null | undefined;
-  preMarketTime?: number | null | undefined;
-  previousClose?: number | null | undefined;
   quoteSourceName?: string | null | undefined;
-  regularMarketChange?: number | null | undefined;
-  regularMarketChangePercent?: number | null | undefined;
   regularMarketDayHigh?: number | null | undefined;
   regularMarketDayLow?: number | null | undefined;
-  regularMarketOpen?: number | null | undefined;
   regularMarketPreviousClose?: number | null | undefined;
   regularMarketPrice?: number | null | undefined;
   regularMarketTime?: number | null | undefined;
@@ -68,20 +59,11 @@ export class StockQuote {
   readonly displayName: string | undefined;
   readonly isin: string | undefined;
   readonly regularMarketPrice: number | undefined;
-  readonly postMarketPrice: number | undefined;
-  readonly preMarketPrice: number | undefined;
   readonly regularMarketPreviousClose: number | undefined;
-  readonly previousClose: number | undefined;
-  readonly chartPreviousClose: number | undefined;
   readonly regularMarketDayHigh: number | undefined;
   readonly regularMarketDayLow: number | undefined;
-  readonly regularMarketOpen: number | undefined;
-  readonly regularMarketChange: number | undefined;
-  readonly regularMarketChangePercent: number | undefined;
   readonly regularMarketVolume: number | undefined;
   readonly regularMarketTime: number | undefined;
-  readonly postMarketTime: number | undefined;
-  readonly preMarketTime: number | undefined;
   readonly exchangeDataDelayedBy: number | undefined;
   readonly exchangeName: string | undefined;
   readonly fullExchangeName: string | undefined;
@@ -107,23 +89,14 @@ export class StockQuote {
     this.displayName = fields.displayName ?? undefined;
     this.isin = fields.isin ?? undefined;
     this.regularMarketPrice = scaleMoney(fields.regularMarketPrice, moneyScale);
-    this.postMarketPrice = scaleMoney(fields.postMarketPrice, moneyScale);
-    this.preMarketPrice = scaleMoney(fields.preMarketPrice, moneyScale);
     this.regularMarketPreviousClose = scaleMoney(
       fields.regularMarketPreviousClose,
       moneyScale,
     );
-    this.previousClose = scaleMoney(fields.previousClose, moneyScale);
-    this.chartPreviousClose = scaleMoney(fields.chartPreviousClose, moneyScale);
     this.regularMarketDayHigh = scaleMoney(fields.regularMarketDayHigh, moneyScale);
     this.regularMarketDayLow = scaleMoney(fields.regularMarketDayLow, moneyScale);
-    this.regularMarketOpen = scaleMoney(fields.regularMarketOpen, moneyScale);
-    this.regularMarketChange = scaleMoney(fields.regularMarketChange, moneyScale);
-    this.regularMarketChangePercent = fields.regularMarketChangePercent ?? undefined;
     this.regularMarketVolume = normalizeNumber(fields.regularMarketVolume);
     this.regularMarketTime = normalizeNumber(fields.regularMarketTime);
-    this.postMarketTime = normalizeNumber(fields.postMarketTime);
-    this.preMarketTime = normalizeNumber(fields.preMarketTime);
     this.exchangeDataDelayedBy = normalizeNumber(fields.exchangeDataDelayedBy);
     this.exchangeName = fields.exchangeName ?? undefined;
     this.fullExchangeName = fields.fullExchangeName ?? undefined;
@@ -146,7 +119,6 @@ export interface FxQuoteInit {
   financialCurrency?: string | null | undefined;
   fxUnitScale?: number | null | undefined;
   googleSymbol?: string | null | undefined;
-  previousClose?: number | null | undefined;
   regularMarketPreviousClose?: number | null | undefined;
   regularMarketPrice?: number | null | undefined;
   regularMarketTime?: number | null | undefined;
@@ -162,7 +134,6 @@ export class FxQuote {
   readonly fxUnitScale: number;
   readonly regularMarketPrice: number | undefined;
   readonly regularMarketPreviousClose: number | undefined;
-  readonly previousClose: number | undefined;
   readonly regularMarketTime: number | undefined;
   readonly exchangeDataDelayedBy: number | undefined;
 
@@ -176,7 +147,6 @@ export class FxQuote {
     this.regularMarketPreviousClose = normalizeNumber(
       fields.regularMarketPreviousClose,
     );
-    this.previousClose = normalizeNumber(fields.previousClose);
     this.regularMarketTime = normalizeNumber(fields.regularMarketTime);
     this.exchangeDataDelayedBy = normalizeNumber(fields.exchangeDataDelayedBy);
   }

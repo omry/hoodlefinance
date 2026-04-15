@@ -268,11 +268,8 @@ function extractPseChangePercent(
 function buildPseQuote(fields: {
   isin: string;
   longName: string;
-  regularMarketChange: number | null;
-  regularMarketChangePercent: number | null;
   regularMarketDayHigh: number | null;
   regularMarketDayLow: number | null;
-  regularMarketOpen: number | null;
   regularMarketPreviousClose: number | null;
   regularMarketPrice: number | null;
   regularMarketTime: number | null;
@@ -313,11 +310,8 @@ function extractPseQuote(
   return buildPseQuote({
     isin: extractPseField(html, "ISIN").toUpperCase(),
     longName: name,
-    regularMarketChange: change,
-    regularMarketChangePercent: changePercent,
     regularMarketDayHigh: parseNumber(extractPseField(html, "High")),
     regularMarketDayLow: parseNumber(extractPseField(html, "Low")),
-    regularMarketOpen: parseNumber(extractPseField(html, "Open")),
     regularMarketPreviousClose: previousClose,
     regularMarketPrice: price,
     regularMarketTime: asOf ? Math.floor(asOf.getTime() / 1000) : null,
@@ -380,12 +374,8 @@ export function extractPseFrameQuote(
   return buildPseQuote({
     isin,
     longName: fullName,
-    regularMarketChange: change,
-    regularMarketChangePercent:
-      change != null && previousClose ? change / previousClose : null,
     regularMarketDayHigh: parseNumber(extractPseFrameField(html, "High")),
     regularMarketDayLow: parseNumber(extractPseFrameField(html, "Low")),
-    regularMarketOpen: parseNumber(extractPseFrameField(html, "Open")),
     regularMarketPreviousClose: previousClose,
     regularMarketPrice: price,
     regularMarketTime: asOf ? Math.floor(asOf.getTime() / 1000) : null,

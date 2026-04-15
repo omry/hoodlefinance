@@ -94,9 +94,6 @@ export function extractGoogleFinanceFxPairQuote(
     currency: quoteCode,
     exchangeDataDelayedBy: 0,
     financialCurrency: quoteCode,
-    previousClose: Number.isFinite(previousClose)
-      ? previousClose
-      : currentPrice - (Number.isFinite(changeAmount) ? changeAmount : 0),
     regularMarketPreviousClose: Number.isFinite(previousClose)
       ? previousClose
       : currentPrice - (Number.isFinite(changeAmount) ? changeAmount : 0),

@@ -74,7 +74,6 @@ export function buildSameCurrencyQuote(fxPair: FxPair): FxQuote {
   return new FxQuote({
     currency: quoteCurrency,
     exchangeDataDelayedBy: 0,
-    previousClose: 1,
     regularMarketPreviousClose: 1,
     regularMarketPrice: 1,
     regularMarketTime: nowSeconds,
@@ -97,7 +96,6 @@ export function decorateFxQuote(
       exchangeDataDelayedBy: stockQuote.exchangeDataDelayedBy,
       fxUnitScale: stockQuote.fxUnitScale,
       googleSymbol: String((quote as Record<string, unknown>).googleSymbol || ""),
-      previousClose: stockQuote.previousClose,
       regularMarketPreviousClose: stockQuote.regularMarketPreviousClose,
       regularMarketPrice: stockQuote.regularMarketPrice,
       regularMarketTime: stockQuote.regularMarketTime,
@@ -112,7 +110,6 @@ export function decorateFxQuote(
     exchangeDataDelayedBy: stockQuote.exchangeDataDelayedBy,
     fxUnitScale: metadata.scale,
     googleSymbol: metadata.googleSymbol,
-    previousClose: stockQuote.previousClose,
     regularMarketPreviousClose: stockQuote.regularMarketPreviousClose,
     regularMarketPrice: stockQuote.regularMarketPrice,
     regularMarketTime: stockQuote.regularMarketTime,

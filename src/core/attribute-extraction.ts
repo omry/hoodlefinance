@@ -23,44 +23,22 @@ function normalizeMoney(quote: StockQuote | FxQuote, value: unknown): number {
   return numericValue;
 }
 
-function pickPrice(quote: StockQuote | FxQuote): number {
-  const stockQuote = quote as StockQuote;
-  const candidates = [
-    stockQuote.regularMarketPrice,
-    stockQuote.postMarketPrice,
-    stockQuote.preMarketPrice,
-  ];
-
-  for (const candidate of candidates) {
-    const numeric = Number(candidate);
-    if (candidate != null && Number.isFinite(numeric)) {
-      return numeric;
-    }
-  }
-
-  throw new Error("No price is available for this ticker.");
-}
-
 function previousClose(quote: StockQuote | FxQuote): number {
-  const stockQuote = quote as StockQuote;
-  const candidates = [
-    stockQuote.regularMarketPreviousClose,
-    stockQuote.previousClose,
-    stockQuote.chartPreviousClose,
-  ];
+  const numeric = Number((quote as StockQuote).regularMarketPreviousClose);
 
-  for (const candidate of candidates) {
-    const numeric = Number(candidate);
-    if (candidate != null && Number.isFinite(numeric)) {
-      return numeric;
-    }
+  if (Number.isFinite(numeric)) {
+    return numeric;
   }
 
   throw new Error("No previous close is available for this ticker.");
 }
 
 function change(quote: StockQuote | FxQuote): number {
-  return pickPrice(quote) - previousClose(quote);
+  const price = Number(quote.regularMarketPrice);
+  if (!Number.isFinite(price)) {
+    throw new Error("No price is available for this ticker.");
+  }
+  return price - previousClose(quote);
 }
 
 function resolveGoogleExchange(quote: StockQuote): string {
@@ -166,7 +144,7 @@ export function extractAttributeValue(
 
   switch (baseAttribute) {
     case "price":
-      value = normalizeMoney(quote, pickPrice(quote));
+      value = normalizeMoney(quote, quote.regularMarketPrice);
       break;
     case "name":
       value =
@@ -205,10 +183,7 @@ export function extractAttributeValue(
       break;
     case "tradetime": {
       const stockQuote = quote as StockQuote;
-      const timestamp =
-        stockQuote.regularMarketTime ||
-        stockQuote.postMarketTime ||
-        stockQuote.preMarketTime;
+      const timestamp = stockQuote.regularMarketTime;
       const numericTimestamp = Number(timestamp);
 
       if (timestamp == null || !Number.isFinite(numericTimestamp)) {

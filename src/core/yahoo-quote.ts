@@ -1,6 +1,24 @@
 import type { TextHttpResponse } from "./text-http-response";
 import { StockQuote } from "./quote";
 
+function str(value: unknown): string | undefined {
+  return value != null ? String(value) : undefined;
+}
+
+function num(value: unknown): number | undefined {
+  if (value == null) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function pickFiniteNumber(...values: unknown[]): number | undefined {
+  for (const v of values) {
+    const n = num(v);
+    if (n !== undefined) return n;
+  }
+  return undefined;
+}
+
 export function buildYahooChartUrl(yahooSymbol: string): string {
   return (
     "https://query1.finance.yahoo.com/v8/finance/chart/" +
@@ -49,46 +67,34 @@ export function extractYahooQuoteMetaFromPayload(
   }
 
   return new StockQuote({
-    currency: meta.currency != null ? String(meta.currency) : undefined,
-    displayName: meta.displayName != null ? String(meta.displayName) : undefined,
-    exchangeDataDelayedBy:
-      meta.exchangeDataDelayedBy != null ? Number(meta.exchangeDataDelayedBy) : undefined,
-    exchangeName: meta.exchangeName != null ? String(meta.exchangeName) : undefined,
-    financialCurrency:
-      meta.financialCurrency != null ? String(meta.financialCurrency) : undefined,
-    fullExchangeName:
-      meta.fullExchangeName != null ? String(meta.fullExchangeName) : undefined,
-    isin: meta.isin != null ? String(meta.isin) : undefined,
-    longName: meta.longName != null ? String(meta.longName) : undefined,
-    postMarketPrice:
-      meta.postMarketPrice != null ? Number(meta.postMarketPrice) : undefined,
-    postMarketTime:
-      meta.postMarketTime != null ? Number(meta.postMarketTime) : undefined,
-    preMarketPrice:
-      meta.preMarketPrice != null ? Number(meta.preMarketPrice) : undefined,
-    preMarketTime:
-      meta.preMarketTime != null ? Number(meta.preMarketTime) : undefined,
-    previousClose:
-      meta.previousClose != null ? Number(meta.previousClose) : undefined,
-    quoteSourceName:
-      meta.quoteSourceName != null ? String(meta.quoteSourceName) : undefined,
-    regularMarketDayHigh:
-      meta.regularMarketDayHigh != null ? Number(meta.regularMarketDayHigh) : undefined,
-    regularMarketDayLow:
-      meta.regularMarketDayLow != null ? Number(meta.regularMarketDayLow) : undefined,
-    regularMarketOpen:
-      meta.regularMarketOpen != null ? Number(meta.regularMarketOpen) : undefined,
-    regularMarketPreviousClose:
-      meta.regularMarketPreviousClose != null
-        ? Number(meta.regularMarketPreviousClose)
-        : undefined,
-    regularMarketPrice:
-      meta.regularMarketPrice != null ? Number(meta.regularMarketPrice) : undefined,
-    regularMarketTime:
-      meta.regularMarketTime != null ? Number(meta.regularMarketTime) : undefined,
-    regularMarketVolume:
-      meta.regularMarketVolume != null ? Number(meta.regularMarketVolume) : undefined,
-    shortName: meta.shortName != null ? String(meta.shortName) : undefined,
+    currency: str(meta.currency),
+    displayName: str(meta.displayName),
+    exchangeDataDelayedBy: num(meta.exchangeDataDelayedBy),
+    exchangeName: str(meta.exchangeName),
+    financialCurrency: str(meta.financialCurrency),
+    fullExchangeName: str(meta.fullExchangeName),
+    isin: str(meta.isin),
+    longName: str(meta.longName),
+    quoteSourceName: str(meta.quoteSourceName),
+    regularMarketDayHigh: num(meta.regularMarketDayHigh),
+    regularMarketDayLow: num(meta.regularMarketDayLow),
+    regularMarketPreviousClose: pickFiniteNumber(
+      meta.regularMarketPreviousClose,
+      meta.previousClose,
+      meta.chartPreviousClose,
+    ),
+    regularMarketPrice: pickFiniteNumber(
+      meta.regularMarketPrice,
+      meta.postMarketPrice,
+      meta.preMarketPrice,
+    ),
+    regularMarketTime: pickFiniteNumber(
+      meta.regularMarketTime,
+      meta.postMarketTime,
+      meta.preMarketTime,
+    ),
+    regularMarketVolume: num(meta.regularMarketVolume),
+    shortName: str(meta.shortName),
     symbol: String(meta.symbol || ticker),
   });
 }
