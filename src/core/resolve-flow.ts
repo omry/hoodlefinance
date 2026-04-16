@@ -348,6 +348,7 @@ interface ResolveFlowDependencies {
 function materializeResolversByCode(
   resolverSpecs: Record<string, string>,
   deps: ResolveFlowDependencies,
+  runtimeRefs: PlanRuntimeRefs,
 ): MaterializedResolverRegistry {
   const byCode = deps.registryByCode || {};
   const byName = deps.registryByName || {};
@@ -364,6 +365,10 @@ function materializeResolversByCode(
     }
 
     const resolver = ResolverClass.fromSpec(normalizedCode);
+
+    if (typeof resolver.initRuntimeRefs === "function") {
+      resolver.initRuntimeRefs(runtimeRefs);
+    }
 
     if (deps.resolverServices && typeof resolver.initEnv === "function") {
       resolver.initEnv(deps.resolverServices);
@@ -401,6 +406,7 @@ export class ResolveFlow {
     const resolverRegistry = materializeResolversByCode(
       resolverSpecsByCode,
       deps,
+      this.runtimeRefs,
     );
     Object.assign(this.#nodesByCode, resolverRegistry.byCode);
 

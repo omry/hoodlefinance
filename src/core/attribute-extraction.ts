@@ -8,24 +8,8 @@ interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
 }
 
-function normalizeCurrencyCode(currency: unknown): string {
-  if (currency === "GBp") return "GBP";
-  if (currency === "ILA") return "ILS";
-  return String(currency || "");
-}
-
-function resolveCurrencyUnitScale(currency: unknown): number | undefined {
-  if (currency === "GBp" || currency === "ILA") {
-    return 0.01;
-  }
-
-  return undefined;
-}
-
 export function extractQuoteCurrencyCode(quote: StockQuote | FxQuote): string {
-  return normalizeCurrencyCode(
-    quote.currency || (quote as StockQuote).financialCurrency || "",
-  );
+  return String(quote.currency || (quote as StockQuote).financialCurrency || "");
 }
 
 export function extractQuoteMoneyUnitScale(
@@ -37,10 +21,7 @@ export function extractQuoteMoneyUnitScale(
     return explicitUnitScale;
   }
 
-  return (
-    resolveCurrencyUnitScale(quote.currency) ??
-    resolveCurrencyUnitScale((quote as StockQuote).financialCurrency)
-  );
+  return undefined;
 }
 
 function normalizeMoney(quote: StockQuote | FxQuote, value: unknown): number {
@@ -159,7 +140,7 @@ export function extractAttributeValue(
         "";
       break;
     case "currency":
-      value = extractQuoteCurrencyCode(quote);
+      value = String(quote.currency || (quote as StockQuote).financialCurrency || "");
       break;
     case "isin":
       value = (quote as StockQuote).isin || "";

@@ -346,10 +346,7 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
       return {
         route: "ATTRIBUTE:FX -> QUOTE:FX",
         status: "success",
-        value: {
-          currency: "USD",
-          regularMarketPrice: 0.02,
-        },
+        value: { extractedValue: 0.02 },
       };
     },
   };
@@ -397,13 +394,12 @@ test("ResolverPlan output-currency conversion folds stock unit scale into the FX
   const refs = {
     resolveFxQuote(request) {
       assert.equal(request.fxPair.yahooChartSymbol, "GBPUSD=X");
+      assert.equal(request.fxPair.baseDisplayCode, "GBp");
+      assert.equal(request.fxPair.scale, 0.01);
       return {
         route: "ATTRIBUTE:FX -> QUOTE:FX",
         status: "success",
-        value: {
-          currency: "USD",
-          regularMarketPrice: 1.25,
-        },
+        value: { extractedValue: 0.0125 },
       };
     },
   };
@@ -436,8 +432,7 @@ test("ResolverPlan output-currency conversion folds stock unit scale into the FX
   });
 
   const env = plan.resolveOutputCurrencyResult(request, {
-    currency: "GBP",
-    fxUnitScale: 0.01,
+    currency: "GBp",
     regularMarketPrice: 250,
     symbol: "TSCO.L",
   });

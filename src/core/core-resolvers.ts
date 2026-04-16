@@ -13,7 +13,6 @@ import { FxRequest, RawRequestInput, RequestInput } from "./request";
 import {
   extractAttributeValue,
   extractQuoteCurrencyCode,
-  extractQuoteMoneyUnitScale,
   parseAttributeRequest,
 } from "./attribute-extraction";
 import { buildFxPairFromCodes } from "./fx-normalization";
@@ -69,6 +68,72 @@ function normalizeNodeCode(nodeCode: string): string {
 
 function formatResolverError(error: unknown): string {
   return String(error instanceof Error ? error.message : (error ?? ""));
+}
+
+function unwrapLookupValue(value: unknown): unknown {
+  if (
+    value != null &&
+    typeof value === "object" &&
+    "extractedValue" in (value as Record<string, unknown>)
+  ) {
+    return (value as { extractedValue: unknown }).extractedValue;
+  }
+
+  return value;
+}
+
+export function resolveCanonicalCurrencyCode(currency: unknown): string {
+  const rawCurrency = String(currency || "").trim();
+
+  if (!rawCurrency) {
+    return "";
+  }
+
+  const selfPair = buildFxPairFromCodes(rawCurrency, rawCurrency);
+  return selfPair?.quoteCanonicalCode || rawCurrency.toUpperCase();
+}
+
+export function resolveFxConversionRate(
+  refs: PlanRuntimeRefs,
+  sourceCurrency: string,
+  targetCurrency: string,
+): LookupResult {
+  const fxPair = buildFxPairFromCodes(sourceCurrency, targetCurrency);
+  if (!fxPair) {
+    throw new Error(
+      `Output-currency conversion from "${sourceCurrency}" to "${targetCurrency}" is not supported. Use recognized 3- or 4-character currency codes.`,
+    );
+  }
+
+  const fxResult = refs.resolveFxQuote(
+    new FxRequest({
+      attribute: "price",
+      fxPair,
+      identifier: fxPair.yahooChartSymbol,
+    }),
+  );
+
+  if (fxResult.status !== "success") {
+    return fxResult;
+  }
+
+  const resolvedValue = unwrapLookupValue(fxResult.value);
+  const rate = Number(
+    resolvedValue != null && typeof resolvedValue === "object"
+      ? extractAttributeValue(resolvedValue as StockQuote, "price")
+      : resolvedValue,
+  );
+
+  if (!Number.isFinite(rate)) {
+    throw new Error(
+      `FX conversion from "${sourceCurrency}" to "${targetCurrency}" returned a non-numeric rate.`,
+    );
+  }
+
+  return {
+    ...fxResult,
+    value: rate,
+  };
 }
 
 function createResolverExecutionContext(
@@ -283,6 +348,8 @@ export class Resolver {
   }
 
   initEnv(_services: ResolverServices): void {}
+
+  initRuntimeRefs(_refs: PlanRuntimeRefs): void {}
 
   static fromSpec(..._args: unknown[]): Resolver {
     return new this();
@@ -512,44 +579,7 @@ export abstract class ResolverPlan extends Resolver {
       return null;
     }
 
-    const fxPair = buildFxPairFromCodes(sourceCurrency, targetCurrency);
-    if (!fxPair) {
-      throw new Error(
-        `Output-currency conversion from "${sourceCurrency}" to "${targetCurrency}" is not supported. Use recognized 3- or 4-character currency codes.`,
-      );
-    }
-
-    const fxResult = this.refs.resolveFxQuote(
-      new FxRequest({
-        attribute: "price",
-        fxPair,
-        identifier: fxPair.yahooChartSymbol,
-      }),
-    );
-
-    if (fxResult.status === "success") {
-      const rate = Number(
-        extractAttributeValue(
-          fxResult.value as StockQuote,
-          "price",
-        ),
-      );
-
-      if (Number.isFinite(rate)) {
-        const sourceUnitScale = extractQuoteMoneyUnitScale(quote);
-        const scaledRate =
-          typeof sourceUnitScale === "number" && sourceUnitScale > 0
-            ? rate * sourceUnitScale
-            : rate;
-
-        return {
-          ...fxResult,
-          value: scaledRate,
-        };
-      }
-    }
-
-    return fxResult;
+    return resolveFxConversionRate(this.refs, sourceCurrency, targetCurrency);
   }
 
   static getSpecNodeCodes(spec: Graph.Node): string[] {

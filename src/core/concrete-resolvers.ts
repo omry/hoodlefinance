@@ -72,6 +72,11 @@ import {
   createRouteResult,
   type RouteResult,
 } from "./route-results";
+import {
+  resolveCanonicalCurrencyCode,
+  resolveFxConversionRate,
+  type PlanRuntimeRefs,
+} from "./core-resolvers";
 import type {
   ResolutionResult,
   ResolverExecutionContext,
@@ -84,6 +89,94 @@ import {
 import {
   type TextHttpResponse,
 } from "./text-http-response";
+import { parseAttributeRequest } from "./request-parsing";
+
+const NORMALIZABLE_MONEY_ATTRIBUTES = new Set([
+  "price",
+  "high",
+  "low",
+  "close",
+  "change",
+]);
+
+function convertResolvedMoneyValue(
+  value: unknown,
+  quote: StockQuote | FxQuote,
+  attribute: string,
+  runtimeRefs: PlanRuntimeRefs | null,
+): unknown {
+  const attributeRequest = parseAttributeRequest(attribute);
+  const baseAttribute = attributeRequest.baseAttribute;
+  const sourceCurrency = String(
+    quote.currency || (quote as StockQuote).financialCurrency || "",
+  ).trim();
+
+  if (baseAttribute === "currency") {
+    return resolveCanonicalCurrencyCode(sourceCurrency);
+  }
+
+  if (
+    !(quote instanceof StockQuote) ||
+    !NORMALIZABLE_MONEY_ATTRIBUTES.has(baseAttribute) ||
+    !sourceCurrency
+  ) {
+    return value;
+  }
+
+  const targetCurrency = attributeRequest.wantsOutputCurrency
+    ? attributeRequest.outputCode.trim().toUpperCase()
+    : resolveCanonicalCurrencyCode(sourceCurrency);
+
+  if (!targetCurrency || sourceCurrency === targetCurrency) {
+    return value;
+  }
+
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return value;
+  }
+
+  if (!runtimeRefs) {
+    throw new Error(
+      `FX conversion runtime is unavailable for "${sourceCurrency}" -> "${targetCurrency}".`,
+    );
+  }
+
+  const fxResult = resolveFxConversionRate(
+    runtimeRefs,
+    sourceCurrency,
+    targetCurrency,
+  );
+
+  if (fxResult.status !== "success") {
+    throw new Error(String(fxResult.error || "FX conversion failed.").trim());
+  }
+
+  const rate = Number(fxResult.value);
+  if (!Number.isFinite(rate)) {
+    throw new Error(
+      `FX conversion from "${sourceCurrency}" to "${targetCurrency}" returned a non-numeric rate.`,
+    );
+  }
+
+  return value * rate;
+}
+
+function extractRawResolvedAttributeValue(
+  quote: StockQuote | FxQuote,
+  attribute: string,
+  routeState: Record<string, unknown>,
+): unknown {
+  const attributeRequest = parseAttributeRequest(attribute);
+
+  if (
+    attributeRequest.wantsOutputCurrency &&
+    attributeRequest.baseAttribute === "price"
+  ) {
+    return extractAttributeValue(quote, "price", { routeState });
+  }
+
+  return extractAttributeValue(quote, attribute, { routeState });
+}
 
 export class DirectIdentifierResolver extends IdentifierResolver {
   constructor() {
@@ -1296,6 +1389,7 @@ export class EquityAttributeExtractResolver extends Resolver {
   private httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   private getCachedStringFn!: ResolverServices["getCachedString"];
   private putCachedStringFn!: ResolverServices["putCachedString"];
+  private runtimeRefs: PlanRuntimeRefs | null = null;
 
   constructor() {
     super("EXTRACT:EQUITY");
@@ -1305,6 +1399,10 @@ export class EquityAttributeExtractResolver extends Resolver {
     this.httpFetch = services.httpFetch.bind(services);
     this.getCachedStringFn = services.getCachedString.bind(services);
     this.putCachedStringFn = services.putCachedString.bind(services);
+  }
+
+  initRuntimeRefs(refs: PlanRuntimeRefs): void {
+    this.runtimeRefs = refs;
   }
 
   resolve(input: unknown): ResolutionResult<unknown> {
@@ -1329,7 +1427,13 @@ export class EquityAttributeExtractResolver extends Resolver {
         },
       );
     } else {
-      value = extractAttributeValue(quote, attribute, { routeState });
+      value = extractRawResolvedAttributeValue(quote, attribute, routeState);
+      value = convertResolvedMoneyValue(
+        value,
+        quote,
+        attribute,
+        this.runtimeRefs,
+      );
     }
 
     return createResolutionSuccess({ extractedValue: value }, 0);
@@ -1404,8 +1508,14 @@ export class LonIsinResolver extends Resolver {
 }
 
 export class FxAttributeExtractResolver extends Resolver {
+  private runtimeRefs: PlanRuntimeRefs | null = null;
+
   constructor() {
     super("EXTRACT:FX");
+  }
+
+  initRuntimeRefs(refs: PlanRuntimeRefs): void {
+    this.runtimeRefs = refs;
   }
 
   resolve(input: unknown): ResolutionResult<unknown> {
@@ -1415,7 +1525,17 @@ export class FxAttributeExtractResolver extends Resolver {
       attribute: string;
     };
 
-    const value = extractAttributeValue(quote, attribute, { routeState });
+    const rawValue = extractRawResolvedAttributeValue(
+      quote,
+      attribute,
+      routeState,
+    );
+    const value = convertResolvedMoneyValue(
+      rawValue,
+      quote,
+      attribute,
+      this.runtimeRefs,
+    );
     return createResolutionSuccess({ extractedValue: value }, 0);
   }
 

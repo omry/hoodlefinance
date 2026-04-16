@@ -3,6 +3,8 @@ const test = require("node:test");
 
 const {
   DirectIdentifierResolver,
+  EquityAttributeExtractResolver,
+  FxAttributeExtractResolver,
   GoogleFxResolver,
   LocalFxResolver,
   LonIsinResolver,
@@ -16,6 +18,7 @@ const {
   RequestInput,
   FxRequest,
   EquityRequest,
+  StockQuote,
 } = require("../dist/ts/core/index.js");
 const { createTextHttpResponse } = require("./resource-fixtures.js");
 const { createTestResolverServices } = require("./resolver-service-fixtures.js");
@@ -181,6 +184,84 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
   assert.equal(outcome.status, "success");
   assert.equal(outcome.value.quote.regularMarketPrice, 1);
   assert.equal(outcome.value.quote.symbol, "USDUSD");
+});
+
+test("EquityAttributeExtractResolver normalizes stock unit money attributes through the FX path", () => {
+  const resolver = new EquityAttributeExtractResolver();
+  resolver.initRuntimeRefs({
+    resolveFxQuote(request) {
+      assert.equal(request.fxPair.baseDisplayCode, "GBp");
+      assert.equal(request.fxPair.quoteCanonicalCode, "GBP");
+      assert.equal(request.fxPair.scale, 0.01);
+      return {
+        route: "ATTRIBUTE:FX -> QUOTE:FX",
+        status: "success",
+        value: { extractedValue: 0.01 },
+      };
+    },
+  });
+
+  const result = resolver.resolve({
+    attribute: "close",
+    quote: new StockQuote({
+      currency: "GBp",
+      regularMarketPreviousClose: 245,
+      regularMarketPrice: 250,
+      symbol: "TSCO.L",
+    }),
+    routeState: {},
+    tickerInput: "TSCO.L",
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value.extractedValue, 2.45);
+});
+
+test("EquityAttributeExtractResolver converts stock unit prices directly to the requested output currency", () => {
+  const resolver = new EquityAttributeExtractResolver();
+  resolver.initRuntimeRefs({
+    resolveFxQuote(request) {
+      assert.equal(request.fxPair.baseDisplayCode, "GBp");
+      assert.equal(request.fxPair.quoteCanonicalCode, "USD");
+      assert.equal(request.fxPair.scale, 0.01);
+      return {
+        route: "ATTRIBUTE:FX -> QUOTE:FX",
+        status: "success",
+        value: { extractedValue: 0.0125 },
+      };
+    },
+  });
+
+  const result = resolver.resolve({
+    attribute: "price@USD",
+    quote: new StockQuote({
+      currency: "GBp",
+      regularMarketPrice: 250,
+      symbol: "TSCO.L",
+    }),
+    routeState: {},
+    tickerInput: "TSCO.L",
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value.extractedValue, 3.125);
+});
+
+test("FxAttributeExtractResolver keeps explicit FX scaling in extraction", () => {
+  const resolver = new FxAttributeExtractResolver();
+  const result = resolver.resolve({
+    attribute: "price",
+    quote: {
+      currency: "USD",
+      fxUnitScale: 0.01,
+      regularMarketPrice: 1,
+      symbol: "GBPUSD",
+    },
+    routeState: {},
+  });
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value.extractedValue, 0.01);
 });
 
 test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", () => {

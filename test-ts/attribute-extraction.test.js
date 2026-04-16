@@ -77,12 +77,6 @@ test("extractAttributeValue handles output-currency conversion (identity, direct
     symbol: "AAPL",
   });
 
-  const gbpQuote = new StockQuote({
-    currency: "GBP",
-    regularMarketPrice: 200,
-    symbol: "TSCO.L",
-  });
-
   // --- Identity: USD -> USD should just return the price ---
   assert.equal(extractAttributeValue(usdQuote, "price@USD"), 150);
 
@@ -91,7 +85,7 @@ test("extractAttributeValue handles output-currency conversion (identity, direct
   assert.throws(() => extractAttributeValue(usdQuote, "currency@USD"), /does not support output-currency conversion/);
 });
 
-test("extractAttributeValue normalizes GBp stock unit currencies through shared money scaling", () => {
+test("extractAttributeValue preserves raw GBp stock unit values", () => {
   const gbpUnitQuote = new StockQuote({
     currency: "GBp",
     regularMarketDayHigh: 260,
@@ -104,18 +98,19 @@ test("extractAttributeValue normalizes GBp stock unit currencies through shared 
   assert.equal(gbpUnitQuote.currency, "GBp");
   assert.equal(gbpUnitQuote.regularMarketPrice, 250);
   assert.equal(gbpUnitQuote.fxUnitScale, undefined);
-  assert.equal(extractAttributeValue(gbpUnitQuote, "currency"), "GBP");
-  assert.equal(extractAttributeValue(gbpUnitQuote, "price"), 2.5);
-  assert.equal(extractAttributeValue(gbpUnitQuote, "high"), 2.6);
-  assert.equal(extractAttributeValue(gbpUnitQuote, "low"), 2.4);
-  assert.equal(extractAttributeValue(gbpUnitQuote, "close"), 2.45);
-  assert.ok(
-    Math.abs(extractAttributeValue(gbpUnitQuote, "change") - 0.05) < 1e-12,
+  assert.equal(extractAttributeValue(gbpUnitQuote, "currency"), "GBp");
+  assert.equal(extractAttributeValue(gbpUnitQuote, "price"), 250);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "high"), 260);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "low"), 240);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "close"), 245);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "change"), 5);
+  assert.throws(
+    () => extractAttributeValue(gbpUnitQuote, "price@GBP"),
+    /currently unavailable/,
   );
-  assert.equal(extractAttributeValue(gbpUnitQuote, "price@GBP"), 2.5);
 });
 
-test("extractAttributeValue normalizes ILA stock unit currencies through shared money scaling", () => {
+test("extractAttributeValue preserves raw ILA stock unit values", () => {
   const ilsUnitQuote = new StockQuote({
     currency: "ILA",
     regularMarketDayHigh: 1250,
@@ -128,13 +123,15 @@ test("extractAttributeValue normalizes ILA stock unit currencies through shared 
   assert.equal(ilsUnitQuote.currency, "ILA");
   assert.equal(ilsUnitQuote.regularMarketPrice, 1230);
   assert.equal(ilsUnitQuote.fxUnitScale, undefined);
-  assert.equal(extractAttributeValue(ilsUnitQuote, "currency"), "ILS");
-  assert.equal(extractAttributeValue(ilsUnitQuote, "price"), 12.3);
-  assert.equal(extractAttributeValue(ilsUnitQuote, "high"), 12.5);
-  assert.equal(extractAttributeValue(ilsUnitQuote, "low"), 11.9);
-  assert.equal(extractAttributeValue(ilsUnitQuote, "close"), 12.1);
-  assert.ok(
-    Math.abs(extractAttributeValue(ilsUnitQuote, "change") - 0.2) < 1e-12,
+  assert.equal(extractAttributeValue(ilsUnitQuote, "currency"), "ILA");
+  assert.equal(extractAttributeValue(ilsUnitQuote, "price"), 1230);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "high"), 1250);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "low"), 1190);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "close"), 1210);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "change"), 20);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "changepct"), 20 / 1210);
+  assert.throws(
+    () => extractAttributeValue(ilsUnitQuote, "price@ILS"),
+    /currently unavailable/,
   );
-  assert.equal(extractAttributeValue(ilsUnitQuote, "price@ILS"), 12.3);
 });
