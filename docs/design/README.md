@@ -20,6 +20,8 @@ For new design docs, start from [`./TEMPLATE.md`](./TEMPLATE.md).
 ## Draft Or Planned Design Work
 
 - Routing model draft: [`routing/hoodlefinance-routing-design.md`](./routing/hoodlefinance-routing-design.md)
+- Subgraph call support: [`routing/subgraph-call-support.md`](./routing/subgraph-call-support.md)
+- FX flow port to subgraph calls: [`routing/fx-flow-port-to-subgraph-calls.md`](./routing/fx-flow-port-to-subgraph-calls.md)
 - Commodity interface design: [`commodities/commodity-interface-design.md`](./commodities/commodity-interface-design.md)
 - Commodity source research: [`commodities/free-commodity-data-sources.md`](./commodities/free-commodity-data-sources.md)
 - Native range execution and batching reimplementation: [`performance/hoodlefinance-range-batching.md`](./performance/hoodlefinance-range-batching.md)

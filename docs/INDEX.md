@@ -27,6 +27,8 @@ For now, use:
 - Routing runtime shape: [`./design/routing/final-dag-shape-redesign.md`](./design/routing/final-dag-shape-redesign.md)
 - Graph-driven execution: [`./design/routing/graph-driven-execution.md`](./design/routing/graph-driven-execution.md)
 - Graph rendering for the TypeScript CLI: [`./design/routing/resolve-flow-rendering.md`](./design/routing/resolve-flow-rendering.md)
+- Subgraph call support: [`./design/routing/subgraph-call-support.md`](./design/routing/subgraph-call-support.md)
+- FX flow port to subgraph calls: [`./design/routing/fx-flow-port-to-subgraph-calls.md`](./design/routing/fx-flow-port-to-subgraph-calls.md)
 - Identifier and attribute grammar: [`./design/identifiers/identifier-attribute-grammar.md`](./design/identifiers/identifier-attribute-grammar.md)
 - Google Sheets deployment strategy: [`./design/deployment/google-sheets-deployment-strategy.md`](./design/deployment/google-sheets-deployment-strategy.md)
 - Website deployment strategy: [`./design/deployment/website-deployment-strategy.md`](./design/deployment/website-deployment-strategy.md)
