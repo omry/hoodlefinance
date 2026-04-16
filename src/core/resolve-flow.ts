@@ -1,6 +1,5 @@
-import { isResolverPlan } from "./plan-navigation";
 import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
-import type { Resolver, ResolverPlan } from "./resolver-classes";
+import type { Resolver } from "./resolver-classes";
 import { RawRequestInput } from "./request";
 import { type PlanRuntimeRefs } from "./core-resolvers";
 import {
@@ -387,7 +386,7 @@ export class ResolveFlow {
     this.graph = buildGraphView(definition);
     this.#nodesByCode = Object.create(null);
     this.runtimeRefs = {
-      getFxPlan: () => this.#getRuntimePlanNode("ATTRIBUTE:FX"),
+      resolveFxQuote: (request) => this.resolveQuoteFromNode("ATTRIBUTE:FX", request),
     };
 
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
@@ -483,6 +482,42 @@ export class ResolveFlow {
     };
   }
 
+  // TEMPORARY: this ad-hoc subgraph entrypoint exists only to support the
+  // transitional output-currency FX lookup path. Remove it once FX execution
+  // is modeled directly in the graph and no caller needs to start mid-graph.
+  resolveQuoteFromNode(
+    nodeId: string,
+    request: object,
+  ): {
+    error?: string;
+    route: string;
+    status: "failure" | "success";
+    value: unknown;
+  } {
+    const engine = new FlowEngine(this);
+    const trace: ExecutionTrace = { visitedNodeIds: [] };
+    const engineResult = engine.executeFromNodeId(nodeId, { value: request }, trace);
+    const route = trace.visitedNodeIds
+      .filter((visitedNodeId) => visitedNodeId !== "TERMINAL")
+      .join(" -> ");
+
+    if (engineResult.status !== EnvelopeStatus.Success) {
+      const error = String(engineResult.error || "").trim();
+      return {
+        ...(error ? { error } : {}),
+        route,
+        status: "failure",
+        value: null,
+      };
+    }
+
+    return {
+      route,
+      status: "success",
+      value: engineResult.value,
+    };
+  }
+
   #getRuntimeNode(code: string): Resolver {
     const normalizedCode = normalizeCode(code);
     const existingNode = this.#nodesByCode[normalizedCode];
@@ -517,17 +552,5 @@ export class ResolveFlow {
     this.#nodesByCode[normalizedCode] = compiledNode;
 
     return compiledNode;
-  }
-
-  #getRuntimePlanNode(code: string): ResolverPlan {
-    const node = this.#getRuntimeNode(code);
-
-    if (!isResolverPlan(node)) {
-      throw new Error(
-        `Runtime graph node "${normalizeCode(code)}" is not a resolver plan node.`,
-      );
-    }
-
-    return node;
   }
 }

@@ -67,13 +67,15 @@ function wrapSelectedResolverNode(node, parentPlan = null) {
         : null;
   const options = {
     routeClass(request) {
-      return node && node.buildRuntimePlan
-        ? node.buildRuntimePlan(request).routeClass
+      return node && typeof node.getRouteClass === "function"
+        ? node.getRouteClass(request)
         : wrappedName;
     },
     routePath(request) {
-      return node && node.buildRuntimePlan
-        ? node.buildRuntimePlan(request).routePath
+      return node && typeof node.buildRoutePath === "function"
+        ? node.buildRoutePath(request)
+        : node && typeof node.getRoutePath === "function"
+          ? node.getRoutePath(request)
         : wrappedName;
     },
   };

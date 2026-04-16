@@ -6,10 +6,7 @@ import {
 
 import type {
   ResolutionResult,
-  RouteClassResolver,
-  RoutePathResolver,
   ResolverExecutionContext,
-  RuntimePlan,
 } from "./planner";
 import { RoutingNodeKind } from "./planner";
 import { FxRequest, RawRequestInput, RequestInput } from "./request";
@@ -24,17 +21,23 @@ import {
   formatRouteFailureMessage,
   type RouteResult,
 } from "./route-results";
-import {
-  resolvePlannedQuoteResult,
-  type LookupResult,
-} from "./request-resolution";
 import type { StockQuote } from "./quote";
 import type { ResolverServices } from "./resolver-services";
+
+type RouteClassResolver = (request: unknown) => string;
+type RoutePathResolver = (request: unknown) => string;
+
+export interface LookupResult {
+  error?: string;
+  route: string;
+  status: "failure" | "success";
+  value: unknown;
+}
 
 // TEMPORARY: threads the runtime FX root plan into plan nodes for
 // output-currency conversion until the execution DAG can model that edge.
 export interface PlanRuntimeRefs {
-  getFxPlan(): ResolverPlan;
+  resolveFxQuote(request: FxRequest): LookupResult;
 }
 
 export interface ResolverPlanOptions {
@@ -167,14 +170,19 @@ export class Resolver {
     return true;
   }
 
-  buildRuntimePlan(_request: unknown): RuntimePlan {
-    throw new Error(
-      `Resolver "${this.name}" must implement buildRuntimePlan().`,
-    );
+  getRouteClass(_request: unknown): string {
+    return this.name;
+  }
+
+  getRoutePath(_request: unknown): string {
+    return String(this.traceLabel || this.name || "").trim();
   }
 
   describe(request: unknown): string {
-    return describePlanSource(this.buildRuntimePlan(request));
+    return describePlanSource({
+      routeClass: this.getRouteClass(request),
+      routePath: this.getRoutePath(request),
+    });
   }
 
   getRoutingNodeKind(): RoutingNodeKind {
@@ -295,7 +303,7 @@ export abstract class ResolverPlan extends Resolver {
     const hasRefs =
       !!refsOrOptions &&
       typeof refsOrOptions === "object" &&
-      "getFxPlan" in refsOrOptions;
+      "resolveFxQuote" in refsOrOptions;
     const resolvedRefs = hasRefs
       ? (refsOrOptions as PlanRuntimeRefs)
       : null;
@@ -404,16 +412,6 @@ export abstract class ResolverPlan extends Resolver {
 
   abstract getRoutingNodeKind(): RoutingNodeKind;
 
-  buildRouteState(
-    request: unknown,
-  ): Record<string, unknown> {
-    const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
-
-    return singleNode && typeof singleNode.buildRouteState === "function"
-      ? singleNode.buildRouteState(request)
-      : {};
-  }
-
   buildRoutePath(request: unknown): string {
     let routePath = this.routePath;
     const nodes = this.getNodesForRequest(request);
@@ -454,115 +452,16 @@ export abstract class ResolverPlan extends Resolver {
     return groupedNames;
   }
 
-  buildRuntimePlan(request: unknown): RuntimePlan {
-    let routeClass = this.routeClass;
-    const nodes = this.getNodesForRequest(request);
+  override describe(request: unknown): string {
+    const routeClass =
+      typeof this.routeClass === "function"
+        ? this.routeClass(request)
+        : this.routeClass;
 
-    if (!nodes.length) {
-      throw new Error(
-        `Resolver plan "${this.name}" cannot handle this request.`,
-      );
-    }
-
-    if (typeof routeClass === "function") {
-      routeClass = routeClass(request);
-    }
-
-    const routeState = this.buildRouteState(request);
-    const flattenedNodes: Resolver[] = [];
-
-    for (const node of nodes) {
-      const runtimePlan = node.buildRuntimePlan(request);
-      flattenedNodes.push(...(runtimePlan.nodes || []));
-
-      if (runtimePlan.routeState) {
-        Object.assign(routeState, runtimePlan.routeState);
-      }
-    }
-
-    return {
-      nodes: flattenedNodes,
+    return describePlanSource({
       routeClass,
       routePath: this.buildRoutePath(request),
-      routeState,
-    };
-  }
-
-  override resolve(request: unknown): ResolutionResult<unknown> {
-    const startedAtMs = Date.now();
-
-    try {
-      const plan = this.buildRuntimePlan(request);
-      const trace: Array<{
-        elapsedMs: number | null;
-        label: string;
-        status: string;
-      }> = [];
-      let lastLookupFailure = "";
-
-      for (const node of plan.nodes || []) {
-        const context = createResolverExecutionContext(
-          request,
-          node.buildRouteState(request),
-        );
-        const nodeStartedAtMs = Date.now();
-        const result = normalizeRouteResult(
-          node.executeRouteRequest(request, context),
-        );
-        const elapsedMs = Date.now() - nodeStartedAtMs;
-        const label = String(node.traceLabel || node.name || "").trim();
-
-        if (label) {
-          trace.push({
-            elapsedMs: Math.max(0, elapsedMs),
-            label,
-            status: result.status,
-          });
-        }
-
-        applyStateChanges(context, result);
-
-        if (result.status === "success") {
-          return createResolutionSuccess(
-            getResolvedRouteValue(result),
-            Date.now() - startedAtMs,
-          );
-        }
-
-        const errorMessage = formatResolverError(result.error);
-        if (result.status === "lookup_failure") {
-          lastLookupFailure =
-            errorMessage ||
-            lastLookupFailure ||
-            defaultRouteFailureMessage(context);
-          continue;
-        }
-
-        return createResolutionFailure(
-          formatRouteFailureMessage(
-            { routeRuntimeTrace: trace },
-            errorMessage || defaultRouteFailureMessage(context),
-          ),
-          Date.now() - startedAtMs,
-          formatResolverError,
-        );
-      }
-
-      return createResolutionFailure(
-        formatRouteFailureMessage(
-          { routeRuntimeTrace: trace },
-          lastLookupFailure || defaultRouteFailureMessage({ routeKind: "quote" }),
-        ),
-        Date.now() - startedAtMs,
-        formatResolverError,
-      );
-    } catch (error) {
-      return createResolutionFailure(
-        error,
-        Date.now() - startedAtMs,
-        formatResolverError,
-      );
-    }
+    });
   }
 
   resolveOutputCurrencyResult(
@@ -616,9 +515,7 @@ export abstract class ResolverPlan extends Resolver {
       );
     }
 
-    const fxPlan = this.refs.getFxPlan();
-    const fxResult = resolvePlannedQuoteResult(
-      fxPlan,
+    const fxResult = this.refs.resolveFxQuote(
       new FxRequest({
         attribute: "price",
         fxPair,

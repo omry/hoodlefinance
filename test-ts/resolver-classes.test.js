@@ -58,32 +58,13 @@ function createLeafResolver(name, extra = {}) {
   return new LeafResolver();
 }
 
-test("ResolverPlan resolve falls through lookup failures without route jobs", () => {
-  class TestLeafResolver extends RouteExecutionResolver {
-    constructor(name, result) {
-      super(name);
-      this.result = result;
-    }
-
-    executeRouteRequest() {
-      return this.result;
-    }
-  }
-
+test("ResolverPlan describe reports the route without building a runtime plan", () => {
   const plan = new FirstSuccessPlan("QUOTE", [
-    new TestLeafResolver("YAHOO", {
-      error: "Yahoo unavailable",
-      status: "lookup_failure",
-    }),
-    new TestLeafResolver("IBKR", {
-      quote: 10,
-      status: "success",
-    }),
+    createLeafResolver("YAHOO"),
+    createLeafResolver("IBKR"),
   ]);
 
-  const outcome = plan.resolve(createRequestInput());
-  assert.equal(outcome.status, "success");
-  assert.equal(outcome.value, 10);
+  assert.equal(plan.describe(createRequestInput()), "QUOTE -> YAHOO -> IBKR");
 });
 
 test("ResolverPlan maintains standard fallback sequence and full routing-tree visibility", () => {
@@ -187,8 +168,8 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
     sourceName: "TRADINGVIEW",
   });
   const refs = {
-    getFxPlan() {
-      throw new Error("fx plan should not be requested for this test");
+    resolveFxQuote() {
+      throw new Error("fx quote lookup should not be requested for this test");
     },
   };
 
@@ -215,18 +196,17 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
   assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
   assert.equal(plan.refs, refs);
 
-  const runtimePlan = plan.buildRuntimePlan({
+  const request = {
     allowTradingviewFallback: true,
     classification: "equity",
     input: { attribute: "price", identifier: "GOOG" },
     requestType: "equity",
     symbol: "GOOG",
     yahooSymbol: "GOOG",
-  });
+  };
 
-  assert.equal(runtimePlan.routeClass, "QUOTE:TICKER");
-  assert.equal(runtimePlan.routePath, "YAHOO -> TRADINGVIEW-FUND");
-  assert.deepEqual(runtimePlan.routeState, {});
+  assert.equal(plan.describe(request), "QUOTE:TICKER -> YAHOO -> TRADINGVIEW-FUND");
+  assert.equal(plan.buildRoutePath(request), "YAHOO -> TRADINGVIEW-FUND");
 });
 
 test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime materializer", () => {
@@ -254,8 +234,8 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
   const defaultAttributeRoot = createLeafResolver("ATTRIBUTE");
   const identifierRoot = createLeafResolver("IDENTIFIER-ROOT");
   const refs = {
-    getFxPlan() {
-      throw new Error("fx plan should not be requested for this test");
+    resolveFxQuote() {
+      throw new Error("fx quote lookup should not be requested for this test");
     },
   };
 
@@ -361,20 +341,14 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
 
 test("ResolverPlan can resolve output-currency conversion through ResolveFlow", () => {
   const refs = {
-    getFxPlan() {
+    resolveFxQuote(request) {
+      assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
       return {
-        describe() {
-          return "ATTRIBUTE:FX -> QUOTE:FX";
-        },
-        resolve(request) {
-          assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
-          return {
-            status: "success",
-            value: {
-              currency: "USD",
-              regularMarketPrice: 0.02,
-            },
-          };
+        route: "ATTRIBUTE:FX -> QUOTE:FX",
+        status: "success",
+        value: {
+          currency: "USD",
+          regularMarketPrice: 0.02,
         },
       };
     },

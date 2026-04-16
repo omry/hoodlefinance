@@ -1,4 +1,4 @@
-import type { ResolverExecutionContext, RuntimePlan } from "./planner";
+import type { ResolverExecutionContext } from "./planner";
 import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
@@ -60,15 +60,6 @@ export class RouteExecutionResolver extends AttributeResolver {
 
   getRoutePath(_request: unknown): string {
     return this.traceLabel;
-  }
-
-  buildRuntimePlan(request: unknown): RuntimePlan {
-    return {
-      nodes: [this],
-      routeClass: this.getRouteClass(request),
-      routePath: this.getRoutePath(request),
-      routeState: this.buildRouteState(request),
-    };
   }
 
   protected override resolveTransformValue(

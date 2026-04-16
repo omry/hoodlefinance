@@ -75,7 +75,6 @@ import {
 import type {
   ResolutionResult,
   ResolverExecutionContext,
-  RuntimePlan,
 } from "./planner";
 import { buildFxQuoteRouteState } from "./route-state";
 import {
@@ -159,17 +158,6 @@ export class RequestClassifierResolver extends IdentifierResolver {
 
   canHandle(input: RequestInput | RawRequestInput | ResolvedRequest): boolean {
     return input instanceof RawRequestInput;
-  }
-
-  buildRuntimePlan(
-    _input: RequestInput | RawRequestInput | ResolvedRequest,
-  ): RuntimePlan {
-    return {
-      nodes: [this],
-      routeClass: this.name,
-      routePath: this.name,
-      routeState: {},
-    };
   }
 
   initEnv(services: ResolverServices): void {
@@ -380,15 +368,6 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return buildIsinIdentifierRouteState(request, extractIsinFromRequestInput);
   }
 
-  buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan {
-    return {
-      nodes: [this],
-      routeClass: this.name,
-      routePath: this.traceLabel,
-      routeState: this.buildRouteState(request),
-    };
-  }
-
   override executeRouteRequest(
     _request: RequestInput | ResolvedRequest,
     context: ResolverExecutionContext<Record<string, unknown>>,
@@ -468,15 +447,6 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     }
 
     return buildIsinIdentifierRouteState(request, extractIsinFromRequestInput);
-  }
-
-  buildRuntimePlan(request: RequestInput | ResolvedRequest): RuntimePlan {
-    return {
-      nodes: [this],
-      routeClass: this.name,
-      routePath: this.traceLabel,
-      routeState: this.buildRouteState(request),
-    };
   }
 
   override executeRouteRequest(
@@ -1401,13 +1371,8 @@ export class LonIsinResolver extends Resolver {
     return isLonIsinAttributeRequest(input);
   }
 
-  buildRuntimePlan(_request: unknown): RuntimePlan {
-    return {
-      nodes: [this],
-      routeClass: this.name,
-      routePath: "LSE",
-      routeState: {},
-    };
+  getRoutePath(_request: unknown): string {
+    return "LSE";
   }
 
   resolve(input: unknown): ResolutionResult<unknown> {

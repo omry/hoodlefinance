@@ -5,6 +5,7 @@ const {
   DirectIdentifierResolver,
   GoogleFxResolver,
   LocalFxResolver,
+  LonIsinResolver,
   PseEdgeResolver,
   PseFramesResolver,
   PseIsinMapResolver,
@@ -135,6 +136,21 @@ test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requ
   );
   assert.equal(failure.status, "failure");
   assert.match(failure.error, /requires a discovery resolver/);
+});
+
+test("LonIsinResolver keeps the explicit LSE route label", () => {
+  const resolver = new LonIsinResolver();
+  const request = new EquityRequest({
+    allowTradingviewFallback: false,
+    attribute: "isin",
+    exchange: "LON",
+    identifier: "LON:VOD",
+    identifierResolutionMs: 0,
+    symbol: "VOD",
+    yahooSymbol: "VOD.L",
+  });
+
+  assert.equal(resolver.describe(request), "LON-ISIN -> LSE");
 });
 
 test("LocalFxResolver returns a same-currency synthetic quote", () => {

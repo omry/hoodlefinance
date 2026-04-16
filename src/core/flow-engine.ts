@@ -103,6 +103,17 @@ export class FlowEngine {
     return this.#executeNode(root, input, graph, trace);
   }
 
+  executeFromNodeId(nodeId: string, input: Envelope, trace?: ExecutionTrace): Envelope {
+    const graph = this.#flow.getGraph();
+    const node = graph.getNode(nodeId);
+
+    if (!node) {
+      throw new Error(`Graph has no node "${String(nodeId || "")}".`);
+    }
+
+    return this.#executeNode(node, input, graph, trace);
+  }
+
   #executeRoutingNode(
     node: Graph.Node,
     resolver: {
