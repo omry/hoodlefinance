@@ -1,6 +1,6 @@
 ---
 status: Active
-updated: 2026-04-15
+updated: 2026-04-17
 summary: Replace ad-hoc plan selection with a graph-driven driver that executes the descriptive graph directly.
 ---
 
@@ -351,6 +351,23 @@ modules to trigger registration, but no explicit map is maintained.
 
 Defer until resolver classes are split into their own files or a decorator
 pattern is adopted.
+
+#### Evaluate async driver support for parallelism
+
+The current driver executes synchronously, which keeps the control flow simple
+but leaves no structured way to let independent graph paths run in parallel
+once the graph grows more fan-out and fan-in edges.
+
+Follow-up for a later design and implementation pass:
+
+- evaluate making `FlowEngine` and the resolver execution contract async
+- identify which graph patterns permit independent path execution and would
+  benefit from parallel dispatch
+- define how async execution should interact with fallback ordering, tracing,
+  and error propagation
+- confirm the runtime-host implications, especially Apps Script compatibility
+  and whether any real parallelism would come from `Promise` structure alone or
+  from host-specific batch primitives such as `UrlFetchApp.fetchAll(...)`
 
 ### Acceptance
 

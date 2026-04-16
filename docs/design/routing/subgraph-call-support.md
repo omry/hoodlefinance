@@ -1,6 +1,6 @@
 ---
-status: Draft
-updated: 2026-04-16
+status: Active
+updated: 2026-04-17
 summary: Add first-class subgraph call support so reusable graph fragments can be invoked without mid-graph entry hacks or graph duplication.
 ---
 
@@ -87,29 +87,65 @@ Add a runtime primitive with the following semantics:
 - the caller provides explicit input to the subgraph
 - the subgraph runs in its own invocation context
 - the caller receives an explicit result value back
+- the caller may incorporate the subgraph segment into its own trace, but that
+  segment must remain marked as a subgraph call boundary
+- a single node may declare more than one potential subgraph call in the
+  authored graph data
 
 The key point is that the caller does not name internal authored nodes
 directly.
 
 ### Subgraph Definition Shape
 
-The exact type can stay minimal in the standalone support pass. A reasonable shape is:
+Subgraphs should be declared explicitly in the authored graph data to be valid
+as subgraphs. Node membership continues to use the existing `group` field, and
+graph-level subgraph metadata upgrades some groups into callable subgraphs. A
+subgraph is therefore not inferred from runtime-only convention.
 
-```ts
-interface GraphSubgraph {
-  id: string;
-  rootNodeId: string;
-  terminalNodeId: string;
-}
-```
+Subgraph ids are a subset of group ids: a subgraph id is valid only if there is
+an explicit subgraph declaration for that group in the authored graph data.
 
 When a production caller is later migrated, the runtime can point these
 boundaries at nodes that already exist in the authored DAG. This keeps the
 first caller migration small while making the call-site contract explicit.
 
 The standalone support work should also validate that the declared root and
-terminal nodes are structurally connected. A subgraph declaration is invalid if
-the terminal node is not reachable from the root node.
+terminal nodes are structurally connected and belong to the declared group. A
+subgraph declaration is invalid if the terminal node is not reachable from the
+root node.
+
+A minimal authored spec shape could look like:
+
+```ts
+{
+  "NORMALIZE:PRICE": {
+    group: "STOCK",
+    id: "NORMALIZE:PRICE",
+    subgraphCalls: ["FX"],
+    type: "NormalizePricePlan",
+  },
+  "ATTRIBUTE:FX": {
+    group: "FX",
+    id: "ATTRIBUTE:FX",
+    type: "FxAttributeResolutionPlan",
+  },
+  "EXTRACT:FX": {
+    group: "FX",
+    id: "EXTRACT:FX",
+    type: "FxAttributeExtractResolver",
+  },
+  "__subgraphs__": {
+    "FX": {
+      rootNodeId: "ATTRIBUTE:FX",
+      terminalNodeId: "EXTRACT:FX",
+    },
+  },
+}
+```
+
+In this shape, `group: "FX"` expresses membership in the reusable body, while
+the explicit `__subgraphs__.FX` declaration upgrades that group into a callable
+subgraph with validated boundaries.
 
 Longer term, the runtime may choose to let subgraphs own dedicated node sets or
 to compile a subgraph registry from a richer authored definition.
@@ -119,22 +155,37 @@ to compile a subgraph registry from a richer authored definition.
 The standalone support work adds this new reusable primitive:
 
 ```ts
-interface SubgraphCallInput {
-  subgraphId: string;
-  input: object;
-}
-
-interface PlanRuntimeRefs {
-  callSubgraph(subgraphId: string, input: object): LookupResult;
+interface GraphRuntimeApi {
+  callSubgraph(subgraphId: string, inputValue: unknown): LookupResult;
 }
 ```
 
 Existing compatibility refs can adopt this primitive later in separate
 migration work.
 
+Authored graph data should also declare which nodes may invoke named
+subgraphs by adding an optional `subgraphCalls?: string[]` field to
+`Graph.Node`.
+
+Example node shape:
+
+```ts
+"ATTRIBUTE:EQUITY": {
+  group: "STOCK",
+  id: "ATTRIBUTE:EQUITY",
+  next: ["QUOTE:PSE", "QUOTE:TICKER"],
+  subgraphCalls: ["FX"],
+  type: "EquityAttributeResolutionPlan",
+}
+```
+
+This keeps subgraph-call semantics in the authored graph data rather than
+hiding them in resolver code or runtime-only helper logic.
+
 ### ResolveFlow Ownership
 
-`ResolveFlow` should own the mapping from subgraph id to runtime call boundary.
+`ResolveFlow` should own the mapping from subgraph id to runtime call
+boundary.
 
 Initial shape:
 
@@ -150,7 +201,7 @@ interface ResolveFlowSubgraphRegistry {
 `ResolveFlow` then exposes a helper conceptually like:
 
 ```ts
-callSubgraph(subgraphId: string, input: object): LookupResult
+callSubgraph(subgraphId: string, inputValue: unknown): LookupResult
 ```
 
 That helper is responsible for:
@@ -158,25 +209,34 @@ That helper is responsible for:
 - resolving the named subgraph
 - executing from the subgraph's declared root node
 - stopping at the subgraph's declared terminal node
-- returning a result in the same success/failure envelope style as other
-  runtime refs
+- returning a result in the same success/failure envelope style as other graph
+  runtime API calls
+- letting the caller adapt the subgraph result and then continue its own normal
+  execution semantics
 
 ### FlowEngine Role
 
-The initial standalone support phase does not require a large `FlowEngine` redesign.
+The initial standalone support phase does not require a large `FlowEngine`
+redesign.
 
 Short-term approach:
 
-- keep the existing execution engine
-- implement `ResolveFlow.callSubgraph(...)` as a runtime wrapper
-- continue using `executeFromNodeId(...)` internally only as an implementation
-  detail
+- keep the existing synchronous execution engine
+- let `ResolveFlow` own subgraph identity and registry lookup
+- let `FlowEngine` own bounded execution mechanics
+- add an explicit bounded execution path that can start at a declared root and
+  stop at a declared terminal
+- treat `executeFromNodeId(...)` as deprecated compatibility machinery, not as
+  the new subgraph abstraction
 
 Longer-term direction:
 
+- remove `executeFromNodeId(...)` once FX migration no longer depends on the
+  old compatibility seam
 - give `FlowEngine` explicit subgraph invocation support rather than raw
   mid-graph entry as the main reuse primitive
-- add structured nested tracing for subgraph calls
+- extend the existing basic visited-node trace with structured nested subgraph
+  call tracing
 - make batching and scheduling aware of subgraph invocation boundaries
 
 This staged approach keeps the first implementation small while moving the
@@ -202,6 +262,7 @@ The renderer should make these semantics visible:
 - a caller invokes a named subgraph
 - the callee is a reusable graph fragment with its own explicit boundary
 - the call edge is distinct from ordinary in-graph dataflow edges
+- the subgraph's root and terminal are visible in the rendering
 
 In the standalone support pass, Mermaid does not need to render nested execution traces or
 runtime call stacks. It only needs to show that a node is a subgraph call and
@@ -218,18 +279,38 @@ Two acceptable initial Mermaid strategies are:
 2. A call node labeled with the target subgraph id, while the reusable
    subgraph body is rendered separately in the same Mermaid document.
 
-The first strategy would look conceptually like:
+Existing node `group` metadata can continue to show that nodes belong to the
+same reusable region. Callable-subgraph semantics come from explicit
+graph-level subgraph declarations, and call-site invocation comes from explicit
+node-level `subgraphCalls` declarations in that same authored graph data. The
+rendering should make three things visible separately:
+
+- reusable-body membership
+- explicit subgraph boundaries, especially root and terminal
+- call-site invocation of a named subgraph
+
+The first strategy would look conceptually like. The dashed call edge is an
+invocation annotation, not an ordinary `next` edge, and the solid
+`CALL:FX -> APPLY:RATE` edge represents caller-side continuation after the
+subgraph result has been returned and adapted:
 
 ```mermaid
 flowchart LR
   CALLER["NORMALIZE:PRICE"]
-  CALLSUB["CALL<br/>SOME_SUBGRAPH"]
-  SUBIN["SOME_SUBGRAPH<br/>ROOT"]
-  SUBOUT["SOME_SUBGRAPH<br/>TERMINAL"]
+  CALLSUB["CALL:FX"]
+  NEXT["APPLY:RATE"]
+
+  subgraph FX["FX"]
+    direction LR
+    SUBIN["ROOT<br/>ATTRIBUTE:FX"]
+    SUBMID["QUOTE:FX"]
+    SUBOUT["TERMINAL<br/>EXTRACT:FX"]
+    SUBIN --> SUBMID --> SUBOUT
+  end
 
   CALLER --> CALLSUB
+  CALLSUB --> NEXT
   CALLSUB -. call .-> SUBIN
-  SUBOUT -. return .-> CALLER
 ```
 
 The exact Mermaid syntax does not need to be finalized in this design note.
@@ -243,7 +324,9 @@ What matters is the semantic requirement:
 This requirement implies that the renderer will likely need some subgraph-aware
 metadata in addition to the current plain `Graph.Node.next` topology. That does
 not require redesigning `Graph.View` immediately, but it should be treated as a
-first-class output requirement for the subgraph-call feature.
+first-class output requirement for the subgraph-call feature. In the first
+pass, that metadata should come from authored graph data plus subgraph
+declarations, rather than from runtime inference.
 
 ### Independent Delivery Requirement
 
@@ -272,24 +355,29 @@ different questions:
 Standalone support additions:
 
 ```ts
-interface PlanRuntimeRefs {
-  callSubgraph(subgraphId: string, input: object): LookupResult;
+interface GraphRuntimeApi {
+  callSubgraph(subgraphId: string, inputValue: unknown): LookupResult;
 }
 
-interface GraphSubgraph {
-  id: string;
-  rootNodeId: string;
-  terminalNodeId: string;
+export namespace Graph {
+  export interface Node {
+    id: string;
+    type: string;
+    next?: string[];
+    group?: string;
+    subgraphCalls?: string[];
+  }
 }
 ```
 
 Potential future node/config surface:
 
 ```ts
-interface SubgraphCallSpec {
-  subgraphId: string;
-  inputAdapterRef?: string;
-  outputAdapterRef?: string;
+export namespace Graph {
+  export interface Subgraph {
+    rootNodeId: string;
+    terminalNodeId: string;
+  }
 }
 ```
 
@@ -300,20 +388,35 @@ interface SubgraphCallSpec {
 - each named subgraph must declare exactly one root node and one terminal node
 - each named subgraph must be connected, with the terminal node reachable from
   the root node
+- subgraphs must be declared explicitly in the graph data to be valid as
+  subgraphs
+- subgraph ids are a subset of group ids and are defined by the explicit
+  subgraph section in the authored graph data
+- subgraph membership comes from the existing node `group` field
+- root and terminal nodes must belong to the group identified by the
+  subgraph's id
+- nodes that may invoke subgraphs must declare those potential calls in the
+  authored graph data
+- existing grouped regions in `DagPlan` are not automatically callable
+  subgraphs
 - subgraph invocation must preserve the current success/failure envelope model
+- Phase 1 subgraph support remains synchronous
+- the caller may merge the subgraph segment into its own trace, but that
+  segment must remain distinguishable as a subgraph call
 - Mermaid rendering must be able to distinguish a subgraph call from an
   ordinary graph edge
 - a subgraph call must not mutate the caller's routing context implicitly
   without an explicit adapter contract
-- `executeFromNodeId(...)` may remain as an internal compatibility tool, but it
-  should stop being the conceptual reuse primitive
+- `executeFromNodeId(...)` is deprecated compatibility machinery and must stop
+  being the conceptual reuse primitive
 
 ## Rollout And Operations
 
 ### Phase 1: Introduce Named Subgraph Calls As Standalone Infrastructure
 
 - add a subgraph registry owned by `ResolveFlow`
-- add `callSubgraph(...)` to runtime refs
+- add `callSubgraph(...)` to the graph runtime API
+- add bounded synchronous subgraph execution support in `FlowEngine`
 - add Mermaid/rendering support for subgraph-call semantics
 - add tests that validate the new primitive without changing existing call
   sites
@@ -323,7 +426,7 @@ Phase 1 intentionally does not migrate existing production call sites.
 ### Phase 2: Promote Subgraph Calls To An Engine Concept
 
 - add structured subgraph invocation support to `FlowEngine`
-- make traces show nested subgraph calls explicitly
+- extend the existing basic trace so nested subgraph calls are explicit
 - evaluate batching and caching behavior at the subgraph boundary
 
 ## Test Plan
@@ -331,22 +434,22 @@ Phase 1 intentionally does not migrate existing production call sites.
 - unit test that a named subgraph can be registered and invoked through
   `ResolveFlow.callSubgraph(...)`
 - unit test that unknown subgraph ids fail with a clear error
+- unit test that a node-level `subgraphCalls` declaration fails when it
+  references an undeclared subgraph id
 - unit test that subgraph registration fails when the declared terminal node is
   unreachable from the declared root node
+- unit test that subgraph registration fails when the declared root or terminal
+  node does not belong to the declared group
 - renderer test that Mermaid output shows subgraph-call edges or call nodes in
   a way that is distinguishable from ordinary `next` edges
-- trace test that a subgraph invocation records a distinct call boundary once
-  tracing support is added
+- trace test that a subgraph invocation records a distinct call boundary in the
+  existing basic trace
 
 ## Open Questions
 
 - Should the first subgraph contract return a bare numeric rate or a structured
   conversion result object?
-- Should subgraph definitions stay as a runtime registry only, or should the
-  authored graph format eventually grow first-class subgraph declarations?
 - Should input/output adapters be explicit spec objects, or should the first
   pass keep adaptation logic in code?
-- What is the minimal rendering metadata needed so Mermaid can show call
-  semantics without forcing a full graph-model redesign first?
 - When batching is added, should batching attach to repeated subgraph calls or
   to provider leaf nodes underneath the subgraph?
