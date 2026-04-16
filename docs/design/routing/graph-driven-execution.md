@@ -118,7 +118,7 @@ The current graph as emitted by the TypeScript CLI:
 flowchart LR
   N0["ROOT<br/>RequestClassifierResolver"]
   N5["ATTRIBUTE<br/>RoutingPlan"]
-  N18["TERMINAL<br/>TerminalCollectorPlan"]
+  N21["TERMINAL<br/>TerminalCollectorPlan"]
   subgraph N1SG["ISIN"]
     direction LR
     N1["IDENTIFIER:ISIN<br/>FirstSuccessPlan"]
@@ -133,17 +133,19 @@ flowchart LR
     N9["QUOTE:TICKER<br/>TickerQuoteResolutionPlan"]
     N12["PSE-FRAMES<br/>PSEFramesResolver"]
     N13["PSE-EDGE<br/>PSEEdgeResolver"]
-    N14["YAHOO-QUOTE<br/>YahooEquityQuoteResolver"]
-    N15["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
-    N19["LON-ISIN<br/>LonIsinResolver"]
+    N14["LON-ISIN<br/>LonIsinResolver"]
+    N15["YAHOO-QUOTE<br/>YahooEquityQuoteResolver"]
+    N16["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
+    N19["EXTRACT:EQUITY<br/>EquityAttributeExtractResolver"]
   end
   subgraph N7SG["FX"]
     direction LR
     N7["ATTRIBUTE:FX<br/>FxAttributeResolutionPlan"]
     N10["FX-IDENTITY<br/>LocalFxResolver"]
-    N11["QUOTE:FX<br/>AttributeResolutionPlan"]
-    N16["GOOGLE-FX<br/>GoogleFxResolver"]
-    N17["YAHOO-FX<br/>YahooFxResolver"]
+    N11["QUOTE:FX<br/>FirstSuccessPlan"]
+    N17["GOOGLE-FX<br/>GoogleFxResolver"]
+    N18["YAHOO-FX<br/>YahooFxResolver"]
+    N20["EXTRACT:FX<br/>FxAttributeExtractResolver"]
   end
   N0 --> N5
   N0 --> N1
@@ -160,19 +162,21 @@ flowchart LR
   N7 --> N11
   N8 --> N12
   N8 --> N13
-  N9 --> N19
   N9 --> N14
   N9 --> N15
-  N10 --> N18
-  N11 --> N16
+  N9 --> N16
+  N10 --> N20
   N11 --> N17
-  N12 --> N18
-  N13 --> N18
-  N14 --> N18
-  N15 --> N18
-  N19 --> N18
-  N16 --> N18
-  N17 --> N18
+  N11 --> N18
+  N12 --> N19
+  N13 --> N19
+  N14 --> N21
+  N15 --> N19
+  N16 --> N19
+  N17 --> N20
+  N18 --> N20
+  N19 --> N21
+  N20 --> N21
 ```
 
 ### Worked Examples
