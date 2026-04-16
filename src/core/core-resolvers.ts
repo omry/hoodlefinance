@@ -10,7 +10,12 @@ import type {
 } from "./planner";
 import { RoutingNodeKind } from "./planner";
 import { FxRequest, RawRequestInput, RequestInput } from "./request";
-import { extractAttributeValue, parseAttributeRequest } from "./attribute-extraction";
+import {
+  extractAttributeValue,
+  extractQuoteCurrencyCode,
+  extractQuoteMoneyUnitScale,
+  parseAttributeRequest,
+} from "./attribute-extraction";
 import { buildFxPairFromCodes } from "./fx-normalization";
 import {
   createRouteResult,
@@ -496,14 +501,13 @@ export abstract class ResolverPlan extends Resolver {
       return null;
     }
 
-    const sourceCurrency = quote.currency;
+    const sourceCurrency = extractQuoteCurrencyCode(quote);
     const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
 
     if (
       !sourceCurrency ||
       !targetCurrency ||
-      sourceCurrency === targetCurrency ||
-      (quote.fxUnitScale != null && Number.isFinite(Number(quote.fxUnitScale)))
+      sourceCurrency === targetCurrency
     ) {
       return null;
     }
@@ -532,7 +536,16 @@ export abstract class ResolverPlan extends Resolver {
       );
 
       if (Number.isFinite(rate)) {
-        return { ...fxResult, value: rate };
+        const sourceUnitScale = extractQuoteMoneyUnitScale(quote);
+        const scaledRate =
+          typeof sourceUnitScale === "number" && sourceUnitScale > 0
+            ? rate * sourceUnitScale
+            : rate;
+
+        return {
+          ...fxResult,
+          value: scaledRate,
+        };
       }
     }
 

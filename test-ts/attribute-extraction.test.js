@@ -90,3 +90,51 @@ test("extractAttributeValue handles output-currency conversion (identity, direct
   assert.throws(() => extractAttributeValue(usdQuote, "price@EUR"), /currently unavailable/);
   assert.throws(() => extractAttributeValue(usdQuote, "currency@USD"), /does not support output-currency conversion/);
 });
+
+test("extractAttributeValue normalizes GBp stock unit currencies through shared money scaling", () => {
+  const gbpUnitQuote = new StockQuote({
+    currency: "GBp",
+    regularMarketDayHigh: 260,
+    regularMarketDayLow: 240,
+    regularMarketPreviousClose: 245,
+    regularMarketPrice: 250,
+    symbol: "TSCO.L",
+  });
+
+  assert.equal(gbpUnitQuote.currency, "GBp");
+  assert.equal(gbpUnitQuote.regularMarketPrice, 250);
+  assert.equal(gbpUnitQuote.fxUnitScale, undefined);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "currency"), "GBP");
+  assert.equal(extractAttributeValue(gbpUnitQuote, "price"), 2.5);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "high"), 2.6);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "low"), 2.4);
+  assert.equal(extractAttributeValue(gbpUnitQuote, "close"), 2.45);
+  assert.ok(
+    Math.abs(extractAttributeValue(gbpUnitQuote, "change") - 0.05) < 1e-12,
+  );
+  assert.equal(extractAttributeValue(gbpUnitQuote, "price@GBP"), 2.5);
+});
+
+test("extractAttributeValue normalizes ILA stock unit currencies through shared money scaling", () => {
+  const ilsUnitQuote = new StockQuote({
+    currency: "ILA",
+    regularMarketDayHigh: 1250,
+    regularMarketDayLow: 1190,
+    regularMarketPreviousClose: 1210,
+    regularMarketPrice: 1230,
+    symbol: "TEVA.TA",
+  });
+
+  assert.equal(ilsUnitQuote.currency, "ILA");
+  assert.equal(ilsUnitQuote.regularMarketPrice, 1230);
+  assert.equal(ilsUnitQuote.fxUnitScale, undefined);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "currency"), "ILS");
+  assert.equal(extractAttributeValue(ilsUnitQuote, "price"), 12.3);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "high"), 12.5);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "low"), 11.9);
+  assert.equal(extractAttributeValue(ilsUnitQuote, "close"), 12.1);
+  assert.ok(
+    Math.abs(extractAttributeValue(ilsUnitQuote, "change") - 0.2) < 1e-12,
+  );
+  assert.equal(extractAttributeValue(ilsUnitQuote, "price@ILS"), 12.3);
+});

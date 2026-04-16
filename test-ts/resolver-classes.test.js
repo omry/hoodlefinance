@@ -392,3 +392,59 @@ test("ResolverPlan can resolve output-currency conversion through ResolveFlow", 
     value: 0.02,
   });
 });
+
+test("ResolverPlan output-currency conversion folds stock unit scale into the FX rate", () => {
+  const refs = {
+    resolveFxQuote(request) {
+      assert.equal(request.fxPair.yahooChartSymbol, "GBPUSD=X");
+      return {
+        route: "ATTRIBUTE:FX -> QUOTE:FX",
+        status: "success",
+        value: {
+          currency: "USD",
+          regularMarketPrice: 1.25,
+        },
+      };
+    },
+  };
+  const plan = buildPlanNodeFromSpec(
+    "QUOTE:TICKER",
+    {
+      id: "QUOTE:TICKER",
+      next: ["YAHOO"],
+      type: "TickerQuoteResolutionPlan",
+    },
+    () => createLeafResolver("YAHOO"),
+    null,
+    refs,
+  );
+  const request = new RequestInput({
+    attribute: "price@USD",
+    attributeRequest: {
+      baseAttribute: "price",
+      outputCode: "USD",
+      rawAttribute: "price@USD",
+      wantsOutputCurrency: true,
+    },
+    attributeType: "quote",
+    classification: "equity",
+    fxPair: null,
+    identifier: "TSCO.L",
+    infoMode: "",
+    sourceOverride: "",
+    ticker: "TSCO.L",
+  });
+
+  const env = plan.resolveOutputCurrencyResult(request, {
+    currency: "GBP",
+    fxUnitScale: 0.01,
+    regularMarketPrice: 250,
+    symbol: "TSCO.L",
+  });
+
+  assert.deepEqual(env, {
+    route: "ATTRIBUTE:FX -> QUOTE:FX",
+    status: "success",
+    value: 0.0125,
+  });
+});

@@ -8,6 +8,41 @@ interface AttributeExtractionContext {
   routeState?: Record<string, unknown> | null;
 }
 
+function normalizeCurrencyCode(currency: unknown): string {
+  if (currency === "GBp") return "GBP";
+  if (currency === "ILA") return "ILS";
+  return String(currency || "");
+}
+
+function resolveCurrencyUnitScale(currency: unknown): number | undefined {
+  if (currency === "GBp" || currency === "ILA") {
+    return 0.01;
+  }
+
+  return undefined;
+}
+
+export function extractQuoteCurrencyCode(quote: StockQuote | FxQuote): string {
+  return normalizeCurrencyCode(
+    quote.currency || (quote as StockQuote).financialCurrency || "",
+  );
+}
+
+export function extractQuoteMoneyUnitScale(
+  quote: StockQuote | FxQuote,
+): number | undefined {
+  const explicitUnitScale = Number(quote.fxUnitScale);
+
+  if (Number.isFinite(explicitUnitScale)) {
+    return explicitUnitScale;
+  }
+
+  return (
+    resolveCurrencyUnitScale(quote.currency) ??
+    resolveCurrencyUnitScale((quote as StockQuote).financialCurrency)
+  );
+}
+
 function normalizeMoney(quote: StockQuote | FxQuote, value: unknown): number {
   const numericValue = Number(value);
 
@@ -15,28 +50,24 @@ function normalizeMoney(quote: StockQuote | FxQuote, value: unknown): number {
     throw new Error("No value is available for this ticker.");
   }
 
-  if (quote instanceof FxQuote && Number.isFinite(quote.fxUnitScale)) {
-    return numericValue * quote.fxUnitScale;
+  const unitScale = extractQuoteMoneyUnitScale(quote);
+
+  if (typeof unitScale === "number" && Number.isFinite(unitScale)) {
+    return numericValue * unitScale;
   }
 
   return numericValue;
 }
 
 function previousClose(quote: StockQuote | FxQuote): number {
-  const numeric = Number((quote as StockQuote).regularMarketPreviousClose);
-
-  if (Number.isFinite(numeric)) {
-    return numeric;
-  }
-
-  throw new Error("No previous close is available for this ticker.");
+  return normalizeMoney(
+    quote,
+    (quote as StockQuote).regularMarketPreviousClose,
+  );
 }
 
 function change(quote: StockQuote | FxQuote): number {
-  const price = Number(quote.regularMarketPrice);
-  if (!Number.isFinite(price)) {
-    throw new Error("No price is available for this ticker.");
-  }
+  const price = normalizeMoney(quote, quote.regularMarketPrice);
   return price - previousClose(quote);
 }
 
@@ -128,7 +159,7 @@ export function extractAttributeValue(
         "";
       break;
     case "currency":
-      value = quote.currency;
+      value = extractQuoteCurrencyCode(quote);
       break;
     case "isin":
       value = (quote as StockQuote).isin || "";
@@ -140,10 +171,10 @@ export function extractAttributeValue(
       value = normalizeMoney(quote, (quote as StockQuote).regularMarketDayLow);
       break;
     case "close":
-      value = normalizeMoney(quote, previousClose(quote));
+      value = previousClose(quote);
       break;
     case "change":
-      value = normalizeMoney(quote, change(quote));
+      value = change(quote);
       break;
     case "changepct":
       value = change(quote) / previousClose(quote);
@@ -229,7 +260,7 @@ export function extractAttributeValue(
     );
   }
 
-  const quoteCurrency = quote.currency;
+  const quoteCurrency = extractQuoteCurrencyCode(quote);
   const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
 
   if (quoteCurrency === targetCurrency) {

@@ -1,18 +1,7 @@
-function normalizeCurrencyCode(currency: unknown): string {
-  if (currency === "GBp") return "GBP";
-  if (currency === "ILA") return "ILS";
-  return String(currency || "");
-}
-
 function normalizeNumber(value: unknown): number | undefined {
   if (value == null) return undefined;
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : undefined;
-}
-
-function scaleMoney(value: unknown, scale: number): number | undefined {
-  const numericValue = normalizeNumber(value);
-  return numericValue == null ? undefined : numericValue * scale;
 }
 
 function objectFromPresentEntries(
@@ -71,30 +60,21 @@ export class StockQuote {
   readonly fxUnitScale: number | undefined;
 
   constructor(fields: StockQuoteInit) {
-    const rawCurrency = fields.currency || fields.financialCurrency || "";
-    const moneyScale =
-      fields.currency === "GBp" || fields.financialCurrency === "GBp"
-        ? 0.01
-        : fields.currency === "ILA" || fields.financialCurrency === "ILA"
-          ? 0.01
-          : 1;
-
     this.symbol = String(fields.symbol || "");
-    this.currency = normalizeCurrencyCode(rawCurrency);
-    this.financialCurrency = normalizeCurrencyCode(
-      fields.financialCurrency || rawCurrency,
-    );
+    this.currency = String(fields.currency || fields.financialCurrency || "");
+    this.financialCurrency = fields.financialCurrency
+      ? String(fields.financialCurrency)
+      : this.currency || undefined;
     this.longName = fields.longName ?? undefined;
     this.shortName = fields.shortName ?? undefined;
     this.displayName = fields.displayName ?? undefined;
     this.isin = fields.isin ?? undefined;
-    this.regularMarketPrice = scaleMoney(fields.regularMarketPrice, moneyScale);
-    this.regularMarketPreviousClose = scaleMoney(
+    this.regularMarketPrice = normalizeNumber(fields.regularMarketPrice);
+    this.regularMarketPreviousClose = normalizeNumber(
       fields.regularMarketPreviousClose,
-      moneyScale,
     );
-    this.regularMarketDayHigh = scaleMoney(fields.regularMarketDayHigh, moneyScale);
-    this.regularMarketDayLow = scaleMoney(fields.regularMarketDayLow, moneyScale);
+    this.regularMarketDayHigh = normalizeNumber(fields.regularMarketDayHigh);
+    this.regularMarketDayLow = normalizeNumber(fields.regularMarketDayLow);
     this.regularMarketVolume = normalizeNumber(fields.regularMarketVolume);
     this.regularMarketTime = normalizeNumber(fields.regularMarketTime);
     this.exchangeDataDelayedBy = normalizeNumber(fields.exchangeDataDelayedBy);
@@ -139,7 +119,7 @@ export class FxQuote {
 
   constructor(fields: FxQuoteInit) {
     this.symbol = String(fields.symbol || "");
-    this.currency = normalizeCurrencyCode(fields.currency || fields.financialCurrency || "");
+    this.currency = String(fields.currency || fields.financialCurrency || "");
     this.shortName = String(fields.shortName || "");
     this.googleSymbol = String(fields.googleSymbol || "");
     this.fxUnitScale = normalizeNumber(fields.fxUnitScale) ?? 1;

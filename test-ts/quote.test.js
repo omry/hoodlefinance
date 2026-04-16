@@ -18,10 +18,10 @@ test("quote models serialize only present fields", () => {
 
   assert.deepEqual(stockQuote.toJSON(), {
     symbol: "EXM",
-    currency: "GBP",
-    financialCurrency: "GBP",
+    currency: "GBp",
+    financialCurrency: "GBp",
     longName: "Example Plc",
-    regularMarketPrice: 2.5,
+    regularMarketPrice: 250,
     regularMarketVolume: 0,
     exchangeDataDelayedBy: 0,
   });
