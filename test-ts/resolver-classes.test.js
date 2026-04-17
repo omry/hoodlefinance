@@ -6,6 +6,7 @@ const {
   RawRequestInput,
   RequestInput,
   PseQuoteResolutionPlan,
+  Resolver,
   ResolverPlan,
   RouteExecutionResolver,
   StepPlan,
@@ -65,6 +66,13 @@ test("ResolverPlan describe reports the route without building a runtime plan", 
   ]);
 
   assert.equal(plan.describe(createRequestInput()), "QUOTE -> YAHOO -> IBKR");
+});
+
+test("Resolver.fromSpec uses the graph node id", () => {
+  const resolver = Resolver.fromSpec("ROOT");
+
+  assert.equal(resolver.name, "ROOT");
+  assert.equal(resolver.code, "ROOT");
 });
 
 test("ResolverPlan maintains standard fallback sequence and full routing-tree visibility", () => {

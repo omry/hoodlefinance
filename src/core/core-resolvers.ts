@@ -350,8 +350,8 @@ export class Resolver {
 
   initRuntimeRefs(_refs: PlanRuntimeRefs): void {}
 
-  static fromSpec(..._args: unknown[]): Resolver {
-    return new this();
+  static fromSpec(code: string, ..._args: unknown[]): Resolver {
+    return new this(code);
   }
 }
 

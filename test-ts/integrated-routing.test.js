@@ -78,7 +78,9 @@ function wrapSelectedResolverNode(node, parentPlan = null) {
 }
 
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
-  const outcome = new DirectIdentifierResolver().resolve(requestInput);
+  const outcome = new DirectIdentifierResolver("DIRECT-IDENTIFIER").resolve(
+    requestInput,
+  );
 
   assert.equal(outcome.status, "success");
 

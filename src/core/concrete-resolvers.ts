@@ -179,8 +179,8 @@ function extractRawResolvedAttributeValue(
 }
 
 export class DirectIdentifierResolver extends IdentifierResolver {
-  constructor() {
-    super("RESOLVED-IDENTIFIER");
+  constructor(code: string) {
+    super(code);
   }
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {
@@ -229,8 +229,8 @@ export class DirectIdentifierResolver extends IdentifierResolver {
     }
   }
 
-  static fromSpec(_code: string): DirectIdentifierResolver {
-    return new this();
+  static fromSpec(code: string): DirectIdentifierResolver {
+    return new this(code);
   }
 }
 
@@ -399,9 +399,9 @@ export class PseIsinMapResolver extends IdentifierResolver {
   putStoredTextResource?: ResolverServices["putStoredTextResource"];
   pseIsinMapByIsin: Record<string, string> | null;
 
-  constructor() {
-    super("ISIN:PSE");
-    this.traceLabel = "ISIN:PSE";
+  constructor(code = "ISIN:PSE") {
+    super(code);
+    this.traceLabel = code;
     this.pseIsinMapByIsin = null;
   }
 
@@ -490,8 +490,8 @@ export class PseIsinMapResolver extends IdentifierResolver {
     }
   }
 
-  static fromSpec(_code: string): PseIsinMapResolver {
-    return new this();
+  static fromSpec(code: string): PseIsinMapResolver {
+    return new this(code);
   }
 }
 
@@ -501,9 +501,9 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
   getCachedString!: NonNullable<ResolverServices["getCachedString"]>;
   putCachedString!: NonNullable<ResolverServices["putCachedString"]>;
 
-  constructor() {
-    super("ISIN:YAHOO");
-    this.traceLabel = "ISIN:YAHOO";
+  constructor(code = "ISIN:YAHOO") {
+    super(code);
+    this.traceLabel = code;
   }
 
   initEnv(services: ResolverServices): void {
@@ -592,14 +592,14 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     }
   }
 
-  static fromSpec(_code: string): YahooIsinSearchResolver {
-    return new this();
+  static fromSpec(code: string): YahooIsinSearchResolver {
+    return new this(code);
   }
 }
 
 export class LocalFxResolver extends RouteExecutionResolver {
-  constructor() {
-    super("FX-IDENTITY");
+  constructor(code = "FX-IDENTITY") {
+    super(code);
   }
 
   getRoutingDescription(): string | null {
@@ -648,8 +648,8 @@ export class LocalFxResolver extends RouteExecutionResolver {
     }
   }
 
-  static fromSpec(_code: string): LocalFxResolver {
-    return new this();
+  static fromSpec(code: string): LocalFxResolver {
+    return new this(code);
   }
 }
 
@@ -658,8 +658,8 @@ export class GoogleFxResolver extends RouteExecutionResolver {
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor() {
-    super("GOOGLE-FX");
+  constructor(code = "GOOGLE-FX") {
+    super(code);
   }
 
   initEnv(services: ResolverServices): void {
@@ -733,8 +733,8 @@ export class GoogleFxResolver extends RouteExecutionResolver {
     }
   }
 
-  static fromSpec(_code: string): GoogleFxResolver {
-    return new this();
+  static fromSpec(code: string): GoogleFxResolver {
+    return new this(code);
   }
 }
 
@@ -777,8 +777,8 @@ export class PseFramesResolver extends RouteExecutionResolver {
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor() {
-    super("PSE-FRAMES");
+  constructor(code = "PSE-FRAMES") {
+    super(code);
   }
 
   initEnv(services: ResolverServices): void {
@@ -879,8 +879,8 @@ export class PseFramesResolver extends RouteExecutionResolver {
     }
   }
 
-  static fromSpec(_code: string): PseFramesResolver {
-    return new this();
+  static fromSpec(code: string): PseFramesResolver {
+    return new this(code);
   }
 }
 
@@ -889,8 +889,8 @@ export class PseEdgeResolver extends RouteExecutionResolver {
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor() {
-    super("PSE-EDGE");
+  constructor(code = "PSE-EDGE") {
+    super(code);
   }
 
   initEnv(services: ResolverServices): void {
@@ -1055,8 +1055,8 @@ export class PseEdgeResolver extends RouteExecutionResolver {
     }
   }
 
-  static fromSpec(_code: string): PseEdgeResolver {
-    return new this();
+  static fromSpec(code: string): PseEdgeResolver {
+    return new this(code);
   }
 }
 
@@ -1214,8 +1214,8 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
 }
 
 export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
-  constructor() {
-    super("YAHOO-QUOTE", "YAHOO");
+  constructor(code = "YAHOO-QUOTE") {
+    super(code, "YAHOO");
   }
 
   getExampleInput(): string | null {
@@ -1239,14 +1239,14 @@ export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
     return "TICKER";
   }
 
-  static fromSpec(_code: string): YahooEquityQuoteResolver {
-    return new this();
+  static fromSpec(code: string): YahooEquityQuoteResolver {
+    return new this(code);
   }
 }
 
 export class YahooFxResolver extends BaseYahooQuoteResolver {
-  constructor() {
-    super("YAHOO-FX", "YAHOO");
+  constructor(code = "YAHOO-FX") {
+    super(code, "YAHOO");
   }
 
   getRoutingDescription(): string | null {
@@ -1265,8 +1265,8 @@ export class YahooFxResolver extends BaseYahooQuoteResolver {
     return "FORCED:YAHOO";
   }
 
-  static fromSpec(_code: string): YahooFxResolver {
-    return new this();
+  static fromSpec(code: string): YahooFxResolver {
+    return new this(code);
   }
 }
 
@@ -1275,8 +1275,8 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
 
-  constructor() {
-    super("TRADINGVIEW-FUND", "TRADINGVIEW");
+  constructor(code = "TRADINGVIEW-FUND") {
+    super(code, "TRADINGVIEW");
   }
 
   initEnv(services: ResolverServices): void {
@@ -1380,8 +1380,8 @@ export class TradingviewFundResolver extends RouteExecutionResolver {
     }
   }
 
-  static fromSpec(_code: string): TradingviewFundResolver {
-    return new this();
+  static fromSpec(code: string): TradingviewFundResolver {
+    return new this(code);
   }
 }
 
@@ -1391,8 +1391,8 @@ export class EquityAttributeExtractResolver extends Resolver {
   private putCachedStringFn!: ResolverServices["putCachedString"];
   private runtimeRefs: PlanRuntimeRefs | null = null;
 
-  constructor() {
-    super("EXTRACT:EQUITY");
+  constructor(code = "EXTRACT:EQUITY") {
+    super(code);
   }
 
   initEnv(services: ResolverServices): void {
@@ -1439,8 +1439,8 @@ export class EquityAttributeExtractResolver extends Resolver {
     return createResolutionSuccess({ extractedValue: value }, 0);
   }
 
-  static fromSpec(_code: string): EquityAttributeExtractResolver {
-    return new this();
+  static fromSpec(code: string): EquityAttributeExtractResolver {
+    return new this(code);
   }
 }
 
@@ -1461,8 +1461,8 @@ export class LonIsinResolver extends Resolver {
   private getCachedStringFn!: ResolverServices["getCachedString"];
   private putCachedStringFn!: ResolverServices["putCachedString"];
 
-  constructor() {
-    super("LON-ISIN");
+  constructor(code = "LON-ISIN") {
+    super(code);
   }
 
   initEnv(services: ResolverServices): void {
@@ -1502,16 +1502,16 @@ export class LonIsinResolver extends Resolver {
     }
   }
 
-  static fromSpec(_code: string): LonIsinResolver {
-    return new this();
+  static fromSpec(code: string): LonIsinResolver {
+    return new this(code);
   }
 }
 
 export class FxAttributeExtractResolver extends Resolver {
   private runtimeRefs: PlanRuntimeRefs | null = null;
 
-  constructor() {
-    super("EXTRACT:FX");
+  constructor(code = "EXTRACT:FX") {
+    super(code);
   }
 
   initRuntimeRefs(refs: PlanRuntimeRefs): void {
@@ -1539,8 +1539,8 @@ export class FxAttributeExtractResolver extends Resolver {
     return createResolutionSuccess({ extractedValue: value }, 0);
   }
 
-  static fromSpec(_code: string): FxAttributeExtractResolver {
-    return new this();
+  static fromSpec(code: string): FxAttributeExtractResolver {
+    return new this(code);
   }
 }
 
