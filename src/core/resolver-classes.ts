@@ -1,6 +1,6 @@
 import type { ResolverExecutionContext } from "./planner";
-import type { ResolvedRequest } from "./request";
-import { RawRequestInput, RequestInput } from "./request";
+import type { RequestInput, ResolvedRequest } from "./request";
+import { RawRequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
@@ -22,7 +22,6 @@ import {
   type SelectNextContext,
   StepPlan,
   SwitchPlan,
-  type PlanRuntimeRefs,
 } from "./core-resolvers";
 
 export class IdentifierResolver extends Resolver {}
@@ -124,10 +123,9 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
   constructor(
     name: string,
     nodes: Resolver[],
-    refsOrOptions: PlanRuntimeRefs | ResolverPlanOptions = {},
     options: ResolverPlanOptions = {},
   ) {
-    super(name, nodes, refsOrOptions, options);
+    super(name, nodes, options);
     if (this.nodes.length < 2) {
       throw new Error(
         `FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`,
@@ -180,7 +178,6 @@ export function buildPlanNodeFromSpec(
   spec: Graph.Node,
   resolveNode: (nodeCode: string) => Resolver | null,
   overrides: Record<string, unknown> | null | undefined,
-  deps: PlanRuntimeRefs,
 ): Resolver {
   const PlanClass =
     PLAN_RESOLVER_CLASSES_BY_NAME[
@@ -193,5 +190,5 @@ export function buildPlanNodeFromSpec(
     );
   }
 
-  return PlanClass.fromSpec(code, spec, resolveNode, overrides, deps);
+  return PlanClass.fromSpec(code, spec, resolveNode, overrides);
 }

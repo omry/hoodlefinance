@@ -89,6 +89,34 @@ const FAKE_GRAPH = {
 function createDagPlanWithFxSubgraph() {
   return {
     ...DagPlan,
+    "ATTRIBUTE:FX": {
+      ...DagPlan["ATTRIBUTE:FX"],
+      group: "FX",
+    },
+    "QUOTE:FX": {
+      ...DagPlan["QUOTE:FX"],
+      group: "FX",
+    },
+    "FX-IDENTITY": {
+      ...DagPlan["FX-IDENTITY"],
+      group: "FX",
+    },
+    "GOOGLE-FX": {
+      ...DagPlan["GOOGLE-FX"],
+      group: "FX",
+    },
+    "YAHOO-FX": {
+      ...DagPlan["YAHOO-FX"],
+      group: "FX",
+    },
+    "EXTRACT:EQUITY": {
+      ...DagPlan["EXTRACT:EQUITY"],
+      subgraphCalls: ["FX"],
+    },
+    "EXTRACT:FX": {
+      ...DagPlan["EXTRACT:FX"],
+      group: "FX",
+    },
     __subgraphs__: {
       FX: {
         rootNodeId: "ATTRIBUTE:FX",
@@ -121,6 +149,67 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
   assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
   assert.equal(resolveFlow.getGraph().getNode("YAHOO-QUOTE").type, "YahooEquityQuoteResolver");
   assert.equal(resolveFlow.resolveAttribute("USDUSD", "price"), 1);
+});
+
+test("ResolveFlow routes price@CCY conversion through the production FX subgraph", () => {
+  const services = createStaticResolverServices({
+    httpFetch(url) {
+      if (String(url) === "https://query1.finance.yahoo.com/v8/finance/chart/TSCO.L?interval=1d&range=1d") {
+        return createTextHttpResponse(JSON.stringify({
+          chart: {
+            result: [
+              {
+                meta: {
+                  currency: "GBp",
+                  financialCurrency: "GBp",
+                  regularMarketPrice: 250,
+                  symbol: "TSCO.L",
+                },
+              },
+            ],
+          },
+        }));
+      }
+
+      if (String(url) === "https://www.google.com/finance/quote/GBP-USD") {
+        return createTextHttpResponse(
+          `AF_initDataCallback({data:${JSON.stringify([
+            [
+              "GBP-USD",
+              null,
+              null,
+              null,
+              null,
+              [1.25, 0.01],
+              null,
+              1.24,
+              null,
+              null,
+              null,
+              [1700000000],
+              null,
+              null,
+              null,
+              ["GBP", "USD", "British Pound"],
+            ],
+          ])},sideChannel:{}});</script>`,
+        );
+      }
+
+      return createStaticResourceHttpFetch()(url);
+    },
+  });
+
+  const resolveFlow = new ResolveFlow(
+    DagPlan,
+    {
+      looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
+      resolverClassesByName: CONCRETE_RESOLVER_CLASSES_BY_NAME,
+      resolverServices: services,
+    },
+  );
+
+  assert.equal(resolveFlow.resolveAttribute("TSCO.L", "price@USD"), 3.125);
 });
 
 test("ResolveFlow instantiates and registers resolvers by class name", () => {
@@ -221,6 +310,30 @@ test("ResolveFlow.callSubgraph rejects unknown subgraph ids", () => {
   assert.throws(
     () => flow.callSubgraph("MISSING", createFxIdentityRequest()),
     /Unknown subgraph "MISSING"\./,
+  );
+});
+
+test("ResolveFlow exposes production FX subgraph calls without the old compatibility hook", () => {
+  const flow = new ResolveFlow(
+    DagPlan,
+    createResolverMaterializationDependencies(),
+  );
+  const equityExtractResolver = flow.getResolver("EXTRACT:EQUITY");
+
+  assert.ok(equityExtractResolver);
+  assert.ok(equityExtractResolver.runtimeRefs);
+  assert.equal("resolveFxQuote" in equityExtractResolver.runtimeRefs, false);
+
+  const result = equityExtractResolver.runtimeRefs.callSubgraph(
+    "FX_CONVERSION",
+    createFxIdentityRequest(),
+  );
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value.extractedValue, 1);
+  assert.equal(
+    result.route,
+    "SUBGRAPH:FX_CONVERSION -> ATTRIBUTE:FX -> FX-IDENTITY -> EXTRACT:FX",
   );
 });
 

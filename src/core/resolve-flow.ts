@@ -615,7 +615,7 @@ export class ResolveFlow {
     }
     this.#nodesByCode = Object.create(null);
     this.runtimeRefs = {
-      resolveFxQuote: (request) => this.resolveQuoteFromNode("ATTRIBUTE:FX", request),
+      callSubgraph: (subgraphId, input) => this.callSubgraph(subgraphId, input),
     };
 
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
@@ -774,42 +774,6 @@ export class ResolveFlow {
     };
   }
 
-  // TEMPORARY: this ad-hoc subgraph entrypoint exists only to support the
-  // transitional output-currency FX lookup path. Remove it once FX execution
-  // is modeled directly in the graph and no caller needs to start mid-graph.
-  resolveQuoteFromNode(
-    nodeId: string,
-    request: object,
-  ): {
-    error?: string;
-    route: string;
-    status: "failure" | "success";
-    value: unknown;
-  } {
-    const engine = new FlowEngine(this);
-    const trace: ExecutionTrace = { visitedNodeIds: [] };
-    const engineResult = engine.executeFromNodeId(nodeId, { value: request }, trace);
-    const route = trace.visitedNodeIds
-      .filter((visitedNodeId) => visitedNodeId !== "TERMINAL")
-      .join(" -> ");
-
-    if (engineResult.status !== EnvelopeStatus.Success) {
-      const error = String(engineResult.error || "").trim();
-      return {
-        ...(error ? { error } : {}),
-        route,
-        status: "failure",
-        value: null,
-      };
-    }
-
-    return {
-      route,
-      status: "success",
-      value: engineResult.value,
-    };
-  }
-
   #getRuntimeNode(code: string): Resolver {
     const normalizedCode = normalizeCode(code);
     const existingNode = this.#nodesByCode[normalizedCode];
@@ -838,7 +802,6 @@ export class ResolveFlow {
       (nodeCode) =>
         isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode),
       null,
-      this.runtimeRefs,
     );
 
     this.#nodesByCode[normalizedCode] = compiledNode;

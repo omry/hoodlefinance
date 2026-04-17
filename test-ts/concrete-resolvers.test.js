@@ -189,12 +189,13 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
 test("EquityAttributeExtractResolver normalizes stock unit money attributes through the FX path", () => {
   const resolver = new EquityAttributeExtractResolver();
   resolver.initRuntimeRefs({
-    resolveFxQuote(request) {
+    callSubgraph(subgraphId, request) {
+      assert.equal(subgraphId, "FX_CONVERSION");
       assert.equal(request.fxPair.baseDisplayCode, "GBp");
       assert.equal(request.fxPair.quoteCanonicalCode, "GBP");
       assert.equal(request.fxPair.scale, 0.01);
       return {
-        route: "ATTRIBUTE:FX -> QUOTE:FX",
+        route: "SUBGRAPH:FX_CONVERSION -> ATTRIBUTE:FX -> EXTRACT:FX",
         status: "success",
         value: { extractedValue: 0.01 },
       };
@@ -220,12 +221,13 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
 test("EquityAttributeExtractResolver converts stock unit prices directly to the requested output currency", () => {
   const resolver = new EquityAttributeExtractResolver();
   resolver.initRuntimeRefs({
-    resolveFxQuote(request) {
+    callSubgraph(subgraphId, request) {
+      assert.equal(subgraphId, "FX_CONVERSION");
       assert.equal(request.fxPair.baseDisplayCode, "GBp");
       assert.equal(request.fxPair.quoteCanonicalCode, "USD");
       assert.equal(request.fxPair.scale, 0.01);
       return {
-        route: "ATTRIBUTE:FX -> QUOTE:FX",
+        route: "SUBGRAPH:FX_CONVERSION -> ATTRIBUTE:FX -> EXTRACT:FX",
         status: "success",
         value: { extractedValue: 0.0125 },
       };

@@ -151,8 +151,12 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
       graph.getChildren("IDENTIFIER:ISIN").map((node) => node.id),
       ["ISIN:PSE", "ISIN:YAHOO"],
     );
-    assert.deepEqual(graph.getSubgraphIds(), []);
-    assert.equal(graph.getSubgraph("FX"), null);
+    assert.deepEqual(graph.getSubgraphIds(), ["FX_CONVERSION"]);
+    assert.deepEqual(graph.getSubgraph("FX_CONVERSION"), {
+      rootNodeId: "ATTRIBUTE:FX",
+      terminalNodeId: "EXTRACT:FX",
+    });
+    assert.deepEqual(graph.getNode("EXTRACT:EQUITY").subgraphCalls, ["FX_CONVERSION"]);
   });
 
   await t.test("builds declared subgraphs and node-level subgraph call metadata", () => {

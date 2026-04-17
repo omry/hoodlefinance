@@ -59,12 +59,6 @@ function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
 
 function wrapSelectedResolverNode(node, parentPlan = null) {
   const wrappedName = String((node && node.name) || "").trim();
-  const refs =
-    parentPlan && parentPlan.refs
-      ? parentPlan.refs
-      : node && node.refs
-        ? node.refs
-        : null;
   const options = {
     routeClass(request) {
       return node && typeof node.getRouteClass === "function"
@@ -80,9 +74,7 @@ function wrapSelectedResolverNode(node, parentPlan = null) {
     },
   };
 
-  return refs
-    ? new FirstSuccessPlan(wrappedName, [node], refs, options)
-    : new FirstSuccessPlan(wrappedName, [node], options);
+  return new FirstSuccessPlan(wrappedName, [node], options);
 }
 
 function buildTypedAttributePlan(runtimeLookup, requestInput) {

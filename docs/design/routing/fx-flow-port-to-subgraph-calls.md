@@ -1,7 +1,7 @@
 ---
-status: Draft
-updated: 2026-04-16
-summary: Port the current FX compatibility path to the standalone subgraph-call primitive after the infrastructure support is in place.
+status: Active
+updated: 2026-04-17
+summary: Port the production FX path to the standalone subgraph-call primitive and remove the old runtime compatibility seam.
 ---
 
 # FX Flow Port To Subgraph Calls
@@ -41,8 +41,6 @@ execution through a compatibility seam.
 ## Goals
 
 - Define the current FX branch as a named subgraph migration target.
-- Rewrite `resolveFxQuote(...)` as a compatibility wrapper over
-  `callSubgraph(...)`.
 - Preserve the current FX route behavior while removing direct caller coupling
   to `ATTRIBUTE:FX` and `EXTRACT:FX`.
 - Make later FX callers such as stock unit normalization and `price@CCY`
@@ -76,30 +74,20 @@ FX_CONVERSION: {
 This keeps the existing FX internals intact while removing caller awareness of
 the internal node ids.
 
-### Compatibility Surface
+### Runtime Surface
 
-Before migration, the temporary runtime ref is:
-
-```ts
-interface PlanRuntimeRefs {
-  resolveFxQuote(request: FxRequest): LookupResult;
-}
-```
-
-After migration, the compatibility surface becomes:
+After migration, plan-level callers receive the generic subgraph runtime:
 
 ```ts
 interface PlanRuntimeRefs {
-  resolveFxQuote(request: FxRequest): LookupResult;
   callSubgraph(subgraphId: string, input: object): LookupResult;
 }
 ```
 
 The migrated behavior is:
 
-- `callSubgraph("FX_CONVERSION", input)` is the primary primitive
-- `resolveFxQuote(...)` becomes a compatibility adapter implemented on top of
-  `callSubgraph(...)`
+- `callSubgraph("FX_CONVERSION", input)` is the only FX entrypoint
+- the old `resolveFxQuote(...)` compatibility seam is removed
 
 ### Call Contract For FX Conversion
 
@@ -107,26 +95,15 @@ For the first FX migration pass, the subgraph input can remain close to the
 existing `FxRequest` shape, because the runtime already knows how to route that
 through the FX branch.
 
-That means the first FX compatibility layer can still look like:
+That means the first production call sites can look like:
 
 ```ts
 callSubgraph("FX_CONVERSION", fxRequest)
 ```
 
-The output should be normalized to a stable shape. The current runtime often
-uses a bare extracted numeric value, but a richer result will age better:
-
-```ts
-interface FxConversionResult {
-  rate: number;
-  sourceCurrency: string;
-  targetCurrency: string;
-}
-```
-
-The migration does not need to switch callers to this richer result
-immediately. It is enough for the compatibility wrapper to keep returning the
-current `LookupResult` envelope while the internal direction stays explicit.
+The subgraph should preserve its current `LookupResult` envelope and resolved
+FX value so spot-rate callers can use the FX result directly. Callers that need
+only a numeric conversion rate may adapt that returned value locally.
 
 ### Caller Model
 
@@ -152,30 +129,30 @@ branch.
 
 ### Interfaces
 
-Compatibility surface after the FX migration:
+Plan runtime surface after the FX migration:
 
 ```ts
 interface PlanRuntimeRefs {
-  resolveFxQuote(request: FxRequest): LookupResult;
   callSubgraph(subgraphId: string, input: object): LookupResult;
 }
 ```
 
 ### Invariants
 
-- `resolveFxQuote(...)` must become a wrapper over a named subgraph rather than
-  a direct mid-graph jump
+- callers must invoke FX through `callSubgraph("FX_CONVERSION", ...)` rather
+  than through a dedicated runtime FX helper
 - callers outside the subgraph registry must stop referring to `ATTRIBUTE:FX`
   and `EXTRACT:FX` directly
 - migrated FX callers must preserve the current success/failure envelope model
 
 ## Rollout And Operations
 
-### Phase 1: Port The Current FX Compatibility Hook
+### Phase 1: Remove The Current FX Compatibility Hook
 
 - define `FX_CONVERSION` as the first production subgraph target
-- rewrite `resolveFxQuote(...)` as a compatibility wrapper over the subgraph
-- preserve current FX behavior while removing direct authored-node coupling
+- make stock unit normalization and `price@CCY` invoke the named subgraph
+  directly
+- preserve current FX behavior while removing the old authored-node hack
 
 ### Phase 2: Move Other FX Callers To The Named Primitive
 
@@ -186,17 +163,18 @@ interface PlanRuntimeRefs {
 
 ## Test Plan
 
-- unit test that `resolveFxQuote(...)` delegates to the named subgraph path
+- unit test that production FX callers invoke `FX_CONVERSION` directly
 - unit test that stock unit normalization continues to use FX conversion
   semantics after the subgraph abstraction is adopted
 - unit test that `price@CCY` still uses the same FX branch through the subgraph
   abstraction
 
-## Open Questions
+## Decisions
 
-- Should the first FX subgraph contract return a bare numeric rate or a
-  structured conversion result object?
-- At what point should stock unit normalization stop using a resolver-local
-  compatibility wrapper and call the subgraph directly?
-- When batching is added, should batching attach to repeated `FX_CONVERSION`
-  subgraph calls or to provider leaf nodes underneath that subgraph?
+- The FX subgraph preserves its current `LookupResult` envelope and resolved FX
+  value so spot-rate callers can use the subgraph result directly.
+- The old FX compatibility seam should be fully removed in this migration; no
+  runtime trace or public interface should retain the old hack.
+- Future batching should aggregate by unique FX pairs at the `FX_CONVERSION`
+  call boundary so repeated identical FX requests collapse into a single
+  subgraph call.

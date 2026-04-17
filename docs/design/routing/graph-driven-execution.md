@@ -8,8 +8,8 @@ summary: Replace ad-hoc plan selection with a graph-driven driver that executes 
 
 ## Summary
 
-Replace the current ad-hoc plan selection and execution scaffolding with a
-driver that executes the descriptive routing graph directly.
+This design tracks the graph-driven driver that executes the descriptive
+routing graph directly, plus the remaining cleanup after that rollout.
 
 The driver starts at ROOT, feeds the request forward through nodes, and follows
 edges to the next node based on each node's output. When a node fails it
@@ -21,25 +21,34 @@ a debug and introspection tool built on top of the driver, not a required step
 before execution.
 
 The end-state is that `ResolveFlow` stops containing routing-specific bootstrap
-logic and hardcoded authored-id coupling. The driver owns execution.
+logic and hardcoded authored-id coupling. Most of that execution shift is now
+done; the remaining work is cleanup and simplification around the live driver.
 
 ## Problem
 
-The current runtime shape still mixes two concerns:
+The original runtime shape mixed two concerns:
 
 - description of the routing graph
 - runtime execution behavior
 
-That mixed shape shows up in places such as:
+That mixed shape showed up in places such as:
 
 - `selectLookupExecution` doing an ad-hoc partial dry-run by querying ROOT and
   RESOLVED-IDENTIFIER directly, then handing back pre-selected plan objects
-- hard-coded awareness of authored ids like `RESOLVED-IDENTIFIER` and
-  `ATTRIBUTE:FX` in `ResolveFlow` bootstrap logic
+- hard-coded awareness of authored ids like `RESOLVED-IDENTIFIER` in routing
+  bootstrap logic
 - try-each fallback sequencing hidden inside plan nodes rather than expressed
   as graph edges the driver can see
 - route strings assembled as a side effect of execution rather than derived
   from an inspectable planned path
+
+Current remaining gaps are smaller:
+
+- some cleanup-oriented execution abstractions still remain around the driver,
+  especially generic execution-context plumbing and resolver registration
+- parts of this document now describe the current runtime accurately, but the
+  long-tail cleanup work is still about removing the remaining authored-id and
+  node-type coupling outside the graph boundaries
 
 ## Architectural Position
 
@@ -92,9 +101,9 @@ The try-each fallback structure is not hidden. It is real graph structure —
 first (for LON exchange + isin requests), then YAHOO-QUOTE, then TRADINGVIEW-FUND
 on failure. The driver follows these edges directly.
 
-The hardcoded queries to ROOT and RESOLVED-IDENTIFIER that currently live in
-`selectLookupExecution` become ordinary driver steps — ROOT is just the first
-node, and RESOLVED-IDENTIFIER is reached when the graph routes there.
+Historically, the hardcoded bootstrap work that `selectLookupExecution` split
+between ROOT and the request-classification step was replaced by ordinary
+driver execution from the graph entry point.
 
 The driver should be implemented asynchronously from the start. An async driver
 naturally supports parallel execution of independent branches — nodes with no
@@ -138,7 +147,7 @@ flowchart LR
     N16["TRADINGVIEW-FUND<br/>TradingviewFundResolver"]
     N19["EXTRACT:EQUITY<br/>EquityAttributeExtractResolver"]
   end
-  subgraph N7SG["FX"]
+  subgraph N7SG["FX_CONVERSION"]
     direction LR
     N7["ATTRIBUTE:FX<br/>FxAttributeResolutionPlan"]
     N10["FX-IDENTITY<br/>LocalFxResolver"]
@@ -191,6 +200,7 @@ ROOT                     (direct resolution — outputs ResolvedRequest)
 → ATTRIBUTE:EQUITY
 → QUOTE:TICKER
 → YAHOO-QUOTE
+→ EXTRACT:EQUITY
 → TERMINAL
 ```
 
@@ -207,6 +217,7 @@ ROOT                     (ISIN input — outputs RequestInput)
 → ATTRIBUTE:EQUITY
 → QUOTE:TICKER
 → YAHOO-QUOTE
+→ EXTRACT:EQUITY
 → TERMINAL
 ```
 
@@ -216,8 +227,8 @@ The identifier-to-attribute handoff is an ordinary graph edge — not a special
 #### Example 3: FX Pair — `EURUSD price` vs `USDUSD price`
 
 ```
-EURUSD: ROOT → ATTRIBUTE:FX → QUOTE:FX → GOOGLE-FX → TERMINAL
-USDUSD: ROOT → ATTRIBUTE:FX → FX-IDENTITY → TERMINAL
+EURUSD: ROOT → ATTRIBUTE:FX → QUOTE:FX → GOOGLE-FX → EXTRACT:FX → TERMINAL
+USDUSD: ROOT → ATTRIBUTE:FX → FX-IDENTITY → EXTRACT:FX → TERMINAL
 ```
 
 The driver picks different edges at ATTRIBUTE:FX based on what ROOT
@@ -274,10 +285,10 @@ Open design questions for the next pass:
 
 ## Cleanup Plan
 
-Remove remaining scaffolding left alive by the `selectLookupExecution` stench.
+Remove remaining scaffolding left behind by the old execution model.
 Work in passes:
 
-### Pass 1 — move attribute projection into the graph (**current focus**)
+### Pass 1 — move attribute projection into the graph (**done**)
 
 - Add EXTRACT:EQUITY and EXTRACT:FX resolver nodes inside their respective
   subgraphs; each receives `{ quote, routeState }` on the edge from its
@@ -330,6 +341,10 @@ Follow-up for the next cleanup pass:
 
 - collapse `ResolverExecutionContext` by moving remaining mutable
   `routeState` fields into explicit edge payloads between graph nodes
+- remove the out-of-band `PlanRuntimeRefs` / `runtimeRefs` injection seam;
+  if resolvers need graph runtime capabilities such as `callSubgraph(...)`,
+  thread a graph runtime API through normal execution context instead of
+  mutating resolver instances after construction
 - remove now-unused `RouteJob`/`route-jobs.ts`/`route-execution.ts` exports and
   helpers once call sites are gone
 - run `check:ts` after each deletion step and remove newly-surfaced unused

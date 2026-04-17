@@ -167,11 +167,6 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
   const tradingview = createLeafResolver("TRADINGVIEW-FUND", {
     sourceName: "TRADINGVIEW",
   });
-  const refs = {
-    resolveFxQuote() {
-      throw new Error("fx quote lookup should not be requested for this test");
-    },
-  };
 
   const plan = buildPlanNodeFromSpec(
     "QUOTE:TICKER",
@@ -190,11 +185,9 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
         YAHOO: yahoo,
       })[nodeCode],
     null,
-    refs,
   );
 
   assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
-  assert.equal(plan.refs, refs);
 
   const request = {
     allowTradingviewFallback: true,
@@ -210,10 +203,6 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
 });
 
 test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime materializer", () => {
-  const refs = {
-    resolveFlow: {},
-  };
-
   const plan = buildPlanNodeFromSpec(
     "ROOT",
     {
@@ -223,7 +212,6 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
     },
     () => null,
     null,
-    refs,
   );
 
   assert.equal(plan.nodes.length, 1);
@@ -233,11 +221,6 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
 test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes", () => {
   const defaultAttributeRoot = createLeafResolver("ATTRIBUTE");
   const identifierRoot = createLeafResolver("IDENTIFIER-ROOT");
-  const refs = {
-    resolveFxQuote() {
-      throw new Error("fx quote lookup should not be requested for this test");
-    },
-  };
 
   const plan = buildPlanNodeFromSpec(
     "ROOT",
@@ -252,7 +235,6 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
         "IDENTIFIER-ROOT": identifierRoot,
       })[nodeCode],
     null,
-    refs,
   );
 
   assert.equal(plan instanceof StepPlan, true);
@@ -270,10 +252,6 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
       return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(request.ticker || ""));
     },
   });
-  const refs = {
-    resolveFlow: {},
-  };
-
   const plan = buildPlanNodeFromSpec(
     "IDENTIFIER:ISIN",
     {
@@ -287,7 +265,6 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
         "ISIN:YAHOO": yahooIsin,
       })[nodeCode],
     null,
-    refs,
   );
 
   assert.equal(plan instanceof FirstSuccessPlan, true);
@@ -312,10 +289,6 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
 test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () => {
   const pseFrames = createLeafResolver("PSE-FRAMES");
   const pseEdge = createLeafResolver("PSE-EDGE");
-  const refs = {
-    resolveFlow: {},
-  };
-
   const plan = buildPlanNodeFromSpec(
     "QUOTE:PSE",
     {
@@ -329,7 +302,6 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
         "PSE-FRAMES": pseFrames,
       })[nodeCode],
     null,
-    refs,
   );
 
   assert.equal(plan instanceof PseQuoteResolutionPlan, true);
@@ -337,109 +309,4 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
     plan.nodes.map((node) => node && node.name),
     ["PSE-FRAMES", "PSE-EDGE"],
   );
-});
-
-test("ResolverPlan can resolve output-currency conversion through ResolveFlow", () => {
-  const refs = {
-    resolveFxQuote(request) {
-      assert.equal(request.fxPair.yahooChartSymbol, "PHPUSD=X");
-      return {
-        route: "ATTRIBUTE:FX -> QUOTE:FX",
-        status: "success",
-        value: { extractedValue: 0.02 },
-      };
-    },
-  };
-  const plan = buildPlanNodeFromSpec(
-    "QUOTE:TICKER",
-    {
-      id: "QUOTE:TICKER",
-      next: ["YAHOO"],
-      type: "TickerQuoteResolutionPlan",
-    },
-    () => createLeafResolver("YAHOO"),
-    null,
-    refs,
-  );
-  const request = new RequestInput({
-    attribute: "price@USD",
-    attributeRequest: {
-      baseAttribute: "price",
-      outputCode: "USD",
-      rawAttribute: "price@USD",
-      wantsOutputCurrency: true,
-    },
-    attributeType: "quote",
-    classification: "equity",
-    fxPair: null,
-    identifier: "BDO",
-    infoMode: "",
-    sourceOverride: "",
-    ticker: "PSE:BDO",
-  });
-
-  const env = plan.resolveOutputCurrencyResult(request, {
-    currency: "PHP",
-    regularMarketPrice: 100,
-  });
-
-  assert.deepEqual(env, {
-    route: "ATTRIBUTE:FX -> QUOTE:FX",
-    status: "success",
-    value: 0.02,
-  });
-});
-
-test("ResolverPlan output-currency conversion folds stock unit scale into the FX rate", () => {
-  const refs = {
-    resolveFxQuote(request) {
-      assert.equal(request.fxPair.yahooChartSymbol, "GBPUSD=X");
-      assert.equal(request.fxPair.baseDisplayCode, "GBp");
-      assert.equal(request.fxPair.scale, 0.01);
-      return {
-        route: "ATTRIBUTE:FX -> QUOTE:FX",
-        status: "success",
-        value: { extractedValue: 0.0125 },
-      };
-    },
-  };
-  const plan = buildPlanNodeFromSpec(
-    "QUOTE:TICKER",
-    {
-      id: "QUOTE:TICKER",
-      next: ["YAHOO"],
-      type: "TickerQuoteResolutionPlan",
-    },
-    () => createLeafResolver("YAHOO"),
-    null,
-    refs,
-  );
-  const request = new RequestInput({
-    attribute: "price@USD",
-    attributeRequest: {
-      baseAttribute: "price",
-      outputCode: "USD",
-      rawAttribute: "price@USD",
-      wantsOutputCurrency: true,
-    },
-    attributeType: "quote",
-    classification: "equity",
-    fxPair: null,
-    identifier: "TSCO.L",
-    infoMode: "",
-    sourceOverride: "",
-    ticker: "TSCO.L",
-  });
-
-  const env = plan.resolveOutputCurrencyResult(request, {
-    currency: "GBp",
-    regularMarketPrice: 250,
-    symbol: "TSCO.L",
-  });
-
-  assert.deepEqual(env, {
-    route: "ATTRIBUTE:FX -> QUOTE:FX",
-    status: "success",
-    value: 0.0125,
-  });
 });

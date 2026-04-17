@@ -12,8 +12,6 @@ import { RoutingNodeKind } from "./planner";
 import { FxRequest, RawRequestInput, RequestInput } from "./request";
 import {
   extractAttributeValue,
-  extractQuoteCurrencyCode,
-  parseAttributeRequest,
 } from "./attribute-extraction";
 import { buildFxPairFromCodes } from "./fx-normalization";
 import {
@@ -38,11 +36,11 @@ export interface LookupResult {
   value: unknown;
 }
 
-// TEMPORARY: threads the runtime FX root plan into plan nodes for
-// output-currency conversion until the execution DAG can model that edge.
 export interface PlanRuntimeRefs {
-  resolveFxQuote(request: FxRequest): LookupResult;
+  callSubgraph(subgraphId: string, input: object): LookupResult;
 }
+
+const FX_CONVERSION_SUBGRAPH_ID = "FX_CONVERSION";
 
 export interface ResolverPlanOptions {
   routeClass?: string | RouteClassResolver;
@@ -105,7 +103,8 @@ export function resolveFxConversionRate(
     );
   }
 
-  const fxResult = refs.resolveFxQuote(
+  const fxResult = refs.callSubgraph(
+    FX_CONVERSION_SUBGRAPH_ID,
     new FxRequest({
       attribute: "price",
       fxPair,
@@ -359,35 +358,18 @@ export class Resolver {
 
 export abstract class ResolverPlan extends Resolver {
   readonly nodes: Resolver[];
-  // TEMPORARY: this lets plan nodes reach the runtime FX root plan for the
-  // current output-currency concession. Remove once the execution DAG can
-  // express that edge directly.
-  readonly refs: PlanRuntimeRefs | null;
   readonly routeClass: string | RouteClassResolver;
   readonly routePath: string | RoutePathResolver;
 
   constructor(
     name: string,
     nodes: Resolver[],
-    refsOrOptions: PlanRuntimeRefs | ResolverPlanOptions = {},
     options: ResolverPlanOptions = {},
   ) {
-    const hasRefs =
-      !!refsOrOptions &&
-      typeof refsOrOptions === "object" &&
-      "resolveFxQuote" in refsOrOptions;
-    const resolvedRefs = hasRefs
-      ? (refsOrOptions as PlanRuntimeRefs)
-      : null;
-    const resolvedOptions = hasRefs
-      ? options
-      : (refsOrOptions as ResolverPlanOptions);
-
     super(name);
     this.nodes = nodes || [];
-    this.refs = resolvedRefs;
-    this.routeClass = resolvedOptions.routeClass || name;
-    this.routePath = resolvedOptions.routePath || "";
+    this.routeClass = options.routeClass || name;
+    this.routePath = options.routePath || "";
   }
 
   getNodesForRequest(request: unknown): Resolver[] {
@@ -536,52 +518,6 @@ export abstract class ResolverPlan extends Resolver {
     });
   }
 
-  resolveOutputCurrencyResult(
-    requestInput: RequestInput,
-    quote: StockQuote,
-  ): LookupResult | null {
-    const singleNode = this.nodes.length === 1 ? this.nodes[0] : null;
-
-    if (!this.refs && singleNode) {
-      const nestedResolver = singleNode as Resolver & {
-        resolveOutputCurrencyResult?: (
-          request: RequestInput,
-          value: StockQuote,
-        ) => LookupResult | null;
-      };
-
-      if (typeof nestedResolver.resolveOutputCurrencyResult === "function") {
-        return nestedResolver.resolveOutputCurrencyResult(requestInput, quote);
-      }
-    }
-
-    if (!this.refs) {
-      return null;
-    }
-
-    const attributeRequest = parseAttributeRequest(requestInput.attribute);
-    if (
-      requestInput.attributeType !== "quote" ||
-      !attributeRequest.wantsOutputCurrency ||
-      attributeRequest.baseAttribute !== "price"
-    ) {
-      return null;
-    }
-
-    const sourceCurrency = extractQuoteCurrencyCode(quote);
-    const targetCurrency = attributeRequest.outputCode.trim().toUpperCase();
-
-    if (
-      !sourceCurrency ||
-      !targetCurrency ||
-      sourceCurrency === targetCurrency
-    ) {
-      return null;
-    }
-
-    return resolveFxConversionRate(this.refs, sourceCurrency, targetCurrency);
-  }
-
   static getSpecNodeCodes(spec: Graph.Node): string[] {
     return getGraphNodeNextIds(spec);
   }
@@ -593,7 +529,6 @@ export abstract class ResolverPlan extends Resolver {
       | Record<string, Resolver>
       | ((nodeCode: string) => Resolver | null),
     overrides: Record<string, unknown> | null | undefined,
-    deps: PlanRuntimeRefs,
   ): ResolverPlan {
     const resolveNodeByCode =
       typeof resolverMap === "function"
@@ -604,7 +539,6 @@ export abstract class ResolverPlan extends Resolver {
     const Ctor = this as unknown as new (
       name: string,
       nodes: Resolver[],
-      refs: PlanRuntimeRefs,
       options: ResolverPlanOptions,
     ) => ResolverPlan;
     return new Ctor(
@@ -612,7 +546,6 @@ export abstract class ResolverPlan extends Resolver {
       this.getSpecNodeCodes(spec).map((nodeCode: string) =>
         resolveNodeByCode(nodeCode),
       ) as Resolver[],
-      deps,
       (overrides || {}) as ResolverPlanOptions,
     );
   }

@@ -18,13 +18,13 @@ export const DagPlan: Graph.Definition = {
     type: "EquityAttributeResolutionPlan",
   },
   "ATTRIBUTE:FX": {
-    group: "FX",
+    group: "FX_CONVERSION",
     id: "ATTRIBUTE:FX",
     next: ["FX-IDENTITY", "QUOTE:FX"],
     type: "FxAttributeResolutionPlan",
   },
   "QUOTE:FX": {
-    group: "FX",
+    group: "FX_CONVERSION",
     id: "QUOTE:FX",
     next: ["GOOGLE-FX", "YAHOO-FX"],
     type: "FirstSuccessPlan",
@@ -72,13 +72,13 @@ export const DagPlan: Graph.Definition = {
     type: "YahooIsinSearchResolver",
   },
   "FX-IDENTITY": {
-    group: "FX",
+    group: "FX_CONVERSION",
     id: "FX-IDENTITY",
     next: ["EXTRACT:FX"],
     type: "LocalFxResolver",
   },
   "GOOGLE-FX": {
-    group: "FX",
+    group: "FX_CONVERSION",
     id: "GOOGLE-FX",
     next: ["EXTRACT:FX"],
     type: "GoogleFxResolver",
@@ -90,7 +90,7 @@ export const DagPlan: Graph.Definition = {
     type: "YahooEquityQuoteResolver",
   },
   "YAHOO-FX": {
-    group: "FX",
+    group: "FX_CONVERSION",
     id: "YAHOO-FX",
     next: ["EXTRACT:FX"],
     type: "YahooFxResolver",
@@ -117,10 +117,11 @@ export const DagPlan: Graph.Definition = {
     group: "STOCK",
     id: "EXTRACT:EQUITY",
     next: ["TERMINAL"],
+    subgraphCalls: ["FX_CONVERSION"],
     type: "EquityAttributeExtractResolver",
   },
   "EXTRACT:FX": {
-    group: "FX",
+    group: "FX_CONVERSION",
     id: "EXTRACT:FX",
     next: ["TERMINAL"],
     type: "FxAttributeExtractResolver",
@@ -128,5 +129,11 @@ export const DagPlan: Graph.Definition = {
   TERMINAL: {
     id: "TERMINAL",
     type: "TerminalCollectorPlan",
+  },
+  __subgraphs__: {
+    FX_CONVERSION: {
+      rootNodeId: "ATTRIBUTE:FX",
+      terminalNodeId: "EXTRACT:FX",
+    },
   },
 };
