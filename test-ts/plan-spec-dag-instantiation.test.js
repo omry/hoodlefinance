@@ -86,6 +86,33 @@ function createValidDagSpecs() {
   };
 }
 
+function createValidSubgraphDagSpecs() {
+  const definition = createValidDagSpecs();
+
+  definition.QUOTE.subgraphCalls = ["FX"];
+  definition.IDENTIFIER.next = ["COUNTRY-LEAF", "FALLBACK-LEAF", "FX:START"];
+  definition["FX:START"] = {
+    group: "FX",
+    id: "FX:START",
+    next: ["FX:END"],
+    type: "LeafResolver",
+  };
+  definition["FX:END"] = {
+    group: "FX",
+    id: "FX:END",
+    next: ["TERMINAL"],
+    type: "LeafResolver",
+  };
+  definition.__subgraphs__ = {
+    FX: {
+      rootNodeId: "FX:START",
+      terminalNodeId: "FX:END",
+    },
+  };
+
+  return definition;
+}
+
 function instantiateResolveFlow(definition) {
   return new ResolveFlow(definition, createResolverMaterializationDependencies());
 }
@@ -124,6 +151,19 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
       graph.getChildren("IDENTIFIER:ISIN").map((node) => node.id),
       ["ISIN:PSE", "ISIN:YAHOO"],
     );
+    assert.deepEqual(graph.getSubgraphIds(), []);
+    assert.equal(graph.getSubgraph("FX"), null);
+  });
+
+  await t.test("builds declared subgraphs and node-level subgraph call metadata", () => {
+    const graph = instantiateResolveFlow(createValidSubgraphDagSpecs()).getGraph();
+
+    assert.deepEqual(graph.getSubgraphIds(), ["FX"]);
+    assert.deepEqual(graph.getSubgraph("FX"), {
+      rootNodeId: "FX:START",
+      terminalNodeId: "FX:END",
+    });
+    assert.deepEqual(graph.getNode("QUOTE").subgraphCalls, ["FX"]);
   });
 
   await t.test("rejects duplicate normalized codes", () => {
@@ -260,6 +300,63 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
           },
         }),
       /exactly one terminal; found 2/i,
+    );
+  });
+
+  await t.test("rejects node-level subgraph calls that reference undeclared subgraphs", () => {
+    const definition = createValidDagSpecs();
+    definition.QUOTE.subgraphCalls = ["FX"];
+
+    assert.throws(
+      () => instantiateResolveFlow(definition),
+      /Graph node "QUOTE" references undeclared subgraph "FX"\./,
+    );
+  });
+
+  await t.test("rejects subgraphs whose terminal is unreachable from the declared root", () => {
+    const definition = createValidSubgraphDagSpecs();
+    definition["FX:START"].next = ["TERMINAL"];
+    definition.IDENTIFIER.next = [
+      "COUNTRY-LEAF",
+      "FALLBACK-LEAF",
+      "FX:START",
+      "FX:END",
+    ];
+
+    assert.throws(
+      () => instantiateResolveFlow(definition),
+      /Subgraph "FX" terminal node "FX:END" is unreachable from root "FX:START"\./,
+    );
+  });
+
+  await t.test("rejects subgraphs whose root or terminal does not belong to the declared group", () => {
+    const definition = createValidSubgraphDagSpecs();
+    definition["FX:END"].group = "OTHER";
+
+    assert.throws(
+      () => instantiateResolveFlow(definition),
+      /Subgraph "FX" terminal node "FX:END" must belong to group "FX"\./,
+    );
+  });
+
+  await t.test("rejects subgraphs that may execute nodes outside the declared group", () => {
+    const definition = createValidSubgraphDagSpecs();
+    definition["FX:MID"] = {
+      id: "FX:MID",
+      next: ["FX:END"],
+      type: "LeafResolver",
+    };
+    definition["FX:START"].next = ["FX:MID"];
+    definition.IDENTIFIER.next = [
+      "COUNTRY-LEAF",
+      "FALLBACK-LEAF",
+      "FX:START",
+      "FX:MID",
+    ];
+
+    assert.throws(
+      () => instantiateResolveFlow(definition),
+      /Subgraph "FX" may execute nodes outside group "FX": FX:MID\./,
     );
   });
 

@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  buildFxPairFromCodes,
   DagPlan,
   EquityAttributeExtractResolver,
   FirstSuccessReceiver,
@@ -67,6 +68,13 @@ class FakeResolver {
     return this.name;
   }
 
+  executeRouteRequest() {
+    return {
+      status: "success",
+      value: { code: this.code },
+    };
+  }
+
   static fromSpec(code) {
     return new this(code);
   }
@@ -77,6 +85,27 @@ const FAKE_GRAPH = {
   ROOT: { id: "ROOT", type: "FakeResolver", next: ["TERMINAL"] },
   TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
 };
+
+function createDagPlanWithFxSubgraph() {
+  return {
+    ...DagPlan,
+    __subgraphs__: {
+      FX: {
+        rootNodeId: "ATTRIBUTE:FX",
+        terminalNodeId: "EXTRACT:FX",
+      },
+    },
+  };
+}
+
+function createFxIdentityRequest() {
+  return new FxRequest({
+    attribute: "price",
+    fxPair: buildFxPairFromCodes("USD", "USD"),
+    identifier: "USDUSD",
+    identifierResolutionMs: 0,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Smoke tests
@@ -103,6 +132,96 @@ test("ResolveFlow instantiates and registers resolvers by class name", () => {
   const resolver = flow.getResolver("ROOT");
   assert.ok(resolver instanceof FakeResolver);
   assert.equal(resolver.name, "ROOT");
+});
+
+test("ResolveFlow exposes declared subgraphs from explicit graph metadata", () => {
+  const flow = new ResolveFlow(
+    createDagPlanWithFxSubgraph(),
+    createResolverMaterializationDependencies(),
+  );
+
+  assert.deepEqual(flow.getGraph().getSubgraphIds(), ["FX"]);
+  assert.deepEqual(flow.getGraph().getSubgraph("FX"), {
+    rootNodeId: "ATTRIBUTE:FX",
+    terminalNodeId: "EXTRACT:FX",
+  });
+});
+
+test("ResolveFlow.callSubgraph executes a declared subgraph with a bounded trace", () => {
+  const flow = new ResolveFlow(
+    createDagPlanWithFxSubgraph(),
+    createResolverMaterializationDependencies(),
+  );
+  const trace = { visitedNodeIds: [] };
+
+  const result = flow.callSubgraph("FX", createFxIdentityRequest(), trace);
+
+  assert.equal(result.status, "success");
+  assert.equal(result.value.extractedValue, 1);
+  assert.deepEqual(trace.visitedNodeIds, [
+    "SUBGRAPH:FX",
+    "ATTRIBUTE:FX",
+    "FX-IDENTITY",
+    "EXTRACT:FX",
+  ]);
+  assert.equal(
+    result.route,
+    "SUBGRAPH:FX -> ATTRIBUTE:FX -> FX-IDENTITY -> EXTRACT:FX",
+  );
+  assert.deepEqual(trace.subgraphCallTraces, [
+    {
+      path: ["SUBGRAPH:FX", "ATTRIBUTE:FX", "FX-IDENTITY", "EXTRACT:FX"],
+      route: "SUBGRAPH:FX -> ATTRIBUTE:FX -> FX-IDENTITY -> EXTRACT:FX",
+      status: "success",
+      subgraphId: "FX",
+    },
+  ]);
+});
+
+test("ResolveFlow.callSubgraph stores isolated call traces on a shared execution trace", () => {
+  const flow = new ResolveFlow(
+    createDagPlanWithFxSubgraph(),
+    createResolverMaterializationDependencies(),
+  );
+  const trace = {
+    visitedNodeIds: ["ROOT", "ATTRIBUTE"],
+    subgraphCallTraces: [],
+  };
+
+  const result = flow.callSubgraph("FX", createFxIdentityRequest(), trace);
+
+  assert.equal(
+    result.route,
+    "SUBGRAPH:FX -> ATTRIBUTE:FX -> FX-IDENTITY -> EXTRACT:FX",
+  );
+  assert.deepEqual(trace.visitedNodeIds, [
+    "ROOT",
+    "ATTRIBUTE",
+    "SUBGRAPH:FX",
+    "ATTRIBUTE:FX",
+    "FX-IDENTITY",
+    "EXTRACT:FX",
+  ]);
+  assert.deepEqual(trace.subgraphCallTraces, [
+    {
+      path: ["SUBGRAPH:FX", "ATTRIBUTE:FX", "FX-IDENTITY", "EXTRACT:FX"],
+      route: "SUBGRAPH:FX -> ATTRIBUTE:FX -> FX-IDENTITY -> EXTRACT:FX",
+      status: "success",
+      subgraphId: "FX",
+    },
+  ]);
+});
+
+test("ResolveFlow.callSubgraph rejects unknown subgraph ids", () => {
+  const flow = new ResolveFlow(
+    createDagPlanWithFxSubgraph(),
+    createResolverMaterializationDependencies(),
+  );
+
+  assert.throws(
+    () => flow.callSubgraph("MISSING", createFxIdentityRequest()),
+    /Unknown subgraph "MISSING"\./,
+  );
 });
 
 test("ResolveFlow rejects unknown class names", () => {

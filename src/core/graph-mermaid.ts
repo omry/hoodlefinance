@@ -6,9 +6,21 @@ function escapeMermaidLabel(value: string): string {
     .replace(/"/g, '\\"');
 }
 
-function formatNodeLabel(node: { id: string; type?: string }): string {
-  const parts = [node.id];
+function formatGraphNodeLabel(
+  node: { id: string; type?: string },
+  options: { isSubgraphRoot?: boolean; isSubgraphTerminal?: boolean } = {},
+): string {
+  const parts: string[] = [];
 
+  if (options.isSubgraphRoot) {
+    parts.push("ROOT");
+  }
+
+  if (options.isSubgraphTerminal) {
+    parts.push("TERMINAL");
+  }
+
+  parts.push(node.id);
   if (node.type) {
     parts.push(node.type);
   }
@@ -24,6 +36,18 @@ export function renderGraphAsMermaidFlowchart(
   const orderedNodes = graph.getTopologicalOrder();
   const aliasByNodeId: Record<string, string> = Object.create(null);
   const lines = [`flowchart ${direction}`];
+  const subgraphRootIds = new Set<string>();
+  const subgraphTerminalIds = new Set<string>();
+
+  for (const subgraphId of graph.getSubgraphIds()) {
+    const subgraph = graph.getSubgraph(subgraphId);
+    if (!subgraph) {
+      continue;
+    }
+
+    subgraphRootIds.add(subgraph.rootNodeId);
+    subgraphTerminalIds.add(subgraph.terminalNodeId);
+  }
 
   orderedNodes.forEach((node, index) => {
     aliasByNodeId[node.id] = `N${index}`;
@@ -54,7 +78,12 @@ export function renderGraphAsMermaidFlowchart(
   // Emit ungrouped nodes first (topological order), then subgraph blocks
   for (const node of orderedNodes) {
     if (!groupedNodeIds.has(node.id)) {
-      lines.push(`  ${aliasByNodeId[node.id]}["${formatNodeLabel(node)}"]`);
+      lines.push(
+        `  ${aliasByNodeId[node.id]}["${formatGraphNodeLabel(node, {
+          isSubgraphRoot: subgraphRootIds.has(node.id),
+          isSubgraphTerminal: subgraphTerminalIds.has(node.id),
+        })}"]`,
+      );
     }
   }
 
@@ -66,7 +95,12 @@ export function renderGraphAsMermaidFlowchart(
     // rather than through it.
     lines.push(`    direction ${direction}`);
     for (const nodeId of subgraphNodeIds[group]!) {
-      lines.push(`    ${aliasByNodeId[nodeId]}["${formatNodeLabel(graph.getNode(nodeId)!)}"]`);
+      lines.push(
+        `    ${aliasByNodeId[nodeId]}["${formatGraphNodeLabel(graph.getNode(nodeId)!, {
+          isSubgraphRoot: subgraphRootIds.has(nodeId),
+          isSubgraphTerminal: subgraphTerminalIds.has(nodeId),
+        })}"]`,
+      );
     }
     lines.push(`  end`);
   }
@@ -85,6 +119,19 @@ export function renderGraphAsMermaidFlowchart(
       }
 
       lines.push(`  ${fromAlias} --> ${toAlias}`);
+    }
+
+    for (const subgraphId of node.subgraphCalls || []) {
+      const subgraph = graph.getSubgraph(subgraphId);
+      const toAlias = subgraph ? aliasByNodeId[subgraph.rootNodeId] : "";
+
+      if (!toAlias) {
+        continue;
+      }
+
+      lines.push(
+        `  ${fromAlias} -. "${escapeMermaidLabel(`call ${subgraphId}`)}" .-> ${toAlias}`,
+      );
     }
   }
 

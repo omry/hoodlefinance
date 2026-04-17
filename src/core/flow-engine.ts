@@ -29,10 +29,22 @@ export interface Envelope {
   error?: string;
   // status is absent on input; the driver always sets it on output.
   status?: EnvelopeStatus;
+  // Internal bounded-execution marker so callers can stop at a declared node
+  // without continuing through sibling branches.
+  didReachStopNode?: boolean;
+}
+
+export interface SubgraphCallTrace {
+  error?: string;
+  path: string[];
+  route: string;
+  status: "failure" | "success";
+  subgraphId: string;
 }
 
 export interface ExecutionTrace {
   visitedNodeIds: string[];
+  subgraphCallTraces?: SubgraphCallTrace[];
 }
 
 export class FlowEngine {
@@ -114,6 +126,26 @@ export class FlowEngine {
     return this.#executeNode(node, input, graph, trace);
   }
 
+  executeBounded(
+    rootNodeId: string,
+    terminalNodeId: string,
+    input: Envelope,
+    trace?: ExecutionTrace,
+  ): Envelope {
+    const graph = this.#flow.getGraph();
+    const rootNode = graph.getNode(rootNodeId);
+
+    if (!rootNode) {
+      throw new Error(`Graph has no node "${String(rootNodeId || "")}".`);
+    }
+
+    if (!graph.getNode(terminalNodeId)) {
+      throw new Error(`Graph has no node "${String(terminalNodeId || "")}".`);
+    }
+
+    return this.#executeNode(rootNode, input, graph, trace, terminalNodeId);
+  }
+
   #executeRoutingNode(
     node: Graph.Node,
     resolver: {
@@ -126,6 +158,7 @@ export class FlowEngine {
     envelope: Envelope,
     graph: Graph.View,
     trace?: ExecutionTrace,
+    stopNodeId?: string,
   ): Envelope {
     const kind = resolver.getRoutingNodeKind();
     const childNodes = this.#getChildNodes(node, graph);
@@ -158,7 +191,12 @@ export class FlowEngine {
             envelope,
             graph,
             trace,
+            stopNodeId,
           );
+
+          if (childResult.didReachStopNode) {
+            return childResult;
+          }
 
           if (childResult.status !== EnvelopeStatus.Success) {
             if (childResult.error) {
@@ -176,6 +214,7 @@ export class FlowEngine {
         envelope,
         graph,
         trace,
+        stopNodeId,
       );
 
       if (kind === RoutingNodeKind.Switch) {
@@ -211,6 +250,7 @@ export class FlowEngine {
     envelope: Envelope,
     graph: Graph.View,
     trace?: ExecutionTrace,
+    stopNodeId?: string,
   ): Envelope {
     const resolver = this.#flow.getResolver(node.id);
     if (!resolver) {
@@ -257,6 +297,13 @@ export class FlowEngine {
       return outEnvelope;
     }
 
+    if (node.id === stopNodeId) {
+      return {
+        ...outEnvelope,
+        didReachStopNode: true,
+      };
+    }
+
     // Unwrap ClassifiedInput from ROOT: the classifier outputs
     // { requestInput, resolvedRequest } but children expect one type directly.
     if (
@@ -271,7 +318,14 @@ export class FlowEngine {
     }
 
     if (kind !== RoutingNodeKind.Leaf) {
-      return this.#executeRoutingNode(node, resolver, outEnvelope, graph, trace);
+      return this.#executeRoutingNode(
+        node,
+        resolver,
+        outEnvelope,
+        graph,
+        trace,
+        stopNodeId,
+      );
     }
 
     const childNodes = this.#getChildNodes(node, graph);
@@ -289,6 +343,7 @@ export class FlowEngine {
         outEnvelope,
         graph,
         trace,
+        stopNodeId,
       );
       if (childResult.status === EnvelopeStatus.TerminalFailure) {
         return childResult;

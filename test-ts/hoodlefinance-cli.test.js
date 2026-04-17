@@ -106,6 +106,12 @@ function createFakeGraphEnv() {
         getTopologicalOrder() {
           return order.slice();
         },
+        getSubgraph() {
+          return null;
+        },
+        getSubgraphIds() {
+          return [];
+        },
       };
     },
   };

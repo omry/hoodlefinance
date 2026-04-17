@@ -1,7 +1,12 @@
-import { type Graph, getGraphNodeNextIds, normalizeGraphNodeId } from "./graph";
+import {
+  type Graph,
+  getGraphNodeNextIds,
+  getGraphNodeSubgraphCallIds,
+  normalizeGraphNodeId,
+} from "./graph";
 import type { Resolver } from "./resolver-classes";
 import { RawRequestInput } from "./request";
-import { type PlanRuntimeRefs } from "./core-resolvers";
+import { type LookupResult, type PlanRuntimeRefs } from "./core-resolvers";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -37,6 +42,17 @@ interface GraphTopologyNode {
   parentIds: string[];
 }
 
+function isGraphNodeEntry(
+  value: Graph.Definition[string],
+): value is Graph.Node {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    "id" in value &&
+    "type" in value
+  );
+}
+
 function normalizeDefinitionEntries(
   definition: Graph.Definition,
 ): Array<[string, Graph.Node]> {
@@ -44,6 +60,16 @@ function normalizeDefinitionEntries(
   const originalKeyByNormalizedKey: Record<string, string> = Object.create(null);
 
   for (const [key, rawNode] of Object.entries(definition || {})) {
+    if (key === "__subgraphs__") {
+      continue;
+    }
+
+    if (!isGraphNodeEntry(rawNode)) {
+      throw new Error(
+        `Graph definition entry "${String(key || "")}" must be a node definition.`,
+      );
+    }
+
     const normalizedKey = normalizeCode(key);
 
     if (!normalizedKey) {
@@ -83,15 +109,20 @@ function normalizeDefinitionEntries(
       id: normalizedId,
       type: normalizedType,
     };
-    const nextIds = getGraphNodeNextIds(rawNode as Graph.Node);
+    const nextIds = getGraphNodeNextIds(rawNode);
 
     if (nextIds.length > 0) {
       normalizedNode.next = nextIds;
     }
 
-    const group = String((rawNode as Graph.Node)?.group || "").trim();
+    const group = String(rawNode.group || "").trim();
     if (group) {
       normalizedNode.group = group;
+    }
+
+    const subgraphCalls = getGraphNodeSubgraphCallIds(rawNode);
+    if (subgraphCalls.length > 0) {
+      normalizedNode.subgraphCalls = subgraphCalls;
     }
 
     originalKeyByNormalizedKey[normalizedKey] = key;
@@ -212,10 +243,165 @@ function collectReachableIds(
   return visited;
 }
 
+function collectBoundedReachableIds(
+  startId: string,
+  terminalId: string,
+  nodesById: Record<string, GraphTopologyNode>,
+): Set<string> {
+  const visited = new Set<string>();
+  const queue = [startId];
+
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (!id || visited.has(id)) {
+      continue;
+    }
+
+    visited.add(id);
+    if (id === terminalId) {
+      continue;
+    }
+
+    const entry = nodesById[id];
+    if (!entry) {
+      continue;
+    }
+
+    for (const nextId of entry.node.next || []) {
+      if (!visited.has(nextId)) {
+        queue.push(nextId);
+      }
+    }
+  }
+
+  return visited;
+}
+
+function normalizeSubgraphRegistry(
+  definition: Graph.Definition,
+): Graph.SubgraphRegistry {
+  const normalizedRegistry: Graph.SubgraphRegistry = Object.create(null);
+  const rawRegistry = definition.__subgraphs__;
+
+  if (rawRegistry == null) {
+    return normalizedRegistry;
+  }
+
+  if (typeof rawRegistry !== "object" || Array.isArray(rawRegistry)) {
+    throw new Error("Graph definition __subgraphs__ must be an object.");
+  }
+
+  for (const [rawId, rawSubgraph] of Object.entries(rawRegistry)) {
+    const normalizedId = normalizeCode(rawId);
+    if (!normalizedId) {
+      throw new Error("Graph definition contains an empty subgraph id.");
+    }
+
+    const rootNodeId = normalizeCode(rawSubgraph?.rootNodeId || "");
+    if (!rootNodeId) {
+      throw new Error(
+        `Subgraph "${normalizedId}" must declare a non-empty rootNodeId.`,
+      );
+    }
+
+    const terminalNodeId = normalizeCode(rawSubgraph?.terminalNodeId || "");
+    if (!terminalNodeId) {
+      throw new Error(
+        `Subgraph "${normalizedId}" must declare a non-empty terminalNodeId.`,
+      );
+    }
+
+    normalizedRegistry[normalizedId] = {
+      rootNodeId,
+      terminalNodeId,
+    };
+  }
+
+  return normalizedRegistry;
+}
+
+function validateSubgraphRegistry(
+  nodes: Graph.Node[],
+  nodesById: Record<string, GraphTopologyNode>,
+  subgraphsById: Graph.SubgraphRegistry,
+): void {
+  const nodeIds = new Set(nodes.map((node) => node.id));
+
+  for (const [subgraphId, subgraph] of Object.entries(subgraphsById)) {
+    const rootNode = nodesById[subgraph.rootNodeId]?.node || null;
+    if (!rootNode || !nodeIds.has(rootNode.id)) {
+      throw new Error(
+        `Subgraph "${subgraphId}" references unknown root node "${subgraph.rootNodeId}".`,
+      );
+    }
+
+    const terminalNode = nodesById[subgraph.terminalNodeId]?.node || null;
+    if (!terminalNode || !nodeIds.has(terminalNode.id)) {
+      throw new Error(
+        `Subgraph "${subgraphId}" references unknown terminal node "${subgraph.terminalNodeId}".`,
+      );
+    }
+
+    if (normalizeCode(rootNode.group || "") !== subgraphId) {
+      throw new Error(
+        `Subgraph "${subgraphId}" root node "${rootNode.id}" must belong to group "${subgraphId}".`,
+      );
+    }
+
+    if (normalizeCode(terminalNode.group || "") !== subgraphId) {
+      throw new Error(
+        `Subgraph "${subgraphId}" terminal node "${terminalNode.id}" must belong to group "${subgraphId}".`,
+      );
+    }
+
+    const reachableFromRoot = collectReachableIds(subgraph.rootNodeId, nodesById, "next");
+    if (!reachableFromRoot.has(subgraph.terminalNodeId)) {
+      throw new Error(
+        `Subgraph "${subgraphId}" terminal node "${subgraph.terminalNodeId}" is unreachable from root "${subgraph.rootNodeId}".`,
+      );
+    }
+
+    const boundedSubgraphNodeIds = collectBoundedReachableIds(
+      subgraph.rootNodeId,
+      subgraph.terminalNodeId,
+      nodesById,
+    );
+    const escapedNodeIds = Array.from(boundedSubgraphNodeIds).filter((nodeId) => {
+      const node = nodesById[nodeId]?.node || null;
+
+      return normalizeCode(node?.group || "") !== subgraphId;
+    });
+
+    if (escapedNodeIds.length > 0) {
+      throw new Error(
+        `Subgraph "${subgraphId}" may execute nodes outside group "${subgraphId}": ${formatCodeList(escapedNodeIds)}.`,
+      );
+    }
+  }
+}
+
+function validateDeclaredSubgraphCalls(
+  nodes: Graph.Node[],
+  subgraphsById: Graph.SubgraphRegistry,
+): void {
+  const declaredSubgraphIds = new Set(Object.keys(subgraphsById));
+
+  for (const node of nodes) {
+    for (const subgraphId of node.subgraphCalls || []) {
+      if (!declaredSubgraphIds.has(subgraphId)) {
+        throw new Error(
+          `Graph node "${node.id}" references undeclared subgraph "${subgraphId}".`,
+        );
+      }
+    }
+  }
+}
+
 function createGraphView(
   definition: Graph.Definition,
   nodesById: Record<string, GraphTopologyNode>,
   topologicalOrder: Graph.Node[],
+  subgraphsById: Graph.SubgraphRegistry,
 ): Graph.View {
   return {
     definition,
@@ -231,8 +417,9 @@ function createGraphView(
     },
     getNode(id: string): Graph.Node | null {
       const normalizedId = normalizeCode(id);
+      const node = definition[normalizedId];
 
-      return definition[normalizedId] || null;
+      return isGraphNodeEntry(node) ? node : null;
     },
     getParents(id: string): Graph.Node[] {
       const normalizedId = normalizeCode(id);
@@ -240,24 +427,37 @@ function createGraphView(
 
       return entry
         ? entry.parentIds
-            .map((parentId) => definition[parentId] || null)
+            .map((parentId) => {
+              const parentNode = definition[parentId];
+
+              return isGraphNodeEntry(parentNode) ? parentNode : null;
+            })
             .filter((parentNode): parentNode is Graph.Node => !!parentNode)
         : [];
     },
     getRoot(): Graph.Node | null {
-      return definition.ROOT || null;
+      return isGraphNodeEntry(definition.ROOT) ? definition.ROOT : null;
     },
     getTerminal(): Graph.Node | null {
-      return definition.TERMINAL || null;
+      return isGraphNodeEntry(definition.TERMINAL) ? definition.TERMINAL : null;
     },
     getTopologicalOrder(): Graph.Node[] {
       return topologicalOrder.slice();
+    },
+    getSubgraph(id: string): Graph.Subgraph | null {
+      const normalizedId = normalizeCode(id);
+
+      return subgraphsById[normalizedId] || null;
+    },
+    getSubgraphIds(): string[] {
+      return Object.keys(subgraphsById);
     },
   };
 }
 
 function buildGraphView(definition: Graph.Definition): Graph.View {
   const normalizedEntries = normalizeDefinitionEntries(definition);
+  const normalizedSubgraphs = normalizeSubgraphRegistry(definition);
   const normalizedDefinition: Graph.Definition = Object.create(null);
   const nodesById: Record<string, GraphTopologyNode> = Object.create(null);
   const nodes = normalizedEntries.map(([id, node]) => {
@@ -319,7 +519,19 @@ function buildGraphView(definition: Graph.Definition): Graph.View {
     );
   }
 
-  return createGraphView(normalizedDefinition, nodesById, topologicalOrder);
+  validateSubgraphRegistry(nodes, nodesById, normalizedSubgraphs);
+  validateDeclaredSubgraphCalls(nodes, normalizedSubgraphs);
+
+  if (Object.keys(normalizedSubgraphs).length > 0) {
+    normalizedDefinition.__subgraphs__ = normalizedSubgraphs;
+  }
+
+  return createGraphView(
+    normalizedDefinition,
+    nodesById,
+    topologicalOrder,
+    normalizedSubgraphs,
+  );
 }
 
 function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
@@ -335,6 +547,10 @@ function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
 
 function isTerminalNodeId(code: string): boolean {
   return normalizeCode(code) === "TERMINAL";
+}
+
+function formatSubgraphTraceBoundary(subgraphId: string): string {
+  return `SUBGRAPH:${normalizeCode(subgraphId)}`;
 }
 
 interface ResolveFlowDependencies {
@@ -385,10 +601,18 @@ function materializeResolversByCode(
 export class ResolveFlow {
   readonly graph: Graph.View;
   private readonly runtimeRefs: PlanRuntimeRefs;
+  #subgraphsById: Graph.SubgraphRegistry;
   #nodesByCode: Record<string, Resolver>;
 
   constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
     this.graph = buildGraphView(definition);
+    this.#subgraphsById = Object.create(null);
+    for (const subgraphId of this.graph.getSubgraphIds()) {
+      const subgraph = this.graph.getSubgraph(subgraphId);
+      if (subgraph) {
+        this.#subgraphsById[subgraphId] = subgraph;
+      }
+    }
     this.#nodesByCode = Object.create(null);
     this.runtimeRefs = {
       resolveFxQuote: (request) => this.resolveQuoteFromNode("ATTRIBUTE:FX", request),
@@ -431,6 +655,68 @@ export class ResolveFlow {
       return null;
     }
     return this.#getRuntimeNode(normalizedId);
+  }
+
+  callSubgraph(
+    subgraphId: string,
+    inputValue: unknown,
+    trace?: ExecutionTrace,
+  ): LookupResult {
+    const normalizedSubgraphId = normalizeCode(subgraphId);
+    const subgraph = this.#subgraphsById[normalizedSubgraphId];
+    const executionTrace = trace || { visitedNodeIds: [], subgraphCallTraces: [] };
+
+    if (!subgraph) {
+      throw new Error(`Unknown subgraph "${normalizedSubgraphId}".`);
+    }
+
+    const segmentStartIndex = executionTrace.visitedNodeIds.length;
+
+    executionTrace.visitedNodeIds.push(
+      formatSubgraphTraceBoundary(normalizedSubgraphId),
+    );
+
+    const engine = new FlowEngine(this);
+    const engineResult = engine.executeBounded(
+      subgraph.rootNodeId,
+      subgraph.terminalNodeId,
+      { value: inputValue as object },
+      executionTrace,
+    );
+    const path = executionTrace.visitedNodeIds
+      .slice(segmentStartIndex)
+      .filter((visitedNodeId) => visitedNodeId !== "TERMINAL");
+    const route = path.join(" -> ");
+    const status =
+      engineResult.status === EnvelopeStatus.Success ? "success" : "failure";
+
+    if (!Array.isArray(executionTrace.subgraphCallTraces)) {
+      executionTrace.subgraphCallTraces = [];
+    }
+
+    const error = String(engineResult.error || "").trim();
+    executionTrace.subgraphCallTraces.push({
+      ...(error ? { error } : {}),
+      path,
+      route,
+      status,
+      subgraphId: normalizedSubgraphId,
+    });
+
+    if (engineResult.status !== EnvelopeStatus.Success) {
+      return {
+        ...(error ? { error } : {}),
+        route,
+        status: "failure",
+        value: null,
+      };
+    }
+
+    return {
+      route,
+      status: "success",
+      value: engineResult.value,
+    };
   }
 
   private createRawRequestInput(

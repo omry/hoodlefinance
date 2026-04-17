@@ -5,7 +5,7 @@ const {
   renderGraphAsMermaidFlowchart,
 } = require("../dist/ts/core/graph-mermaid.js");
 
-function createGraph(definition, order) {
+function createGraph(definition, order, subgraphs = {}) {
   const normalizedOrder = order.map((id) => definition[id]);
 
   return {
@@ -31,6 +31,12 @@ function createGraph(definition, order) {
     },
     getTopologicalOrder() {
       return normalizedOrder.slice();
+    },
+    getSubgraph(id) {
+      return subgraphs[id] || null;
+    },
+    getSubgraphIds() {
+      return Object.keys(subgraphs);
     },
   };
 }
@@ -64,4 +70,51 @@ test("renderGraphAsMermaidFlowchart renders ordered nodes and edges from Graph.V
   assert.match(mermaid, /N2\["TERMINAL<br\/>TerminalCollectorPlan"\]/);
   assert.match(mermaid, /N0 --> N1/);
   assert.match(mermaid, /N1 --> N2/);
+});
+
+test("renderGraphAsMermaidFlowchart renders subgraph boundaries and call edges distinctly", () => {
+  const graph = createGraph(
+    {
+      ROOT: {
+        id: "ROOT",
+        next: ["CALLER"],
+        type: "RoutingPlan",
+      },
+      CALLER: {
+        id: "CALLER",
+        next: ["TERMINAL"],
+        subgraphCalls: ["FX"],
+        type: "NormalizePricePlan",
+      },
+      "FX:START": {
+        group: "FX",
+        id: "FX:START",
+        next: ["FX:END"],
+        type: "FxAttributeResolutionPlan",
+      },
+      "FX:END": {
+        group: "FX",
+        id: "FX:END",
+        next: ["TERMINAL"],
+        type: "FxAttributeExtractResolver",
+      },
+      TERMINAL: {
+        id: "TERMINAL",
+        type: "TerminalCollectorPlan",
+      },
+    },
+    ["ROOT", "CALLER", "FX:START", "FX:END", "TERMINAL"],
+    {
+      FX: {
+        rootNodeId: "FX:START",
+        terminalNodeId: "FX:END",
+      },
+    },
+  );
+
+  const mermaid = renderGraphAsMermaidFlowchart(graph);
+
+  assert.match(mermaid, /ROOT<br\/>FX:START<br\/>FxAttributeResolutionPlan/);
+  assert.match(mermaid, /TERMINAL<br\/>FX:END<br\/>FxAttributeExtractResolver/);
+  assert.match(mermaid, /\. "call FX" \.->/);
 });

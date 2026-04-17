@@ -53,6 +53,7 @@ test("DagPlan uses the final graph node shape", () => {
   );
   assert.equal(DagPlan["QUOTE:PSE"].type, "PseQuoteResolutionPlan");
   assert.deepEqual(DagPlan["QUOTE:PSE"].next, ["PSE-FRAMES", "PSE-EDGE"]);
+  assert.equal(DagPlan.__subgraphs__, undefined);
 });
 
 test("ResolveFlow builds and validates DagPlan directly from the authored graph", () => {

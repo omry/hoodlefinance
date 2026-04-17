@@ -178,6 +178,70 @@ test("execute() throws when graph has no ROOT node", () => {
   assert.throws(() => engine.execute({ value: {} }), /ROOT/);
 });
 
+test("executeBounded() stops once the declared terminal node succeeds", () => {
+  const trace = { visitedNodeIds: [] };
+  const flow = mockFlow({
+    ROOT: {
+      nextIds: ["A"],
+      resolveResult: { status: "success", value: {} },
+    },
+    A: {
+      nextIds: ["B"],
+      resolveResult: { status: "success", value: { at: "A" } },
+    },
+    B: {
+      nextIds: ["C"],
+      resolveResult: { status: "success", value: { at: "B" } },
+    },
+    C: {
+      nextIds: ["TERMINAL"],
+      resolveResult: { status: "success", value: { at: "C" } },
+    },
+  });
+
+  const engine = new FlowEngine(flow);
+  const result = engine.executeBounded("A", "B", { value: {} }, trace);
+
+  assert.equal(result.status, EnvelopeStatus.Success);
+  assert.deepEqual(result.value, { at: "B" });
+  assert.deepEqual(trace.visitedNodeIds, ["A", "B"]);
+});
+
+test("executeBounded() stops a step node after the bounded terminal child succeeds", () => {
+  let siblingCalled = false;
+  const trace = { visitedNodeIds: [] };
+  const flow = mockFlow({
+    ROOT: {
+      kind: "step",
+      nextIds: ["A", "B"],
+      resolveResult: { status: "success", value: {} },
+    },
+    A: {
+      nextIds: ["A-END"],
+      resolveResult: { status: "success", value: { at: "A" } },
+    },
+    "A-END": {
+      nextIds: ["TERMINAL"],
+      resolveResult: { status: "success", value: { at: "A-END" } },
+    },
+    B: {
+      nextIds: [],
+      get resolveResult() {
+        siblingCalled = true;
+        return { status: "success", value: { at: "B" } };
+      },
+    },
+  });
+
+  const engine = new FlowEngine(flow);
+  const result = engine.executeBounded("ROOT", "A-END", { value: {} }, trace);
+
+  assert.equal(result.status, EnvelopeStatus.Success);
+  assert.deepEqual(result.value, { at: "A-END" });
+  assert.equal(siblingCalled, false);
+  assert.deepEqual(trace.visitedNodeIds, ["ROOT", "A", "A-END"]);
+});
+
 // ---------------------------------------------------------------------------
 // FlowEngine.execute()
 // ---------------------------------------------------------------------------
