@@ -77,12 +77,8 @@ export function createResolutionFailure(
   }) as ResolutionResult<never>;
 }
 
-export function defaultRouteFailureMessage(
-  job: { routeKind?: string } | null | undefined,
-): string {
-  return job && (job.routeKind === "isin" || job.routeKind === "identifier")
-    ? "ISIN lookup failed."
-    : "Quote lookup failed.";
+export function defaultRouteFailureMessage(): string {
+  return "Quote lookup failed.";
 }
 
 function collectFailedRouteLabels(

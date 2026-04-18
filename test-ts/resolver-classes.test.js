@@ -8,7 +8,7 @@ const {
   PseQuoteResolutionPlan,
   Resolver,
   ResolverPlan,
-  RouteExecutionResolver,
+  BaseHFResolver,
   StepPlan,
   SwitchPlan,
   TickerQuoteResolutionPlan,
@@ -40,7 +40,7 @@ function createRequestInput(overrides = {}) {
 }
 
 function createLeafResolver(name, extra = {}) {
-  class LeafResolver extends RouteExecutionResolver {
+  class LeafResolver extends BaseHFResolver {
     constructor() {
       super(name, extra.traceLabel || name, extra.sourceName || name, extra);
     }

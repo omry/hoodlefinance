@@ -52,18 +52,10 @@ test("route failure helpers preserve trace-based label reporting", () => {
     ],
   };
 
-  assert.equal(defaultRouteFailureMessage(job), "Quote lookup failed.");
+  assert.equal(defaultRouteFailureMessage(), "Quote lookup failed.");
   assert.equal(
     formatRouteFailureMessage(job, "Market data unavailable."),
     "Market data unavailable. Failed nodes: YAHOO, PSE.",
-  );
-  assert.equal(
-    defaultRouteFailureMessage({ routeKind: "isin", routeRuntimeTrace: [] }),
-    "ISIN lookup failed.",
-  );
-  assert.equal(
-    defaultRouteFailureMessage({ routeKind: "identifier", routeRuntimeTrace: [] }),
-    "ISIN lookup failed.",
   );
 });
 

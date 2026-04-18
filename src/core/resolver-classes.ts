@@ -1,6 +1,6 @@
 import type { ResolverExecutionContext } from "./planner";
-import type { RequestInput, ResolvedRequest } from "./request";
-import { RawRequestInput } from "./request";
+import type { ResolvedRequest } from "./request";
+import { RawRequestInput, RequestInput } from "./request";
 import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
@@ -28,7 +28,7 @@ export class IdentifierResolver extends Resolver {}
 
 class AttributeResolver extends Resolver {}
 
-export class RouteExecutionResolver extends AttributeResolver {
+export class BaseHFResolver extends AttributeResolver {
   readonly traceLabel: string;
 
   constructor(code: string, traceLabel?: string) {
@@ -64,13 +64,25 @@ export class RouteExecutionResolver extends AttributeResolver {
   protected override resolveTransformValue(
     value: unknown,
     context: ResolverExecutionContext<Record<string, unknown>>,
+    request: unknown,
   ): unknown {
     if (value == null) return value;
+    let attribute: string;
+    let identifier: string;
+    if (request instanceof RawRequestInput || request instanceof RequestInput) {
+      attribute = request.attribute;
+      identifier = request.identifier;
+    } else {
+      const req = request as { input?: { attribute?: unknown; identifier?: unknown } };
+      attribute = String(req.input?.attribute || "price");
+      identifier = String(req.input?.identifier || "");
+    }
     return {
       quote: value,
       routeState: context.routeState,
-      attribute: context.attribute,
-      tickerInput: context.tickerInput,
+      attribute,
+      tickerInput: identifier,
+      input: request as ResolvedRequest,
     };
   }
 

@@ -139,25 +139,7 @@ function createResolverExecutionContext(
   request: unknown,
   routeState: Record<string, unknown>,
 ): ResolverExecutionContext<Record<string, unknown>> {
-  if (request instanceof RawRequestInput || request instanceof RequestInput) {
-    return {
-      attribute: request.attribute,
-      routeKind: "identifier",
-      routeState,
-      tickerInput: request.identifier,
-    };
-  }
-
-  const resolvedRequest = request as {
-    input?: { attribute?: unknown; identifier?: unknown };
-  };
-
-  return {
-    attribute: String(resolvedRequest.input?.attribute || "price"),
-    routeKind: "quote",
-    routeState,
-    tickerInput: String(resolvedRequest.input?.identifier || ""),
-  };
+  return { routeState };
 }
 
 function normalizeRouteResult(
@@ -200,7 +182,7 @@ function formatExecutionFailureMessage(
   result: RouteResult,
 ): string {
   const message =
-    formatResolverError(result.error) || defaultRouteFailureMessage(context);
+    formatResolverError(result.error) || defaultRouteFailureMessage();
   const label = String(resolver.traceLabel || resolver.name || "").trim();
 
   return formatRouteFailureMessage(
@@ -319,7 +301,7 @@ export class Resolver {
       }
 
       const rawValue = getResolvedRouteValue(result);
-      const value = this.resolveTransformValue(rawValue, context);
+      const value = this.resolveTransformValue(rawValue, context, request);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
@@ -342,6 +324,7 @@ export class Resolver {
   protected resolveTransformValue(
     value: unknown,
     _context: ResolverExecutionContext<Record<string, unknown>>,
+    _request: unknown,
   ): unknown {
     return value;
   }

@@ -14,7 +14,7 @@ const {
   PseIsinMapResolver,
   RequestClassifierResolver,
   ResolveFlow,
-  RouteExecutionResolver,
+  BaseHFResolver,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
@@ -22,7 +22,7 @@ const {
 } = require("../dist/ts/core/index.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
-class LeafResolver extends RouteExecutionResolver {
+class LeafResolver extends BaseHFResolver {
   executeBatch(jobs) {
     return jobs.map(() => ({ quote: null, status: "success" }));
   }

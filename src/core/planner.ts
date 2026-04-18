@@ -1,4 +1,3 @@
-export type RouteKind = "identifier" | "quote";
 export enum RoutingNodeKind {
   Leaf = "leaf",
   Switch = "switch",
@@ -13,10 +12,5 @@ export type ResolutionResult<T> =
 export interface ResolverExecutionContext<
   RouteState = Record<string, unknown>,
 > {
-  attribute: string;
-  routeKind: RouteKind;
   routeState: RouteState;
-  tickerInput: string;
 }
-
-

@@ -11,7 +11,7 @@ import {
   buildIsinIdentifierRouteState,
   buildPseQuoteRouteState,
 } from "./route-state";
-import { IdentifierResolver, Resolver, RouteExecutionResolver } from "./resolver-classes";
+import { IdentifierResolver, Resolver, BaseHFResolver } from "./resolver-classes";
 import {
   createRequestInput,
   buildTypedRequestFromParsedInput,
@@ -597,7 +597,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
   }
 }
 
-export class LocalFxResolver extends RouteExecutionResolver {
+export class LocalFxResolver extends BaseHFResolver {
   constructor(code = "FX-IDENTITY") {
     super(code);
   }
@@ -653,7 +653,7 @@ export class LocalFxResolver extends RouteExecutionResolver {
   }
 }
 
-export class GoogleFxResolver extends RouteExecutionResolver {
+export class GoogleFxResolver extends BaseHFResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
@@ -772,7 +772,7 @@ function buildPseQuoteCacheKey(symbol: string): string {
     .toUpperCase()}`;
 }
 
-export class PseFramesResolver extends RouteExecutionResolver {
+export class PseFramesResolver extends BaseHFResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
@@ -884,7 +884,7 @@ export class PseFramesResolver extends RouteExecutionResolver {
   }
 }
 
-export class PseEdgeResolver extends RouteExecutionResolver {
+export class PseEdgeResolver extends BaseHFResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
@@ -1030,7 +1030,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
 
       if (!quote || !quote.symbol) {
         throw new Error(
-          `No PSE quote data was found for ${context.tickerInput}.`,
+          `No PSE quote data was found for ${symbol}.`,
         );
       }
 
@@ -1060,7 +1060,7 @@ export class PseEdgeResolver extends RouteExecutionResolver {
   }
 }
 
-abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
+abstract class BaseYahooQuoteResolver extends BaseHFResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedString?: ResolverServices["getCachedString"];
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
@@ -1153,7 +1153,7 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
 
 
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
+    request: RequestInput | ResolvedRequest,
     context: ResolverExecutionContext<Record<string, unknown>>,
   ): RouteResult {
     const yahooSymbol = String(context.routeState.yahooSymbol || "").trim();
@@ -1186,7 +1186,7 @@ abstract class BaseYahooQuoteResolver extends RouteExecutionResolver {
       try {
         const stockQuote = extractYahooQuoteMetaFromResponse(
           responseItem?.response as TextHttpResponse,
-          context.tickerInput || lookupYahooSymbol,
+          (request instanceof RawRequestInput || request instanceof RequestInput ? request.identifier : request.input.identifier) || lookupYahooSymbol,
         );
         const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
         this.putCachedJson(cacheKey, quote.toJSON(), 60);
@@ -1270,7 +1270,7 @@ export class YahooFxResolver extends BaseYahooQuoteResolver {
   }
 }
 
-export class TradingviewFundResolver extends RouteExecutionResolver {
+export class TradingviewFundResolver extends BaseHFResolver {
   httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
   putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
