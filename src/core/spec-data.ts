@@ -1,4 +1,4 @@
-import type { Graph } from "./graph";
+import type { Graph } from "./flow/graph";
 
 export const DagPlan: Graph.Definition = {
   ROOT: {

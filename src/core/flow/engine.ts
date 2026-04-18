@@ -1,7 +1,7 @@
 import type { ResolveFlow } from "./resolve-flow";
 import type { Graph } from "./graph";
-import type { ExecutionContext, SelectNextContext } from "./core-resolvers";
-import { RoutingNodeKind } from "./core-resolvers";
+import type { ExecutionContext, SelectNextContext } from "./resolver";
+import { RoutingNodeKind } from "./resolver";
 import { getGraphNodeNextIds } from "./graph";
 
 export enum EnvelopeStatus {
@@ -321,22 +321,20 @@ export class FlowEngine {
         trace,
         stopNodeId,
       );
-      if (childResult.status === EnvelopeStatus.TerminalFailure) {
+
+      if (childResult.didReachStopNode) {
         return childResult;
       }
-      if (childResult.status !== EnvelopeStatus.Failure) {
+
+      if (childResult.status === EnvelopeStatus.Success) {
         return childResult;
       }
+
       if (childResult.error) {
         lastFailureError = childResult.error;
       }
-      // child subtree failed — try next sibling
     }
 
-    // All eligible next edges exhausted.
-    // try each exhaustion is terminal because it is explicit failover. leaf
-    // exhaustion remains a normal Failure so an ancestor try-each may keep
-    // looking for another branch.
     return {
       value: outEnvelope.value,
       ...(lastFailureError ? { error: lastFailureError } : {}),

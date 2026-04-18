@@ -5,7 +5,7 @@ const {
   FlowEngine,
   EnvelopeStatus,
   Resolver,
-} = require("../dist/ts/core/index.js");
+} = require("../../dist/ts/core/index.js");
 
 // ---------------------------------------------------------------------------
 // Helpers

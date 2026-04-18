@@ -1,5 +1,5 @@
 import { type Resolver, ResolverPlan } from "./resolver-classes";
-import { RoutingNodeKind } from "./core-resolvers";
+import { RoutingNodeKind } from "./flow";
 
 function formatNodeName(node: Resolver | null | undefined): string {
   return String((node && node.name) || "").trim() || "<unknown>";

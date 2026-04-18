@@ -4,7 +4,7 @@ import {
   type Graph,
 } from "./graph";
 
-import type { ResolverServices } from "./resolver-services";
+import type { ResolverServices } from "../resolver-services";
 
 export type ResolutionResult<T> =
   | { elapsedMs: number; status: "success"; value: T }
@@ -226,7 +226,6 @@ export class Resolver {
     return new this(code);
   }
 }
-
 
 export abstract class ResolverPlan extends Resolver {
   readonly nodes: Resolver[];

@@ -65,7 +65,7 @@ import {
   type ExecutionContext,
   type LookupResult,
   type ResolutionResult,
-} from "./core-resolvers";
+} from "./flow/resolver";
 import {
   loadStoredTextResource,
   type ResolverServices,

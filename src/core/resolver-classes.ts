@@ -1,9 +1,9 @@
 import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 
-import type { Graph } from "./graph";
+import type { Graph } from "./flow/graph";
 import type { ResolverServices } from "./resolver-services";
-export type { ExecutionContext, ResolverPlanOptions } from "./core-resolvers";
+export type { ExecutionContext, ResolverPlanOptions } from "./flow/resolver";
 export {
   FirstSuccessPlan,
   Resolver,
@@ -11,7 +11,7 @@ export {
   type SelectNextContext,
   StepPlan,
   SwitchPlan,
-} from "./core-resolvers";
+} from "./flow/resolver";
 import {
   FirstSuccessPlan,
   Resolver,
@@ -19,7 +19,7 @@ import {
   type SelectNextContext,
   StepPlan,
   SwitchPlan,
-} from "./core-resolvers";
+} from "./flow/resolver";
 
 export class IdentifierResolver extends Resolver {}
 

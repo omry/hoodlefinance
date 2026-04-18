@@ -1,4 +1,4 @@
-import type { Graph } from "./graph";
+import type { Graph } from "./flow/graph";
 
 function escapeMermaidLabel(value: string): string {
   return String(value || "")
