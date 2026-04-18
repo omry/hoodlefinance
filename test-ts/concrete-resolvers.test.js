@@ -224,7 +224,7 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
 
 test("EquityAttributeExtractResolver normalizes stock unit money attributes through the FX path", () => {
   const resolver = new EquityAttributeExtractResolver();
-  resolver.initRuntimeRefs({
+  const context = {
     callSubgraph(subgraphId, request) {
       assert.equal(subgraphId, "FX_CONVERSION");
       assert.equal(request.fxPair.baseDisplayCode, "GBp");
@@ -236,7 +236,7 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
         value: { extractedValue: 0.01 },
       };
     },
-  });
+  };
 
   const result = resolver.resolve({
     attribute: "close",
@@ -248,7 +248,7 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
     }),
 
     tickerInput: "TSCO.L",
-  });
+  }, context);
 
   assert.equal(result.status, "success");
   assert.equal(result.value.extractedValue, 2.45);
@@ -256,7 +256,7 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
 
 test("EquityAttributeExtractResolver converts stock unit prices directly to the requested output currency", () => {
   const resolver = new EquityAttributeExtractResolver();
-  resolver.initRuntimeRefs({
+  const context = {
     callSubgraph(subgraphId, request) {
       assert.equal(subgraphId, "FX_CONVERSION");
       assert.equal(request.fxPair.baseDisplayCode, "GBp");
@@ -268,7 +268,7 @@ test("EquityAttributeExtractResolver converts stock unit prices directly to the 
         value: { extractedValue: 0.0125 },
       };
     },
-  });
+  };
 
   const result = resolver.resolve({
     attribute: "price@USD",
@@ -279,7 +279,7 @@ test("EquityAttributeExtractResolver converts stock unit prices directly to the 
     }),
 
     tickerInput: "TSCO.L",
-  });
+  }, context);
 
   assert.equal(result.status, "success");
   assert.equal(result.value.extractedValue, 3.125);

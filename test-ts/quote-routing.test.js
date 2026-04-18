@@ -1,3 +1,5 @@
+// Tests ResolveFlow end-to-end: DAG instantiation, plan routing nodes
+// (SwitchPlan, FirstSuccessPlan, StepPlan), and full attribute resolution traces.
 const assert = require("node:assert/strict");
 const test = require("node:test");
 

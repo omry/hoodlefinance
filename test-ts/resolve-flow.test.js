@@ -313,21 +313,13 @@ test("ResolveFlow.callSubgraph rejects unknown subgraph ids", () => {
   );
 });
 
-test("ResolveFlow exposes production FX subgraph calls without the old compatibility hook", () => {
+test("ResolveFlow callSubgraph routes through the FX subgraph correctly", () => {
   const flow = new ResolveFlow(
     DagPlan,
     createResolverMaterializationDependencies(),
   );
-  const equityExtractResolver = flow.getResolver("EXTRACT:EQUITY");
 
-  assert.ok(equityExtractResolver);
-  assert.ok(equityExtractResolver.runtimeRefs);
-  assert.equal("resolveFxQuote" in equityExtractResolver.runtimeRefs, false);
-
-  const result = equityExtractResolver.runtimeRefs.callSubgraph(
-    "FX_CONVERSION",
-    createFxIdentityRequest(),
-  );
+  const result = flow.callSubgraph("FX_CONVERSION", createFxIdentityRequest());
 
   assert.equal(result.status, "success");
   assert.equal(result.value.extractedValue, 1);

@@ -64,7 +64,7 @@ import {
   createResolutionSuccess,
   resolveCanonicalCurrencyCode,
   resolveFxConversionRate,
-  type PlanRuntimeRefs,
+  type ExecutionContext,
   type ResolutionResult,
 } from "./core-resolvers";
 import {
@@ -88,7 +88,7 @@ function convertResolvedMoneyValue(
   value: unknown,
   quote: StockQuote | FxQuote,
   attribute: string,
-  runtimeRefs: PlanRuntimeRefs | null,
+  runtimeRefs: ExecutionContext | null,
 ): unknown {
   const attributeRequest = parseAttributeRequest(attribute);
   const baseAttribute = attributeRequest.baseAttribute;
@@ -1148,7 +1148,6 @@ export class EquityAttributeExtractResolver extends Resolver {
   private httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
   private getCachedStringFn!: ResolverServices["getCachedString"];
   private putCachedStringFn!: ResolverServices["putCachedString"];
-  private runtimeRefs: PlanRuntimeRefs | null = null;
 
   constructor(code = "EXTRACT:EQUITY") {
     super(code);
@@ -1160,11 +1159,7 @@ export class EquityAttributeExtractResolver extends Resolver {
     this.putCachedStringFn = services.putCachedString.bind(services);
   }
 
-  initRuntimeRefs(refs: PlanRuntimeRefs): void {
-    this.runtimeRefs = refs;
-  }
-
-  resolve(input: unknown): ResolutionResult<unknown> {
+  resolve(input: unknown, context?: ExecutionContext): ResolutionResult<unknown> {
     const { quote, attribute, tickerInput } = input as {
       quote: StockQuote | FxQuote;
       attribute: string;
@@ -1190,7 +1185,7 @@ export class EquityAttributeExtractResolver extends Resolver {
         value,
         quote,
         attribute,
-        this.runtimeRefs,
+        context ?? null,
       );
     }
 
@@ -1266,17 +1261,11 @@ export class LonIsinResolver extends Resolver {
 }
 
 export class FxAttributeExtractResolver extends Resolver {
-  private runtimeRefs: PlanRuntimeRefs | null = null;
-
   constructor(code = "EXTRACT:FX") {
     super(code);
   }
 
-  initRuntimeRefs(refs: PlanRuntimeRefs): void {
-    this.runtimeRefs = refs;
-  }
-
-  resolve(input: unknown): ResolutionResult<unknown> {
+  resolve(input: unknown, context?: ExecutionContext): ResolutionResult<unknown> {
     const { quote, attribute } = input as {
       quote: StockQuote | FxQuote;
       attribute: string;
@@ -1287,7 +1276,7 @@ export class FxAttributeExtractResolver extends Resolver {
       rawValue,
       quote,
       attribute,
-      this.runtimeRefs,
+      context ?? null,
     );
     return createResolutionSuccess({ extractedValue: value }, 0);
   }

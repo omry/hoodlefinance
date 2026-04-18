@@ -6,7 +6,7 @@ import {
 } from "./graph";
 import type { Resolver } from "./resolver-classes";
 import { RawRequestInput } from "./request";
-import { type LookupResult, type PlanRuntimeRefs } from "./core-resolvers";
+import { type LookupResult } from "./core-resolvers";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
@@ -564,7 +564,6 @@ interface ResolveFlowDependencies {
 function materializeResolversByCode(
   resolverSpecs: Record<string, string>,
   deps: ResolveFlowDependencies,
-  runtimeRefs: PlanRuntimeRefs,
 ): MaterializedResolverRegistry {
   const byCode = deps.registryByCode || {};
   const byName = deps.registryByName || {};
@@ -582,10 +581,6 @@ function materializeResolversByCode(
 
     const resolver = ResolverClass.fromSpec(normalizedCode);
 
-    if (typeof resolver.initRuntimeRefs === "function") {
-      resolver.initRuntimeRefs(runtimeRefs);
-    }
-
     if (deps.resolverServices && typeof resolver.initEnv === "function") {
       resolver.initEnv(deps.resolverServices);
     }
@@ -600,7 +595,6 @@ function materializeResolversByCode(
 
 export class ResolveFlow {
   readonly graph: Graph.View;
-  private readonly runtimeRefs: PlanRuntimeRefs;
   #subgraphsById: Graph.SubgraphRegistry;
   #nodesByCode: Record<string, Resolver>;
 
@@ -614,9 +608,6 @@ export class ResolveFlow {
       }
     }
     this.#nodesByCode = Object.create(null);
-    this.runtimeRefs = {
-      callSubgraph: (subgraphId, input) => this.callSubgraph(subgraphId, input),
-    };
 
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
@@ -630,7 +621,6 @@ export class ResolveFlow {
     const resolverRegistry = materializeResolversByCode(
       resolverSpecsByCode,
       deps,
-      this.runtimeRefs,
     );
     Object.assign(this.#nodesByCode, resolverRegistry.byCode);
 

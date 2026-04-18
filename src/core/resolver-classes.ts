@@ -3,7 +3,7 @@ import { RawRequestInput, RequestInput } from "./request";
 
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
-export type { PlanRuntimeRefs, ResolverPlanOptions } from "./core-resolvers";
+export type { ExecutionContext, ResolverPlanOptions } from "./core-resolvers";
 export {
   FirstSuccessPlan,
   Resolver,

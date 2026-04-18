@@ -58,7 +58,7 @@ export interface LookupResult {
   value: unknown;
 }
 
-export interface PlanRuntimeRefs {
+export interface ExecutionContext {
   callSubgraph(subgraphId: string, input: object): LookupResult;
 }
 
@@ -115,7 +115,7 @@ export function resolveCanonicalCurrencyCode(currency: unknown): string {
 }
 
 export function resolveFxConversionRate(
-  refs: PlanRuntimeRefs,
+  refs: ExecutionContext,
   sourceCurrency: string,
   targetCurrency: string,
 ): LookupResult {
@@ -266,11 +266,11 @@ export class Resolver {
       : [];
   }
 
-  resolve(request: unknown): ResolutionResult<unknown> {
+  resolve(request: unknown, context?: ExecutionContext): ResolutionResult<unknown> {
     const startedAtMs = Date.now();
 
     try {
-      const rawValue = this.execute(request);
+      const rawValue = this.execute(request, context);
       const value = this.resolveTransformValue(rawValue, request);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
@@ -282,7 +282,7 @@ export class Resolver {
     }
   }
 
-  execute(_request: unknown): unknown {
+  execute(_request: unknown, _context?: ExecutionContext): unknown {
     throw new Error(
       `Resolver "${this.name}" must implement execute().`,
     );
@@ -296,8 +296,6 @@ export class Resolver {
   }
 
   initEnv(_services: ResolverServices): void {}
-
-  initRuntimeRefs(_refs: PlanRuntimeRefs): void {}
 
   static fromSpec(code: string, ..._args: unknown[]): Resolver {
     return new this(code);

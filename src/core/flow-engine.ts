@@ -1,6 +1,6 @@
 import type { ResolveFlow } from "./resolve-flow";
 import type { Graph } from "./graph";
-import type { SelectNextContext } from "./core-resolvers";
+import type { ExecutionContext, SelectNextContext } from "./core-resolvers";
 import { RoutingNodeKind } from "./core-resolvers";
 import { getGraphNodeNextIds } from "./graph";
 
@@ -277,7 +277,10 @@ export class FlowEngine {
       }
       outEnvelope = { value: envelope.value, status: EnvelopeStatus.Success };
     } else {
-      const result = resolver.resolve(envelope.value);
+      const executionContext: ExecutionContext = {
+        callSubgraph: (id, input) => this.#flow.callSubgraph(id, input),
+      };
+      const result = resolver.resolve(envelope.value, executionContext);
       if (result.status === "success") {
         outEnvelope = {
           value: result.value != null ? (result.value as object) : envelope.value,
