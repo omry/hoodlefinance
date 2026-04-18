@@ -12,7 +12,7 @@ function createResolveFlow(
 ): ResolveFlow {
   return new ResolveFlow(DagPlan, {
     resolverClassesByName: CONCRETE_RESOLVER_CLASSES_BY_NAME,
-    resolverServices,
+    resolverEnv: resolverServices,
   });
 }
 

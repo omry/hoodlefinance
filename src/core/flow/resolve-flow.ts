@@ -556,7 +556,7 @@ interface ResolveFlowDependencies {
   registryByCode?: ResolverRegistryByCode;
   registryByName?: ResolverRegistryByName;
   resolverClassesByName: Record<string, { fromSpec(code: string): Resolver } | undefined>;
-  resolverServices?: import("../resolver-services").ResolverServices;
+  resolverEnv?: unknown;
 }
 
 function materializeResolversByCode(
@@ -579,8 +579,8 @@ function materializeResolversByCode(
 
     const resolver = ResolverClass.fromSpec(normalizedCode);
 
-    if (deps.resolverServices && typeof resolver.initEnv === "function") {
-      resolver.initEnv(deps.resolverServices);
+    if ("resolverEnv" in deps && typeof resolver.initEnv === "function") {
+      resolver.initEnv(deps.resolverEnv);
     }
 
     registerResolver(byName, resolver);

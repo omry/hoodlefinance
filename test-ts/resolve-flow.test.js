@@ -47,7 +47,7 @@ function createResolverMaterializationDependencies() {
       YahooEquityQuoteResolver,
       YahooFxResolver,
     },
-    resolverServices: createStaticResolverServices(),
+    resolverEnv: createStaticResolverServices(),
   };
 }
 
@@ -206,7 +206,7 @@ test("ResolveFlow routes price@CCY conversion through the production FX subgraph
     {
       looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
       resolverClassesByName: CONCRETE_RESOLVER_CLASSES_BY_NAME,
-      resolverServices: services,
+      resolverEnv: services,
     },
   );
 
@@ -459,7 +459,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     {
       looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(v)),
       resolverClassesByName: CONCRETE_RESOLVER_CLASSES_BY_NAME,
-      resolverServices: services,
+      resolverEnv: services,
     },
   );
 

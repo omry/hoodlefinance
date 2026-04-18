@@ -4,8 +4,6 @@ import {
   type Graph,
 } from "./graph";
 
-import type { ResolverServices } from "../resolver-services";
-
 export type ResolutionResult<T> =
   | { elapsedMs: number; status: "success"; value: T }
   | { elapsedMs: number; error: string; status: "failure" };
@@ -220,7 +218,10 @@ export class Resolver {
     return value;
   }
 
-  initEnv(_services: ResolverServices): void {}
+  // Optional one-time resolver initialization hook. `_env` is an opaque object
+  // that can carry runtime capabilities, callbacks, or other host-provided
+  // data. The flow layer does not interpret its shape.
+  initEnv(_env: unknown): void {}
 
   static fromSpec(code: string, ..._args: unknown[]): Resolver {
     return new this(code);

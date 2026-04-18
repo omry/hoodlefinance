@@ -48,7 +48,7 @@ function createResolverMaterializationDependencies() {
       YahooFxResolver,
       TradingviewFundResolver,
     },
-    resolverServices: createStaticResolverServices(),
+    resolverEnv: createStaticResolverServices(),
   };
 }
 

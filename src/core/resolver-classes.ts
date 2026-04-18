@@ -2,7 +2,6 @@ import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 
 import type { Graph } from "./flow/graph";
-import type { ResolverServices } from "./resolver-services";
 export type { ExecutionContext, ResolverPlanOptions } from "./flow/resolver";
 export {
   FirstSuccessPlan,
@@ -68,7 +67,10 @@ export class BaseHFResolver extends AttributeResolver {
     };
   }
 
-  initEnv(_services: ResolverServices): void {}
+  // Domain-specific resolver subclasses currently interpret the generic
+  // flow-layer environment object here.
+  // TODO: move env access into resolve context so resolvers do not retain it.
+  initEnv(_env: unknown): void {}
 }
 
 export class RoutingPlan extends SwitchPlan {}

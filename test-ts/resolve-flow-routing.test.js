@@ -42,7 +42,7 @@ function createResolverMaterializationDependencies() {
       YahooEquityQuoteResolver,
       YahooFxResolver,
     },
-    resolverServices: createStaticResolverServices(),
+    resolverEnv: createStaticResolverServices(),
   };
 }
 
