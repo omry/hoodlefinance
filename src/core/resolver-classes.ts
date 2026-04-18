@@ -1,7 +1,6 @@
-import type { ResolverExecutionContext } from "./planner";
 import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
-import { buildPseQuoteRouteState, buildFxQuoteRouteState } from "./route-state";
+
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
 import type { RouteResult } from "./route-results";
@@ -44,10 +43,7 @@ export class BaseHFResolver extends AttributeResolver {
     return "";
   }
 
-  override executeRouteRequest(
-    _request: unknown,
-    _context: ResolverExecutionContext<Record<string, unknown>>,
-  ): RouteResult {
+  override executeRouteRequest(_request: unknown): RouteResult {
     throw new Error(
       `Resolver "${this.name}" must implement executeRouteRequest().`,
     );
@@ -63,7 +59,6 @@ export class BaseHFResolver extends AttributeResolver {
 
   protected override resolveTransformValue(
     value: unknown,
-    context: ResolverExecutionContext<Record<string, unknown>>,
     request: unknown,
   ): unknown {
     if (value == null) return value;
@@ -79,7 +74,6 @@ export class BaseHFResolver extends AttributeResolver {
     }
     return {
       quote: value,
-      routeState: context.routeState,
       attribute,
       tickerInput: identifier,
       input: request as ResolvedRequest,
@@ -105,25 +99,11 @@ export class PseQuoteResolutionPlan extends FirstSuccessPlan {
   getExampleInput(): string | null {
     return "PSE:BDO";
   }
-
-  buildRouteState(request: unknown): Record<string, unknown> {
-    if (!request || !("symbol" in (request as object))) return {};
-    return buildPseQuoteRouteState(
-      request as Extract<ResolvedRequest, { requestType: "equity" }>,
-    );
-  }
 }
 
 export class TickerQuoteResolutionPlan extends FirstSuccessPlan {}
 
 export class FxAttributeResolutionPlan extends SwitchPlan {
-  buildRouteState(request: unknown): Record<string, unknown> {
-    if (!request || !("fxPair" in (request as object))) return {};
-    return buildFxQuoteRouteState(
-      request as Extract<ResolvedRequest, { requestType: "fx" }>,
-    );
-  }
-
   canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&

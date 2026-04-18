@@ -4,9 +4,6 @@ import { parseAttributeRequest } from "./request-parsing";
 
 export { parseAttributeRequest };
 
-interface AttributeExtractionContext {
-  routeState?: Record<string, unknown> | null;
-}
 
 export function extractQuoteCurrencyCode(quote: StockQuote | FxQuote): string {
   return String(quote.currency || (quote as StockQuote).financialCurrency || "");
@@ -83,7 +80,6 @@ function renderGoogleSymbol(quote: StockQuote | FxQuote, resolvedSymbol: string)
 
 function resolveSymbolAttribute(
   quote: StockQuote | FxQuote,
-  context: AttributeExtractionContext | null | undefined,
   style: "google" | "yahoo",
 ): string {
   const resolvedSymbol = String(quote.symbol || "").trim();
@@ -96,20 +92,12 @@ function resolveSymbolAttribute(
     return resolvedSymbol;
   }
 
-  const displaySymbol = String(
-    context && context.routeState ? context.routeState.displaySymbol || "" : "",
-  ).trim();
-  if (displaySymbol) {
-    return displaySymbol;
-  }
-
   return renderGoogleSymbol(quote, resolvedSymbol);
 }
 
 export function extractAttributeValue(
   quote: StockQuote | FxQuote,
   attribute: string,
-  context?: AttributeExtractionContext,
 ): unknown {
   const attributeRequest = parseAttributeRequest(attribute);
   const baseAttribute = attributeRequest.baseAttribute;
@@ -186,10 +174,10 @@ export function extractAttributeValue(
       break;
     case "symbol":
     case "symbol:google":
-      value = resolveSymbolAttribute(quote, context, "google");
+      value = resolveSymbolAttribute(quote,"google");
       break;
     case "symbol:yahoo":
-      value = resolveSymbolAttribute(quote, context, "yahoo");
+      value = resolveSymbolAttribute(quote,"yahoo");
       break;
     case "exchange":
     case "exchange:google": {

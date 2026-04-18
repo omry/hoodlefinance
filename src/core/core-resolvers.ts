@@ -6,7 +6,6 @@ import {
 
 import type {
   ResolutionResult,
-  ResolverExecutionContext,
 } from "./planner";
 import { RoutingNodeKind } from "./planner";
 import { FxRequest, RawRequestInput, RequestInput } from "./request";
@@ -135,13 +134,6 @@ export function resolveFxConversionRate(
   };
 }
 
-function createResolverExecutionContext(
-  request: unknown,
-  routeState: Record<string, unknown>,
-): ResolverExecutionContext<Record<string, unknown>> {
-  return { routeState };
-}
-
 function normalizeRouteResult(
   result: RouteResult | null | undefined,
 ): RouteResult {
@@ -151,17 +143,6 @@ function normalizeRouteResult(
       error: "Resolver returned no result.",
     })
   );
-}
-
-function applyStateChanges(
-  context: ResolverExecutionContext<Record<string, unknown>>,
-  result: RouteResult,
-): void {
-  if (!result.stateChanges || typeof result.stateChanges !== "object") {
-    return;
-  }
-
-  Object.assign(context.routeState, result.stateChanges);
 }
 
 function getResolvedRouteValue(result: RouteResult): unknown {
@@ -178,7 +159,6 @@ function getResolvedRouteValue(result: RouteResult): unknown {
 
 function formatExecutionFailureMessage(
   resolver: Pick<Resolver, "name" | "traceLabel">,
-  context: ResolverExecutionContext<Record<string, unknown>>,
   result: RouteResult,
 ): string {
   const message =
@@ -211,10 +191,6 @@ export class Resolver {
 
   getRoutingDescription(): string | null {
     return null;
-  }
-
-  buildRouteState(_request: unknown): Record<string, unknown> {
-    return {};
   }
 
   canHandle(_request: unknown): boolean {
@@ -283,25 +259,18 @@ export class Resolver {
     const startedAtMs = Date.now();
 
     try {
-      const context = createResolverExecutionContext(
-        request,
-        this.buildRouteState(request),
-      );
-      const result = normalizeRouteResult(
-        this.executeRouteRequest(request, context),
-      );
-      applyStateChanges(context, result);
+      const result = normalizeRouteResult(this.executeRouteRequest(request));
 
       if (result.status !== "success") {
         return createResolutionFailure(
-          formatExecutionFailureMessage(this, context, result),
+          formatExecutionFailureMessage(this, result),
           Date.now() - startedAtMs,
           formatResolverError,
         );
       }
 
       const rawValue = getResolvedRouteValue(result);
-      const value = this.resolveTransformValue(rawValue, context, request);
+      const value = this.resolveTransformValue(rawValue, request);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
@@ -312,10 +281,7 @@ export class Resolver {
     }
   }
 
-  executeRouteRequest(
-    _request: unknown,
-    _context: ResolverExecutionContext<Record<string, unknown>>,
-  ): RouteResult {
+  executeRouteRequest(_request: unknown): RouteResult {
     throw new Error(
       `Resolver "${this.name}" must implement executeRouteRequest().`,
     );
@@ -323,7 +289,6 @@ export class Resolver {
 
   protected resolveTransformValue(
     value: unknown,
-    _context: ResolverExecutionContext<Record<string, unknown>>,
     _request: unknown,
   ): unknown {
     return value;

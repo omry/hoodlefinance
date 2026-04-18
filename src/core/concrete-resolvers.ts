@@ -6,11 +6,6 @@ import {
   RequestInput,
   type ResolvedRequest,
 } from "./request";
-import {
-  buildEquityYahooQuoteRouteState,
-  buildIsinIdentifierRouteState,
-  buildPseQuoteRouteState,
-} from "./route-state";
 import { IdentifierResolver, Resolver, BaseHFResolver } from "./resolver-classes";
 import {
   createRequestInput,
@@ -79,9 +74,7 @@ import {
 } from "./core-resolvers";
 import type {
   ResolutionResult,
-  ResolverExecutionContext,
 } from "./planner";
-import { buildFxQuoteRouteState } from "./route-state";
 import {
   loadStoredTextResource,
   type ResolverServices,
@@ -164,7 +157,6 @@ function convertResolvedMoneyValue(
 function extractRawResolvedAttributeValue(
   quote: StockQuote | FxQuote,
   attribute: string,
-  routeState: Record<string, unknown>,
 ): unknown {
   const attributeRequest = parseAttributeRequest(attribute);
 
@@ -172,10 +164,10 @@ function extractRawResolvedAttributeValue(
     attributeRequest.wantsOutputCurrency &&
     attributeRequest.baseAttribute === "price"
   ) {
-    return extractAttributeValue(quote, "price", { routeState });
+    return extractAttributeValue(quote, "price");
   }
 
-  return extractAttributeValue(quote, attribute, { routeState });
+  return extractAttributeValue(quote, attribute);
 }
 
 export class DirectIdentifierResolver extends IdentifierResolver {
@@ -451,28 +443,12 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return input instanceof RequestInput && isin.startsWith("PH");
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!(request instanceof RequestInput)) {
-      return {};
-    }
-
-    return buildIsinIdentifierRouteState(request, extractIsinFromRequestInput);
-  }
-
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
     try {
-      const isin = String(context.routeState.isin || "").trim();
-      const pseTicker =
-        this.ensurePseIsinMap()[
-          String(isin || "")
-            .trim()
-            .toUpperCase()
-        ] || "";
+      const isin = String(extractIsinFromRequestInput(request as RequestInput) || "").trim();
+      const pseTicker = this.ensurePseIsinMap()[isin.toUpperCase()] || "";
 
       if (!pseTicker) {
         return createRouteResult("lookup_failure");
@@ -480,7 +456,7 @@ export class PseIsinMapResolver extends IdentifierResolver {
 
       return createRouteResult("success", {
         value: buildTypedRequestFromResolvedTicker(
-          context.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+          request as Pick<RequestInput, "attribute" | "identifier">,
           pseTicker,
           0,
         ),
@@ -532,34 +508,23 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     );
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!(request instanceof RequestInput)) {
-      return {};
-    }
-
-    return buildIsinIdentifierRouteState(request, extractIsinFromRequestInput);
-  }
-
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
-    const cacheKey = `hoodlefinance:isin:${context.routeState.isin}`;
+    const isin = String(extractIsinFromRequestInput(request as RequestInput) || "").trim();
+    const cacheKey = `hoodlefinance:isin:${isin}`;
     const cached = this.getCachedString(cacheKey);
 
     if (cached) {
       return createRouteResult("success", {
         value: buildTypedRequestFromResolvedTicker(
-          context.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+          request as Pick<RequestInput, "attribute" | "identifier">,
           cached,
           0,
         ),
       });
     }
 
-    const isin = String(context.routeState.isin || "").trim();
     const responseItem = fetchRequestsSequentially(this.httpFetch, [
       {
         cacheKey,
@@ -569,9 +534,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     ])[0];
 
     if (responseItem?.error) {
-      return createRouteResult("lookup_failure", {
-        error: responseItem.error,
-      });
+      return createRouteResult("lookup_failure", { error: responseItem.error });
     }
 
     try {
@@ -582,7 +545,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       this.putCachedString(cacheKey, resolvedTicker, 21600);
       return createRouteResult("success", {
         value: buildTypedRequestFromResolvedTicker(
-          context.routeState.input as Pick<RequestInput, "attribute" | "identifier">,
+          request as Pick<RequestInput, "attribute" | "identifier">,
           resolvedTicker,
           0,
         ),
@@ -616,32 +579,12 @@ export class LocalFxResolver extends BaseHFResolver {
     );
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!this.canHandle(request)) {
-      return {};
-    }
-
-    const fxRequest = request as Extract<
-      ResolvedRequest,
-      { requestType: "fx" }
-    >;
-
-    return {
-      fxPair: fxRequest.fxPair,
-    };
-  }
-
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
     try {
       return createRouteResult("success", {
-        quote: buildSameCurrencyQuote(
-          context.routeState.fxPair as import("./request").FxPair,
-        ),
+        quote: buildSameCurrencyQuote((request as FxRequest).fxPair),
       });
     } catch (error) {
       return createRouteResult("terminal_error", { error });
@@ -694,22 +637,11 @@ export class GoogleFxResolver extends BaseHFResolver {
     );
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!(request instanceof FxRequest)) {
-      return {};
-    }
-
-    return buildFxQuoteRouteState(request);
-  }
-
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
     try {
-      const fxPair = context.routeState.fxPair as FxRequest["fxPair"];
+      const fxPair = (request as FxRequest).fxPair;
       const pairSlug = String(fxPair.googlePairSlug || "").trim();
       const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
       const cached = this.getCachedJson(cacheKey);
@@ -809,25 +741,14 @@ export class PseFramesResolver extends BaseHFResolver {
     return request instanceof EquityRequest && request.exchange === "PSE";
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!(request instanceof EquityRequest)) {
-      return {};
-    }
-
-    return buildPseQuoteRouteState(request);
-  }
-
   getRouteClass(_request: RequestInput | ResolvedRequest): string {
     return "EQUITY -> PSE";
   }
 
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
-    const symbol = String(context.routeState.symbol || "")
+    const symbol = String((request as EquityRequest).symbol || "")
       .trim()
       .toUpperCase();
     const cacheKey = buildPseQuoteCacheKey(symbol);
@@ -921,25 +842,14 @@ export class PseEdgeResolver extends BaseHFResolver {
     return request instanceof EquityRequest && request.exchange === "PSE";
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!(request instanceof EquityRequest)) {
-      return {};
-    }
-
-    return buildPseQuoteRouteState(request);
-  }
-
   getRouteClass(_request: RequestInput | ResolvedRequest): string {
     return "EQUITY -> PSE";
   }
 
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
-    const symbol = String(context.routeState.symbol || "")
+    const symbol = String((request as EquityRequest).symbol || "")
       .trim()
       .toUpperCase();
     const quoteCacheKey = buildPseQuoteCacheKey(symbol);
@@ -951,7 +861,7 @@ export class PseEdgeResolver extends BaseHFResolver {
       });
     }
 
-    let listing = normalizePseListing(context.routeState.listing);
+    let listing: PseListing | null = null;
     if (!listing) {
       const listingCacheKey = buildPseListingCacheKey(symbol);
       listing = normalizePseListing(this.getCachedJson(listingCacheKey));
@@ -999,8 +909,6 @@ export class PseEdgeResolver extends BaseHFResolver {
         }
       }
     }
-
-    context.routeState.listing = listing;
 
     const stockResponse = fetchRequestsSequentially(this.httpFetch, [
       {
@@ -1130,41 +1038,27 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
     }
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (request instanceof FxRequest) {
-      return {
-        fxPair: request.fxPair,
-        yahooSymbol: request.fxPair.yahooChartSymbol,
-      };
-    }
-
-    if (request instanceof EquityRequest) {
-      return buildEquityYahooQuoteRouteState(
-        request,
-        this.buildPreferredYahooSymbol(request.yahooSymbol),
-      );
-    }
-
-    return {};
-  }
-
-
-
   override executeRouteRequest(
     request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
   ): RouteResult {
-    const yahooSymbol = String(context.routeState.yahooSymbol || "").trim();
-    const preferredYahooSymbol = String(
-      context.routeState.preferredYahooSymbol || "",
-    ).trim();
+    let yahooSymbol: string;
+    let preferredYahooSymbol: string;
+    let fxPair: FxRequest["fxPair"] | null;
+
+    if (request instanceof FxRequest) {
+      yahooSymbol = request.fxPair.yahooChartSymbol;
+      preferredYahooSymbol = "";
+      fxPair = request.fxPair;
+    } else {
+      const eq = request as EquityRequest;
+      yahooSymbol = eq.yahooSymbol;
+      preferredYahooSymbol = this.buildPreferredYahooSymbol(eq.yahooSymbol);
+      fxPair = null;
+    }
+
     const lookupYahooSymbol = preferredYahooSymbol || yahooSymbol;
     const cacheKey = `hoodlefinance:${lookupYahooSymbol}`;
     const cached = this.getCachedJson(cacheKey);
-    const fxPair =
-      (context.routeState.fxPair as FxRequest["fxPair"] | null) || null;
     const cachedQuote = cached ? new StockQuote(cached as never) : null;
 
     if (cached) {
@@ -1311,24 +1205,11 @@ export class TradingviewFundResolver extends BaseHFResolver {
     );
   }
 
-  buildRouteState(
-    request: RequestInput | ResolvedRequest,
-  ): Record<string, unknown> {
-    if (!(request instanceof EquityRequest)) {
-      return {};
-    }
-
-    return {
-      yahooSymbol: request.yahooSymbol,
-    };
-  }
-
   override executeRouteRequest(
-    _request: RequestInput | ResolvedRequest,
-    context: ResolverExecutionContext<Record<string, unknown>>,
+    request: RequestInput | ResolvedRequest,
   ): RouteResult {
     const fallbackInfo = buildIsraeliFundTradingviewFallbackInfo(
-      String(context.routeState.yahooSymbol || ""),
+      String((request as EquityRequest).yahooSymbol || ""),
     );
     const cacheKey = `hoodlefinance:tradingview:quote:${fallbackInfo.yahooSymbol}`;
     const primaryCacheKey = `hoodlefinance:${fallbackInfo.yahooSymbol}`;
@@ -1406,9 +1287,8 @@ export class EquityAttributeExtractResolver extends Resolver {
   }
 
   resolve(input: unknown): ResolutionResult<unknown> {
-    const { quote, routeState, attribute, tickerInput } = input as {
+    const { quote, attribute, tickerInput } = input as {
       quote: StockQuote | FxQuote;
-      routeState: Record<string, unknown>;
       attribute: string;
       tickerInput: string;
     };
@@ -1427,7 +1307,7 @@ export class EquityAttributeExtractResolver extends Resolver {
         },
       );
     } else {
-      value = extractRawResolvedAttributeValue(quote, attribute, routeState);
+      value = extractRawResolvedAttributeValue(quote, attribute);
       value = convertResolvedMoneyValue(
         value,
         quote,
@@ -1519,17 +1399,12 @@ export class FxAttributeExtractResolver extends Resolver {
   }
 
   resolve(input: unknown): ResolutionResult<unknown> {
-    const { quote, routeState, attribute } = input as {
+    const { quote, attribute } = input as {
       quote: StockQuote | FxQuote;
-      routeState: Record<string, unknown>;
       attribute: string;
     };
 
-    const rawValue = extractRawResolvedAttributeValue(
-      quote,
-      attribute,
-      routeState,
-    );
+    const rawValue = extractRawResolvedAttributeValue(quote, attribute);
     const value = convertResolvedMoneyValue(
       rawValue,
       quote,

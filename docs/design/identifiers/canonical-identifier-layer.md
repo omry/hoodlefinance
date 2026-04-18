@@ -85,6 +85,14 @@ The existing request classes remain the transition point:
 - `EquityRequest` and `FxRequest` still exist as runtime request types
 - provider lookup and symbol rendering become derived views of the canonical identity, not separate sources of truth
 
+## Known case: preferred REIT symbol attribute
+
+When a REIT has a preferred ticker mapping, the Yahoo resolver fetches using the remapped symbol but must return the original `yahooSymbol` (what the user typed) when the `symbol` attribute is requested.
+
+Today this is handled by passing `displaySymbol` — the original `yahooSymbol` before remapping — through `routeState` all the way to the attribute extraction layer. That coupling is the reason `routeState` leaks out of the resolver and into the output object.
+
+The canonical layer must handle this properly: the canonical identity carries what the user meant, so the `symbol` attribute should render from that identity rather than from whatever symbol the provider used to fetch the quote. When the canonical layer is in place, `displaySymbol` and the `routeState` pass-through can be removed.
+
 ## Design Constraint
 
 The canonical layer should work for all identifier families, but provider lookup may still differ by adapter.

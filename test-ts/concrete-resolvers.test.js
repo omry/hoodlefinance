@@ -215,9 +215,6 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
   });
 
   assert.equal(resolver.canHandle(request), true);
-  assert.deepEqual(resolver.buildRouteState(request), {
-    fxPair: request.fxPair,
-  });
 
   const outcome = resolver.resolve(request);
   assert.equal(outcome.status, "success");
@@ -249,7 +246,7 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
       regularMarketPrice: 250,
       symbol: "TSCO.L",
     }),
-    routeState: {},
+
     tickerInput: "TSCO.L",
   });
 
@@ -280,7 +277,7 @@ test("EquityAttributeExtractResolver converts stock unit prices directly to the 
       regularMarketPrice: 250,
       symbol: "TSCO.L",
     }),
-    routeState: {},
+
     tickerInput: "TSCO.L",
   });
 
@@ -298,7 +295,7 @@ test("FxAttributeExtractResolver keeps explicit FX scaling in extraction", () =>
       regularMarketPrice: 1,
       symbol: "GBPUSD",
     },
-    routeState: {},
+
   });
 
   assert.equal(result.status, "success");
@@ -362,7 +359,6 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   });
 
   assert.equal(resolver.canHandle(request), true);
-  assert.deepEqual(resolver.buildRouteState(request), { fxPair });
 
   const fetchedOutcome = resolver.resolve(request);
   assert.equal(fetchedOutcome.status, "success");
@@ -430,7 +426,6 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   });
 
   assert.equal(resolver.canHandle(request), true);
-  assert.deepEqual(resolver.buildRouteState(request), { symbol: "BDO" });
   assert.equal(resolver.describe(request), "EQUITY -> PSE -> PSE-FRAMES");
 
   const fetchedResult = resolver.resolve(request);
@@ -515,7 +510,6 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   });
 
   assert.equal(resolver.canHandle(request), true);
-  assert.deepEqual(resolver.buildRouteState(request), { symbol: "BDO" });
   assert.equal(resolver.describe(request), "EQUITY -> PSE -> PSE-EDGE");
 
   const fetchedResult = resolver.resolve(request);
@@ -581,12 +575,6 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
   });
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
-  assert.deepEqual(cachedResolver.buildRouteState(cachedRequest), {
-    displaySymbol: "",
-    fxPair: null,
-    preferredYahooSymbol: "",
-    yahooSymbol: "GOOG",
-  });
 
   const cachedResult = cachedResolver.resolve(cachedRequest);
   assert.equal(cachedResult.status, "success");
@@ -685,17 +673,6 @@ test("YahooEquityQuoteResolver owns preferred equity fallback symbols without af
     identifier: "EURUSD",
   });
 
-  assert.deepEqual(resolver.buildRouteState(equityRequest), {
-    displaySymbol: "NLY-I",
-    fxPair: null,
-    preferredYahooSymbol: "NLY-PI",
-    yahooSymbol: "NLY-I",
-  });
-  assert.deepEqual(resolver.buildRouteState(fxRequest), {
-    fxPair,
-    yahooSymbol: "EURUSD=X",
-  });
-
   const result = resolver.resolve(equityRequest);
   assert.equal(result.status, "success");
   assert.equal(
@@ -767,7 +744,7 @@ test("YahooEquityQuoteResolver falls back to stored preferred whitelist data whe
     },
   }));
 
-  const routeState = resolver.buildRouteState(
+  resolver.resolve(
     new EquityRequest({
       attribute: "price",
       identifier: "NLY-I",
@@ -775,12 +752,6 @@ test("YahooEquityQuoteResolver falls back to stored preferred whitelist data whe
     }),
   );
 
-  assert.deepEqual(routeState, {
-    displaySymbol: "NLY-I",
-    fxPair: null,
-    preferredYahooSymbol: "NLY-PI",
-    yahooSymbol: "NLY-I",
-  });
   assert.deepEqual(cachedWhitelistWrite, {
     cacheKey: "hoodlefinance:ts:preferredReitWhitelist",
     ttlSeconds: 21600,
@@ -841,9 +812,6 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
   });
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
-  assert.deepEqual(cachedResolver.buildRouteState(cachedRequest), {
-    yahooSymbol: "KSMF59.TA",
-  });
 
   const cachedResult = cachedResolver.resolve(cachedRequest);
   assert.equal(cachedResult.status, "success");

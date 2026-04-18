@@ -9,8 +9,4 @@ export type ResolutionResult<T> =
   | { elapsedMs: number; status: "success"; value: T }
   | { elapsedMs: number; error: string; status: "failure" };
 
-export interface ResolverExecutionContext<
-  RouteState = Record<string, unknown>,
-> {
-  routeState: RouteState;
-}
+
