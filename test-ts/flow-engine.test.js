@@ -1070,8 +1070,12 @@ test("step node: TerminalFailure from a child propagates immediately and stops e
   assert.equal(bCalled, false, "STEP-B must not be called after TerminalFailure");
 });
 
-test("execute() only unwraps ClassifiedInput at the ROOT node", () => {
-  let childInput = null;
+test("execute() passes resolver output to children without transforming its shape", () => {
+  let wrapperInput = null;
+  let leafInput = null;
+
+  const rootOutput = { requestInput: { ticker: "GOOG" }, resolvedRequest: { requestType: "equity", symbol: "GOOG" } };
+  const wrapperOutput = { requestInput: { nested: true }, resolvedRequest: null };
 
   const flow = {
     getGraph: () => ({
@@ -1087,32 +1091,23 @@ test("execute() only unwraps ClassifiedInput at the ROOT node", () => {
     getResolver: (id) => {
       if (id === "ROOT") {
         return {
-          resolve: () => ({
-            status: "success",
-            value: {
-              requestInput: { ticker: "GOOG" },
-              resolvedRequest: { requestType: "equity", symbol: "GOOG" },
-            },
-          }),
+          resolve: () => ({ status: "success", value: rootOutput }),
           getRoutingNodeKind: () => "leaf",
         };
       }
       if (id === "WRAPPER") {
         return {
-          resolve: () => ({
-            status: "success",
-            value: {
-              requestInput: { nested: true },
-              resolvedRequest: null,
-            },
-          }),
+          resolve: (input) => {
+            wrapperInput = input;
+            return { status: "success", value: wrapperOutput };
+          },
           getRoutingNodeKind: () => "leaf",
         };
       }
       if (id === "LEAF") {
         return {
           resolve: (input) => {
-            childInput = input;
+            leafInput = input;
             return { status: "success", value: input };
           },
           getRoutingNodeKind: () => "leaf",
@@ -1126,8 +1121,8 @@ test("execute() only unwraps ClassifiedInput at the ROOT node", () => {
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
-  assert.deepEqual(childInput, {
-    requestInput: { nested: true },
-    resolvedRequest: null,
-  });
+  // Engine passes ROOT's output to WRAPPER unchanged — no shape-based unwrapping.
+  assert.deepEqual(wrapperInput, rootOutput);
+  // Engine passes WRAPPER's output to LEAF unchanged.
+  assert.deepEqual(leafInput, wrapperOutput);
 });

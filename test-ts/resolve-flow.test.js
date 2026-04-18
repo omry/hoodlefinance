@@ -15,6 +15,7 @@ const {
   PseIsinMapResolver,
   RequestClassifierResolver,
   ResolveFlow,
+  resolveAttribute,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
   YahooFxResolver,
@@ -148,7 +149,7 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
   assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
   assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
   assert.equal(resolveFlow.getGraph().getNode("YAHOO-QUOTE").type, "YahooEquityQuoteResolver");
-  assert.equal(resolveFlow.resolveAttribute("USDUSD", "price"), 1);
+  assert.equal(resolveAttribute(resolveFlow, "USDUSD", "price"), 1);
 });
 
 test("ResolveFlow routes price@CCY conversion through the production FX subgraph", () => {
@@ -209,7 +210,7 @@ test("ResolveFlow routes price@CCY conversion through the production FX subgraph
     },
   );
 
-  assert.equal(resolveFlow.resolveAttribute("TSCO.L", "price@USD"), 3.125);
+  assert.equal(resolveAttribute(resolveFlow, "TSCO.L", "price@USD"), 3.125);
 });
 
 test("ResolveFlow instantiates and registers resolvers by class name", () => {

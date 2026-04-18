@@ -104,6 +104,6 @@ test("compiled DagPlan classifies representative examples correctly", () => {
   for (const { example, expectedClassification } of cases) {
     const outcome = rootNode.resolve(new RawRequestInput(example, "price"));
     assert.equal(outcome.status, "success", `${example}: classification succeeded`);
-    assert.equal(outcome.value.requestInput.classification, expectedClassification, `${example}: classification`);
+    assert.equal(outcome.value.classification, expectedClassification, `${example}: classification`);
   }
 });

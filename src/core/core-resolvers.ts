@@ -4,12 +4,6 @@ import {
   type Graph,
 } from "./graph";
 
-import { FxRequest, RawRequestInput, RequestInput } from "./request";
-import {
-  extractAttributeValue,
-} from "./attribute-extraction";
-import { buildFxPairFromCodes } from "./fx-normalization";
-import type { StockQuote } from "./quote";
 import type { ResolverServices } from "./resolver-services";
 
 export type ResolutionResult<T> =
@@ -62,8 +56,6 @@ export interface ExecutionContext {
   callSubgraph(subgraphId: string, input: object): LookupResult;
 }
 
-const FX_CONVERSION_SUBGRAPH_ID = "FX_CONVERSION";
-
 // TODO: rename routeClass/routePath to drop legacy "route" terminology once spec format is updated
 export interface ResolverPlanOptions {
   routeClass?: string;
@@ -89,73 +81,6 @@ function normalizeNodeCode(nodeCode: string): string {
 
 function formatResolverError(error: unknown): string {
   return String(error instanceof Error ? error.message : (error ?? ""));
-}
-
-function unwrapLookupValue(value: unknown): unknown {
-  if (
-    value != null &&
-    typeof value === "object" &&
-    "extractedValue" in (value as Record<string, unknown>)
-  ) {
-    return (value as { extractedValue: unknown }).extractedValue;
-  }
-
-  return value;
-}
-
-export function resolveCanonicalCurrencyCode(currency: unknown): string {
-  const rawCurrency = String(currency || "").trim();
-
-  if (!rawCurrency) {
-    return "";
-  }
-
-  const selfPair = buildFxPairFromCodes(rawCurrency, rawCurrency);
-  return selfPair?.quoteCanonicalCode || rawCurrency.toUpperCase();
-}
-
-export function resolveFxConversionRate(
-  refs: ExecutionContext,
-  sourceCurrency: string,
-  targetCurrency: string,
-): LookupResult {
-  const fxPair = buildFxPairFromCodes(sourceCurrency, targetCurrency);
-  if (!fxPair) {
-    throw new Error(
-      `Output-currency conversion from "${sourceCurrency}" to "${targetCurrency}" is not supported. Use recognized 3- or 4-character currency codes.`,
-    );
-  }
-
-  const fxResult = refs.callSubgraph(
-    FX_CONVERSION_SUBGRAPH_ID,
-    new FxRequest({
-      attribute: "price",
-      fxPair,
-      identifier: fxPair.yahooChartSymbol,
-    }),
-  );
-
-  if (fxResult.status !== "success") {
-    return fxResult;
-  }
-
-  const resolvedValue = unwrapLookupValue(fxResult.value);
-  const rate = Number(
-    resolvedValue != null && typeof resolvedValue === "object"
-      ? extractAttributeValue(resolvedValue as StockQuote, "price")
-      : resolvedValue,
-  );
-
-  if (!Number.isFinite(rate)) {
-    throw new Error(
-      `FX conversion from "${sourceCurrency}" to "${targetCurrency}" returned a non-numeric rate.`,
-    );
-  }
-
-  return {
-    ...fxResult,
-    value: rate,
-  };
 }
 
 export function describePlanSource(

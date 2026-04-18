@@ -4,20 +4,6 @@ import type { ExecutionContext, SelectNextContext } from "./core-resolvers";
 import { RoutingNodeKind } from "./core-resolvers";
 import { getGraphNodeNextIds } from "./graph";
 
-// ROOT (RequestClassifierResolver) outputs { requestInput, resolvedRequest }.
-// Downstream nodes expect ResolvedRequest (non-ISIN) or RequestInput (ISIN).
-// Detect and unwrap so the correct type flows to plan-node canHandle checks.
-function isClassifiedInput(
-  value: unknown,
-): value is { requestInput: object; resolvedRequest: object | null } {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "requestInput" in (value as object) &&
-    "resolvedRequest" in (value as object)
-  );
-}
-
 export enum EnvelopeStatus {
   Success = "success",
   Failure = "failure",
@@ -304,19 +290,6 @@ export class FlowEngine {
       return {
         ...outEnvelope,
         didReachStopNode: true,
-      };
-    }
-
-    // Unwrap ClassifiedInput from ROOT: the classifier outputs
-    // { requestInput, resolvedRequest } but children expect one type directly.
-    if (
-      node.id === graph.getRoot()?.id &&
-      isClassifiedInput(outEnvelope.value)
-    ) {
-      const { resolvedRequest, requestInput } = outEnvelope.value;
-      outEnvelope = {
-        ...outEnvelope,
-        value: (resolvedRequest ?? requestInput) as object,
       };
     }
 

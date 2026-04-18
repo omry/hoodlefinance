@@ -85,7 +85,7 @@ test("getRoutingTableRows classifies example tickers correctly", () => {
     classifyRequest(rawInput) {
       const outcome = rootNode.resolve(rawInput);
       if (outcome.status !== "success") throw new Error(outcome.error);
-      return outcome.value.requestInput;
+      return outcome.value;
     },
   };
 
