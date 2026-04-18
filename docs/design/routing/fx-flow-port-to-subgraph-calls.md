@@ -1,7 +1,7 @@
 ---
 status: Active
-updated: 2026-04-17
-summary: Port the production FX path to the standalone subgraph-call primitive and remove the old runtime compatibility seam.
+updated: 2026-04-19
+summary: Current implementation note for the FX_CONVERSION subgraph-call migration.
 ---
 
 # FX Flow Port To Subgraph Calls
@@ -14,6 +14,36 @@ named subgraph call once standalone subgraph-call support has landed.
 This document depends on the generic runtime support described in
 [`subgraph-call-support.md`](./subgraph-call-support.md). It is intentionally a
 second step, not part of the initial infrastructure change.
+
+This migration is now implemented in the TypeScript runtime. The notes below
+capture the intended design plus the current production shape that replaced the
+older compatibility seam.
+
+## Current Implementation
+
+Implemented behavior:
+
+- `DagPlan.__subgraphs__.FX_CONVERSION` declares the FX branch as a named
+  subgraph with `rootNodeId: "ATTRIBUTE:FX"` and
+  `terminalNodeId: "EXTRACT:FX"`
+- leaf resolvers receive a runtime `callSubgraph(subgraphId, input)` surface
+- stock-unit normalization and `price@CCY` conversion invoke
+  `callSubgraph("FX_CONVERSION", new FxRequest(...))`
+- the numeric conversion rate is adapted locally from the subgraph's returned
+  `LookupResult`
+- `EXTRACT:EQUITY` advertises the subgraph relationship in graph rendering via
+  `subgraphCalls: ["FX_CONVERSION"]`
+- Mermaid rendering shows the FX call as a dotted edge from `EXTRACT:EQUITY`
+  to the FX subgraph root
+
+Implementation note:
+
+- the original design discussion referred to plan-level glue around
+  `request-resolution.ts` / `RequestResolutionDependencies`
+- in the shipped code, the caller-side migration landed directly in
+  `concrete-resolvers.ts` and receives runtime access through `ExecutionContext`
+- the functional outcome matches the design intent even though the code path is
+  simpler than originally described
 
 ## Problem
 
@@ -160,6 +190,27 @@ interface PlanRuntimeRefs {
   subgraph
 - stop referring to `ATTRIBUTE:FX` and `EXTRACT:FX` outside the subgraph
   registry
+
+## Verification
+
+Verified on 2026-04-19 with both targeted unit coverage and live smoke checks.
+
+Unit tests:
+
+- `node --test test-ts/concrete-resolvers.test.js`
+- `node --test test-ts/resolve-flow.test.js`
+- `node --test test-ts/spec-data.test.js`
+- `node --test test-ts/plan-spec-dag-instantiation.test.js`
+- `node --test test-ts/graph-mermaid.test.js`
+
+Live checks:
+
+- `npm run hoodlefinance.ts -- AAPL price@ILS` -> `799.8235977136001`
+- `npm run hoodlefinance.ts -- PSE:BDO price@ILS` -> `5.938063506`
+- `npm run hoodlefinance.ts -- LON:TSCO price@USD` -> `6.5618448`
+- `npm run hoodlefinance.ts -- USDPHP=X price` -> `59.548`
+- `npm run hoodlefinance.ts -- --mermaid` renders the dotted
+  `call FX_CONVERSION` edge from `EXTRACT:EQUITY`
 
 ## Test Plan
 
