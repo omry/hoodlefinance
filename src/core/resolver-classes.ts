@@ -3,8 +3,6 @@ import { RawRequestInput, RequestInput } from "./request";
 
 import type { Graph } from "./graph";
 import type { ResolverServices } from "./resolver-services";
-import type { RouteResult } from "./route-results";
-
 export type { PlanRuntimeRefs, ResolverPlanOptions } from "./core-resolvers";
 export {
   FirstSuccessPlan,
@@ -35,25 +33,15 @@ export class BaseHFResolver extends AttributeResolver {
     this.traceLabel = traceLabel || code;
   }
 
-  buildRouteState(_request: unknown): Record<string, unknown> {
-    return {};
-  }
-
   batchKey(_job: unknown, _attempt: unknown): string {
     return "";
   }
 
-  override executeRouteRequest(_request: unknown): RouteResult {
-    throw new Error(
-      `Resolver "${this.name}" must implement executeRouteRequest().`,
-    );
-  }
-
-  getRouteClass(_request: unknown): string {
+  getResolverClass(): string {
     return this.name;
   }
 
-  getRoutePath(_request: unknown): string {
+  getResolverPath(): string {
     return this.traceLabel;
   }
 

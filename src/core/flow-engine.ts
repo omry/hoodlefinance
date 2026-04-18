@@ -1,7 +1,7 @@
 import type { ResolveFlow } from "./resolve-flow";
 import type { Graph } from "./graph";
 import type { SelectNextContext } from "./core-resolvers";
-import { RoutingNodeKind } from "./planner";
+import { RoutingNodeKind } from "./core-resolvers";
 import { getGraphNodeNextIds } from "./graph";
 
 // ROOT (RequestClassifierResolver) outputs { requestInput, resolvedRequest }.

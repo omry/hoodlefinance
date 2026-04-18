@@ -1,4 +1,4 @@
-import { RoutingNodeKind } from "./planner";
+import { RoutingNodeKind } from "./core-resolvers";
 import type { Resolver } from "./resolver-classes";
 import { RawRequestInput, type RequestClassification } from "./request";
 

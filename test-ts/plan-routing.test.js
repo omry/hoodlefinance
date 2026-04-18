@@ -57,26 +57,6 @@ function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
   });
 }
 
-function wrapSelectedResolverNode(node, parentPlan = null) {
-  const wrappedName = String((node && node.name) || "").trim();
-  const options = {
-    routeClass(request) {
-      return node && typeof node.getRouteClass === "function"
-        ? node.getRouteClass(request)
-        : wrappedName;
-    },
-    routePath(request) {
-      return node && typeof node.buildRoutePath === "function"
-        ? node.buildRoutePath(request)
-        : node && typeof node.getRoutePath === "function"
-          ? node.getRoutePath(request)
-        : wrappedName;
-    },
-  };
-
-  return new FirstSuccessPlan(wrappedName, [node], options);
-}
-
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
   const outcome = new DirectIdentifierResolver("DIRECT-IDENTIFIER").resolve(
     requestInput,
@@ -85,16 +65,14 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
   assert.equal(outcome.status, "success");
 
   return {
-    attributePlan: wrapSelectedResolverNode(
-      buildQuoteRoutePlanForResolvedRequest(requestInput, outcome.value, {
-        getPlanNodeByCode: runtimeLookup.getPlanNode,
-      }),
-    ),
+    attributePlan: buildQuoteRoutePlanForResolvedRequest(requestInput, outcome.value, {
+      getPlanNodeByCode: runtimeLookup.getPlanNode,
+    }),
     resolvedRequest: outcome.value,
   };
 }
 
-test("HOODLEFINANCE_ROUTES returns the routing table matching legacy integrated results", () => {
+test("getRoutingTableRows classifies example tickers correctly", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
     ...createResolverMaterializationDependencies(),
     looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),

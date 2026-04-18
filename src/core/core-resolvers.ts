@@ -4,29 +4,52 @@ import {
   type Graph,
 } from "./graph";
 
-import type {
-  ResolutionResult,
-} from "./planner";
-import { RoutingNodeKind } from "./planner";
 import { FxRequest, RawRequestInput, RequestInput } from "./request";
 import {
   extractAttributeValue,
 } from "./attribute-extraction";
 import { buildFxPairFromCodes } from "./fx-normalization";
-import {
-  createRouteResult,
-  createResolutionFailure,
-  createResolutionSuccess,
-  defaultRouteFailureMessage,
-  describePlanSource,
-  formatRouteFailureMessage,
-  type RouteResult,
-} from "./route-results";
 import type { StockQuote } from "./quote";
 import type { ResolverServices } from "./resolver-services";
 
-type RouteClassResolver = (request: unknown) => string;
-type RoutePathResolver = (request: unknown) => string;
+export type ResolutionResult<T> =
+  | { elapsedMs: number; status: "success"; value: T }
+  | { elapsedMs: number; error: string; status: "failure" };
+
+function createResolutionResult<T extends Record<string, unknown>>(
+  status: ResolutionResult<unknown>["status"],
+  options: T,
+): { status: ResolutionResult<unknown>["status"] } & T {
+  return { status, ...options };
+}
+
+export function createResolutionSuccess<T>(
+  value: T,
+  elapsedMs: number,
+): ResolutionResult<T> {
+  return createResolutionResult("success", {
+    elapsedMs: Math.max(0, Number(elapsedMs) || 0),
+    value,
+  }) as ResolutionResult<T>;
+}
+
+export function createResolutionFailure(
+  error: unknown,
+  elapsedMs: number,
+  errorMessage: (error: unknown) => string,
+): ResolutionResult<never> {
+  return createResolutionResult("failure", {
+    elapsedMs: Math.max(0, Number(elapsedMs) || 0),
+    error: errorMessage(error),
+  }) as ResolutionResult<never>;
+}
+
+export enum RoutingNodeKind {
+  Leaf = "leaf",
+  Switch = "switch",
+  TryEach = "try each",
+  Step = "step",
+}
 
 export interface LookupResult {
   error?: string;
@@ -41,9 +64,10 @@ export interface PlanRuntimeRefs {
 
 const FX_CONVERSION_SUBGRAPH_ID = "FX_CONVERSION";
 
+// TODO: rename routeClass/routePath to drop legacy "route" terminology once spec format is updated
 export interface ResolverPlanOptions {
-  routeClass?: string | RouteClassResolver;
-  routePath?: string | RoutePathResolver;
+  routeClass?: string;
+  routePath?: string;
 }
 
 export interface SelectNextContext {
@@ -134,45 +158,32 @@ export function resolveFxConversionRate(
   };
 }
 
-function normalizeRouteResult(
-  result: RouteResult | null | undefined,
-): RouteResult {
-  return (
-    result ||
-    createRouteResult("terminal_error", {
-      error: "Resolver returned no result.",
-    })
-  );
-}
-
-function getResolvedRouteValue(result: RouteResult): unknown {
-  if (Object.prototype.hasOwnProperty.call(result, "value")) {
-    return result.value;
-  }
-
-  if (Object.prototype.hasOwnProperty.call(result, "quote")) {
-    return result.quote;
-  }
-
-  return null;
-}
-
-function formatExecutionFailureMessage(
-  resolver: Pick<Resolver, "name" | "traceLabel">,
-  result: RouteResult,
+export function describePlanSource(
+  plan:
+    | {
+        routeClass?: unknown;
+        routePath?: unknown;
+      }
+    | null
+    | undefined,
 ): string {
-  const message =
-    formatResolverError(result.error) || defaultRouteFailureMessage();
-  const label = String(resolver.traceLabel || resolver.name || "").trim();
+  if (!plan) {
+    return "";
+  }
 
-  return formatRouteFailureMessage(
-    {
-      routeRuntimeTrace: label
-        ? [{ elapsedMs: null, label, status: result.status }]
-        : [],
-    },
-    message,
-  );
+  const routeClass =
+    plan.routeClass != null ? String(plan.routeClass).trim() : "";
+  const routePath = plan.routePath != null ? String(plan.routePath).trim() : "";
+
+  if (!routeClass) {
+    return routePath;
+  }
+
+  if (!routePath || routeClass.startsWith("FORCED:")) {
+    return routePath || routeClass;
+  }
+
+  return `${routeClass} -> ${routePath}`;
 }
 
 export class Resolver {
@@ -197,18 +208,18 @@ export class Resolver {
     return true;
   }
 
-  getRouteClass(_request: unknown): string {
+  getResolverClass(): string {
     return this.name;
   }
 
-  getRoutePath(_request: unknown): string {
+  getResolverPath(): string {
     return String(this.traceLabel || this.name || "").trim();
   }
 
   describe(request: unknown): string {
     return describePlanSource({
-      routeClass: this.getRouteClass(request),
-      routePath: this.getRoutePath(request),
+      routeClass: this.getResolverClass(),
+      routePath: this.getResolverPath(),
     });
   }
 
@@ -259,17 +270,7 @@ export class Resolver {
     const startedAtMs = Date.now();
 
     try {
-      const result = normalizeRouteResult(this.executeRouteRequest(request));
-
-      if (result.status !== "success") {
-        return createResolutionFailure(
-          formatExecutionFailureMessage(this, result),
-          Date.now() - startedAtMs,
-          formatResolverError,
-        );
-      }
-
-      const rawValue = getResolvedRouteValue(result);
+      const rawValue = this.execute(request);
       const value = this.resolveTransformValue(rawValue, request);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
@@ -281,9 +282,9 @@ export class Resolver {
     }
   }
 
-  executeRouteRequest(_request: unknown): RouteResult {
+  execute(_request: unknown): unknown {
     throw new Error(
-      `Resolver "${this.name}" must implement executeRouteRequest().`,
+      `Resolver "${this.name}" must implement execute().`,
     );
   }
 
@@ -306,8 +307,8 @@ export class Resolver {
 
 export abstract class ResolverPlan extends Resolver {
   readonly nodes: Resolver[];
-  readonly routeClass: string | RouteClassResolver;
-  readonly routePath: string | RoutePathResolver;
+  readonly routeClass: string;
+  readonly routePath: string;
 
   constructor(
     name: string,
@@ -415,18 +416,11 @@ export abstract class ResolverPlan extends Resolver {
   abstract getRoutingNodeKind(): RoutingNodeKind;
 
   buildRoutePath(request: unknown): string {
-    let routePath = this.routePath;
-    const nodes = this.getNodesForRequest(request);
-
-    if (typeof routePath === "function") {
-      routePath = routePath(request);
+    if (this.routePath) {
+      return this.routePath;
     }
 
-    if (routePath) {
-      return routePath;
-    }
-
-    return nodes.map((node) => node.name).join(" -> ");
+    return this.getNodesForRequest(request).map((node) => node.name).join(" -> ");
   }
 
   getGroupedSourceNames(_request: unknown): string[] {
@@ -455,13 +449,8 @@ export abstract class ResolverPlan extends Resolver {
   }
 
   override describe(request: unknown): string {
-    const routeClass =
-      typeof this.routeClass === "function"
-        ? this.routeClass(request)
-        : this.routeClass;
-
     return describePlanSource({
-      routeClass,
+      routeClass: this.routeClass,
       routePath: this.buildRoutePath(request),
     });
   }
