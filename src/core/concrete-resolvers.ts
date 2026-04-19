@@ -321,12 +321,20 @@ export class RequestClassifierResolver extends IdentifierResolver {
         : createRequestInput(rawInput.identifier, rawInput.attribute);
 
       // Absorb DirectIdentifierResolver: for non-ISIN inputs resolve inline.
-      const isIsin = !!extractIsinFromRequestInput(requestInput);
-      const resolvedRequest = isIsin
-        ? null
-        : buildTypedRequestFromParsedInput(requestInput, requestInput, Math.max(0, Date.now() - startedAtMs));
+      if (extractIsinFromRequestInput(requestInput)) {
+        return createResolutionSuccess(
+          new RequestInput({ ...requestInput, classification: "isin" }),
+          Date.now() - startedAtMs,
+        );
+      }
 
-      return createResolutionSuccess(resolvedRequest ?? requestInput, Date.now() - startedAtMs);
+      const resolvedRequest = buildTypedRequestFromParsedInput(
+        requestInput,
+        requestInput,
+        Math.max(0, Date.now() - startedAtMs),
+      );
+
+      return createResolutionSuccess(resolvedRequest, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
         error,

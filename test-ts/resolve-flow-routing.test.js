@@ -12,7 +12,6 @@ const { createTestEnv } = require("./resolver-service-fixtures.js");
 
 function createRequestInput(identifier, attribute = "price") {
   return new RequestInput(identifier, attribute, {
-    looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
     normalizeAttribute: (value) => String(value || "price"),
     parseAttributeRequest: (value) => ({
       baseAttribute: value,

@@ -85,7 +85,6 @@ export function createRequestInput(
   };
 
   return new RequestInput(identifier, attribute, {
-    looksLikeIsin: resolvedDeps.looksLikeIsin,
     normalizeAttribute: resolvedDeps.normalizeAttribute,
     parseAttributeRequest: resolvedDeps.parseAttributeRequest,
     parseFxTicker: resolvedDeps.parseFxTicker,

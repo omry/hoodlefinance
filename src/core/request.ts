@@ -42,7 +42,6 @@ interface RequestInputInit {
 }
 
 interface RequestInputRuntimeDependencies {
-  looksLikeIsin(value: string): boolean;
   normalizeAttribute(attribute: unknown): string;
   parseAttributeRequest(attribute: string): AttributeRequest;
   parseFxTicker(ticker: string): FxPair | null;
@@ -71,35 +70,13 @@ function isRequestInputInit(value: unknown): value is RequestInputInit {
   return !!value && typeof value === "object" && "attributeRequest" in value;
 }
 
-function classifyRequestInputFromDerivedState(
-  ticker: string,
-  fxPair: FxPair | null,
-  looksLikeIsin: (value: string) => boolean,
-): RequestClassification {
-  const upperTicker = String(ticker || "").trim().toUpperCase();
-
-  if (looksLikeIsin(ticker)) {
-    return "isin";
-  }
-
-  if (upperTicker.startsWith("ISIN:")) {
-    return "isin";
-  }
-
-  if (fxPair) {
-    return "fx";
-  }
-
-  return "equity";
-}
-
 export class RequestInput {
   private static runtimeDependencies: RequestInputRuntimeDependencies | null = null;
 
   readonly attribute: string;
   readonly attributeRequest: AttributeRequest;
   readonly attributeType: AttributeType;
-  readonly classification: RequestClassification;
+  readonly classification: RequestClassification | undefined;
   readonly fxPair: FxPair | null;
   readonly identifier: string;
   readonly infoMode: ParsedTickerRequest["infoMode"];
@@ -156,11 +133,7 @@ export class RequestInput {
     this.identifier = rawIdentifier;
     this.infoMode = parsedIdentifier.infoMode;
     this.ticker = requestTicker;
-    this.classification = classifyRequestInputFromDerivedState(
-      this.ticker,
-      this.fxPair,
-      runtimeDeps.looksLikeIsin,
-    );
+    this.classification = undefined;
   }
 
   static configureRuntime(
@@ -176,17 +149,6 @@ export class RequestInput {
   static _resetForTests(): void {
     RequestInput.runtimeDependencies = null;
   }
-}
-
-export function classifyRequestInput(
-  input: Pick<RequestInput, "fxPair" | "ticker">,
-  looksLikeIsin: (value: string) => boolean,
-): RequestClassification {
-  return classifyRequestInputFromDerivedState(
-    String(input.ticker || "").trim(),
-    input.fxPair,
-    looksLikeIsin,
-  );
 }
 
 interface BaseRequestInputSnapshot {

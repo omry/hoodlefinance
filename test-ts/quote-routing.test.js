@@ -102,7 +102,6 @@ test("integrated mode always follows the default PSE quote branch", () => {
     resolverEnv: createStaticResolverServices(),
   });
   const request = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
-    looksLikeIsin: () => false,
     normalizeAttribute: (a) => a,
     parseAttributeRequest: (a) => ({}),
     parseFxTicker: () => null,
@@ -144,7 +143,6 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
       buildTypedAttributePlan(
         runtimeLookup,
         new RequestInput("GOOG", "price", {
-          looksLikeIsin: () => false,
           normalizeAttribute: (a) => a,
           parseAttributeRequest: (a) => ({}),
           parseFxTicker: () => null,
