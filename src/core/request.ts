@@ -30,22 +30,15 @@ export interface ParsedTickerRequest {
   ticker: string;
 }
 
-interface RequestInputInit {
+export interface RequestInputInit {
   attribute: string;
   attributeRequest: AttributeRequest;
   attributeType: AttributeType;
-  classification: RequestClassification;
+  classification?: RequestClassification;
   fxPair: FxPair | null;
   identifier: string;
   infoMode: ParsedTickerRequest["infoMode"];
   ticker: string;
-}
-
-interface RequestInputRuntimeDependencies {
-  normalizeAttribute(attribute: unknown): string;
-  parseAttributeRequest(attribute: string): AttributeRequest;
-  parseFxTicker(ticker: string): FxPair | null;
-  parseTickerRequest(ticker: string): ParsedTickerRequest;
 }
 
 export class RawRequestInput {
@@ -66,13 +59,7 @@ export function looksLikeIsin(value: string): boolean {
   return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value || "").trim());
 }
 
-function isRequestInputInit(value: unknown): value is RequestInputInit {
-  return !!value && typeof value === "object" && "attributeRequest" in value;
-}
-
 export class RequestInput {
-  private static runtimeDependencies: RequestInputRuntimeDependencies | null = null;
-
   readonly attribute: string;
   readonly attributeRequest: AttributeRequest;
   readonly attributeType: AttributeType;
@@ -82,72 +69,15 @@ export class RequestInput {
   readonly infoMode: ParsedTickerRequest["infoMode"];
   readonly ticker: string;
 
-  constructor(init: RequestInputInit);
-  constructor(identifier: unknown, attribute?: unknown);
-  constructor(
-    identifier: unknown,
-    attribute: unknown,
-    deps: RequestInputRuntimeDependencies,
-  );
-  constructor(
-    initOrIdentifier: RequestInputInit | unknown,
-    attribute?: unknown,
-    deps?: RequestInputRuntimeDependencies,
-  ) {
-    if (isRequestInputInit(initOrIdentifier)) {
-      const init = initOrIdentifier;
-
-      this.attribute = init.attribute;
-      this.attributeRequest = init.attributeRequest;
-      this.attributeType = init.attributeType;
-      this.classification = init.classification;
-      this.fxPair = init.fxPair;
-      this.identifier = init.identifier;
-      this.infoMode = init.infoMode;
-      this.ticker = init.ticker;
-      return;
-    }
-
-    const runtimeDeps = deps || RequestInput.runtimeDependencies;
-    if (!runtimeDeps) {
-      throw new Error(
-        "RequestInput runtime dependencies are not configured.",
-      );
-    }
-
-    const rawIdentifier = String(
-      initOrIdentifier == null ? "" : initOrIdentifier,
-    ).trim();
-    const normalizedAttribute = runtimeDeps.normalizeAttribute(attribute);
-    const attributeRequest =
-      runtimeDeps.parseAttributeRequest(normalizedAttribute);
-    const parsedIdentifier = runtimeDeps.parseTickerRequest(rawIdentifier);
-    const requestTicker = parsedIdentifier.ticker;
-    const fxPair = runtimeDeps.parseFxTicker(requestTicker);
-
-    this.attribute = normalizedAttribute;
-    this.attributeRequest = attributeRequest;
-    this.attributeType =
-      attributeRequest.baseAttribute === "isin" ? "isin" : "quote";
-    this.fxPair = fxPair;
-    this.identifier = rawIdentifier;
-    this.infoMode = parsedIdentifier.infoMode;
-    this.ticker = requestTicker;
-    this.classification = undefined;
-  }
-
-  static configureRuntime(
-    deps: RequestInputRuntimeDependencies | null,
-  ): void {
-    RequestInput.runtimeDependencies = deps;
-  }
-
-  static getRuntimeDependencies(): RequestInputRuntimeDependencies | null {
-    return RequestInput.runtimeDependencies;
-  }
-
-  static _resetForTests(): void {
-    RequestInput.runtimeDependencies = null;
+  constructor(init: RequestInputInit) {
+    this.attribute = init.attribute;
+    this.attributeRequest = init.attributeRequest;
+    this.attributeType = init.attributeType;
+    this.classification = init.classification;
+    this.fxPair = init.fxPair;
+    this.identifier = init.identifier;
+    this.infoMode = init.infoMode;
+    this.ticker = init.ticker;
   }
 }
 

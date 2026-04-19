@@ -6,7 +6,6 @@ const {
   buildTypedRequestFromResolvedTicker,
   createRequestInput,
   extractIsinFromRequestInput,
-  RequestInput,
 } = require("../dist/ts/core/index.js");
 
 function createDeps() {
@@ -103,38 +102,14 @@ test("createRequestInput parses request state without classifying it", () => {
   assert.equal(isin.fxPair, null);
 });
 
-test("RequestInput strips unsupported source suffixes through its runtime-style constructor", () => {
+test("createRequestInput strips unsupported source suffixes", () => {
   const deps = createDeps();
-  const input = new RequestInput("GOOG@YAHOO", "price", {
-    normalizeAttribute: deps.normalizeAttribute,
-    parseAttributeRequest: deps.parseAttributeRequest,
-    parseFxTicker: deps.parseFxTicker,
-    parseTickerRequest: deps.parseTickerRequest,
-  });
+  const input = createRequestInput("GOOG@YAHOO", "price", deps);
 
   assert.equal(input.attribute, "price");
   assert.equal(input.infoMode, "source-override");
   assert.equal(input.ticker, "GOOG");
   assert.equal(input.classification, undefined);
-});
-
-test("RequestInput can use configured runtime dependencies with the original constructor shape", () => {
-  const deps = createDeps();
-
-  RequestInput.configureRuntime({
-    normalizeAttribute: deps.normalizeAttribute,
-    parseAttributeRequest: deps.parseAttributeRequest,
-    parseFxTicker: deps.parseFxTicker,
-    parseTickerRequest: deps.parseTickerRequest,
-  });
-
-  try {
-    const input = new RequestInput("EURUSD", "price");
-    assert.equal(input.classification, undefined);
-    assert.equal(input.fxPair.baseCanonicalCode, "EUR");
-  } finally {
-    RequestInput._resetForTests();
-  }
 });
 
 test("isin extraction stays simple and explicit", () => {

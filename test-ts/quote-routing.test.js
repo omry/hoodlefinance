@@ -22,7 +22,7 @@ const {
   YahooFxResolver,
   TradingviewFundResolver,
   DagPlan,
-  RequestInput,
+  createRequestInput,
   buildQuoteRoutePlanForResolvedRequest,
   getRoutingTableRows,
   ResolveFlow,
@@ -101,7 +101,7 @@ test("integrated mode always follows the default PSE quote branch", () => {
     resolverClassesByName: createResolverRegistry(),
     resolverEnv: createStaticResolverServices(),
   });
-  const request = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
+  const request = createRequestInput("PSE:BDO@PSE-FRAMES", "price", {
     normalizeAttribute: (a) => a,
     parseAttributeRequest: (a) => ({}),
     parseFxTicker: () => null,
@@ -142,7 +142,7 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
     () =>
       buildTypedAttributePlan(
         runtimeLookup,
-        new RequestInput("GOOG", "price", {
+        createRequestInput("GOOG", "price", {
           normalizeAttribute: (a) => a,
           parseAttributeRequest: (a) => ({}),
           parseFxTicker: () => null,

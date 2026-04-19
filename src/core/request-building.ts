@@ -5,6 +5,7 @@ import {
   type AttributeRequest,
   type FxPair,
   type ParsedTickerRequest,
+  type RequestInputInit,
   type ResolvedRequest,
   looksLikeIsin,
 } from "./request";
@@ -84,12 +85,24 @@ export function createRequestInput(
     ...(deps || {}),
   };
 
-  return new RequestInput(identifier, attribute, {
-    normalizeAttribute: resolvedDeps.normalizeAttribute,
-    parseAttributeRequest: resolvedDeps.parseAttributeRequest,
-    parseFxTicker: resolvedDeps.parseFxTicker,
-    parseTickerRequest: resolvedDeps.parseTickerRequest,
-  });
+  const rawIdentifier = String(identifier == null ? "" : identifier).trim();
+  const normalizedAttribute = resolvedDeps.normalizeAttribute(attribute);
+  const attributeRequest = resolvedDeps.parseAttributeRequest(normalizedAttribute);
+  const parsedIdentifier = resolvedDeps.parseTickerRequest(rawIdentifier);
+  const requestTicker = parsedIdentifier.ticker;
+  const fxPair = resolvedDeps.parseFxTicker(requestTicker);
+
+  const init: RequestInputInit = {
+    attribute: normalizedAttribute,
+    attributeRequest,
+    attributeType: attributeRequest.baseAttribute === "isin" ? "isin" : "quote",
+    fxPair,
+    identifier: rawIdentifier,
+    infoMode: parsedIdentifier.infoMode,
+    ticker: requestTicker,
+  };
+
+  return new RequestInput(init);
 }
 
 export function buildTypedRequestFromParsedInput(
