@@ -295,7 +295,7 @@ Work in passes:
   upstream resolvers and calls `extractAttributeValue` directly
 - Remove `projectFlowEngineValue` and its call to `selectLookupExecution`
 - Run `check:ts` — `LookupExecutionSelection`, `selectLookupExecution`,
-  `RequestResolutionDependencies`, and the plan-selection / plan-navigation
+  `RequestResolutionDependencies`, and the remaining legacy planning
   infrastructure should surface as unused
 
 ### Pass 2+ — dead code elimination
@@ -314,8 +314,8 @@ Work in passes:
 ~~`projectFlowEngineValue` in `resolve-flow.ts` still calls `env.selectLookupExecution`
 to obtain `routeState` (for `extractAttributeValue`) and `requestInput.attributeType`
 (for the isin branch). This keeps the entire `request-resolution-env.ts`,
-`plan-selection.ts`, `plan-navigation.ts`, and `LookupExecutionSelection`
-infrastructure alive even though the FlowEngine no longer uses them for routing.~~
+legacy planning helpers, and `LookupExecutionSelection` infrastructure alive
+even though the FlowEngine no longer uses them for routing.~~
 
 Resolved by moving attribute projection into the graph (EXTRACT:EQUITY / EXTRACT:FX
 nodes), which eliminates the need for `projectFlowEngineValue` and

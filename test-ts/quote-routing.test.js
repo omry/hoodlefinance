@@ -23,7 +23,6 @@ const {
   TradingviewFundResolver,
   DagPlan,
   RequestInput,
-  buildQuoteRoutePlanForResolvedRequest,
   getRoutingTableRows,
   ResolveFlow,
 } = require("../dist/ts/core/index.js");
@@ -51,29 +50,29 @@ function createResolverRegistry() {
   };
 }
 
-function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
-  return new ResolveFlow(
-    planSpecsByCode,
-    createResolverRegistry(),
-    createStaticResolverServices(),
-  );
-}
-
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
   const outcome = new DirectIdentifierResolver("DIRECT-IDENTIFIER").resolve(
     requestInput,
   );
 
   assert.equal(outcome.status, "success");
+  const attributeRoot = runtimeLookup.getPlanNode("ATTRIBUTE");
+  const candidatePlans = (attributeRoot.nodes || []).filter(
+    (plan) => !plan.canHandle || plan.canHandle(outcome.value),
+  );
+
+  if (!candidatePlans.length) {
+    throw new Error("No attribute route is available for this request.");
+  }
+
+  if (candidatePlans.length > 1) {
+    throw new Error(
+      `Ambiguous default attribute route for classification "${String(outcome.value.classification || "").toLowerCase()}": ${candidatePlans.map((plan) => plan.name).join(", ")}.`,
+    );
+  }
 
   return {
-    attributePlan: buildQuoteRoutePlanForResolvedRequest(
-      requestInput,
-      outcome.value,
-      {
-        getPlanNodeByCode: runtimeLookup.getPlanNode,
-      },
-    ),
+    attributePlan: candidatePlans[0],
     resolvedRequest: outcome.value,
   };
 }

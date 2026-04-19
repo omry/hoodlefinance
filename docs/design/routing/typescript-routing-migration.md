@@ -59,7 +59,7 @@ The first executable extraction is the request-parsing layer:
   Internal helper for batch-oriented route execution. Useful implementation seam, but not part of the public routing design vocabulary.
 - `HOODLEFINANCE_RESOLVER_SPECS_BY_CODE_`, `HOODLEFINANCE_PLAN_SPECS_BY_CODE_`
   Future home: `src/core/plan-specs.ts`
-- `hf_materializePlanFromSpec_`, `hf_resolveRoutingNode_`, `hf_buildIdentifierResolutionPlan_`, `hf_buildResolvePlan_`
+- `hf_materializePlanFromSpec_`, `hf_resolveRoutingNode_`, `hf_buildResolvePlan_`
   Future home: `src/core/planner.ts`
 - `hf_createRouteJob_`, `hf_prepareRouteJob_`, `hf_applyRouteResult_`, `hf_getRouteExecutor_`, `hf_executeRouteJobs_`
   Future home: `src/core/route-jobs.ts`
