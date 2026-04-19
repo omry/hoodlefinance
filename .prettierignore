@@ -1,6 +1,17 @@
 .addon-deploy.local
 .demo-sheet.local
+.agents
 .pytest_cache
+.vscode
+AGENTS.md
+BACKLOG.md
+CLAUDE.md
+CONTRIBUTING.md
+README.md
+TODO.md
+docs
+website/docs
+.github/skills
 node_modules
 tmp
 tools/__pycache__
