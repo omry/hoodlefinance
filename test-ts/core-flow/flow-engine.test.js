@@ -71,16 +71,15 @@ function mockFlow(nodes) {
 
   function makeGraphNode(id) {
     const entry = nodes[id];
-    return entry
-      ? { id, type: "mock", next: entry.nextIds || [] }
-      : null;
+    return entry ? { id, type: "mock", next: entry.nextIds || [] } : null;
   }
 
   const graph = {
     getRoot: () => makeGraphNode("ROOT"),
     getTerminal: () => ({ id: "TERMINAL", type: "terminal", next: [] }),
     getNode: (id) => {
-      if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+      if (id === "TERMINAL")
+        return { id: "TERMINAL", type: "terminal", next: [] };
       return makeGraphNode(id);
     },
     getChildren: () => [],
@@ -96,7 +95,10 @@ function mockFlow(nodes) {
       return {
         resolve: () => entry.resolveResult,
         ...(entry.canHandle ? { canHandle: entry.canHandle } : {}),
-        ...((entry.selectNext || entry.kind === "step" || entry.kind === "try each" || entry.kind === "switch")
+        ...(entry.selectNext ||
+        entry.kind === "step" ||
+        entry.kind === "try each" ||
+        entry.kind === "switch"
           ? {
               selectNext: entry.selectNext
                 ? entry.selectNext
@@ -127,7 +129,11 @@ test("execute() treats a node with null resolver as terminal, returns current en
       },
     }),
     getResolver: (id) => {
-      if (id === "ROOT") return { resolve: () => ({ status: "success", value: { done: true } }), getRoutingNodeKind: () => "leaf" };
+      if (id === "ROOT")
+        return {
+          resolve: () => ({ status: "success", value: { done: true } }),
+          getRoutingNodeKind: () => "leaf",
+        };
       return null; // LEAF has no resolver — acts as terminal
     },
   };
@@ -146,17 +152,33 @@ test("execute() treats a node with null resolver as terminal even when it has si
 
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "ROOT", type: "mock", next: ["NULL-RESOLVER", "REAL"] }),
+      getRoot: () => ({
+        id: "ROOT",
+        type: "mock",
+        next: ["NULL-RESOLVER", "REAL"],
+      }),
       getNode: (id) => {
-        if (id === "ROOT") return { id: "ROOT", type: "mock", next: ["NULL-RESOLVER", "REAL"] };
-        if (id === "NULL-RESOLVER") return { id: "NULL-RESOLVER", type: "mock", next: [] };
+        if (id === "ROOT")
+          return { id: "ROOT", type: "mock", next: ["NULL-RESOLVER", "REAL"] };
+        if (id === "NULL-RESOLVER")
+          return { id: "NULL-RESOLVER", type: "mock", next: [] };
         if (id === "REAL") return { id: "REAL", type: "mock", next: [] };
         return null;
       },
     }),
     getResolver: (id) => {
-      if (id === "ROOT") return { resolve: () => ({ status: "success", value: {} }), getRoutingNodeKind: () => "leaf" };
-      if (id === "REAL") { realCalled = true; return { resolve: () => ({ status: "success", value: {} }), getRoutingNodeKind: () => "leaf" }; }
+      if (id === "ROOT")
+        return {
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      if (id === "REAL") {
+        realCalled = true;
+        return {
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      }
       return null; // NULL-RESOLVER
     },
   };
@@ -165,7 +187,11 @@ test("execute() treats a node with null resolver as terminal even when it has si
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
-  assert.equal(realCalled, false, "sibling after null-resolver node should not be reached");
+  assert.equal(
+    realCalled,
+    false,
+    "sibling after null-resolver node should not be reached",
+  );
 });
 
 test("execute() throws when graph has no ROOT node", () => {
@@ -317,7 +343,10 @@ test("execute() preserves the last user-facing leaf failure message", () => {
     },
     B: {
       nextIds: [],
-      resolveResult: { status: "failure", error: 'No LON ISIN is available for "SJPA".' },
+      resolveResult: {
+        status: "failure",
+        error: 'No LON ISIN is available for "SJPA".',
+      },
     },
   });
 
@@ -341,10 +370,17 @@ test("execute() does not try next edges when ROOT itself fails", () => {
       },
     }),
     getResolver: (id) => {
-      if (id === "ROOT") return { resolve: () => ({ status: "failure", error: "root failed" }), getRoutingNodeKind: () => "leaf" };
+      if (id === "ROOT")
+        return {
+          resolve: () => ({ status: "failure", error: "root failed" }),
+          getRoutingNodeKind: () => "leaf",
+        };
       if (id === "A") {
         nextCalled = true;
-        return { resolve: () => ({ status: "success", value: {} }), getRoutingNodeKind: () => "leaf" };
+        return {
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
       }
       return null;
     },
@@ -354,10 +390,12 @@ test("execute() does not try next edges when ROOT itself fails", () => {
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Failure);
-  assert.equal(nextCalled, false, "next edge should not be tried when ROOT fails");
+  assert.equal(
+    nextCalled,
+    false,
+    "next edge should not be tried when ROOT fails",
+  );
 });
-
-
 
 // ---------------------------------------------------------------------------
 // Value threading
@@ -371,8 +409,10 @@ test("execute() passes the resolver output value into the next node", () => {
       getRoot: () => ({ id: "ROOT", type: "mock", next: ["NEXT"] }),
       getNode: (id) => {
         if (id === "ROOT") return { id: "ROOT", type: "mock", next: ["NEXT"] };
-        if (id === "NEXT") return { id: "NEXT", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "NEXT")
+          return { id: "NEXT", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),
@@ -439,7 +479,8 @@ test("execute() walks a three-level graph to TERMINAL", () => {
         if (id === "A") return { id: "A", type: "mock", next: ["B"] };
         if (id === "B") return { id: "B", type: "mock", next: ["C"] };
         if (id === "C") return { id: "C", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),
@@ -467,15 +508,26 @@ test("execute() skips missing next node and continues to next valid sibling", ()
     getGraph: () => ({
       getRoot: () => ({ id: "ROOT", type: "mock", next: ["GHOST", "REAL"] }),
       getNode: (id) => {
-        if (id === "ROOT") return { id: "ROOT", type: "mock", next: ["GHOST", "REAL"] };
-        if (id === "REAL") return { id: "REAL", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "ROOT")
+          return { id: "ROOT", type: "mock", next: ["GHOST", "REAL"] };
+        if (id === "REAL")
+          return { id: "REAL", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null; // GHOST missing
       },
     }),
     getResolver: (id) => {
-      if (id === "ROOT") return { resolve: () => ({ status: "success", value: {} }), getRoutingNodeKind: () => "leaf" };
-      if (id === "REAL") return { resolve: () => ({ status: "success", value: { real: true } }), getRoutingNodeKind: () => "leaf" };
+      if (id === "ROOT")
+        return {
+          resolve: () => ({ status: "success", value: {} }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      if (id === "REAL")
+        return {
+          resolve: () => ({ status: "success", value: { real: true } }),
+          getRoutingNodeKind: () => "leaf",
+        };
       return null;
     },
   };
@@ -507,12 +559,24 @@ test("switch node: engine routes only to the matching child", () => {
 
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "SWITCH", type: "SwitchPlan", next: ["BRANCH-A", "BRANCH-B"] }),
+      getRoot: () => ({
+        id: "SWITCH",
+        type: "SwitchPlan",
+        next: ["BRANCH-A", "BRANCH-B"],
+      }),
       getNode: (id) => {
-        if (id === "SWITCH") return { id: "SWITCH", type: "SwitchPlan", next: ["BRANCH-A", "BRANCH-B"] };
-        if (id === "BRANCH-A") return { id: "BRANCH-A", type: "mock", next: ["TERMINAL"] };
-        if (id === "BRANCH-B") return { id: "BRANCH-B", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "SWITCH")
+          return {
+            id: "SWITCH",
+            type: "SwitchPlan",
+            next: ["BRANCH-A", "BRANCH-B"],
+          };
+        if (id === "BRANCH-A")
+          return { id: "BRANCH-A", type: "mock", next: ["TERMINAL"] };
+        if (id === "BRANCH-B")
+          return { id: "BRANCH-B", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),
@@ -586,7 +650,8 @@ test("switch node: engine propagates selection errors from selectNext()", () => 
     getGraph: () => ({
       getRoot: () => ({ id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] }),
       getNode: (id) => {
-        if (id === "SWITCH") return { id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] };
+        if (id === "SWITCH")
+          return { id: "SWITCH", type: "SwitchPlan", next: ["A", "B"] };
         if (id === "A") return { id: "A", type: "mock", next: [] };
         if (id === "B") return { id: "B", type: "mock", next: [] };
         return null;
@@ -612,10 +677,7 @@ test("switch node: engine propagates selection errors from selectNext()", () => 
   };
 
   const engine = new FlowEngine(flow);
-  assert.throws(
-    () => engine.execute({ value: {} }),
-    /ambiguous selection/i,
-  );
+  assert.throws(() => engine.execute({ value: {} }), /ambiguous selection/i);
 });
 
 test("routing node: engine throws when a non-leaf node inherits the base selectNext()", () => {
@@ -660,46 +722,67 @@ test("try-each node: engine tries children in order and returns first success", 
 
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "PARENT", type: "FirstSuccessPlan", next: ["PROVIDER-A", "PROVIDER-B"] }),
+      getRoot: () => ({
+        id: "PARENT",
+        type: "FirstSuccessPlan",
+        next: ["PROVIDER-A", "PROVIDER-B"],
+      }),
       getNode: (id) => {
-        if (id === "PARENT") return { id: "PARENT", type: "FirstSuccessPlan", next: ["PROVIDER-A", "PROVIDER-B"] };
-        if (id === "PROVIDER-A") return { id: "PROVIDER-A", type: "mock", next: ["TERMINAL"] };
-        if (id === "PROVIDER-B") return { id: "PROVIDER-B", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "PARENT")
+          return {
+            id: "PARENT",
+            type: "FirstSuccessPlan",
+            next: ["PROVIDER-A", "PROVIDER-B"],
+          };
+        if (id === "PROVIDER-A")
+          return { id: "PROVIDER-A", type: "mock", next: ["TERMINAL"] };
+        if (id === "PROVIDER-B")
+          return { id: "PROVIDER-B", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),
     getResolver: (id) => {
-      if (id === "PARENT") return {
-        resolve: () => ({ status: "success", value: { ticker: "GOOG" } }),
-        getRoutingNodeKind: () => "try each",
-        selectNext: (_request, context = {}) => {
-          if (!(context.selectedNodeCodes instanceof Set)) {
-            context.selectedNodeCodes = new Set();
-          }
+      if (id === "PARENT")
+        return {
+          resolve: () => ({ status: "success", value: { ticker: "GOOG" } }),
+          getRoutingNodeKind: () => "try each",
+          selectNext: (_request, context = {}) => {
+            if (!(context.selectedNodeCodes instanceof Set)) {
+              context.selectedNodeCodes = new Set();
+            }
 
-          const nextCode = ["PROVIDER-A", "PROVIDER-B"].find(
-            (code) => !context.selectedNodeCodes.has(code),
-          );
+            const nextCode = ["PROVIDER-A", "PROVIDER-B"].find(
+              (code) => !context.selectedNodeCodes.has(code),
+            );
 
-          if (!nextCode) {
-            return [];
-          }
+            if (!nextCode) {
+              return [];
+            }
 
-          context.selectedNodeCodes.add(nextCode);
-          return [{ code: nextCode }];
-        },
-      };
-      if (id === "PROVIDER-A") return {
-        canHandle: () => true,
-        resolve: () => { visited.push("PROVIDER-A"); return { status: "failure", error: "unavailable" }; },
-        getRoutingNodeKind: () => "leaf",
-      };
-      if (id === "PROVIDER-B") return {
-        canHandle: () => true,
-        resolve: () => { visited.push("PROVIDER-B"); return { status: "success", value: { price: 180 } }; },
-        getRoutingNodeKind: () => "leaf",
-      };
+            context.selectedNodeCodes.add(nextCode);
+            return [{ code: nextCode }];
+          },
+        };
+      if (id === "PROVIDER-A")
+        return {
+          canHandle: () => true,
+          resolve: () => {
+            visited.push("PROVIDER-A");
+            return { status: "failure", error: "unavailable" };
+          },
+          getRoutingNodeKind: () => "leaf",
+        };
+      if (id === "PROVIDER-B")
+        return {
+          canHandle: () => true,
+          resolve: () => {
+            visited.push("PROVIDER-B");
+            return { status: "success", value: { price: 180 } };
+          },
+          getRoutingNodeKind: () => "leaf",
+        };
       return null; // TERMINAL
     },
   };
@@ -717,57 +800,68 @@ test("try-each node: engine skips children that cannot handle the output", () =>
 
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "PARENT", type: "FirstSuccessPlan", next: ["A", "B"] }),
+      getRoot: () => ({
+        id: "PARENT",
+        type: "FirstSuccessPlan",
+        next: ["A", "B"],
+      }),
       getNode: (id) => {
-        if (id === "PARENT") return { id: "PARENT", type: "FirstSuccessPlan", next: ["A", "B"] };
+        if (id === "PARENT")
+          return { id: "PARENT", type: "FirstSuccessPlan", next: ["A", "B"] };
         if (id === "A") return { id: "A", type: "mock", next: [] };
         if (id === "B") return { id: "B", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),
     getResolver: (id) => {
-      if (id === "PARENT") return {
-        resolve: () => ({ status: "success", value: { provider: "B" } }),
-        getRoutingNodeKind: () => "try each",
-        selectNext: (request, context = {}) => {
-          if (!(context.selectedNodeCodes instanceof Set)) {
-            context.selectedNodeCodes = new Set();
-          }
-
-          const nextCode = ["A", "B"].find((code) => {
-            if (context.selectedNodeCodes.has(code)) {
-              return false;
+      if (id === "PARENT")
+        return {
+          resolve: () => ({ status: "success", value: { provider: "B" } }),
+          getRoutingNodeKind: () => "try each",
+          selectNext: (request, context = {}) => {
+            if (!(context.selectedNodeCodes instanceof Set)) {
+              context.selectedNodeCodes = new Set();
             }
 
-            const childResolver = flow.getResolver(code);
-            return !childResolver?.canHandle || childResolver.canHandle(request);
-          });
+            const nextCode = ["A", "B"].find((code) => {
+              if (context.selectedNodeCodes.has(code)) {
+                return false;
+              }
 
-          if (!nextCode) {
-            return [];
-          }
+              const childResolver = flow.getResolver(code);
+              return (
+                !childResolver?.canHandle || childResolver.canHandle(request)
+              );
+            });
 
-          context.selectedNodeCodes.add(nextCode);
-          return [{ code: nextCode }];
-        },
-      };
-      if (id === "A") return {
-        canHandle: () => false,
-        resolve: () => {
-          visited.push("A");
-          return { status: "success", value: { wrong: true } };
-        },
-        getRoutingNodeKind: () => "leaf",
-      };
-      if (id === "B") return {
-        canHandle: () => true,
-        resolve: () => {
-          visited.push("B");
-          return { status: "success", value: { price: 180 } };
-        },
-        getRoutingNodeKind: () => "leaf",
-      };
+            if (!nextCode) {
+              return [];
+            }
+
+            context.selectedNodeCodes.add(nextCode);
+            return [{ code: nextCode }];
+          },
+        };
+      if (id === "A")
+        return {
+          canHandle: () => false,
+          resolve: () => {
+            visited.push("A");
+            return { status: "success", value: { wrong: true } };
+          },
+          getRoutingNodeKind: () => "leaf",
+        };
+      if (id === "B")
+        return {
+          canHandle: () => true,
+          resolve: () => {
+            visited.push("B");
+            return { status: "success", value: { price: 180 } };
+          },
+          getRoutingNodeKind: () => "leaf",
+        };
       return null;
     },
   };
@@ -812,49 +906,70 @@ test("try-each node: TerminalFailure propagates up through an ancestor switch", 
 
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "ROOT", type: "SwitchPlan", next: ["TRY-EACH-A", "FALLBACK"] }),
+      getRoot: () => ({
+        id: "ROOT",
+        type: "SwitchPlan",
+        next: ["TRY-EACH-A", "FALLBACK"],
+      }),
       getNode: (id) => {
-        if (id === "ROOT") return { id: "ROOT", type: "SwitchPlan", next: ["TRY-EACH-A", "FALLBACK"] };
-        if (id === "TRY-EACH-A") return { id: "TRY-EACH-A", type: "FirstSuccessPlan", next: ["PROVIDER"] };
-        if (id === "PROVIDER") return { id: "PROVIDER", type: "mock", next: [] };
-        if (id === "FALLBACK") return { id: "FALLBACK", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "ROOT")
+          return {
+            id: "ROOT",
+            type: "SwitchPlan",
+            next: ["TRY-EACH-A", "FALLBACK"],
+          };
+        if (id === "TRY-EACH-A")
+          return {
+            id: "TRY-EACH-A",
+            type: "FirstSuccessPlan",
+            next: ["PROVIDER"],
+          };
+        if (id === "PROVIDER")
+          return { id: "PROVIDER", type: "mock", next: [] };
+        if (id === "FALLBACK")
+          return { id: "FALLBACK", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),
     getResolver: (id) => {
-      if (id === "ROOT") return {
-        selectNext: () => [{ code: "TRY-EACH-A" }],
-        getRoutingNodeKind: () => "switch",
-      };
-      if (id === "TRY-EACH-A") return {
-        getRoutingNodeKind: () => "try each",
-        selectNext: (_request, context = {}) => {
-          if (!(context.selectedNodeCodes instanceof Set)) {
-            context.selectedNodeCodes = new Set();
-          }
+      if (id === "ROOT")
+        return {
+          selectNext: () => [{ code: "TRY-EACH-A" }],
+          getRoutingNodeKind: () => "switch",
+        };
+      if (id === "TRY-EACH-A")
+        return {
+          getRoutingNodeKind: () => "try each",
+          selectNext: (_request, context = {}) => {
+            if (!(context.selectedNodeCodes instanceof Set)) {
+              context.selectedNodeCodes = new Set();
+            }
 
-          if (context.selectedNodeCodes.has("PROVIDER")) {
-            return [];
-          }
+            if (context.selectedNodeCodes.has("PROVIDER")) {
+              return [];
+            }
 
-          context.selectedNodeCodes.add("PROVIDER");
-          return [{ code: "PROVIDER" }];
-        },
-      };
-      if (id === "PROVIDER") return {
-        canHandle: () => true,
-        resolve: () => ({ status: "failure", error: "unavailable" }),
-        getRoutingNodeKind: () => "leaf",
-      };
-      if (id === "FALLBACK") return {
-        canHandle: () => false,
-        resolve: () => {
-          fallbackCalled = true;
-          return { status: "success", value: { fallback: true } };
-        },
-        getRoutingNodeKind: () => "leaf",
-      };
+            context.selectedNodeCodes.add("PROVIDER");
+            return [{ code: "PROVIDER" }];
+          },
+        };
+      if (id === "PROVIDER")
+        return {
+          canHandle: () => true,
+          resolve: () => ({ status: "failure", error: "unavailable" }),
+          getRoutingNodeKind: () => "leaf",
+        };
+      if (id === "FALLBACK")
+        return {
+          canHandle: () => false,
+          resolve: () => {
+            fallbackCalled = true;
+            return { status: "success", value: { fallback: true } };
+          },
+          getRoutingNodeKind: () => "leaf",
+        };
       return null;
     },
   };
@@ -863,7 +978,11 @@ test("try-each node: TerminalFailure propagates up through an ancestor switch", 
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.TerminalFailure);
-  assert.equal(fallbackCalled, false, "FALLBACK must not be called after TerminalFailure");
+  assert.equal(
+    fallbackCalled,
+    false,
+    "FALLBACK must not be called after TerminalFailure",
+  );
 });
 
 test("try-each node: succeeding first provider short-circuits remaining siblings", () => {
@@ -894,7 +1013,11 @@ test("try-each node: succeeding first provider short-circuits remaining siblings
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.Success);
-  assert.equal(bCalled, false, "PROVIDER-B should not be called when PROVIDER-A succeeds");
+  assert.equal(
+    bCalled,
+    false,
+    "PROVIDER-B should not be called when PROVIDER-A succeeds",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -984,9 +1107,14 @@ test("step node: engine stops immediately when a child fails, does not try later
 test("step node: throws when a child cannot handle the output", () => {
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "ROOT", type: "StepPlan", next: ["STEP-A", "STEP-B"] }),
+      getRoot: () => ({
+        id: "ROOT",
+        type: "StepPlan",
+        next: ["STEP-A", "STEP-B"],
+      }),
       getNode: (id) => {
-        if (id === "ROOT") return { id: "ROOT", type: "StepPlan", next: ["STEP-A", "STEP-B"] };
+        if (id === "ROOT")
+          return { id: "ROOT", type: "StepPlan", next: ["STEP-A", "STEP-B"] };
         if (id === "STEP-A") return { id: "STEP-A", type: "mock", next: [] };
         if (id === "STEP-B") return { id: "STEP-B", type: "mock", next: [] };
         return null;
@@ -1048,7 +1176,7 @@ test("step node: TerminalFailure from a child propagates immediately and stops e
       nextIds: ["PROVIDER"],
       resolveResult: { status: "success", value: {} },
     },
-    "PROVIDER": {
+    PROVIDER: {
       kind: "leaf",
       nextIds: [],
       resolveResult: { status: "failure", error: "unavailable" },
@@ -1067,24 +1195,38 @@ test("step node: TerminalFailure from a child propagates immediately and stops e
   const result = engine.execute({ value: {} });
 
   assert.equal(result.status, EnvelopeStatus.TerminalFailure);
-  assert.equal(bCalled, false, "STEP-B must not be called after TerminalFailure");
+  assert.equal(
+    bCalled,
+    false,
+    "STEP-B must not be called after TerminalFailure",
+  );
 });
 
 test("execute() passes resolver output to children without transforming its shape", () => {
   let wrapperInput = null;
   let leafInput = null;
 
-  const rootOutput = { requestInput: { ticker: "GOOG" }, resolvedRequest: { requestType: "equity", symbol: "GOOG" } };
-  const wrapperOutput = { requestInput: { nested: true }, resolvedRequest: null };
+  const rootOutput = {
+    requestInput: { ticker: "GOOG" },
+    resolvedRequest: { requestType: "equity", symbol: "GOOG" },
+  };
+  const wrapperOutput = {
+    requestInput: { nested: true },
+    resolvedRequest: null,
+  };
 
   const flow = {
     getGraph: () => ({
       getRoot: () => ({ id: "ROOT", type: "mock", next: ["WRAPPER"] }),
       getNode: (id) => {
-        if (id === "ROOT") return { id: "ROOT", type: "mock", next: ["WRAPPER"] };
-        if (id === "WRAPPER") return { id: "WRAPPER", type: "mock", next: ["LEAF"] };
-        if (id === "LEAF") return { id: "LEAF", type: "mock", next: ["TERMINAL"] };
-        if (id === "TERMINAL") return { id: "TERMINAL", type: "terminal", next: [] };
+        if (id === "ROOT")
+          return { id: "ROOT", type: "mock", next: ["WRAPPER"] };
+        if (id === "WRAPPER")
+          return { id: "WRAPPER", type: "mock", next: ["LEAF"] };
+        if (id === "LEAF")
+          return { id: "LEAF", type: "mock", next: ["TERMINAL"] };
+        if (id === "TERMINAL")
+          return { id: "TERMINAL", type: "terminal", next: [] };
         return null;
       },
     }),

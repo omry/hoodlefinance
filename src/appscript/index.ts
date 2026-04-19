@@ -1,7 +1,5 @@
 import { createHoodlefinanceRuntime } from "../runtime/host-adapter";
-import {
-  AppScriptResolverServices,
-} from "../runtime/AppScriptResolverServices";
+import { AppScriptResolverServices } from "../runtime/AppScriptResolverServices";
 import type { AppScriptGlobals, AppScriptHostServices } from "./host-types";
 
 const DEFAULT_ATTRIBUTE = "price";
@@ -45,8 +43,7 @@ function requireServices(
 
 function createPendingAddOnHomepage(): () => unknown {
   return function hoodlefinanceBuildSheetsAddOnHomepage(): unknown {
-    const cardService = (globalThis as Partial<AppScriptGlobals>)
-      .CardService;
+    const cardService = (globalThis as Partial<AppScriptGlobals>).CardService;
 
     if (!cardService) {
       throw new Error("CardService is not available.");

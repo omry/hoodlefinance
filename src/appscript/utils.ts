@@ -1,9 +1,7 @@
 import type { StoredTextResource } from "../runtime/ResolverServices";
 import type { AppsScriptCache } from "./host-types";
 
-export function createStringCache(
-  cache: AppsScriptCache,
-): {
+export function createStringCache(cache: AppsScriptCache): {
   getCachedString(key: string): string;
   putCachedString(key: string, value: string, ttlSeconds: number): string;
 } {
@@ -100,7 +98,9 @@ export function createStoredTextResourceStore(
         return null;
       }
 
-      const payload = parseStoredTextResourcePayload(properties.getProperty(key));
+      const payload = parseStoredTextResourcePayload(
+        properties.getProperty(key),
+      );
       const text = String(payload?.text || "");
       const fetchedAtMs = Number(payload?.fetchedAtMs);
 

@@ -47,6 +47,12 @@ test("prefixless exchanges return the symbol directly", () => {
 });
 
 test("invalid ticker formats throw", () => {
-  assert.throws(() => normalizeTickerWithoutIsin("PSE:"), /Ticker "PSE:" is invalid\./);
-  assert.throws(() => normalizeTickerWithoutIsin("PDA:BDO"), /Unsupported exchange prefix "PDA" in ticker "PDA:BDO"\./);
+  assert.throws(
+    () => normalizeTickerWithoutIsin("PSE:"),
+    /Ticker "PSE:" is invalid\./,
+  );
+  assert.throws(
+    () => normalizeTickerWithoutIsin("PDA:BDO"),
+    /Unsupported exchange prefix "PDA" in ticker "PDA:BDO"\./,
+  );
 });

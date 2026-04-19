@@ -3,13 +3,8 @@ import {
   createStoredTextResourceStore,
   createStringCache,
 } from "../appscript/utils";
-import type {
-  AppScriptHostServices,
-} from "../appscript/host-types";
-import {
-  ResolverServices,
-  type StoredTextResource,
-} from "./ResolverServices";
+import type { AppScriptHostServices } from "../appscript/host-types";
+import { ResolverServices, type StoredTextResource } from "./ResolverServices";
 
 export class AppScriptResolverServices extends ResolverServices {
   private readonly jsonCache;
@@ -25,7 +20,8 @@ export class AppScriptResolverServices extends ResolverServices {
       : null;
 
     this.jsonCache = createJsonCache(scriptCache);
-    this.storedTextResourceStore = createStoredTextResourceStore(scriptProperties);
+    this.storedTextResourceStore =
+      createStoredTextResourceStore(scriptProperties);
     this.stringCache = createStringCache(scriptCache);
     this.urlFetchApp = options.urlFetchApp;
   }

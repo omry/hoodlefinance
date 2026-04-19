@@ -64,31 +64,29 @@ function createStoredTextState(
   };
 }
 
-export function loadStoredTextResource<TValue>(
-  options: {
-    cacheKey: string;
-    cacheTtlSeconds: number;
-    fetchText(): string;
-    getCachedString?: ((cacheKey: string) => string) | undefined;
-    getStoredTextResource?:
-      | ((resourceKey: string) => StoredTextResource | null)
-      | undefined;
-    invalidPayloadMessage?: string | undefined;
-    putCachedString?:
-      | ((cacheKey: string, value: string, ttlSeconds: number) => string)
-      | undefined;
-    putStoredTextResource?:
-      | ((
-          resourceKey: string,
-          text: string,
-          fetchedAtMs: number,
-        ) => StoredTextResource | null)
-      | undefined;
-    refreshIntervalMs: number;
-    storedResourceKey: string;
-    tryParse(text: string): TValue | null;
-  },
-) {
+export function loadStoredTextResource<TValue>(options: {
+  cacheKey: string;
+  cacheTtlSeconds: number;
+  fetchText(): string;
+  getCachedString?: ((cacheKey: string) => string) | undefined;
+  getStoredTextResource?:
+    | ((resourceKey: string) => StoredTextResource | null)
+    | undefined;
+  invalidPayloadMessage?: string | undefined;
+  putCachedString?:
+    | ((cacheKey: string, value: string, ttlSeconds: number) => string)
+    | undefined;
+  putStoredTextResource?:
+    | ((
+        resourceKey: string,
+        text: string,
+        fetchedAtMs: number,
+      ) => StoredTextResource | null)
+    | undefined;
+  refreshIntervalMs: number;
+  storedResourceKey: string;
+  tryParse(text: string): TValue | null;
+}) {
   const cachedText =
     typeof options.getCachedString === "function"
       ? String(options.getCachedString(options.cacheKey) || "")

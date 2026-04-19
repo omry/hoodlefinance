@@ -3,9 +3,7 @@ import { StockQuote } from "./quote";
 
 const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
 
-export function buildIsraeliFundTradingviewFallbackInfo(
-  yahooSymbol: string,
-): {
+export function buildIsraeliFundTradingviewFallbackInfo(yahooSymbol: string): {
   expectedSymbol: string;
   url: string;
   yahooSymbol: string;
@@ -34,7 +32,9 @@ function extractTradingviewIsin(html: string): string {
   return match && match[1] ? match[1].toUpperCase() : "";
 }
 
-function extractTradingviewSymbolInfo(html: string): Record<string, unknown> | null {
+function extractTradingviewSymbolInfo(
+  html: string,
+): Record<string, unknown> | null {
   const match = String(html || "").match(
     /window\.initData\.symbolInfo\s*=\s*(\{[\s\S]*?\});/i,
   );
@@ -120,7 +120,9 @@ export function extractTradingviewFundQuote(
     regularMarketPrice: price,
     shortName:
       symbolInfo && symbolInfo.short_name ? String(symbolInfo.short_name) : "",
-    symbol: String(yahooSymbol || "").trim().toUpperCase(),
+    symbol: String(yahooSymbol || "")
+      .trim()
+      .toUpperCase(),
   });
 }
 

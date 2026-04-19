@@ -9,7 +9,11 @@ import {
 } from "./request";
 import type { ResolverRegistry } from "./flow/resolve-flow";
 // TODO: merge resolver-classes.ts into this file
-import { IdentifierResolver, Resolver, BaseHFResolver } from "./resolver-classes";
+import {
+  IdentifierResolver,
+  Resolver,
+  BaseHFResolver,
+} from "./resolver-classes";
 import {
   createRequestInput,
   buildTypedRequestFromParsedInput,
@@ -26,7 +30,10 @@ import {
   buildGoogleFinanceQuoteUrl,
   extractGoogleFinanceFxPairQuote,
 } from "./google-fx";
-import { buildFxPairFromCodes, createStoredFxTickerParser } from "./fx-normalization";
+import {
+  buildFxPairFromCodes,
+  createStoredFxTickerParser,
+} from "./fx-normalization";
 import {
   buildPseListingCacheKey,
   buildPseSearchUrl,
@@ -329,7 +336,11 @@ export class RequestClassifierResolver extends IdentifierResolver {
       }
 
       const parsedInput = this.fxTickerParser
-        ? { ...requestInput, fxPair: this.fxTickerParser(requestInput.ticker) ?? requestInput.fxPair }
+        ? {
+            ...requestInput,
+            fxPair:
+              this.fxTickerParser(requestInput.ticker) ?? requestInput.fxPair,
+          }
         : requestInput;
       const resolvedRequest = buildTypedRequestFromParsedInput(
         requestInput,
@@ -504,10 +515,10 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return input instanceof RequestInput && isin.startsWith("PH");
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
-    const isin = String(extractIsinFromRequestInput(request as RequestInput) || "").trim();
+  override execute(request: RequestInput | ResolvedRequest): unknown {
+    const isin = String(
+      extractIsinFromRequestInput(request as RequestInput) || "",
+    ).trim();
     const pseTicker = this.ensurePseIsinMap()[isin.toUpperCase()] || "";
 
     if (!pseTicker) {
@@ -563,10 +574,10 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     );
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
-    const isin = String(extractIsinFromRequestInput(request as RequestInput) || "").trim();
+  override execute(request: RequestInput | ResolvedRequest): unknown {
+    const isin = String(
+      extractIsinFromRequestInput(request as RequestInput) || "",
+    ).trim();
     const cacheKey = `hoodlefinance:isin:${isin}`;
     const cached = this.getCachedString(cacheKey);
 
@@ -626,9 +637,7 @@ export class LocalFxResolver extends BaseHFResolver {
     );
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
+  override execute(request: RequestInput | ResolvedRequest): unknown {
     return buildSameCurrencyQuote((request as FxRequest).fxPair);
   }
 
@@ -678,9 +687,7 @@ export class GoogleFxResolver extends BaseHFResolver {
     );
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
+  override execute(request: RequestInput | ResolvedRequest): unknown {
     const fxPair = (request as FxRequest).fxPair;
     const pairSlug = String(fxPair.googlePairSlug || "").trim();
     const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
@@ -778,9 +785,7 @@ export class PseFramesResolver extends BaseHFResolver {
     return "EQUITY -> PSE";
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
+  override execute(request: RequestInput | ResolvedRequest): unknown {
     const symbol = String((request as EquityRequest).symbol || "")
       .trim()
       .toUpperCase();
@@ -861,9 +866,7 @@ export class PseEdgeResolver extends BaseHFResolver {
     return "EQUITY -> PSE";
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
+  override execute(request: RequestInput | ResolvedRequest): unknown {
     const symbol = String((request as EquityRequest).symbol || "")
       .trim()
       .toUpperCase();
@@ -890,14 +893,17 @@ export class PseEdgeResolver extends BaseHFResolver {
 
         if (searchResponse?.error) {
           throw buildPseUnavailableError(
-            searchResponse.error instanceof Error && searchResponse.error.message
+            searchResponse.error instanceof Error &&
+              searchResponse.error.message
               ? searchResponse.error.message
               : searchResponse.error,
           );
         }
 
         listing = tryResolvePseListingFromHtml(
-          searchResponse?.response ? searchResponse.response.getContentText() : "",
+          searchResponse?.response
+            ? searchResponse.response.getContentText()
+            : "",
           symbol,
         );
 
@@ -988,8 +994,6 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
     this.putStoredTextResource = services.putStoredTextResource;
   }
 
-
-
   ensurePreferredReitTickerSet(): ReadonlySet<string> {
     if (this.preferredReitTickerSet) {
       return this.preferredReitTickerSet;
@@ -1023,9 +1027,7 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
     }
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
+  override execute(request: RequestInput | ResolvedRequest): unknown {
     let yahooSymbol: string;
     let preferredYahooSymbol: string;
     let fxPair: FxRequest["fxPair"] | null;
@@ -1047,7 +1049,9 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
     const cachedQuote = cached ? new StockQuote(cached as never) : null;
 
     if (cached) {
-      return fxPair && cachedQuote ? decorateFxQuote(cachedQuote, fxPair) : cachedQuote;
+      return fxPair && cachedQuote
+        ? decorateFxQuote(cachedQuote, fxPair)
+        : cachedQuote;
     }
 
     const responseItem = fetchRequestsSequentially(this.httpFetch, [
@@ -1064,13 +1068,14 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
 
     const stockQuote = extractYahooQuoteMetaFromResponse(
       responseItem?.response as TextHttpResponse,
-      (request instanceof RawRequestInput || request instanceof RequestInput ? request.identifier : request.input.identifier) || lookupYahooSymbol,
+      (request instanceof RawRequestInput || request instanceof RequestInput
+        ? request.identifier
+        : request.input.identifier) || lookupYahooSymbol,
     );
     const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
     this.putCachedJson(cacheKey, quote.toJSON(), 60);
     return quote;
   }
-
 }
 
 export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
@@ -1171,9 +1176,7 @@ export class TradingviewFundResolver extends BaseHFResolver {
     );
   }
 
-  override execute(
-    request: RequestInput | ResolvedRequest,
-  ): unknown {
+  override execute(request: RequestInput | ResolvedRequest): unknown {
     const fallbackInfo = buildIsraeliFundTradingviewFallbackInfo(
       String((request as EquityRequest).yahooSymbol || ""),
     );
@@ -1228,7 +1231,10 @@ export class EquityAttributeExtractResolver extends Resolver {
     this.putCachedStringFn = services.putCachedString.bind(services);
   }
 
-  resolve(input: unknown, context?: ExecutionContext): ResolutionResult<unknown> {
+  resolve(
+    input: unknown,
+    context?: ExecutionContext,
+  ): ResolutionResult<unknown> {
     const { quote, attribute, tickerInput } = input as {
       quote: StockQuote | FxQuote;
       attribute: string;
@@ -1316,10 +1322,8 @@ export class LonIsinResolver extends Resolver {
       });
       return createResolutionSuccess({ extractedValue: isin }, 0);
     } catch (error) {
-      return createResolutionFailure(
-        error,
-        0,
-        (e) => String(e instanceof Error ? e.message : (e ?? "")),
+      return createResolutionFailure(error, 0, (e) =>
+        String(e instanceof Error ? e.message : (e ?? "")),
       );
     }
   }
@@ -1334,7 +1338,10 @@ export class FxAttributeExtractResolver extends Resolver {
     super(code);
   }
 
-  resolve(input: unknown, context?: ExecutionContext): ResolutionResult<unknown> {
+  resolve(
+    input: unknown,
+    context?: ExecutionContext,
+  ): ResolutionResult<unknown> {
     const { quote, attribute } = input as {
       quote: StockQuote | FxQuote;
       attribute: string;

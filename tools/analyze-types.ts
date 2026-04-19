@@ -123,7 +123,11 @@ function matchesCriterion(
   return count < criterion.count;
 }
 
-function compareCandidates(a: Candidate, b: Candidate, reverse: boolean): number {
+function compareCandidates(
+  a: Candidate,
+  b: Candidate,
+  reverse: boolean,
+): number {
   const countDelta = a.usages.length - b.usages.length;
   if (countDelta !== 0) {
     return reverse ? -countDelta : countDelta;

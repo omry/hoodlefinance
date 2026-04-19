@@ -55,7 +55,9 @@ export class BaseHFResolver extends AttributeResolver {
       attribute = request.attribute;
       identifier = request.identifier;
     } else {
-      const req = request as { input?: { attribute?: unknown; identifier?: unknown } };
+      const req = request as {
+        input?: { attribute?: unknown; identifier?: unknown };
+      };
       attribute = String(req.input?.attribute || "price");
       identifier = String(req.input?.identifier || "");
     }
@@ -115,10 +117,7 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
     }
   }
 
-  selectNext(
-    request: unknown,
-    context: SelectNextContext = {},
-  ): Resolver[] {
+  selectNext(request: unknown, context: SelectNextContext = {}): Resolver[] {
     if (this.getSelectedNodeCodes(context).size > 0) {
       return [];
     }

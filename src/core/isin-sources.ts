@@ -1,7 +1,4 @@
-import {
-  buildPseSecurityFrameUrl,
-  extractPseFrameQuote,
-} from "./pse-quotes";
+import { buildPseSecurityFrameUrl, extractPseFrameQuote } from "./pse-quotes";
 
 const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
 const LON_ISIN_CACHE_TTL_SECONDS = 21600;
@@ -13,7 +10,9 @@ interface CachedStringDependencies {
 }
 
 function extractLonCode(tickerInput: string): string {
-  const normalized = String(tickerInput || "").trim().toUpperCase();
+  const normalized = String(tickerInput || "")
+    .trim()
+    .toUpperCase();
 
   if (normalized.startsWith("LON:")) {
     return normalized.slice(4).trim().toUpperCase();
@@ -35,7 +34,13 @@ function extractLonCodeFromContext(
   for (const candidate of candidates) {
     const code = extractLonCode(candidate);
 
-    if (code && code !== String(candidate || "").trim().toUpperCase()) {
+    if (
+      code &&
+      code !==
+        String(candidate || "")
+          .trim()
+          .toUpperCase()
+    ) {
       return code;
     }
   }
@@ -44,12 +49,16 @@ function extractLonCodeFromContext(
 }
 
 function extractLonIsinFromHtml(html: string, code: string): string {
-  const normalizedCode = String(code || "").trim().toUpperCase();
+  const normalizedCode = String(code || "")
+    .trim()
+    .toUpperCase();
   const pattern = /UpdateOpener\(\s*'[^']*'\s*,\s*'([^']+)'\s*\)/gi;
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(String(html || "")))) {
-    const payload = String(match[1] || "").trim().split("|");
+    const payload = String(match[1] || "")
+      .trim()
+      .split("|");
     const isin = payload[0] ? String(payload[0]).trim().toUpperCase() : "";
     const rowCode = payload[5] ? String(payload[5]).trim().toUpperCase() : "";
 
@@ -102,7 +111,9 @@ export function resolvePseIsinBySymbol(
   symbol: string,
   fetchText: (url: string) => string,
 ): string {
-  const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+  const normalizedSymbol = String(symbol || "")
+    .trim()
+    .toUpperCase();
 
   if (!normalizedSymbol) {
     throw new Error(
@@ -114,7 +125,9 @@ export function resolvePseIsinBySymbol(
     fetchText(buildPseSecurityFrameUrl(normalizedSymbol)),
     normalizedSymbol,
   );
-  const isin = String(quote.isin || "").trim().toUpperCase();
+  const isin = String(quote.isin || "")
+    .trim()
+    .toUpperCase();
 
   if (!isin) {
     throw new Error("No PSE ISIN is available for this ticker.");
@@ -122,7 +135,6 @@ export function resolvePseIsinBySymbol(
 
   return isin;
 }
-
 
 function resolveLonIsinByCode(
   code: string,

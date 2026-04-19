@@ -1,6 +1,5 @@
 import type { AttributeRequest, ParsedTickerRequest } from "./request";
 
-
 export function normalizeAttribute(attribute: unknown): string {
   const normalizedAttribute = String(
     attribute == null ? "price" : attribute,
@@ -27,9 +26,7 @@ export function parseAttributeRequest(attribute: unknown): AttributeRequest {
   };
 }
 
-export function parseTickerRequest(
-  ticker: unknown,
-): ParsedTickerRequest {
+export function parseTickerRequest(ticker: unknown): ParsedTickerRequest {
   const value = String(ticker == null ? "" : ticker).trim();
   const atIndex = value.lastIndexOf("@");
   const candidateTicker = atIndex > 0 ? value.slice(0, atIndex).trim() : "";
@@ -68,9 +65,7 @@ export function parseTickerRequest(
   };
 }
 
-export function stripTickerSourceOverride(
-  ticker: unknown,
-): string {
+export function stripTickerSourceOverride(ticker: unknown): string {
   return parseTickerRequest(ticker).ticker;
 }
 

@@ -106,7 +106,9 @@ const ISIN_SOURCE_BY_EXCHANGE: Record<string, string> = {
 };
 
 function extractQuoteSymbol(quote: StockQuote | FxQuote): string {
-  return String(quote.symbol || "").trim().toUpperCase();
+  return String(quote.symbol || "")
+    .trim()
+    .toUpperCase();
 }
 
 function extractYahooExchangeFromQuote(quote: StockQuote): string {
@@ -123,7 +125,9 @@ export function extractDirectIsinInput(
   tickerInput: string,
   looksLikeIsin: (value: string) => boolean,
 ): string {
-  const value = String(tickerInput || "").trim().toUpperCase();
+  const value = String(tickerInput || "")
+    .trim()
+    .toUpperCase();
   const isin = value.startsWith("ISIN:") ? value.slice(5).trim() : value;
 
   return looksLikeIsin(isin) ? isin : "";
@@ -133,13 +137,16 @@ export function inferIsinExchange(
   quote: StockQuote | FxQuote,
   tickerInput: string,
 ): string {
-  const normalizedTickerInput = String(tickerInput || "").trim().toUpperCase();
+  const normalizedTickerInput = String(tickerInput || "")
+    .trim()
+    .toUpperCase();
   const explicitExchange = extractTickerExchange(normalizedTickerInput);
   const resolvedSymbol = extractQuoteSymbol(quote);
   const suffixExchange = extractYahooExchangeFromSymbol(
     resolvedSymbol || normalizedTickerInput,
   );
-  const metaExchange = quote instanceof StockQuote ? extractYahooExchangeFromQuote(quote) : "";
+  const metaExchange =
+    quote instanceof StockQuote ? extractYahooExchangeFromQuote(quote) : "";
 
   if (normalizedTickerInput.startsWith("PSE:")) {
     return "PSE";
@@ -175,7 +182,9 @@ export function extractTradingviewCode(
   tickerInput: string,
 ): string {
   const candidates = [
-    String(tickerInput || "").trim().toUpperCase(),
+    String(tickerInput || "")
+      .trim()
+      .toUpperCase(),
     extractQuoteSymbol(quote),
   ];
 
@@ -186,14 +195,12 @@ export function extractTradingviewCode(
 
     if (candidate.includes(":")) {
       const parts = candidate.split(":");
-      const exchange = String(parts[0] || "").trim().toUpperCase();
+      const exchange = String(parts[0] || "")
+        .trim()
+        .toUpperCase();
       const code = parts.slice(1).join(":").trim().toUpperCase();
 
-      if (
-        exchange === "TLV" ||
-        exchange === "TASE" ||
-        /\.TA$/i.test(code)
-      ) {
+      if (exchange === "TLV" || exchange === "TASE" || /\.TA$/i.test(code)) {
         return normalizeIsraeliFundCode(code.replace(/\.TA$/i, ""));
       }
 
@@ -202,10 +209,10 @@ export function extractTradingviewCode(
 
     const suffixMatch = candidate.match(/^(.+)\.[A-Z0-9]+$/);
     if (suffixMatch) {
-      const code = String(suffixMatch[1] || "").trim().toUpperCase();
-      return /\.TA$/i.test(candidate)
-        ? normalizeIsraeliFundCode(code)
-        : code;
+      const code = String(suffixMatch[1] || "")
+        .trim()
+        .toUpperCase();
+      return /\.TA$/i.test(candidate) ? normalizeIsraeliFundCode(code) : code;
     }
 
     return candidate;
@@ -229,7 +236,10 @@ export function resolveIsinAttributeValue(
   },
 ): string {
   const tickerInput = String(context.tickerInput || "").trim();
-  const directIsinInput = extractDirectIsinInput(tickerInput, deps.looksLikeIsin);
+  const directIsinInput = extractDirectIsinInput(
+    tickerInput,
+    deps.looksLikeIsin,
+  );
   const exchange = inferIsinExchange(quote, tickerInput);
   const source = exchange ? ISIN_SOURCE_BY_EXCHANGE[exchange] || "" : "";
 
@@ -243,10 +253,14 @@ export function resolveIsinAttributeValue(
 
   if (!source) {
     if (!exchange) {
-      throw new Error("Could not determine which market to use for ISIN lookup.");
+      throw new Error(
+        "Could not determine which market to use for ISIN lookup.",
+      );
     }
 
-    throw new Error(`ISIN lookup is not supported yet for exchange "${exchange}".`);
+    throw new Error(
+      `ISIN lookup is not supported yet for exchange "${exchange}".`,
+    );
   }
 
   if (source === "PSE") {

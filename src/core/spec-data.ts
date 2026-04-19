@@ -6,7 +6,7 @@ export const DagPlan: Graph.Definition = {
     type: "RequestClassifierResolver",
     next: ["ATTRIBUTE", "IDENTIFIER:ISIN"],
   },
-  "ATTRIBUTE": {
+  ATTRIBUTE: {
     id: "ATTRIBUTE",
     next: ["ATTRIBUTE:EQUITY", "ATTRIBUTE:FX"],
     type: "RoutingPlan",

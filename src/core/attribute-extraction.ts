@@ -1,12 +1,18 @@
-import { extractYahooExchangeFromSymbol, isPrefixlessExchange, resolveExchangeSuffix, resolveGoogleExchange } from "./exchange-symbols";
+import {
+  extractYahooExchangeFromSymbol,
+  isPrefixlessExchange,
+  resolveExchangeSuffix,
+  resolveGoogleExchange,
+} from "./exchange-symbols";
 import { FxQuote, StockQuote } from "./quote";
 import { parseAttributeRequest } from "./request-parsing";
 
 export { parseAttributeRequest };
 
-
 export function extractQuoteCurrencyCode(quote: StockQuote | FxQuote): string {
-  return String(quote.currency || (quote as StockQuote).financialCurrency || "");
+  return String(
+    quote.currency || (quote as StockQuote).financialCurrency || "",
+  );
 }
 
 export function extractQuoteMoneyUnitScale(
@@ -49,7 +55,10 @@ function change(quote: StockQuote | FxQuote): number {
   return price - previousClose(quote);
 }
 
-function renderGoogleSymbol(quote: StockQuote | FxQuote, resolvedSymbol: string): string {
+function renderGoogleSymbol(
+  quote: StockQuote | FxQuote,
+  resolvedSymbol: string,
+): string {
   if (quote instanceof FxQuote) {
     if (quote.googleSymbol) {
       return String(quote.googleSymbol);
@@ -60,7 +69,12 @@ function renderGoogleSymbol(quote: StockQuote | FxQuote, resolvedSymbol: string)
 
   const googleExchange = resolveGoogleExchange(
     resolvedSymbol,
-    String((quote as StockQuote).exchangeName || (quote as StockQuote).fullExchangeName || (quote as StockQuote).quoteSourceName || ""),
+    String(
+      (quote as StockQuote).exchangeName ||
+        (quote as StockQuote).fullExchangeName ||
+        (quote as StockQuote).quoteSourceName ||
+        "",
+    ),
   );
   if (!googleExchange) {
     return resolvedSymbol;
@@ -128,7 +142,9 @@ export function extractAttributeValue(
         "";
       break;
     case "currency":
-      value = String(quote.currency || (quote as StockQuote).financialCurrency || "");
+      value = String(
+        quote.currency || (quote as StockQuote).financialCurrency || "",
+      );
       break;
     case "isin":
       value = (quote as StockQuote).isin || "";
@@ -174,10 +190,10 @@ export function extractAttributeValue(
       break;
     case "symbol":
     case "symbol:google":
-      value = resolveSymbolAttribute(quote,"google");
+      value = resolveSymbolAttribute(quote, "google");
       break;
     case "symbol:yahoo":
-      value = resolveSymbolAttribute(quote,"yahoo");
+      value = resolveSymbolAttribute(quote, "yahoo");
       break;
     case "exchange":
     case "exchange:google": {
@@ -189,7 +205,12 @@ export function extractAttributeValue(
       const googleStockQuote = quote as StockQuote;
       value = resolveGoogleExchange(
         String(googleStockQuote.symbol || "").trim(),
-        String(googleStockQuote.exchangeName || googleStockQuote.fullExchangeName || googleStockQuote.quoteSourceName || ""),
+        String(
+          googleStockQuote.exchangeName ||
+            googleStockQuote.fullExchangeName ||
+            googleStockQuote.quoteSourceName ||
+            "",
+        ),
       );
       break;
     }
@@ -200,13 +221,20 @@ export function extractAttributeValue(
       }
 
       const stockQuote = quote as StockQuote;
-      const suffixExchangeYahoo = extractYahooExchangeFromSymbol(String(stockQuote.symbol || "").trim());
+      const suffixExchangeYahoo = extractYahooExchangeFromSymbol(
+        String(stockQuote.symbol || "").trim(),
+      );
       if (suffixExchangeYahoo) {
         value = suffixExchangeYahoo;
         break;
       }
 
-      value = String(stockQuote.exchangeName || stockQuote.fullExchangeName || stockQuote.quoteSourceName || "")
+      value = String(
+        stockQuote.exchangeName ||
+          stockQuote.fullExchangeName ||
+          stockQuote.quoteSourceName ||
+          "",
+      )
         .trim()
         .toUpperCase();
       break;
@@ -220,7 +248,9 @@ export function extractAttributeValue(
   }
 
   if (baseAttribute === "currency") {
-    throw new Error('Attribute "currency" does not support output-currency conversion.');
+    throw new Error(
+      'Attribute "currency" does not support output-currency conversion.',
+    );
   }
 
   if (baseAttribute !== "price") {

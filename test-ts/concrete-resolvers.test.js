@@ -21,7 +21,9 @@ const {
   StockQuote,
 } = require("../dist/ts/core/index.js");
 const { createTextHttpResponse } = require("./resource-fixtures.js");
-const { createTestResolverServices } = require("./resolver-service-fixtures.js");
+const {
+  createTestResolverServices,
+} = require("./resolver-service-fixtures.js");
 
 function textResponse(text) {
   return createTextHttpResponse(text);
@@ -146,18 +148,62 @@ test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requ
 
 test("Concrete resolvers keep direct default ids and honor spec ids when materialized", () => {
   const cases = [
-    [new LocalFxResolver(), LocalFxResolver.fromSpec("LOCAL-FX"), "FX-IDENTITY"],
-    [new GoogleFxResolver(), GoogleFxResolver.fromSpec("FX:GOOGLE"), "GOOGLE-FX"],
-    [new PseFramesResolver(), PseFramesResolver.fromSpec("QUOTE:PSE-FRAMES"), "PSE-FRAMES"],
-    [new PseEdgeResolver(), PseEdgeResolver.fromSpec("QUOTE:PSE-EDGE"), "PSE-EDGE"],
-    [new PseIsinMapResolver(), PseIsinMapResolver.fromSpec("ISIN:PSE-MAP"), "ISIN:PSE"],
-    [new YahooIsinSearchResolver(), YahooIsinSearchResolver.fromSpec("ISIN:SEARCH"), "ISIN:YAHOO"],
-    [new YahooEquityQuoteResolver(), YahooEquityQuoteResolver.fromSpec("QUOTE:YAHOO"), "YAHOO-QUOTE"],
+    [
+      new LocalFxResolver(),
+      LocalFxResolver.fromSpec("LOCAL-FX"),
+      "FX-IDENTITY",
+    ],
+    [
+      new GoogleFxResolver(),
+      GoogleFxResolver.fromSpec("FX:GOOGLE"),
+      "GOOGLE-FX",
+    ],
+    [
+      new PseFramesResolver(),
+      PseFramesResolver.fromSpec("QUOTE:PSE-FRAMES"),
+      "PSE-FRAMES",
+    ],
+    [
+      new PseEdgeResolver(),
+      PseEdgeResolver.fromSpec("QUOTE:PSE-EDGE"),
+      "PSE-EDGE",
+    ],
+    [
+      new PseIsinMapResolver(),
+      PseIsinMapResolver.fromSpec("ISIN:PSE-MAP"),
+      "ISIN:PSE",
+    ],
+    [
+      new YahooIsinSearchResolver(),
+      YahooIsinSearchResolver.fromSpec("ISIN:SEARCH"),
+      "ISIN:YAHOO",
+    ],
+    [
+      new YahooEquityQuoteResolver(),
+      YahooEquityQuoteResolver.fromSpec("QUOTE:YAHOO"),
+      "YAHOO-QUOTE",
+    ],
     [new YahooFxResolver(), YahooFxResolver.fromSpec("FX:YAHOO"), "YAHOO-FX"],
-    [new TradingviewFundResolver(), TradingviewFundResolver.fromSpec("FUND:TRADINGVIEW"), "TRADINGVIEW-FUND"],
-    [new EquityAttributeExtractResolver(), EquityAttributeExtractResolver.fromSpec("EXTRACT:QUOTE"), "EXTRACT:EQUITY"],
-    [new LonIsinResolver(), LonIsinResolver.fromSpec("ATTRIBUTE:LON-ISIN"), "LON-ISIN"],
-    [new FxAttributeExtractResolver(), FxAttributeExtractResolver.fromSpec("EXTRACT:QUOTE-FX"), "EXTRACT:FX"],
+    [
+      new TradingviewFundResolver(),
+      TradingviewFundResolver.fromSpec("FUND:TRADINGVIEW"),
+      "TRADINGVIEW-FUND",
+    ],
+    [
+      new EquityAttributeExtractResolver(),
+      EquityAttributeExtractResolver.fromSpec("EXTRACT:QUOTE"),
+      "EXTRACT:EQUITY",
+    ],
+    [
+      new LonIsinResolver(),
+      LonIsinResolver.fromSpec("ATTRIBUTE:LON-ISIN"),
+      "LON-ISIN",
+    ],
+    [
+      new FxAttributeExtractResolver(),
+      FxAttributeExtractResolver.fromSpec("EXTRACT:QUOTE-FX"),
+      "EXTRACT:FX",
+    ],
   ];
 
   for (const [directResolver, materializedResolver, defaultName] of cases) {
@@ -167,16 +213,43 @@ test("Concrete resolvers keep direct default ids and honor spec ids when materia
 
   assert.equal(LocalFxResolver.fromSpec("LOCAL-FX").name, "LOCAL-FX");
   assert.equal(GoogleFxResolver.fromSpec("FX:GOOGLE").name, "FX:GOOGLE");
-  assert.equal(PseFramesResolver.fromSpec("QUOTE:PSE-FRAMES").name, "QUOTE:PSE-FRAMES");
-  assert.equal(PseEdgeResolver.fromSpec("QUOTE:PSE-EDGE").name, "QUOTE:PSE-EDGE");
-  assert.equal(PseIsinMapResolver.fromSpec("ISIN:PSE-MAP").name, "ISIN:PSE-MAP");
-  assert.equal(YahooIsinSearchResolver.fromSpec("ISIN:SEARCH").name, "ISIN:SEARCH");
-  assert.equal(YahooEquityQuoteResolver.fromSpec("QUOTE:YAHOO").name, "QUOTE:YAHOO");
+  assert.equal(
+    PseFramesResolver.fromSpec("QUOTE:PSE-FRAMES").name,
+    "QUOTE:PSE-FRAMES",
+  );
+  assert.equal(
+    PseEdgeResolver.fromSpec("QUOTE:PSE-EDGE").name,
+    "QUOTE:PSE-EDGE",
+  );
+  assert.equal(
+    PseIsinMapResolver.fromSpec("ISIN:PSE-MAP").name,
+    "ISIN:PSE-MAP",
+  );
+  assert.equal(
+    YahooIsinSearchResolver.fromSpec("ISIN:SEARCH").name,
+    "ISIN:SEARCH",
+  );
+  assert.equal(
+    YahooEquityQuoteResolver.fromSpec("QUOTE:YAHOO").name,
+    "QUOTE:YAHOO",
+  );
   assert.equal(YahooFxResolver.fromSpec("FX:YAHOO").name, "FX:YAHOO");
-  assert.equal(TradingviewFundResolver.fromSpec("FUND:TRADINGVIEW").name, "FUND:TRADINGVIEW");
-  assert.equal(EquityAttributeExtractResolver.fromSpec("EXTRACT:QUOTE").name, "EXTRACT:QUOTE");
-  assert.equal(LonIsinResolver.fromSpec("ATTRIBUTE:LON-ISIN").name, "ATTRIBUTE:LON-ISIN");
-  assert.equal(FxAttributeExtractResolver.fromSpec("EXTRACT:QUOTE-FX").name, "EXTRACT:QUOTE-FX");
+  assert.equal(
+    TradingviewFundResolver.fromSpec("FUND:TRADINGVIEW").name,
+    "FUND:TRADINGVIEW",
+  );
+  assert.equal(
+    EquityAttributeExtractResolver.fromSpec("EXTRACT:QUOTE").name,
+    "EXTRACT:QUOTE",
+  );
+  assert.equal(
+    LonIsinResolver.fromSpec("ATTRIBUTE:LON-ISIN").name,
+    "ATTRIBUTE:LON-ISIN",
+  );
+  assert.equal(
+    FxAttributeExtractResolver.fromSpec("EXTRACT:QUOTE-FX").name,
+    "EXTRACT:QUOTE-FX",
+  );
 });
 
 test("LonIsinResolver keeps the explicit LSE route label", () => {
@@ -237,17 +310,20 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
     },
   };
 
-  const result = resolver.resolve({
-    attribute: "close",
-    quote: new StockQuote({
-      currency: "GBp",
-      regularMarketPreviousClose: 245,
-      regularMarketPrice: 250,
-      symbol: "TSCO.L",
-    }),
+  const result = resolver.resolve(
+    {
+      attribute: "close",
+      quote: new StockQuote({
+        currency: "GBp",
+        regularMarketPreviousClose: 245,
+        regularMarketPrice: 250,
+        symbol: "TSCO.L",
+      }),
 
-    tickerInput: "TSCO.L",
-  }, context);
+      tickerInput: "TSCO.L",
+    },
+    context,
+  );
 
   assert.equal(result.status, "success");
   assert.equal(result.value.extractedValue, 2.45);
@@ -269,16 +345,19 @@ test("EquityAttributeExtractResolver converts stock unit prices directly to the 
     },
   };
 
-  const result = resolver.resolve({
-    attribute: "price@USD",
-    quote: new StockQuote({
-      currency: "GBp",
-      regularMarketPrice: 250,
-      symbol: "TSCO.L",
-    }),
+  const result = resolver.resolve(
+    {
+      attribute: "price@USD",
+      quote: new StockQuote({
+        currency: "GBp",
+        regularMarketPrice: 250,
+        symbol: "TSCO.L",
+      }),
 
-    tickerInput: "TSCO.L",
-  }, context);
+      tickerInput: "TSCO.L",
+    },
+    context,
+  );
 
   assert.equal(result.status, "success");
   assert.equal(result.value.extractedValue, 3.125);
@@ -294,7 +373,6 @@ test("FxAttributeExtractResolver keeps explicit FX scaling in extraction", () =>
       regularMarketPrice: 1,
       symbol: "GBPUSD",
     },
-
   });
 
   assert.equal(result.status, "success");
@@ -337,19 +415,22 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     ],
   ])},sideChannel:{}});</script>`;
   let cachedWrite = null;
-  const resolver = initResolver(new GoogleFxResolver(), createTestResolverServices({
-    httpFetch(url) {
-      assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
-      return textResponse(html);
-    },
-    getCachedJson() {
-      return null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-  }));
+  const resolver = initResolver(
+    new GoogleFxResolver(),
+    createTestResolverServices({
+      httpFetch(url) {
+        assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
+        return textResponse(html);
+      },
+      getCachedJson() {
+        return null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+    }),
+  );
   const request = new FxRequest({
     attribute: "price",
     fxPair,
@@ -380,17 +461,20 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     },
   });
 
-  const cachedResolver = initResolver(new GoogleFxResolver(), createTestResolverServices({
-    httpFetch() {
-      throw new Error("cache hit should not fetch Google Finance");
-    },
-    getCachedJson() {
-      return cachedWrite.value;
-    },
-    putCachedJson() {
-      throw new Error("cache hit should not write Google Finance cache");
-    },
-  }));
+  const cachedResolver = initResolver(
+    new GoogleFxResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        throw new Error("cache hit should not fetch Google Finance");
+      },
+      getCachedJson() {
+        return cachedWrite.value;
+      },
+      putCachedJson() {
+        throw new Error("cache hit should not write Google Finance cache");
+      },
+    }),
+  );
 
   const cachedOutcome = cachedResolver.resolve(request);
   assert.equal(cachedOutcome.status, "success");
@@ -402,18 +486,21 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
 test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   const frameHtml = createPseFrameHtml();
   let cachedWrite = null;
-  const resolver = initResolver(new PseFramesResolver(), createTestResolverServices({
-    httpFetch() {
-      return textResponse(frameHtml);
-    },
-    getCachedJson() {
-      return null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-  }));
+  const resolver = initResolver(
+    new PseFramesResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        return textResponse(frameHtml);
+      },
+      getCachedJson() {
+        return null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+    }),
+  );
   const request = new EquityRequest({
     allowTradingviewFallback: false,
     attribute: "price",
@@ -455,17 +542,20 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
     },
   });
 
-  const cachedResolver = initResolver(new PseFramesResolver(), createTestResolverServices({
-    httpFetch() {
-      throw new Error("cache hit should not fetch PSE frames");
-    },
-    getCachedJson() {
-      return cachedWrite.value;
-    },
-    putCachedJson() {
-      throw new Error("cache hit should not write PSE frames cache");
-    },
-  }));
+  const cachedResolver = initResolver(
+    new PseFramesResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        throw new Error("cache hit should not fetch PSE frames");
+      },
+      getCachedJson() {
+        return cachedWrite.value;
+      },
+      putCachedJson() {
+        throw new Error("cache hit should not write PSE frames cache");
+      },
+    }),
+  );
 
   const cachedResult = cachedResolver.resolve(request);
   assert.equal(cachedResult.status, "success");
@@ -477,27 +567,30 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   const stockHtml = createPseStockHtml();
   let listingCacheWrite = null;
   let quoteCacheWrite = null;
-  const resolver = initResolver(new PseEdgeResolver(), createTestResolverServices({
-    httpFetch(url) {
-      if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
-        return textResponse(createPseSearchHtml());
-      }
+  const resolver = initResolver(
+    new PseEdgeResolver(),
+    createTestResolverServices({
+      httpFetch(url) {
+        if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
+          return textResponse(createPseSearchHtml());
+        }
 
-      return textResponse(stockHtml);
-    },
-    getCachedJson(cacheKey) {
-      return cacheKey === "hoodlefinance:pse:listing:BDO" ? null : null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      if (String(cacheKey).includes(":listing:")) {
-        listingCacheWrite = { cacheKey, ttlSeconds, value };
-      } else {
-        quoteCacheWrite = { cacheKey, ttlSeconds, value };
-      }
+        return textResponse(stockHtml);
+      },
+      getCachedJson(cacheKey) {
+        return cacheKey === "hoodlefinance:pse:listing:BDO" ? null : null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        if (String(cacheKey).includes(":listing:")) {
+          listingCacheWrite = { cacheKey, ttlSeconds, value };
+        } else {
+          quoteCacheWrite = { cacheKey, ttlSeconds, value };
+        }
 
-      return value;
-    },
-  }));
+        return value;
+      },
+    }),
+  );
   const request = new EquityRequest({
     allowTradingviewFallback: false,
     attribute: "price",
@@ -551,22 +644,25 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
 });
 
 test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
-  const cachedResolver = initResolver(new YahooEquityQuoteResolver(), createTestResolverServices({
-    httpFetch() {
-      throw new Error("cache hit should not fetch Yahoo quote");
-    },
-    getCachedJson(cacheKey) {
-      return cacheKey === "hoodlefinance:GOOG"
-        ? {
-            regularMarketPrice: 123.45,
-            symbol: "GOOG",
-          }
-        : null;
-    },
-    putCachedJson(_cacheKey, value) {
-      return value;
-    },
-  }));
+  const cachedResolver = initResolver(
+    new YahooEquityQuoteResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        throw new Error("cache hit should not fetch Yahoo quote");
+      },
+      getCachedJson(cacheKey) {
+        return cacheKey === "hoodlefinance:GOOG"
+          ? {
+              regularMarketPrice: 123.45,
+              symbol: "GOOG",
+            }
+          : null;
+      },
+      putCachedJson(_cacheKey, value) {
+        return value;
+      },
+    }),
+  );
   const cachedRequest = new EquityRequest({
     attribute: "price",
     identifier: "GOOG",
@@ -580,29 +676,34 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
   assert.equal(cachedResult.value.quote.regularMarketPrice, 123.45);
 
   let cachedWrite = null;
-  const fetchedResolver = initResolver(new YahooEquityQuoteResolver(), createTestResolverServices({
-    httpFetch() {
-      return textResponse(JSON.stringify({
-        chart: {
-          result: [
-            {
-              meta: {
-                regularMarketPrice: 99.5,
-                symbol: "GOOG",
-              },
+  const fetchedResolver = initResolver(
+    new YahooEquityQuoteResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        return textResponse(
+          JSON.stringify({
+            chart: {
+              result: [
+                {
+                  meta: {
+                    regularMarketPrice: 99.5,
+                    symbol: "GOOG",
+                  },
+                },
+              ],
             },
-          ],
-        },
-      }));
-    },
-    getCachedJson() {
-      return null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-  }));
+          }),
+        );
+      },
+      getCachedJson() {
+        return null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+    }),
+  );
 
   const fetchedResult = fetchedResolver.resolve(cachedRequest);
   assert.equal(fetchedResult.status, "success");
@@ -621,39 +722,43 @@ test("YahooEquityQuoteResolver owns preferred equity fallback symbols without af
   let lastFetchedUrl = null;
   let cachedWrite = null;
   const resolver = new YahooEquityQuoteResolver();
-  resolver.initEnv(createTestResolverServices({
-    httpFetch(url) {
-      lastFetchedUrl = url;
-      return textResponse(JSON.stringify({
-        chart: {
-          result: [
-            {
-              meta: {
-                regularMarketPrice: 24.78,
-                symbol: "NLY-PI",
-              },
+  resolver.initEnv(
+    createTestResolverServices({
+      httpFetch(url) {
+        lastFetchedUrl = url;
+        return textResponse(
+          JSON.stringify({
+            chart: {
+              result: [
+                {
+                  meta: {
+                    regularMarketPrice: 24.78,
+                    symbol: "NLY-PI",
+                  },
+                },
+              ],
             },
-          ],
-        },
-      }));
-    },
-    getCachedJson() {
-      return null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-    getCachedString(cacheKey) {
-      assert.equal(cacheKey, "hoodlefinance:ts:preferredReitWhitelist");
-      return JSON.stringify({
-        preferredTickers: ["NLY I"],
-      });
-    },
-    putCachedString() {
-      throw new Error("valid cached whitelist should not be rewritten");
-    },
-  }));
+          }),
+        );
+      },
+      getCachedJson() {
+        return null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+      getCachedString(cacheKey) {
+        assert.equal(cacheKey, "hoodlefinance:ts:preferredReitWhitelist");
+        return JSON.stringify({
+          preferredTickers: ["NLY I"],
+        });
+      },
+      putCachedString() {
+        throw new Error("valid cached whitelist should not be rewritten");
+      },
+    }),
+  );
 
   const equityRequest = new EquityRequest({
     attribute: "price",
@@ -692,56 +797,60 @@ test("YahooEquityQuoteResolver falls back to stored preferred whitelist data whe
   let cachedWhitelistWrite = null;
   let storedWhitelistWrite = null;
   const resolver = new YahooEquityQuoteResolver();
-  resolver.initEnv(createTestResolverServices({
-    httpFetch(url) {
-      if (
-        url ===
-        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json"
-      ) {
-        throw new Error("whitelist refresh failed");
-      }
+  resolver.initEnv(
+    createTestResolverServices({
+      httpFetch(url) {
+        if (
+          url ===
+          "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/preferred-reit-whitelist.json"
+        ) {
+          throw new Error("whitelist refresh failed");
+        }
 
-      return textResponse(JSON.stringify({
-        chart: {
-          result: [
-            {
-              meta: {
-                regularMarketPrice: 24.78,
-                symbol: "NLY-PI",
-              },
+        return textResponse(
+          JSON.stringify({
+            chart: {
+              result: [
+                {
+                  meta: {
+                    regularMarketPrice: 24.78,
+                    symbol: "NLY-PI",
+                  },
+                },
+              ],
             },
-          ],
-        },
-      }));
-    },
-    getCachedJson() {
-      return null;
-    },
-    getCachedString(cacheKey) {
-      assert.equal(cacheKey, "hoodlefinance:ts:preferredReitWhitelist");
-      return "";
-    },
-    getStoredTextResource(resourceKey) {
-      assert.equal(resourceKey, "hoodlefinance.preferredReitWhitelist");
-      return {
-        fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
-        text: JSON.stringify({
-          preferredTickers: ["NLY I"],
-        }),
-      };
-    },
-    putCachedString(cacheKey, value, ttlSeconds) {
-      cachedWhitelistWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-    putStoredTextResource(resourceKey, text, fetchedAtMs) {
-      storedWhitelistWrite = { fetchedAtMs, resourceKey, text };
-      return { fetchedAtMs, text };
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      return { cacheKey, ttlSeconds, value };
-    },
-  }));
+          }),
+        );
+      },
+      getCachedJson() {
+        return null;
+      },
+      getCachedString(cacheKey) {
+        assert.equal(cacheKey, "hoodlefinance:ts:preferredReitWhitelist");
+        return "";
+      },
+      getStoredTextResource(resourceKey) {
+        assert.equal(resourceKey, "hoodlefinance.preferredReitWhitelist");
+        return {
+          fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
+          text: JSON.stringify({
+            preferredTickers: ["NLY I"],
+          }),
+        };
+      },
+      putCachedString(cacheKey, value, ttlSeconds) {
+        cachedWhitelistWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+      putStoredTextResource(resourceKey, text, fetchedAtMs) {
+        storedWhitelistWrite = { fetchedAtMs, resourceKey, text };
+        return { fetchedAtMs, text };
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        return { cacheKey, ttlSeconds, value };
+      },
+    }),
+  );
 
   resolver.resolve(
     new EquityRequest({
@@ -778,28 +887,31 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
   `;
 
   const cachedWrites = [];
-  const cachedResolver = initResolver(new TradingviewFundResolver(), createTestResolverServices({
-    httpFetch() {
-      throw new Error("cache hit should not fetch TradingView");
-    },
-    getCachedJson(cacheKey) {
-      return cacheKey === "hoodlefinance:tradingview:quote:KSMF59.TA"
-        ? {
-            currency: "ILS",
-            exchangeName: "TASE",
-            financialCurrency: "ILS",
-            longName: "KSM KSMF59",
-            regularMarketPrice: 17.25,
-            shortName: "KSMF59",
-            symbol: "KSMF59.TA",
-          }
-        : null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      cachedWrites.push({ cacheKey, ttlSeconds, value });
-      return value;
-    },
-  }));
+  const cachedResolver = initResolver(
+    new TradingviewFundResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        throw new Error("cache hit should not fetch TradingView");
+      },
+      getCachedJson(cacheKey) {
+        return cacheKey === "hoodlefinance:tradingview:quote:KSMF59.TA"
+          ? {
+              currency: "ILS",
+              exchangeName: "TASE",
+              financialCurrency: "ILS",
+              longName: "KSM KSMF59",
+              regularMarketPrice: 17.25,
+              shortName: "KSMF59",
+              symbol: "KSMF59.TA",
+            }
+          : null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        cachedWrites.push({ cacheKey, ttlSeconds, value });
+        return value;
+      },
+    }),
+  );
   const cachedRequest = new EquityRequest({
     attribute: "price",
     allowTradingviewFallback: true,
@@ -833,18 +945,21 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
   ]);
 
   const fetchedWrites = [];
-  const fetchedResolver = initResolver(new TradingviewFundResolver(), createTestResolverServices({
-    httpFetch() {
-      return textResponse(html);
-    },
-    getCachedJson() {
-      return null;
-    },
-    putCachedJson(cacheKey, value, ttlSeconds) {
-      fetchedWrites.push({ cacheKey, ttlSeconds, value });
-      return value;
-    },
-  }));
+  const fetchedResolver = initResolver(
+    new TradingviewFundResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        return textResponse(html);
+      },
+      getCachedJson() {
+        return null;
+      },
+      putCachedJson(cacheKey, value, ttlSeconds) {
+        fetchedWrites.push({ cacheKey, ttlSeconds, value });
+        return value;
+      },
+    }),
+  );
 
   const fetchedResult = fetchedResolver.resolve(cachedRequest);
   assert.equal(fetchedResult.status, "success");
@@ -887,27 +1002,29 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
   let cachedWrite = null;
   let storedWrite = null;
   const resolver = new PseIsinMapResolver();
-  resolver.initEnv(createTestResolverServices({
-    httpFetch(url) {
-      fetchCount += 1;
-      assert.equal(
-        url,
-        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
-      );
-      return textResponse("PHY077751022=PSE:BDO\n");
-    },
-    getCachedString() {
-      return "";
-    },
-    putCachedString(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-    putStoredTextResource(resourceKey, text, fetchedAtMs) {
-      storedWrite = { fetchedAtMs, resourceKey, text };
-      return { fetchedAtMs, text };
-    },
-  }));
+  resolver.initEnv(
+    createTestResolverServices({
+      httpFetch(url) {
+        fetchCount += 1;
+        assert.equal(
+          url,
+          "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+        );
+        return textResponse("PHY077751022=PSE:BDO\n");
+      },
+      getCachedString() {
+        return "";
+      },
+      putCachedString(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+      putStoredTextResource(resourceKey, text, fetchedAtMs) {
+        storedWrite = { fetchedAtMs, resourceKey, text };
+        return { fetchedAtMs, text };
+      },
+    }),
+  );
   const requestInput = createRequestInput({
     attribute: "price",
     attributeType: "quote",
@@ -949,34 +1066,36 @@ test("PseIsinMapResolver falls back to stored map data when refresh fails", () =
   let cachedWrite = null;
   let storedWrite = null;
   const resolver = new PseIsinMapResolver();
-  resolver.initEnv(createTestResolverServices({
-    httpFetch(url) {
-      assert.equal(
-        url,
-        "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
-      );
-      throw new Error("map refresh failed");
-    },
-    getCachedString(cacheKey) {
-      assert.equal(cacheKey, "hoodlefinance:ts:pseIsinMap");
-      return "";
-    },
-    getStoredTextResource(resourceKey) {
-      assert.equal(resourceKey, "hoodlefinance.pseIsinMap");
-      return {
-        fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
-        text: "PHY077751022=PSE:BDO\n",
-      };
-    },
-    putCachedString(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-    putStoredTextResource(resourceKey, text, fetchedAtMs) {
-      storedWrite = { fetchedAtMs, resourceKey, text };
-      return { fetchedAtMs, text };
-    },
-  }));
+  resolver.initEnv(
+    createTestResolverServices({
+      httpFetch(url) {
+        assert.equal(
+          url,
+          "https://raw.githubusercontent.com/omry/hoodlefinance/main/data/pse-isin-map.properties",
+        );
+        throw new Error("map refresh failed");
+      },
+      getCachedString(cacheKey) {
+        assert.equal(cacheKey, "hoodlefinance:ts:pseIsinMap");
+        return "";
+      },
+      getStoredTextResource(resourceKey) {
+        assert.equal(resourceKey, "hoodlefinance.pseIsinMap");
+        return {
+          fetchedAtMs: Date.now() - 7 * 60 * 60 * 1000,
+          text: "PHY077751022=PSE:BDO\n",
+        };
+      },
+      putCachedString(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+      putStoredTextResource(resourceKey, text, fetchedAtMs) {
+        storedWrite = { fetchedAtMs, resourceKey, text };
+        return { fetchedAtMs, text };
+      },
+    }),
+  );
 
   const result = resolver.resolve(
     createRequestInput({
@@ -1000,17 +1119,20 @@ test("PseIsinMapResolver falls back to stored map data when refresh fails", () =
 });
 
 test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", () => {
-  const cachedResolver = initResolver(new YahooIsinSearchResolver(), createTestResolverServices({
-    httpFetch() {
-      throw new Error("cache hit should not fetch Yahoo ISIN search");
-    },
-    getCachedString(cacheKey) {
-      return cacheKey === "hoodlefinance:isin:US02079K1079" ? "GOOG" : "";
-    },
-    putCachedString(value) {
-      return value;
-    },
-  }));
+  const cachedResolver = initResolver(
+    new YahooIsinSearchResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        throw new Error("cache hit should not fetch Yahoo ISIN search");
+      },
+      getCachedString(cacheKey) {
+        return cacheKey === "hoodlefinance:isin:US02079K1079" ? "GOOG" : "";
+      },
+      putCachedString(value) {
+        return value;
+      },
+    }),
+  );
   const cachedRequest = createRequestInput({
     attribute: "price",
     attributeType: "quote",
@@ -1026,27 +1148,32 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
   assert.equal(cachedResult.value.yahooSymbol, "GOOG");
 
   let cachedWrite = null;
-  const fetchedResolver = initResolver(new YahooIsinSearchResolver(), createTestResolverServices({
-    httpFetch() {
-      return textResponse(JSON.stringify({
-        quotes: [
-          {
-            exchange: "NYSE",
-            quoteType: "EQUITY",
-            score: 10,
-            symbol: "IBM",
-          },
-        ],
-      }));
-    },
-    getCachedString() {
-      return "";
-    },
-    putCachedString(cacheKey, value, ttlSeconds) {
-      cachedWrite = { cacheKey, ttlSeconds, value };
-      return value;
-    },
-  }));
+  const fetchedResolver = initResolver(
+    new YahooIsinSearchResolver(),
+    createTestResolverServices({
+      httpFetch() {
+        return textResponse(
+          JSON.stringify({
+            quotes: [
+              {
+                exchange: "NYSE",
+                quoteType: "EQUITY",
+                score: 10,
+                symbol: "IBM",
+              },
+            ],
+          }),
+        );
+      },
+      getCachedString() {
+        return "";
+      },
+      putCachedString(cacheKey, value, ttlSeconds) {
+        cachedWrite = { cacheKey, ttlSeconds, value };
+        return value;
+      },
+    }),
+  );
 
   const fetchedResult = fetchedResolver.resolve(cachedRequest);
   assert.equal(fetchedResult.status, "success");

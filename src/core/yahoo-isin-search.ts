@@ -63,9 +63,9 @@ export function canRenderGoogleExchangeFromYahooIdentity(
 
   return Boolean(
     GOOGLE_EXCHANGE_BY_YAHOO_IDENTITY[identity] ||
-      identity === "TASE" ||
-      isPrefixlessExchange(identity) ||
-      resolveExchangeSuffix(identity),
+    identity === "TASE" ||
+    isPrefixlessExchange(identity) ||
+    resolveExchangeSuffix(identity),
   );
 }
 
@@ -119,7 +119,10 @@ function scoreYahooIsinSearchQuote(
     return Number.NEGATIVE_INFINITY;
   }
 
-  if (yahooExchange && canRenderGoogleExchangeFromYahooIdentity(yahooExchange)) {
+  if (
+    yahooExchange &&
+    canRenderGoogleExchangeFromYahooIdentity(yahooExchange)
+  ) {
     score += 1000000;
   } else if (yahooExchange) {
     score += 100000;
@@ -169,9 +172,7 @@ export function extractYahooSymbolFromSearchPayload(
     quote && quote.symbol ? String(quote.symbol).trim().toUpperCase() : "";
 
   if (!symbol) {
-    throw new Error(
-      `No Yahoo Finance symbol was found for ISIN "${isin}".`,
-    );
+    throw new Error(`No Yahoo Finance symbol was found for ISIN "${isin}".`);
   }
 
   return symbol;

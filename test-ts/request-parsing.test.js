@@ -40,13 +40,10 @@ test("parseAttributeRequest keeps the current converted-attribute contract", () 
 });
 
 test("parseTickerRequest distinguishes explicit source suffixes from info modes", () => {
-  assert.deepEqual(
-    parseTickerRequest("BTCUSD@YAHOO"),
-    {
-      infoMode: "source-override",
-      ticker: "BTCUSD",
-    },
-  );
+  assert.deepEqual(parseTickerRequest("BTCUSD@YAHOO"), {
+    infoMode: "source-override",
+    ticker: "BTCUSD",
+  });
 
   assert.deepEqual(parseTickerRequest("BTCUSD@?"), {
     infoMode: "source-name",
@@ -58,24 +55,15 @@ test("parseTickerRequest distinguishes explicit source suffixes from info modes"
     ticker: "BTCUSD",
   });
 
-  assert.deepEqual(
-    parseTickerRequest("BTCUSD@MYSTERY"),
-    {
-      infoMode: "source-override",
-      ticker: "BTCUSD",
-    },
-  );
+  assert.deepEqual(parseTickerRequest("BTCUSD@MYSTERY"), {
+    infoMode: "source-override",
+    ticker: "BTCUSD",
+  });
 });
 
 test("ticker parsing helpers strip suffixes consistently", () => {
-  assert.equal(
-    extractTickerSourceOverride("PSE:BDO@PSE-FRAMES"),
-    "PSE-FRAMES",
-  );
-  assert.equal(
-    extractTickerInfoMode("BTCUSD@?"),
-    "source-name",
-  );
+  assert.equal(extractTickerSourceOverride("PSE:BDO@PSE-FRAMES"), "PSE-FRAMES");
+  assert.equal(extractTickerInfoMode("BTCUSD@?"), "source-name");
   assert.equal(
     stripTickerSourceOverride("ISIN:US02079K1079@YAHOO"),
     "ISIN:US02079K1079",

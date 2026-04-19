@@ -71,9 +71,7 @@ export function renderGraphAsMermaidFlowchart(
     subgraphNodeIds[group].push(node.id);
   }
 
-  const groupedNodeIds = new Set(
-    Object.values(subgraphNodeIds).flat(),
-  );
+  const groupedNodeIds = new Set(Object.values(subgraphNodeIds).flat());
 
   // Emit ungrouped nodes first (topological order), then subgraph blocks
   for (const node of orderedNodes) {
@@ -89,17 +87,22 @@ export function renderGraphAsMermaidFlowchart(
 
   for (const group of subgraphOrder) {
     const escapedGroup = escapeMermaidLabel(group);
-    lines.push(`  subgraph ${aliasByNodeId[subgraphNodeIds[group]![0]!] ?? group}SG["${escapedGroup}"]`);
+    lines.push(
+      `  subgraph ${aliasByNodeId[subgraphNodeIds[group]![0]!] ?? group}SG["${escapedGroup}"]`,
+    );
     // Declaring direction (even matching the parent) triggers ELK SEPARATE
     // hierarchy handling, which routes cross-subgraph edges around the box
     // rather than through it.
     lines.push(`    direction ${direction}`);
     for (const nodeId of subgraphNodeIds[group]!) {
       lines.push(
-        `    ${aliasByNodeId[nodeId]}["${formatGraphNodeLabel(graph.getNode(nodeId)!, {
-          isSubgraphRoot: subgraphRootIds.has(nodeId),
-          isSubgraphTerminal: subgraphTerminalIds.has(nodeId),
-        })}"]`,
+        `    ${aliasByNodeId[nodeId]}["${formatGraphNodeLabel(
+          graph.getNode(nodeId)!,
+          {
+            isSubgraphRoot: subgraphRootIds.has(nodeId),
+            isSubgraphTerminal: subgraphTerminalIds.has(nodeId),
+          },
+        )}"]`,
       );
     }
     lines.push(`  end`);

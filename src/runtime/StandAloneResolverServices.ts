@@ -1,7 +1,4 @@
-import {
-  ResolverServices,
-  type StoredTextResource,
-} from "./ResolverServices";
+import { ResolverServices, type StoredTextResource } from "./ResolverServices";
 import type { TextHttpResponse } from "../core/text-http-response";
 
 export interface StandAloneResolverServicesOptions {
@@ -12,7 +9,10 @@ export class StandAloneResolverServices extends ResolverServices {
   private readonly fetchText: (url: string) => TextHttpResponse;
   private readonly cachedJsonByKey = new Map<string, unknown>();
   private readonly cachedStringByKey = new Map<string, string>();
-  private readonly storedTextResourceByKey = new Map<string, StoredTextResource>();
+  private readonly storedTextResourceByKey = new Map<
+    string,
+    StoredTextResource
+  >();
 
   constructor(options: StandAloneResolverServicesOptions) {
     super();
@@ -51,7 +51,8 @@ export class StandAloneResolverServices extends ResolverServices {
 
   override getStoredTextResource = (
     resourceKey: string,
-  ): StoredTextResource | null => this.storedTextResourceByKey.get(resourceKey) || null;
+  ): StoredTextResource | null =>
+    this.storedTextResourceByKey.get(resourceKey) || null;
 
   override putStoredTextResource = (
     resourceKey: string,

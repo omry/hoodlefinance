@@ -28,7 +28,9 @@ export const ROUTING_TABLE_EXAMPLES: RoutingTableExample[] = [
 ];
 
 interface RoutingIntrospectionDependencies {
-  classifyRequest(requestInput: RawRequestInput): Pick<{ classification: RequestClassification }, "classification">;
+  classifyRequest(
+    requestInput: RawRequestInput,
+  ): Pick<{ classification: RequestClassification }, "classification">;
 }
 
 interface RoutingPlanNodeLike {
@@ -54,7 +56,9 @@ export function buildRoutingTableRow(
   row: RoutingTableExample,
   deps: RoutingIntrospectionDependencies,
 ): RoutingTableRow {
-  const classified = deps.classifyRequest(new RawRequestInput(row.example, "price"));
+  const classified = deps.classifyRequest(
+    new RawRequestInput(row.example, "price"),
+  );
 
   return {
     classification: classified.classification,

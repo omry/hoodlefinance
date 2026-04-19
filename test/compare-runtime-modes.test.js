@@ -48,43 +48,24 @@ test("parseArgs loads repeatable cases", () => {
 });
 
 test("parseArgs accepts positional mode shorthand", () => {
-  const options = parseArgs([
-    "js-ts",
-    "--case",
-    "USDUSD::price",
-  ]);
+  const options = parseArgs(["js-ts", "--case", "USDUSD::price"]);
 
   assert.equal(options.mode, "js-ts");
-  assert.deepEqual(options.cases, [
-    { attribute: "price", ticker: "USDUSD" },
-  ]);
+  assert.deepEqual(options.cases, [{ attribute: "price", ticker: "USDUSD" }]);
 });
 
 test("parseArgs accepts ts-fe mode", () => {
-  const options = parseArgs([
-    "--mode",
-    "ts-fe",
-    "--case",
-    "GOOG::price",
-  ]);
+  const options = parseArgs(["--mode", "ts-fe", "--case", "GOOG::price"]);
 
   assert.equal(options.mode, "ts-fe");
-  assert.deepEqual(options.cases, [
-    { attribute: "price", ticker: "GOOG" },
-  ]);
+  assert.deepEqual(options.cases, [{ attribute: "price", ticker: "GOOG" }]);
 });
 
 test("parseArgs accepts js-fe positional shorthand", () => {
-  const options = parseArgs([
-    "js-fe",
-    "--case",
-    "GOOG::price",
-  ]);
+  const options = parseArgs(["js-fe", "--case", "GOOG::price"]);
 
   assert.equal(options.mode, "js-fe");
-  assert.deepEqual(options.cases, [
-    { attribute: "price", ticker: "GOOG" },
-  ]);
+  assert.deepEqual(options.cases, [{ attribute: "price", ticker: "GOOG" }]);
 });
 
 test("parseArgs loads cases from file", () => {
@@ -95,12 +76,7 @@ test("parseArgs loads cases from file", () => {
   fs.writeFileSync(filePath, "GOOG,price\nUSDUSD\tprice\n");
 
   try {
-    const options = parseArgs([
-      "--mode",
-      "js-ts",
-      "--cases-file",
-      filePath,
-    ]);
+    const options = parseArgs(["--mode", "js-ts", "--cases-file", filePath]);
 
     assert.deepEqual(options.cases, [
       { attribute: "price", ticker: "GOOG" },
@@ -119,7 +95,9 @@ test("normalizeComparableValue sorts object keys", () => {
 });
 
 test("normalizeComparableValue handles cross-realm Date objects", () => {
-  const sandboxDate = vm.runInNewContext('new Date("2026-01-02T03:04:05.000Z")');
+  const sandboxDate = vm.runInNewContext(
+    'new Date("2026-01-02T03:04:05.000Z")',
+  );
 
   assert.equal(isDateLike(sandboxDate), true);
   assert.equal(
@@ -165,8 +143,14 @@ test("formatFailure prints a readable mismatch summary", () => {
   assert.match(output, /mismatch: value/);
   assert.match(output, /js: status=success value=1 error=/);
   assert.match(output, /ts: status=success value=2 error=/);
-  assert.match(output, /js trace: planned=QUOTE:TICKER; runtime=QUOTE:TICKER \[attempted\]/);
-  assert.match(output, /ts trace: planned=QUOTE:PSE; runtime=QUOTE:PSE \[attempted\]/);
+  assert.match(
+    output,
+    /js trace: planned=QUOTE:TICKER; runtime=QUOTE:TICKER \[attempted\]/,
+  );
+  assert.match(
+    output,
+    /ts trace: planned=QUOTE:PSE; runtime=QUOTE:PSE \[attempted\]/,
+  );
 });
 
 test("formatTraceDetails formats runtime entries with elapsed timing", () => {
@@ -204,7 +188,10 @@ test("getNewestSourceMtimeMs sees newer source files in src", () => {
   fs.utimesSync(sourcePath, newerTime, newerTime);
 
   try {
-    assert.equal(getNewestSourceMtimeMs(rootDir), fs.statSync(sourcePath).mtimeMs);
+    assert.equal(
+      getNewestSourceMtimeMs(rootDir),
+      fs.statSync(sourcePath).mtimeMs,
+    );
   } finally {
     fs.rmSync(rootDir, { force: true, recursive: true });
   }

@@ -75,7 +75,9 @@ export class FlowEngine {
     return selectedResolvers.map((selectedResolver) => {
       const selectedCode = String(selectedResolver.code || "").trim();
       if (!selectedCode) {
-        throw new Error(`Routing node "${node.id}" selected a child without a code.`);
+        throw new Error(
+          `Routing node "${node.id}" selected a child without a code.`,
+        );
       }
 
       const selectedChild = childNodes.find(
@@ -101,7 +103,11 @@ export class FlowEngine {
     return this.#executeNode(root, input, graph, trace);
   }
 
-  executeFromNodeId(nodeId: string, input: Envelope, trace?: ExecutionTrace): Envelope {
+  executeFromNodeId(
+    nodeId: string,
+    input: Envelope,
+    trace?: ExecutionTrace,
+  ): Envelope {
     const graph = this.#flow.getGraph();
     const node = graph.getNode(nodeId);
 
@@ -269,7 +275,8 @@ export class FlowEngine {
       const result = resolver.resolve(envelope.value, executionContext);
       if (result.status === "success") {
         outEnvelope = {
-          value: result.value != null ? (result.value as object) : envelope.value,
+          value:
+            result.value != null ? (result.value as object) : envelope.value,
           status: EnvelopeStatus.Success,
         };
       } else {

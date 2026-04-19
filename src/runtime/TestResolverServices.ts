@@ -1,15 +1,14 @@
-import {
-  ResolverServices,
-  type StoredTextResource,
-} from "./ResolverServices";
+import { ResolverServices, type StoredTextResource } from "./ResolverServices";
 import type { TextHttpResponse } from "../core/text-http-response";
 import {
   StandAloneResolverServices,
   type StandAloneResolverServicesOptions,
 } from "./StandAloneResolverServices";
 
-interface TestResolverServicesOptions
-  extends Omit<Partial<StandAloneResolverServicesOptions>, "httpFetch"> {
+interface TestResolverServicesOptions extends Omit<
+  Partial<StandAloneResolverServicesOptions>,
+  "httpFetch"
+> {
   httpFetch?(url: string): TextHttpResponse;
   getCachedJson?(cacheKey: string): unknown;
   getCachedString?(cacheKey: string): string;
@@ -32,7 +31,9 @@ export class TestResolverServices extends ResolverServices {
     this.fallback = new StandAloneResolverServices({
       httpFetch(url: string): TextHttpResponse {
         if (typeof options.httpFetch !== "function") {
-          throw new Error(`TestResolverServices missing httpFetch for "${url}".`);
+          throw new Error(
+            `TestResolverServices missing httpFetch for "${url}".`,
+          );
         }
 
         return options.httpFetch(url);
@@ -41,7 +42,8 @@ export class TestResolverServices extends ResolverServices {
     this.options = options;
   }
 
-  override httpFetch = (url: string): TextHttpResponse => this.fallback.httpFetch(url);
+  override httpFetch = (url: string): TextHttpResponse =>
+    this.fallback.httpFetch(url);
 
   override getCachedJson = (cacheKey: string): unknown => {
     return typeof this.options.getCachedJson === "function"
@@ -89,11 +91,7 @@ export class TestResolverServices extends ResolverServices {
     fetchedAtMs: number,
   ): StoredTextResource | null => {
     if (typeof this.options.putStoredTextResource === "function") {
-      return this.options.putStoredTextResource(
-        resourceKey,
-        text,
-        fetchedAtMs,
-      );
+      return this.options.putStoredTextResource(resourceKey, text, fetchedAtMs);
     }
 
     return this.fallback.putStoredTextResource(resourceKey, text, fetchedAtMs);

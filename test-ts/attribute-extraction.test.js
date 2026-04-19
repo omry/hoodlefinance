@@ -24,11 +24,11 @@ test("extractAttributeValue handles standard numeric and text fields", () => {
   assert.equal(extractAttributeValue(quote, "price"), 150.25);
   assert.equal(extractAttributeValue(quote, "name"), "Apple Inc.");
   assert.equal(extractAttributeValue(quote, "currency"), "USD");
-  assert.equal(extractAttributeValue(quote, "high"), 151.00);
-  assert.equal(extractAttributeValue(quote, "low"), 149.00);
-  assert.equal(extractAttributeValue(quote, "close"), 148.50);
+  assert.equal(extractAttributeValue(quote, "high"), 151.0);
+  assert.equal(extractAttributeValue(quote, "low"), 149.0);
+  assert.equal(extractAttributeValue(quote, "close"), 148.5);
   assert.equal(extractAttributeValue(quote, "change"), 1.75);
-  assert.equal(extractAttributeValue(quote, "changepct"), 1.75 / 148.50);
+  assert.equal(extractAttributeValue(quote, "changepct"), 1.75 / 148.5);
   assert.equal(extractAttributeValue(quote, "volume"), 1000000);
   assert.equal(extractAttributeValue(quote, "datadelay"), 15);
   assert.ok(extractAttributeValue(quote, "tradetime") instanceof Date);
@@ -44,11 +44,19 @@ test("extractAttributeValue rejects high/low/volume for FX pairs (Parity)", () =
     symbol: "EURUSD=X",
   });
 
-  assert.throws(() => extractAttributeValue(fxQuote, "high"), /is not available for currency-pair identifiers/);
-  assert.throws(() => extractAttributeValue(fxQuote, "low"), /is not available for currency-pair identifiers/);
-  assert.throws(() => extractAttributeValue(fxQuote, "volume"), /is not available for currency-pair identifiers/);
+  assert.throws(
+    () => extractAttributeValue(fxQuote, "high"),
+    /is not available for currency-pair identifiers/,
+  );
+  assert.throws(
+    () => extractAttributeValue(fxQuote, "low"),
+    /is not available for currency-pair identifiers/,
+  );
+  assert.throws(
+    () => extractAttributeValue(fxQuote, "volume"),
+    /is not available for currency-pair identifiers/,
+  );
 });
-
 
 test("extractAttributeValue handles Google-style exchange mapping (e.g. NasdaqGS -> NASDAQ)", () => {
   const quote = new StockQuote({
@@ -81,8 +89,14 @@ test("extractAttributeValue handles output-currency conversion (identity, direct
   assert.equal(extractAttributeValue(usdQuote, "price@USD"), 150);
 
   // --- Error Handling for Unsupported Attributes ---
-  assert.throws(() => extractAttributeValue(usdQuote, "price@EUR"), /currently unavailable/);
-  assert.throws(() => extractAttributeValue(usdQuote, "currency@USD"), /does not support output-currency conversion/);
+  assert.throws(
+    () => extractAttributeValue(usdQuote, "price@EUR"),
+    /currently unavailable/,
+  );
+  assert.throws(
+    () => extractAttributeValue(usdQuote, "currency@USD"),
+    /does not support output-currency conversion/,
+  );
 });
 
 test("extractAttributeValue preserves raw GBp stock unit values", () => {

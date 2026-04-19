@@ -40,6 +40,12 @@ test("same-currency FX pairs short-circuit", () => {
 });
 
 test("invalid and unsupported FX tickers throw", () => {
-  assert.throws(() => parseFxTicker("CURRENCY:NOT-A-PAIR"), /must look like CURRENCY:USDEUR or CURRENCY:USDT\.USD/);
-  assert.throws(() => parseFxTicker("CURRENCY:ZZZ.USD"), /must use supported 3- or 4-character currency codes/);
+  assert.throws(
+    () => parseFxTicker("CURRENCY:NOT-A-PAIR"),
+    /must look like CURRENCY:USDEUR or CURRENCY:USDT\.USD/,
+  );
+  assert.throws(
+    () => parseFxTicker("CURRENCY:ZZZ.USD"),
+    /must use supported 3- or 4-character currency codes/,
+  );
 });

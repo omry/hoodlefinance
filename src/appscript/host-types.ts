@@ -3,7 +3,9 @@ interface AppsScriptUrlFetchApp {
     getContentText(): string;
     getResponseCode(): number;
   };
-  fetchAll(requests: Array<{ muteHttpExceptions?: boolean; url: string }>): Array<{
+  fetchAll(
+    requests: Array<{ muteHttpExceptions?: boolean; url: string }>,
+  ): Array<{
     getContentText(): string;
     getResponseCode(): number;
   }>;

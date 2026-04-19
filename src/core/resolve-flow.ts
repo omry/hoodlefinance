@@ -1,20 +1,23 @@
 import { RawRequestInput } from "./request";
-import {
-  EnvelopeStatus,
-  FlowEngine,
-  type ExecutionTrace,
-} from "./flow/engine";
+import { EnvelopeStatus, FlowEngine, type ExecutionTrace } from "./flow/engine";
 export { ResolveFlow } from "./flow/resolve-flow";
 import { ResolveFlow } from "./flow/resolve-flow";
 
-function createRawRequestInput(identifier: string, attribute?: string): RawRequestInput {
+function createRawRequestInput(
+  identifier: string,
+  attribute?: string,
+): RawRequestInput {
   return new RawRequestInput(
     String(identifier || ""),
     String(attribute == null ? "price" : attribute).trim(),
   );
 }
 
-export function resolveAttribute(flow: ResolveFlow, identifier: string, attribute = "price"): unknown {
+export function resolveAttribute(
+  flow: ResolveFlow,
+  identifier: string,
+  attribute = "price",
+): unknown {
   const rawInput = createRawRequestInput(identifier, attribute);
   const engine = new FlowEngine(flow);
   const engineResult = engine.execute({ value: rawInput });

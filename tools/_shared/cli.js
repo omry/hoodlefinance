@@ -323,7 +323,10 @@ function traceRoutingForSymbol(symbol, attribute, ctx) {
   }
 
   try {
-    job.plan = runtime.hf_classifyTickerJob_(job.tickerInput, normalizedAttribute);
+    job.plan = runtime.hf_classifyTickerJob_(
+      job.tickerInput,
+      normalizedAttribute,
+    );
   } catch (error) {
     return {
       error: error && error.message ? error.message : String(error),

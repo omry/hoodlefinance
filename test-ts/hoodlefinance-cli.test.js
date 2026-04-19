@@ -53,7 +53,14 @@ function createFakeLookupEnv() {
       const value = this.resolveAttribute(identifier, attribute);
       return {
         error: "",
-        path: ["ROOT", "ATTRIBUTE", "QUOTE:TICKER", "YAHOO-QUOTE", "EXTRACT:EQUITY", "TERMINAL"],
+        path: [
+          "ROOT",
+          "ATTRIBUTE",
+          "QUOTE:TICKER",
+          "YAHOO-QUOTE",
+          "EXTRACT:EQUITY",
+          "TERMINAL",
+        ],
         status: "success",
         value,
       };
@@ -164,7 +171,13 @@ test("resolveAttributeTraceWithEnvironment preserves a user-facing failure messa
       resolveAttributeWithTrace() {
         return {
           error: 'No LON ISIN is available for "SJPA".',
-          path: ["ROOT", "ATTRIBUTE", "ATTRIBUTE:EQUITY", "QUOTE:TICKER", "LON-ISIN"],
+          path: [
+            "ROOT",
+            "ATTRIBUTE",
+            "ATTRIBUTE:EQUITY",
+            "QUOTE:TICKER",
+            "LON-ISIN",
+          ],
           status: "failure",
           value: null,
         };

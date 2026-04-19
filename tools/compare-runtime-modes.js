@@ -57,15 +57,11 @@ function printUsage(exitCode, error) {
   console.error(
     "Usage: npm run compare:modes -- --mode <js-ts|ts-fe|js-fe> [--case <ticker>::<attribute>]... [--cases-file <path>]",
   );
-  console.error(
-    "   or: npm run compare:modes <js-ts|ts-fe|js-fe>",
-  );
+  console.error("   or: npm run compare:modes <js-ts|ts-fe|js-fe>");
   console.error(
     "Example: npm run compare:modes -- --mode js-ts --case GOOG::price --case US02079K1079::price",
   );
-  console.error(
-    "Short form (mode only): npm run compare:modes js-ts",
-  );
+  console.error("Short form (mode only): npm run compare:modes js-ts");
   console.error(
     "Use -- before extra flags, for example: npm run compare:modes -- --mode js-ts --case USDUSD::price",
   );
@@ -342,9 +338,7 @@ function collectTrace(mode, lookupCase) {
       runtimeTrace: Array.isArray(trace.runtimeTrace)
         ? trace.runtimeTrace.map((entry) => ({
             elapsedMs:
-              entry && entry.elapsedMs != null
-                ? Number(entry.elapsedMs)
-                : null,
+              entry && entry.elapsedMs != null ? Number(entry.elapsedMs) : null,
             label: String((entry && entry.label) || ""),
             status: String((entry && entry.status) || ""),
           }))
@@ -389,7 +383,14 @@ function compareResults(left, right) {
   };
 }
 
-function summarizeFailure(lookupCase, leftMode, left, rightMode, right, parity) {
+function summarizeFailure(
+  lookupCase,
+  leftMode,
+  left,
+  rightMode,
+  right,
+  parity,
+) {
   const reasons = [];
   if (!parity.statusMatch) reasons.push("status");
   if (!parity.valueMatch) reasons.push("value");
@@ -452,9 +453,10 @@ function formatTraceDetails(trace) {
 }
 
 function formatCaseResult(lookupCase, parity) {
-  const status = parity.statusMatch && parity.valueMatch && parity.errorMatch
-    ? "PASS"
-    : "FAIL";
+  const status =
+    parity.statusMatch && parity.valueMatch && parity.errorMatch
+      ? "PASS"
+      : "FAIL";
   return `${status} ${lookupCase.ticker} ${lookupCase.attribute}`;
 }
 
@@ -476,7 +478,14 @@ async function main(argv = process.argv.slice(2)) {
     if (!parity.statusMatch || !parity.valueMatch || !parity.errorMatch) {
       failures.push(
         Object.assign(
-          summarizeFailure(lookupCase, leftMode, left, rightMode, right, parity),
+          summarizeFailure(
+            lookupCase,
+            leftMode,
+            left,
+            rightMode,
+            right,
+            parity,
+          ),
           {
             leftTrace: collectTrace(leftMode, lookupCase),
             rightTrace: collectTrace(rightMode, lookupCase),

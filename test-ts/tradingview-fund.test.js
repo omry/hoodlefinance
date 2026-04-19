@@ -8,9 +8,7 @@ const {
 } = require("../dist/ts/core/index.js");
 
 test("TradingView fund helpers build fallback URLs and parse quotes", () => {
-  const fallback = buildIsraeliFundTradingviewFallbackInfo(
-    "KSMF59.TA",
-  );
+  const fallback = buildIsraeliFundTradingviewFallbackInfo("KSMF59.TA");
 
   assert.deepEqual(fallback, {
     expectedSymbol: "TASE:KSMF59",

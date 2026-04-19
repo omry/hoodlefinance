@@ -7,9 +7,7 @@ import {
 import { DagPlan } from "../core/spec-data";
 import { ResolverServices } from "./ResolverServices";
 
-function createResolveFlow(
-  resolverServices: ResolverServices,
-): ResolveFlow {
+function createResolveFlow(resolverServices: ResolverServices): ResolveFlow {
   const resolverRegistry = createConcreteResolverRegistry();
   return new ResolveFlow(DagPlan, resolverRegistry, resolverServices);
 }

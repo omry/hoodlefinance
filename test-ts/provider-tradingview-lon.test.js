@@ -4,7 +4,7 @@ const test = require("node:test");
 // The TS core has some Tradingview logic, but missing full parity with hf_extractTradingviewCode_
 // and hf_extractLonCode_ legacy logic.
 const {
-  buildIsraeliFundTradingviewFallbackInfo
+  buildIsraeliFundTradingviewFallbackInfo,
 } = require("../dist/ts/core/tradingview-fund.js");
 const Core = require("../dist/ts/core/index.js");
 

@@ -137,7 +137,7 @@ const KNOWN_IBKR_EXCHANGES = new Set([
   "VSE",
   "WSE",
 ]);
- 
+
 export const YAHOO_EXCHANGE_BY_META_NAME: Record<string, string> = {
   AMEX: "AMEX",
   ARCA: "NYSEARCA",
@@ -198,7 +198,10 @@ export function normalizeYahooStyleIsraeliFundTicker(ticker: string): string {
   return `${normalizeIsraeliFundCode(match[1] || "")}.TA`;
 }
 
-export function resolveGoogleExchange(symbol: string, exchangeMeta: string): string {
+export function resolveGoogleExchange(
+  symbol: string,
+  exchangeMeta: string,
+): string {
   const suffixExchange = extractYahooExchangeFromSymbol(symbol);
   if (suffixExchange) {
     return YAHOO_EXCHANGE_BY_META_NAME[suffixExchange] || suffixExchange;
@@ -212,7 +215,10 @@ export function resolveGoogleExchange(symbol: string, exchangeMeta: string): str
   return YAHOO_EXCHANGE_BY_META_NAME[rawExchange] || rawExchange;
 }
 
-export function normalizeExchangeSymbol(exchange: string, symbol: string): string {
+export function normalizeExchangeSymbol(
+  exchange: string,
+  symbol: string,
+): string {
   return exchange === "TLV" || exchange === "TASE"
     ? normalizeIsraeliFundCode(symbol)
     : symbol;

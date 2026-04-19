@@ -10,11 +10,7 @@ import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
 } from "../resolver-classes";
-import {
-  FlowEngine,
-  EnvelopeStatus,
-  type ExecutionTrace,
-} from "./engine";
+import { FlowEngine, EnvelopeStatus, type ExecutionTrace } from "./engine";
 
 function isPlanResolverClass(nodeType: string): boolean {
   return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
@@ -39,10 +35,7 @@ function isGraphNodeEntry(
   value: Graph.Definition[string],
 ): value is Graph.Node {
   return (
-    !!value &&
-    typeof value === "object" &&
-    "id" in value &&
-    "type" in value
+    !!value && typeof value === "object" && "id" in value && "type" in value
   );
 }
 
@@ -50,7 +43,8 @@ function normalizeDefinitionEntries(
   definition: Graph.Definition,
 ): Array<[string, Graph.Node]> {
   const normalizedEntries: Array<[string, Graph.Node]> = [];
-  const originalKeyByNormalizedKey: Record<string, string> = Object.create(null);
+  const originalKeyByNormalizedKey: Record<string, string> =
+    Object.create(null);
 
   for (const [key, rawNode] of Object.entries(definition || {})) {
     if (key === "__subgraphs__") {
@@ -225,7 +219,7 @@ function collectReachableIds(
     }
 
     const relatedIds =
-      relation === "next" ? (entry.node.next || []) : entry.parentIds;
+      relation === "next" ? entry.node.next || [] : entry.parentIds;
     for (const relatedId of relatedIds) {
       if (!visited.has(relatedId)) {
         queue.push(relatedId);
@@ -347,7 +341,11 @@ function validateSubgraphRegistry(
       );
     }
 
-    const reachableFromRoot = collectReachableIds(subgraph.rootNodeId, nodesById, "next");
+    const reachableFromRoot = collectReachableIds(
+      subgraph.rootNodeId,
+      nodesById,
+      "next",
+    );
     if (!reachableFromRoot.has(subgraph.terminalNodeId)) {
       throw new Error(
         `Subgraph "${subgraphId}" terminal node "${subgraph.terminalNodeId}" is unreachable from root "${subgraph.rootNodeId}".`,
@@ -359,11 +357,13 @@ function validateSubgraphRegistry(
       subgraph.terminalNodeId,
       nodesById,
     );
-    const escapedNodeIds = Array.from(boundedSubgraphNodeIds).filter((nodeId) => {
-      const node = nodesById[nodeId]?.node || null;
+    const escapedNodeIds = Array.from(boundedSubgraphNodeIds).filter(
+      (nodeId) => {
+        const node = nodesById[nodeId]?.node || null;
 
-      return normalizeCode(node?.group || "") !== subgraphId;
-    });
+        return normalizeCode(node?.group || "") !== subgraphId;
+      },
+    );
 
     if (escapedNodeIds.length > 0) {
       throw new Error(
@@ -546,10 +546,7 @@ function formatSubgraphTraceBoundary(subgraphId: string): string {
   return `SUBGRAPH:${normalizeCode(subgraphId)}`;
 }
 
-export type ResolverRegistry = Record<
-  string,
-  ResolverClass | undefined
->;
+export type ResolverRegistry = Record<string, ResolverClass | undefined>;
 
 export interface ResolverClass {
   fromSpec(code: string): Resolver;
@@ -632,7 +629,10 @@ export class ResolveFlow {
   ): LookupResult {
     const normalizedSubgraphId = normalizeCode(subgraphId);
     const subgraph = this.#subgraphsById[normalizedSubgraphId];
-    const executionTrace = trace || { visitedNodeIds: [], subgraphCallTraces: [] };
+    const executionTrace = trace || {
+      visitedNodeIds: [],
+      subgraphCallTraces: [],
+    };
 
     if (!subgraph) {
       throw new Error(`Unknown subgraph "${normalizedSubgraphId}".`);

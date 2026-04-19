@@ -1,6 +1,4 @@
-import {
-  resolveRoutingNode,
-} from "./plan-navigation";
+import { resolveRoutingNode } from "./plan-navigation";
 import type { RequestInput, ResolvedRequest } from "./request";
 import type { Resolver, ResolverPlan } from "./resolver-classes";
 
@@ -15,7 +13,6 @@ interface PlanSelectionDependencies {
   getPlanNodeByCode(code: string): ResolverPlan;
 }
 
-
 export function buildAmbiguousDefaultAttributeRouteError(
   request: Pick<ResolvedRequest, "classification">,
   plans: Array<Pick<ResolverPlan, "name">>,
@@ -24,9 +21,7 @@ export function buildAmbiguousDefaultAttributeRouteError(
     .trim()
     .toLowerCase();
   const planNames = plans.map(
-    (plan) =>
-      String((plan && plan.name) || "").trim() ||
-      "<unknown>",
+    (plan) => String((plan && plan.name) || "").trim() || "<unknown>",
   );
 
   return new Error(
@@ -55,8 +50,9 @@ export function buildDefaultAttributePlanForResolvedRequest(
   request: ResolvedRequest,
   deps: Pick<PlanSelectionDependencies, "getPlanNodeByCode">,
 ): ResolverPlan {
-  const defaultAttributeRoot =
-    deps.getPlanNodeByCode("ATTRIBUTE") as ResolverPlan;
+  const defaultAttributeRoot = deps.getPlanNodeByCode(
+    "ATTRIBUTE",
+  ) as ResolverPlan;
   const candidatePlans = (defaultAttributeRoot.nodes || []).filter(
     (plan) => !plan.canHandle || plan.canHandle(request),
   ) as ResolverPlan[];
@@ -75,10 +71,7 @@ export function buildDefaultAttributePlanForResolvedRequest(
 export function buildQuoteRoutePlanForResolvedRequest(
   _input: RequestInput,
   request: ResolvedRequest,
-  deps: Pick<
-    PlanSelectionDependencies,
-    "getPlanNodeByCode"
-  >,
+  deps: Pick<PlanSelectionDependencies, "getPlanNodeByCode">,
 ): ResolverPlan {
   return buildDefaultAttributePlanForResolvedRequest(request, deps);
 }

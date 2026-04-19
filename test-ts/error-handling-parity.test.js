@@ -11,7 +11,7 @@ test("GAP: OTCMKTS specific 404 error messaging", () => {
   const message = Core.buildYahooQuoteLookupErrorMessage("OTCMKTS:AAPL", 404);
   assert.equal(
     message,
-    "No current quote data was found for OTCMKTS:AAPL. The symbol may be delisted or cancelled."
+    "No current quote data was found for OTCMKTS:AAPL. The symbol may be delisted or cancelled.",
   );
 });
 

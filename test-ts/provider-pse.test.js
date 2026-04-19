@@ -17,7 +17,7 @@ test("extractPseFrameQuote falls back to previous close for suspended stocks (Pa
     <input id="stock-json" value="{&quot;name&quot;:&quot;BDO&quot;,&quot;full_name&quot;:&quot;BDO Unibank, Inc.&quot;}">
     <a href="companyDisclosures/form.do?cmpy_id=123">link</a>
   `;
-  
+
   const quote = extractPseFrameQuote(html, "BDO");
   assert.equal(quote.regularMarketPrice, 123.45);
 });
@@ -35,7 +35,7 @@ test("extractPseFrameQuote extracts company name from header if metadata is blan
     <input id="stock-json" value="">
     <a href="companyDisclosures/form.do?cmpy_id=123">link</a>
   `;
-  
+
   const quote = extractPseFrameQuote(html, "BDO");
   assert.equal(quote.longName, "BDO Unibank, Inc.");
 });
@@ -57,5 +57,8 @@ test("GAP: Handling of missing ISIN in PSE frames (Strict Parity)", () => {
   `;
 
   // Legacy line 6698: if (!isin) throw new Error(...)
-  assert.throws(() => extractPseFrameQuote(html, "BDO"), /No PSE listing was found/);
+  assert.throws(
+    () => extractPseFrameQuote(html, "BDO"),
+    /No PSE listing was found/,
+  );
 });

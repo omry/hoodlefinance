@@ -45,7 +45,9 @@ function resolveFxPairMetadata(fxPair: FxPair): {
   };
 }
 
-export function isSameCurrencyFxPair(fxPair: FxPair | null | undefined): boolean {
+export function isSameCurrencyFxPair(
+  fxPair: FxPair | null | undefined,
+): boolean {
   if (!fxPair) {
     return false;
   }
@@ -88,14 +90,17 @@ export function decorateFxQuote(
   quote: StockQuote | Record<string, unknown>,
   fxPair: FxPair | null | undefined,
 ): FxQuote {
-  const stockQuote = quote instanceof StockQuote ? quote : new StockQuote(quote as never);
+  const stockQuote =
+    quote instanceof StockQuote ? quote : new StockQuote(quote as never);
 
   if (!fxPair) {
     return new FxQuote({
       currency: stockQuote.currency,
       exchangeDataDelayedBy: stockQuote.exchangeDataDelayedBy,
       fxUnitScale: stockQuote.fxUnitScale,
-      googleSymbol: String((quote as Record<string, unknown>).googleSymbol || ""),
+      googleSymbol: String(
+        (quote as Record<string, unknown>).googleSymbol || "",
+      ),
       regularMarketPreviousClose: stockQuote.regularMarketPreviousClose,
       regularMarketPrice: stockQuote.regularMarketPrice,
       regularMarketTime: stockQuote.regularMarketTime,
@@ -117,5 +122,3 @@ export function decorateFxQuote(
     symbol: metadata.canonicalPair,
   });
 }
-
-

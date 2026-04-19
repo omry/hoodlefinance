@@ -15,7 +15,6 @@ function normalizeKey(value: string): string {
     .toUpperCase();
 }
 
-
 export function getRegisteredResolverByName(
   registry: ResolverRegistryByName,
   name: string,

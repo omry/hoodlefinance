@@ -11,10 +11,7 @@ const { createTestEnv } = require("./resolver-service-fixtures.js");
 test("DagPlan uses the final graph node shape", () => {
   assert.equal(DagPlan.ROOT.id, "ROOT");
   assert.equal(DagPlan.ROOT.type, "RequestClassifierResolver");
-  assert.deepEqual(
-    DagPlan.ROOT.next,
-    ["ATTRIBUTE", "IDENTIFIER:ISIN"],
-  );
+  assert.deepEqual(DagPlan.ROOT.next, ["ATTRIBUTE", "IDENTIFIER:ISIN"]);
   assert.equal(DagPlan["QUOTE:PSE"].type, "PseQuoteResolutionPlan");
   assert.deepEqual(DagPlan["QUOTE:PSE"].next, ["PSE-FRAMES", "PSE-EDGE"]);
   assert.deepEqual(DagPlan["EXTRACT:EQUITY"].subgraphCalls, ["FX_CONVERSION"]);
@@ -36,7 +33,10 @@ test("ResolveFlow builds and validates DagPlan directly from the authored graph"
 
   assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
   assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
-  assert.equal(resolveFlow.getGraph().getNode("QUOTE:PSE").type, "PseQuoteResolutionPlan");
+  assert.equal(
+    resolveFlow.getGraph().getNode("QUOTE:PSE").type,
+    "PseQuoteResolutionPlan",
+  );
 });
 
 test("ResolveFlow validates DAG structure during construction", () => {

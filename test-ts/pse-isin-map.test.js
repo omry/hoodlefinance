@@ -1,9 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const {
-  resolvePseTickerFromLookupMap,
-} = require("../dist/ts/core/index.js");
+const { resolvePseTickerFromLookupMap } = require("../dist/ts/core/index.js");
 
 test("resolvePseTickerFromLookupMap preserves the runtime's PH-only lookup behavior", () => {
   assert.equal(

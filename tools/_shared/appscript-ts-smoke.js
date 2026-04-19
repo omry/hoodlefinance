@@ -63,7 +63,9 @@ function createSandbox() {
       },
       fetchAll(requests) {
         return requests.map((request) =>
-          urlFetchApp.fetch(typeof request === "string" ? request : request.url),
+          urlFetchApp.fetch(
+            typeof request === "string" ? request : request.url,
+          ),
         );
       },
     },
@@ -82,10 +84,12 @@ function main() {
     options.minify ? "appscript-min" : "appscript",
     "hoodlefinance-ts.js",
   );
-  const expectedVersion = String(
-    fs.readFileSync(VERSION_METADATA_PATH, "utf8").match(/^version=(.+)$/m)?.[1] ||
-      "",
-  ).trim() + "-ts";
+  const expectedVersion =
+    String(
+      fs
+        .readFileSync(VERSION_METADATA_PATH, "utf8")
+        .match(/^version=(.+)$/m)?.[1] || "",
+    ).trim() + "-ts";
   const source = fs.readFileSync(bundlePath, "utf8");
   const sandbox = createSandbox();
   const requiredWrapperPatterns = [

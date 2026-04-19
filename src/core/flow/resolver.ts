@@ -1,8 +1,4 @@
-import {
-  getGraphNodeNextIds,
-  normalizeGraphNodeId,
-  type Graph,
-} from "./graph";
+import { getGraphNodeNextIds, normalizeGraphNodeId, type Graph } from "./graph";
 
 export type ResolutionResult<T> =
   | { elapsedMs: number; status: "success"; value: T }
@@ -180,16 +176,16 @@ export class Resolver {
     );
   }
 
-  getGroupedSourceNamesForDisplay(
-    source: string,
-    request: unknown,
-  ): string[] {
+  getGroupedSourceNamesForDisplay(source: string, request: unknown): string[] {
     return this.matchesSourceName(source)
       ? this.getGroupedSourceNames(request)
       : [];
   }
 
-  resolve(request: unknown, context?: ExecutionContext): ResolutionResult<unknown> {
+  resolve(
+    request: unknown,
+    context?: ExecutionContext,
+  ): ResolutionResult<unknown> {
     const startedAtMs = Date.now();
 
     try {
@@ -206,15 +202,10 @@ export class Resolver {
   }
 
   execute(_request: unknown, _context?: ExecutionContext): unknown {
-    throw new Error(
-      `Resolver "${this.name}" must implement execute().`,
-    );
+    throw new Error(`Resolver "${this.name}" must implement execute().`);
   }
 
-  protected resolveTransformValue(
-    value: unknown,
-    _request: unknown,
-  ): unknown {
+  protected resolveTransformValue(value: unknown, _request: unknown): unknown {
     return value;
   }
 
@@ -262,9 +253,7 @@ export abstract class ResolverPlan extends Resolver {
     return nodes.slice(firstMatchingIndex);
   }
 
-  getHandleableNodesForRequest(
-    request: unknown,
-  ): Resolver[] {
+  getHandleableNodesForRequest(request: unknown): Resolver[] {
     return (this.nodes || []).filter(
       (node) => !node.canHandle || node.canHandle(request),
     );
@@ -305,7 +294,9 @@ export abstract class ResolverPlan extends Resolver {
     context: SelectNextContext | null | undefined,
   ): boolean {
     const selectionCode = this.getNodeSelectionCode(node);
-    return !!selectionCode && this.getSelectedNodeCodes(context).has(selectionCode);
+    return (
+      !!selectionCode && this.getSelectedNodeCodes(context).has(selectionCode)
+    );
   }
 
   protected markSelectedNode(
@@ -332,7 +323,8 @@ export abstract class ResolverPlan extends Resolver {
     context: SelectNextContext | null | undefined,
   ): Resolver[] {
     return nodes.filter(
-      (node): node is Resolver => !!node && !this.hasSelectedNode(node, context),
+      (node): node is Resolver =>
+        !!node && !this.hasSelectedNode(node, context),
     );
   }
 
@@ -343,7 +335,9 @@ export abstract class ResolverPlan extends Resolver {
       return this.routePath;
     }
 
-    return this.getNodesForRequest(request).map((node) => node.name).join(" -> ");
+    return this.getNodesForRequest(request)
+      .map((node) => node.name)
+      .join(" -> ");
   }
 
   getGroupedSourceNames(_request: unknown): string[] {
@@ -423,10 +417,7 @@ export class SwitchPlan extends ResolverPlan {
     return RoutingNodeKind.Switch;
   }
 
-  selectNext(
-    request: unknown,
-    context: SelectNextContext = {},
-  ): SelectedNodes {
+  selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
     if (this.getSelectedNodeCodes(context).size > 0) {
       return [];
     }
@@ -445,7 +436,10 @@ export class SwitchPlan extends ResolverPlan {
       );
     }
 
-    const selectedNode = this.markSelectedNode(matchingNodes[0] ?? null, context);
+    const selectedNode = this.markSelectedNode(
+      matchingNodes[0] ?? null,
+      context,
+    );
     return selectedNode ? [selectedNode] : [];
   }
 }
@@ -459,10 +453,7 @@ export class StepPlan extends ResolverPlan {
     return (this.nodes || []).slice();
   }
 
-  selectNext(
-    request: unknown,
-    context: SelectNextContext = {},
-  ): SelectedNodes {
+  selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
     const routingNodes = this.getRoutingNodes();
     const blockingNode = routingNodes.find(
       (node) => node?.canHandle && !node.canHandle(request),
@@ -483,16 +474,16 @@ export class FirstSuccessPlan extends ResolverPlan {
     return RoutingNodeKind.TryEach;
   }
 
-  selectNext(
-    request: unknown,
-    context: SelectNextContext = {},
-  ): SelectedNodes {
+  selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
     const remainingNodes = this.getUnselectedNodes(
       this.getHandleableNodesForRequest(request),
       context,
     );
 
-    const selectedNode = this.markSelectedNode(remainingNodes[0] ?? null, context);
+    const selectedNode = this.markSelectedNode(
+      remainingNodes[0] ?? null,
+      context,
+    );
     return selectedNode ? [selectedNode] : [];
   }
 }

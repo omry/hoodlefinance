@@ -3,9 +3,7 @@ import type { TextHttpResponse } from "./text-http-response";
 import { StockQuote } from "./quote";
 
 export function buildGoogleFinanceQuoteUrl(pairSlug: string): string {
-  return `https://www.google.com/finance/quote/${encodeURIComponent(
-    pairSlug,
-  )}`;
+  return `https://www.google.com/finance/quote/${encodeURIComponent(pairSlug)}`;
 }
 
 function findGoogleFinancePairTuple(
@@ -85,9 +83,7 @@ export function extractGoogleFinanceFxPairQuote(
   const baseName = String(pairDetail[2] || baseCode).trim();
 
   if (!Number.isFinite(currentPrice)) {
-    throw new Error(
-      `Google Finance did not expose a price for "${pairSlug}".`,
-    );
+    throw new Error(`Google Finance did not expose a price for "${pairSlug}".`);
   }
 
   return new StockQuote({
@@ -101,8 +97,7 @@ export function extractGoogleFinanceFxPairQuote(
     regularMarketTime: Number.isFinite(regularMarketTime)
       ? regularMarketTime
       : Math.floor(Date.now() / 1000),
-    shortName:
-      `${baseName} (${fxPair.baseDisplayCode} / ${fxPair.displayQuoteCode})`,
+    shortName: `${baseName} (${fxPair.baseDisplayCode} / ${fxPair.displayQuoteCode})`,
     symbol: `${baseCode}${quoteCode}`,
   });
 }

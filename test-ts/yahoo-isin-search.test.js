@@ -47,7 +47,9 @@ test("Yahoo ISIN search helpers preserve the current URL and symbol-selection be
   assert.equal(
     extractYahooSymbolFromSearchPayload(
       {
-        quotes: [{ exchange: "NYSE", quoteType: "EQUITY", score: 1, symbol: "IBM" }],
+        quotes: [
+          { exchange: "NYSE", quoteType: "EQUITY", score: 1, symbol: "IBM" },
+        ],
       },
       "US4592001014",
     ),

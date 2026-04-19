@@ -109,7 +109,9 @@ test("StepPlan forwards to all children without request-based selection", () => 
   const plan = new StepPlan("ROOT", [first, second]);
 
   assert.deepEqual(
-    plan.getNodesForRequest(new RawRequestInput("GOOG", "price")).map((node) => node.name),
+    plan
+      .getNodesForRequest(new RawRequestInput("GOOG", "price"))
+      .map((node) => node.name),
     ["FIRST", "SECOND"],
   );
   assert.deepEqual(
@@ -208,7 +210,10 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
     yahooSymbol: "GOOG",
   };
 
-  assert.equal(plan.describe(request), "QUOTE:TICKER -> YAHOO -> TRADINGVIEW-FUND");
+  assert.equal(
+    plan.describe(request),
+    "QUOTE:TICKER -> YAHOO -> TRADINGVIEW-FUND",
+  );
   assert.equal(plan.buildRoutePath(request), "YAHOO -> TRADINGVIEW-FUND");
 });
 
@@ -241,7 +246,7 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
     },
     (nodeCode) =>
       ({
-        "ATTRIBUTE": defaultAttributeRoot,
+        ATTRIBUTE: defaultAttributeRoot,
         "IDENTIFIER-ROOT": identifierRoot,
       })[nodeCode],
     null,

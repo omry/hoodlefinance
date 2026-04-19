@@ -7,16 +7,12 @@ function formatNodeName(node: Resolver | null | undefined): string {
 
 export function isResolverPlan(node: unknown): node is ResolverPlan {
   return (
-    !!node &&
-    typeof (node as ResolverPlan).getNodesForRequest === "function"
+    !!node && typeof (node as ResolverPlan).getNodesForRequest === "function"
   );
 }
 
 export function selectSinglePlanNode<TNode extends Resolver>(
-  plan:
-    | Pick<ResolverPlan, "getNodesForRequest" | "name">
-    | null
-    | undefined,
+  plan: Pick<ResolverPlan, "getNodesForRequest" | "name"> | null | undefined,
   request: unknown,
   options: {
     allowNone?: boolean;

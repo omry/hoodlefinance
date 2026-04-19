@@ -1,7 +1,8 @@
 import type { TextHttpResponse } from "./text-http-response";
 import { StockQuote } from "./quote";
 
-const PSE_SEARCH_URL = "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
+const PSE_SEARCH_URL =
+  "https://edge.pse.com.ph/companyDirectory/search.ax?keyword=";
 const PSE_STOCK_DATA_URL = "https://edge.pse.com.ph/companyPage/stockData.do";
 const PSE_SECURITY_FRAME_URL = "https://frames.pse.com.ph/security/";
 const PSE_LISTING_CACHE_KEY_PREFIX = "hoodlefinance:pse:listing:";
@@ -56,7 +57,9 @@ export function buildPseListingCacheKey(symbol: string): string {
     .toUpperCase()}`;
 }
 
-export function buildPseStockDataUrl(listing: Pick<PseListing, "companyId" | "securityId">): string {
+export function buildPseStockDataUrl(
+  listing: Pick<PseListing, "companyId" | "securityId">,
+): string {
   return `${PSE_STOCK_DATA_URL}?cmpy_id=${encodeURIComponent(
     String(listing.companyId || ""),
   )}&security_id=${encodeURIComponent(String(listing.securityId || ""))}`;
@@ -185,7 +188,9 @@ function extractPseFrameSymbol(html: string): string {
   return match ? normalizeText(match[1]).toUpperCase() : "";
 }
 
-function extractPseFrameStockMetadata(html: string): Record<string, unknown> | null {
+function extractPseFrameStockMetadata(
+  html: string,
+): Record<string, unknown> | null {
   const match = String(html || "").match(
     /<input[^>]+id="stock-json"[^>]+value="([^"]+)"/i,
   );
@@ -202,7 +207,10 @@ function extractPseFrameStockMetadata(html: string): Record<string, unknown> | n
   }
 }
 
-function extractPseFrameHeaderCompanyName(html: string, symbol: string): string {
+function extractPseFrameHeaderCompanyName(
+  html: string,
+  symbol: string,
+): string {
   const normalizedSymbol = String(symbol || "")
     .trim()
     .toUpperCase();
@@ -233,7 +241,11 @@ function extractPseAsOf(html: string): Date | null {
   return parseAsOf(html);
 }
 
-function extractPseChange(text: string, price: number | null, previousClose: number | null): number | null {
+function extractPseChange(
+  text: string,
+  price: number | null,
+  previousClose: number | null,
+): number | null {
   const value = parseNumber(text);
 
   if (value != null) {
@@ -334,10 +346,7 @@ export function extractPseQuoteFromResponse(
   return extractPseQuote(response.getContentText(), listing);
 }
 
-export function extractPseFrameQuote(
-  html: string,
-  symbol: string,
-): StockQuote {
+export function extractPseFrameQuote(html: string, symbol: string): StockQuote {
   const expectedSymbol = String(symbol || "")
     .trim()
     .toUpperCase();

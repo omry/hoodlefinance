@@ -184,7 +184,11 @@ test("HOODLEFINANCE resolves LON:ticker,isin via LSE without a Yahoo quote", () 
   const yahooCall = services.fetchCalls.find((url) =>
     url.includes("finance.yahoo.com"),
   );
-  assert.equal(yahooCall, undefined, "Yahoo should not be called for LON:ticker,isin");
+  assert.equal(
+    yahooCall,
+    undefined,
+    "Yahoo should not be called for LON:ticker,isin",
+  );
   assert.ok(
     services.fetchCalls.some((url) => url.includes("londonstockexchange.com")),
     "LSE should be called for LON:ticker,isin",
@@ -204,7 +208,11 @@ test("HOODLEFINANCE resolves ticker.L,isin via LSE using the .L suffix form", ()
   const yahooCall = services.fetchCalls.find((url) =>
     url.includes("finance.yahoo.com"),
   );
-  assert.equal(yahooCall, undefined, "Yahoo should not be called for ticker.L,isin");
+  assert.equal(
+    yahooCall,
+    undefined,
+    "Yahoo should not be called for ticker.L,isin",
+  );
 });
 
 test("HOODLEFINANCE does not fall through to quote providers when LON ISIN lookup fails", () => {
@@ -222,7 +230,11 @@ test("HOODLEFINANCE does not fall through to quote providers when LON ISIN looku
   const yahooCall = services.fetchCalls.find((url) =>
     url.includes("finance.yahoo.com"),
   );
-  assert.equal(yahooCall, undefined, "Yahoo should not be called after an LSE failure");
+  assert.equal(
+    yahooCall,
+    undefined,
+    "Yahoo should not be called after an LSE failure",
+  );
 });
 
 test("HOODLEFINANCE uses the preferred REIT Yahoo fallback symbol", () => {

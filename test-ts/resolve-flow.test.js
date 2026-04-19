@@ -25,8 +25,13 @@ const {
   RequestInput,
   createConcreteResolverRegistry,
 } = require("../dist/ts/core/index.js");
-const { createTextHttpResponse, createStaticResourceHttpFetch } = require("./resource-fixtures.js");
-const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
+const {
+  createTextHttpResponse,
+  createStaticResourceHttpFetch,
+} = require("./resource-fixtures.js");
+const {
+  createStaticResolverServices,
+} = require("./resolver-service-fixtures.js");
 
 function createResolverRegistry() {
   return {
@@ -58,7 +63,12 @@ class FakeResolver {
   }
 
   buildRuntimePlan() {
-    return { nodes: [this], routeClass: this.name, routePath: this.name, routeState: {} };
+    return {
+      nodes: [this],
+      routeClass: this.name,
+      routePath: this.name,
+      routeState: {},
+    };
   }
 
   describe() {
@@ -145,28 +155,36 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
 
   assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
   assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
-  assert.equal(resolveFlow.getGraph().getNode("YAHOO-QUOTE").type, "YahooEquityQuoteResolver");
+  assert.equal(
+    resolveFlow.getGraph().getNode("YAHOO-QUOTE").type,
+    "YahooEquityQuoteResolver",
+  );
   assert.equal(resolveAttribute(resolveFlow, "USDUSD", "price"), 1);
 });
 
 test("ResolveFlow routes price@CCY conversion through the production FX subgraph", () => {
   const services = createStaticResolverServices({
     httpFetch(url) {
-      if (String(url) === "https://query1.finance.yahoo.com/v8/finance/chart/TSCO.L?interval=1d&range=1d") {
-        return createTextHttpResponse(JSON.stringify({
-          chart: {
-            result: [
-              {
-                meta: {
-                  currency: "GBp",
-                  financialCurrency: "GBp",
-                  regularMarketPrice: 250,
-                  symbol: "TSCO.L",
+      if (
+        String(url) ===
+        "https://query1.finance.yahoo.com/v8/finance/chart/TSCO.L?interval=1d&range=1d"
+      ) {
+        return createTextHttpResponse(
+          JSON.stringify({
+            chart: {
+              result: [
+                {
+                  meta: {
+                    currency: "GBp",
+                    financialCurrency: "GBp",
+                    regularMarketPrice: 250,
+                    symbol: "TSCO.L",
+                  },
                 },
-              },
-            ],
-          },
-        }));
+              ],
+            },
+          }),
+        );
       }
 
       if (String(url) === "https://www.google.com/finance/quote/GBP-USD") {
@@ -329,10 +347,13 @@ test("ResolveFlow callSubgraph routes through the FX subgraph correctly", () => 
 test("ResolveFlow rejects unknown class names", () => {
   assert.throws(
     () =>
-      new ResolveFlow({
-        ROOT: { id: "ROOT", type: "MissingResolver", next: ["TERMINAL"] },
-        TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
-      }, {}),
+      new ResolveFlow(
+        {
+          ROOT: { id: "ROOT", type: "MissingResolver", next: ["TERMINAL"] },
+          TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
+        },
+        {},
+      ),
     /Unknown resolver class "MissingResolver" for "ROOT"\./,
   );
 });
@@ -342,44 +363,52 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   const services = createStaticResolverServices({
     httpFetch(url) {
       if (String(url) === "https://www.google.com/finance/quote/EUR-USD") {
-        return createTextHttpResponse(`AF_initDataCallback({data:${JSON.stringify([
-          [
-            "EUR-USD",
-            null,
-            null,
-            null,
-            null,
-            [1.25, 0.01],
-            null,
-            1.24,
-            null,
-            null,
-            null,
-            [1700000000],
-            null,
-            null,
-            null,
-            ["EUR", "USD", "Euro"],
-          ],
-        ])},sideChannel:{}});</script>`);
+        return createTextHttpResponse(
+          `AF_initDataCallback({data:${JSON.stringify([
+            [
+              "EUR-USD",
+              null,
+              null,
+              null,
+              null,
+              [1.25, 0.01],
+              null,
+              1.24,
+              null,
+              null,
+              null,
+              [1700000000],
+              null,
+              null,
+              null,
+              ["EUR", "USD", "Euro"],
+            ],
+          ])},sideChannel:{}});</script>`,
+        );
       }
 
       if (String(url).includes("/v8/finance/chart/")) {
-        return createTextHttpResponse(JSON.stringify({
-          chart: {
-            result: [{ meta: { regularMarketPrice: 12, symbol: "IBM" } }],
-          },
-        }));
+        return createTextHttpResponse(
+          JSON.stringify({
+            chart: {
+              result: [{ meta: { regularMarketPrice: 12, symbol: "IBM" } }],
+            },
+          }),
+        );
       }
 
       if (String(url).includes("/v1/finance/search")) {
-        return createTextHttpResponse(JSON.stringify({
-          quotes: [{ symbol: "IBM", quoteType: "EQUITY", score: 1 }],
-        }));
+        return createTextHttpResponse(
+          JSON.stringify({
+            quotes: [{ symbol: "IBM", quoteType: "EQUITY", score: 1 }],
+          }),
+        );
       }
 
       if (String(url).includes("tradingview.com")) {
-        return createTextHttpResponse(`\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `);
+        return createTextHttpResponse(
+          `\n                  <html>\n                    <script>\n                      window.initData.symbolInfo = {\n                        "resolved_symbol":"TASE:KSMF59",\n                        "currency":"ILS",\n                        "description":"KSM KSMF59",\n                        "short_name":"KSMF59",\n                        "isin_displayed":"IL0000000001"\n                      };\n                    </script>\n                    trades at 17.25 ILS today\n                  </html>\n                `,
+        );
       }
 
       if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
@@ -461,9 +490,13 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.ok(flow.getResolver("GOOGLE-FX") instanceof GoogleFxResolver);
   assert.ok(flow.getResolver("PSE-FRAMES") instanceof PseFramesResolver);
   assert.ok(flow.getResolver("PSE-EDGE") instanceof PseEdgeResolver);
-  assert.ok(flow.getResolver("YAHOO-QUOTE") instanceof YahooEquityQuoteResolver);
+  assert.ok(
+    flow.getResolver("YAHOO-QUOTE") instanceof YahooEquityQuoteResolver,
+  );
   assert.ok(flow.getResolver("YAHOO-FX") instanceof YahooFxResolver);
-  assert.ok(flow.getResolver("TRADINGVIEW-FUND") instanceof TradingviewFundResolver);
+  assert.ok(
+    flow.getResolver("TRADINGVIEW-FUND") instanceof TradingviewFundResolver,
+  );
   assert.ok(flow.getResolver("ISIN:PSE") instanceof PseIsinMapResolver);
   assert.ok(flow.getResolver("ISIN:YAHOO") instanceof YahooIsinSearchResolver);
 
@@ -498,7 +531,12 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   const pseResolved = flow.getResolver("ISIN:PSE").resolve(
     new RequestInput({
       attribute: "price",
-      attributeRequest: { baseAttribute: "price", outputCode: "", rawAttribute: "price", wantsOutputCurrency: false },
+      attributeRequest: {
+        baseAttribute: "price",
+        outputCode: "",
+        rawAttribute: "price",
+        wantsOutputCurrency: false,
+      },
       attributeType: "quote",
       classification: "isin",
       fxPair: null,
@@ -515,7 +553,12 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   const yahooResolved = flow.getResolver("ISIN:YAHOO").resolve(
     new RequestInput({
       attribute: "price",
-      attributeRequest: { baseAttribute: "price", outputCode: "", rawAttribute: "price", wantsOutputCurrency: false },
+      attributeRequest: {
+        baseAttribute: "price",
+        outputCode: "",
+        rawAttribute: "price",
+        wantsOutputCurrency: false,
+      },
       attributeType: "quote",
       classification: "isin",
       fxPair: null,

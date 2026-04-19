@@ -101,4 +101,3 @@ test("routing tree uses explicit node kinds from the resolver", () => {
     label: "IDENTIFIER:ISIN",
   });
 });
-
