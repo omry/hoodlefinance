@@ -1217,18 +1217,14 @@ export class TradingviewFundResolver extends BaseHFResolver {
 }
 
 export class EquityAttributeExtractResolver extends Resolver {
-  private httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  private getCachedStringFn!: ResolverServices["getCachedString"];
-  private putCachedStringFn!: ResolverServices["putCachedString"];
+  private resolverServices!: ResolverServices;
 
   constructor(code = "EXTRACT:EQUITY") {
     super(code);
   }
 
   initEnv(services: ResolverServices): void {
-    this.httpFetch = services.httpFetch.bind(services);
-    this.getCachedStringFn = services.getCachedString.bind(services);
-    this.putCachedStringFn = services.putCachedString.bind(services);
+    this.resolverServices = services;
   }
 
   resolve(
@@ -1246,13 +1242,8 @@ export class EquityAttributeExtractResolver extends Resolver {
       value = resolveIsinAttributeValue(
         quote,
         { tickerInput },
-        {
-          fetchText: (url) => this.httpFetch(url).getContentText(),
-          getCachedString: (key) => this.getCachedStringFn(key),
-          looksLikeIsin,
-          putCachedString: (key, val, ttl) =>
-            this.putCachedStringFn(key, val, ttl ?? 0),
-        },
+        this.resolverServices,
+        looksLikeIsin,
       );
     } else {
       value = extractRawResolvedAttributeValue(quote, attribute);
@@ -1285,18 +1276,14 @@ function isLonIsinAttributeRequest(request: unknown): boolean {
 }
 
 export class LonIsinResolver extends Resolver {
-  private httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  private getCachedStringFn!: ResolverServices["getCachedString"];
-  private putCachedStringFn!: ResolverServices["putCachedString"];
+  private resolverServices!: ResolverServices;
 
   constructor(code = "LON-ISIN") {
     super(code);
   }
 
   initEnv(services: ResolverServices): void {
-    this.httpFetch = services.httpFetch.bind(services);
-    this.getCachedStringFn = services.getCachedString.bind(services);
-    this.putCachedStringFn = services.putCachedString.bind(services);
+    this.resolverServices = services;
   }
 
   canHandle(input: unknown): boolean {
@@ -1314,12 +1301,11 @@ export class LonIsinResolver extends Resolver {
     const quoteSymbol = String(req.symbol || "");
 
     try {
-      const isin = resolveLonIsin(tickerInput, quoteSymbol, {
-        fetchText: (url) => this.httpFetch(url).getContentText(),
-        getCachedString: (key) => this.getCachedStringFn(key),
-        putCachedString: (key, val, ttl) =>
-          this.putCachedStringFn(key, val, ttl ?? 0),
-      });
+      const isin = resolveLonIsin(
+        tickerInput,
+        quoteSymbol,
+        this.resolverServices,
+      );
       return createResolutionSuccess({ extractedValue: isin }, 0);
     } catch (error) {
       return createResolutionFailure(error, 0, (e) =>

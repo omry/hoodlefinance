@@ -11,6 +11,8 @@ import {
   resolvePseIsinBySymbol,
 } from "./isin-sources";
 import { FxQuote, StockQuote } from "./quote";
+import { looksLikeIsin } from "./request";
+import type { ResolverServices } from "./resolver-services";
 
 const TRADINGVIEW_EXCHANGE_BY_YAHOO_EXCHANGE: Record<string, string> = {
   AMEX: "AMEX",
@@ -224,22 +226,11 @@ export function extractTradingviewCode(
 export function resolveIsinAttributeValue(
   quote: StockQuote | FxQuote,
   context: { tickerInput?: string },
-  deps: {
-    fetchText(url: string): string;
-    getCachedString(cacheKey: string): string;
-    looksLikeIsin(value: string): boolean;
-    putCachedString(
-      cacheKey: string,
-      value: string,
-      ttlSeconds?: number,
-    ): string;
-  },
+  deps: ResolverServices,
+  looksLikeIsinFn: (value: string) => boolean = looksLikeIsin,
 ): string {
   const tickerInput = String(context.tickerInput || "").trim();
-  const directIsinInput = extractDirectIsinInput(
-    tickerInput,
-    deps.looksLikeIsin,
-  );
+  const directIsinInput = extractDirectIsinInput(tickerInput, looksLikeIsinFn);
   const exchange = inferIsinExchange(quote, tickerInput);
   const source = exchange ? ISIN_SOURCE_BY_EXCHANGE[exchange] || "" : "";
 
@@ -272,11 +263,7 @@ export function resolveIsinAttributeValue(
   }
 
   if (source === "LON") {
-    return resolveLonIsin(tickerInput, extractQuoteSymbol(quote), {
-      fetchText: deps.fetchText,
-      getCachedString: deps.getCachedString,
-      putCachedString: deps.putCachedString,
-    });
+    return resolveLonIsin(tickerInput, extractQuoteSymbol(quote), deps);
   }
 
   if (source === "TRADINGVIEW") {
@@ -311,7 +298,9 @@ export function resolveIsinAttributeValue(
     }
 
     const isin = extractTradingviewIsinFromHtml(
-      deps.fetchText(buildTradingviewIsinLookupUrl(tradingviewExchange, code)),
+      deps
+        .httpFetch(buildTradingviewIsinLookupUrl(tradingviewExchange, code))
+        .getContentText(),
       expectedSymbol,
       displaySymbol,
     );

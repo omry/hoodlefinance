@@ -72,8 +72,10 @@ test("inferIsinExchange deduces exchange from quote metadata and ticker suffixes
 
 test("resolveIsinAttributeValue preserves legacy error for currency pairs", () => {
   const deps = {
-    looksLikeIsin: () => false,
-    fetchText: () => "",
+    httpFetch: () => ({
+      getContentText: () => "",
+      getResponseCode: () => 200,
+    }),
     getCachedString: () => "",
     putCachedString: () => "",
   };
@@ -86,7 +88,13 @@ test("resolveIsinAttributeValue preserves legacy error for currency pairs", () =
   });
 
   assert.throws(
-    () => resolveIsinAttributeValue(fxQuote, { tickerInput: "EURUSD" }, deps),
+    () =>
+      resolveIsinAttributeValue(
+        fxQuote,
+        { tickerInput: "EURUSD" },
+        deps,
+        () => false,
+      ),
     /ISIN is not available for currency pairs\./,
   );
 });

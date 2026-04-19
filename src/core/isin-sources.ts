@@ -1,13 +1,8 @@
 import { buildPseSecurityFrameUrl, extractPseFrameQuote } from "./pse-quotes";
+import type { ResolverServices } from "./resolver-services";
 
 const TRADINGVIEW_SYMBOL_URL = "https://www.tradingview.com/symbols/";
 const LON_ISIN_CACHE_TTL_SECONDS = 21600;
-
-interface CachedStringDependencies {
-  fetchText(url: string): string;
-  getCachedString(cacheKey: string): string;
-  putCachedString(cacheKey: string, value: string, ttlSeconds?: number): string;
-}
 
 function extractLonCode(tickerInput: string): string {
   const normalized = String(tickerInput || "")
@@ -109,7 +104,7 @@ export function extractTradingviewIsinFromHtml(
 
 export function resolvePseIsinBySymbol(
   symbol: string,
-  fetchText: (url: string) => string,
+  httpFetch: ResolverServices["httpFetch"],
 ): string {
   const normalizedSymbol = String(symbol || "")
     .trim()
@@ -122,7 +117,7 @@ export function resolvePseIsinBySymbol(
   }
 
   const quote = extractPseFrameQuote(
-    fetchText(buildPseSecurityFrameUrl(normalizedSymbol)),
+    httpFetch(buildPseSecurityFrameUrl(normalizedSymbol)).getContentText(),
     normalizedSymbol,
   );
   const isin = String(quote.isin || "")
@@ -138,7 +133,7 @@ export function resolvePseIsinBySymbol(
 
 function resolveLonIsinByCode(
   code: string,
-  deps: CachedStringDependencies,
+  services: ResolverServices,
 ): string {
   if (!code) {
     throw new Error(
@@ -147,30 +142,32 @@ function resolveLonIsinByCode(
   }
 
   const cacheKey = `hoodlefinance:lon:isin:${code}`;
-  const cached = deps.getCachedString(cacheKey);
+  const cached = services.getCachedString(cacheKey);
 
   if (cached) {
     return cached;
   }
 
-  const html = deps.fetchText(
-    `https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=${encodeURIComponent(code)}`,
-  );
+  const html = services
+    .httpFetch(
+      `https://www.londonstockexchange.com/exchange/instrument-result.html?codeName=${encodeURIComponent(code)}`,
+    )
+    .getContentText();
   const isin = extractLonIsinFromHtml(html, code);
 
   if (!isin) {
     throw new Error(`No LON ISIN is available for "${code}".`);
   }
 
-  deps.putCachedString(cacheKey, isin, LON_ISIN_CACHE_TTL_SECONDS);
+  services.putCachedString(cacheKey, isin, LON_ISIN_CACHE_TTL_SECONDS);
   return isin;
 }
 
 export function resolveLonIsin(
   tickerInput: string,
   quoteSymbol: string,
-  deps: CachedStringDependencies,
+  services: ResolverServices,
 ): string {
   const code = extractLonCodeFromContext(tickerInput, quoteSymbol);
-  return resolveLonIsinByCode(code, deps);
+  return resolveLonIsinByCode(code, services);
 }
