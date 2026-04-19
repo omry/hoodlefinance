@@ -1,4 +1,4 @@
-import { createConcreteResolverRegistry } from "../core/concrete-resolvers";
+import { createConcreteResolverRegistry } from "../core/hf-resolvers";
 import {
   ResolveFlow,
   resolveAttribute,

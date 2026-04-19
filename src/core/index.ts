@@ -17,7 +17,7 @@ export * from "./yahoo-quote";
 export * from "./tradingview-fund";
 export * from "./request-building";
 export * from "./request-parsing";
-export * from "./concrete-resolvers";
+export * from "./hf-resolvers";
 export * from "./resolver-classes";
 export * from "./routing-introspection";
 export * from "./spec-data";
