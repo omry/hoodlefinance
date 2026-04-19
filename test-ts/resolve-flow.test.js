@@ -5,17 +5,26 @@ const {
   buildFxPairFromCodes,
   DagPlan,
   EquityAttributeExtractResolver,
+  EquityAttributeResolutionPlan,
   FirstSuccessReceiver,
+  FirstSuccessPlan,
   FxAttributeExtractResolver,
+  FxAttributeResolutionPlan,
   GoogleFxResolver,
   LocalFxResolver,
   LonIsinResolver,
+  NodeFactoryRegistry,
   PseEdgeResolver,
   PseFramesResolver,
   PseIsinMapResolver,
+  PseQuoteResolutionPlan,
   RequestClassifierResolver,
+  Resolver,
   ResolveFlow,
   resolveAttribute,
+  RoutingPlan,
+  StepPlan,
+  TickerQuoteResolutionPlan,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
   YahooFxResolver,
@@ -34,28 +43,33 @@ const {
 } = require("./resolver-service-fixtures.js");
 
 function createResolverRegistry() {
-  return {
-    EquityAttributeExtractResolver,
-    FirstSuccessReceiver,
-    FxAttributeExtractResolver,
-    GoogleFxResolver,
-    LocalFxResolver,
-    LonIsinResolver,
-    PSEEdgeResolver: PseEdgeResolver,
-    PSEFramesResolver: PseFramesResolver,
-    PseIsinMapResolver,
-    RequestClassifierResolver,
-    TradingviewFundResolver,
-    YahooIsinSearchResolver,
-    YahooEquityQuoteResolver,
-    YahooFxResolver,
-  };
+  return new NodeFactoryRegistry()
+    .registerLeaf("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
+    .registerLeaf("FirstSuccessReceiver", FirstSuccessReceiver)
+    .registerLeaf("FxAttributeExtractResolver", FxAttributeExtractResolver)
+    .registerLeaf("GoogleFxResolver", GoogleFxResolver)
+    .registerLeaf("LocalFxResolver", LocalFxResolver)
+    .registerLeaf("LonIsinResolver", LonIsinResolver)
+    .registerLeaf("PSEEdgeResolver", PseEdgeResolver)
+    .registerLeaf("PSEFramesResolver", PseFramesResolver)
+    .registerLeaf("PseIsinMapResolver", PseIsinMapResolver)
+    .registerLeaf("RequestClassifierResolver", RequestClassifierResolver)
+    .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
+    .registerLeaf("YahooIsinSearchResolver", YahooIsinSearchResolver)
+    .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
+    .registerLeaf("YahooFxResolver", YahooFxResolver)
+    .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
+    .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
+    .registerPlan("RoutingPlan", RoutingPlan)
+    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
-class FakeResolver {
+class FakeResolver extends Resolver {
   constructor(code) {
-    this.code = code;
-    this.name = code;
+    super(code);
   }
 
   canHandle() {
@@ -223,7 +237,7 @@ test("ResolveFlow routes price@CCY conversion through the production FX subgraph
 });
 
 test("ResolveFlow instantiates and registers resolvers by class name", () => {
-  const flow = new ResolveFlow(FAKE_GRAPH, { FakeResolver });
+  const flow = new ResolveFlow(FAKE_GRAPH, new NodeFactoryRegistry().registerLeaf("FakeResolver", FakeResolver));
 
   const resolver = flow.getResolver("ROOT");
   assert.ok(resolver instanceof FakeResolver);
@@ -349,7 +363,7 @@ test("ResolveFlow rejects unknown class names", () => {
           ROOT: { id: "ROOT", type: "MissingResolver", next: ["TERMINAL"] },
           TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
         },
-        {},
+        new NodeFactoryRegistry(),
       ),
     /Unknown resolver class "MissingResolver" for "ROOT"\./,
   );

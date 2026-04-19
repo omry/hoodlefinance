@@ -3,7 +3,7 @@ const { ResolveFlow } = require("../dist/ts/core/index.js");
 function createRuntimePlanLookup(definition, deps) {
   const flow = new ResolveFlow(
     definition,
-    deps.resolverClassesByName,
+    deps.registry,
     deps.resolverEnv,
   );
 

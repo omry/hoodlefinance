@@ -5,18 +5,9 @@ import {
   normalizeGraphNodeId,
 } from "./graph";
 import { type LookupResult } from "./resolver";
-import type { Resolver } from "./core-resolvers";
-import {
-  buildPlanNodeFromSpec,
-  PLAN_RESOLVER_CLASSES_BY_NAME,
-} from "../resolver-classes";
+import { type Resolver, ResolverPlan } from "./core-resolvers";
+import { NodeFactoryRegistry, type PlanConstructor, type LeafConstructor } from "./node-factory-registry";
 import { FlowEngine, EnvelopeStatus, type ExecutionTrace } from "./engine";
-
-function isPlanResolverClass(nodeType: string): boolean {
-  return !!(PLAN_RESOLVER_CLASSES_BY_NAME as Record<string, unknown>)[
-    String(nodeType || "")
-  ];
-}
 
 function normalizeCode(code: string): string {
   return normalizeGraphNodeId(code);
@@ -546,23 +537,19 @@ function formatSubgraphTraceBoundary(subgraphId: string): string {
   return `SUBGRAPH:${normalizeCode(subgraphId)}`;
 }
 
-export type ResolverRegistry = Record<string, ResolverConstructor | undefined>;
-
-export interface ResolverConstructor {
-  new(code: string): Resolver;
-}
-
 export class ResolveFlow {
   readonly graph: Graph.View;
+  #registry: NodeFactoryRegistry;
   #subgraphsById: Graph.SubgraphRegistry;
   #nodesByCode: Record<string, Resolver>;
 
   constructor(
     definition: Graph.Definition,
-    resolverClassesByName: ResolverRegistry,
+    registry: NodeFactoryRegistry,
     resolverEnv?: unknown,
   ) {
     this.graph = buildGraphView(definition);
+    this.#registry = registry;
     this.#subgraphsById = Object.create(null);
     for (const subgraphId of this.graph.getSubgraphIds()) {
       const subgraph = this.graph.getSubgraph(subgraphId);
@@ -570,38 +557,36 @@ export class ResolveFlow {
         this.#subgraphsById[subgraphId] = subgraph;
       }
     }
-    const resolverSpecsByCode: Record<string, string> = Object.create(null);
+
+    this.#nodesByCode = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
-      if (isPlanResolverClass(node.type) || isTerminalNodeId(node.id)) {
+      if (isTerminalNodeId(node.id)) {
         continue;
       }
 
-      resolverSpecsByCode[node.id] = node.type;
-    }
-
-    this.#nodesByCode = Object.create(null);
-    Object.keys(resolverSpecsByCode).forEach((code) => {
-      const normalizedCode = normalizeCode(code);
-      const resolverClass = resolverSpecsByCode[code] as string;
-      const ResolverCtor = resolverClassesByName[resolverClass] || null;
-
-      if (!ResolverCtor) {
+      const Ctor = registry.get(node.type);
+      if (!Ctor) {
         throw new Error(
-          `Unknown resolver class "${String(resolverClass || "")}" for "${normalizedCode}".`,
+          `Unknown resolver class "${String(node.type || "")}" for "${node.id}".`,
         );
       }
 
-      const resolver = new ResolverCtor(normalizedCode);
+      if (Ctor.prototype instanceof ResolverPlan) {
+        continue;
+      }
+
+      const normalizedCode = normalizeCode(node.id);
+      const resolver = new (Ctor as LeafConstructor)(normalizedCode);
 
       if (resolverEnv !== undefined && typeof resolver.initEnv === "function") {
         resolver.initEnv(resolverEnv);
       }
 
       this.#nodesByCode[normalizedCode] = resolver;
-    });
+    }
 
     for (const node of this.graph.getTopologicalOrder()) {
-      if (isPlanResolverClass(node.type)) {
+      if (node.type && registry.get(node.type)?.prototype instanceof ResolverPlan) {
         this.#getRuntimeNode(node.id);
       }
     }
@@ -703,18 +688,17 @@ export class ResolveFlow {
       );
     }
 
-    if (!isPlanResolverClass(spec.type)) {
+    const Ctor = this.#registry.get(spec.type);
+    if (!Ctor || !(Ctor.prototype instanceof ResolverPlan)) {
       throw new Error(
         `Resolver node "${normalizedCode}" was not materialized during graph compilation.`,
       );
     }
 
-    const compiledNode = buildPlanNodeFromSpec(
-      normalizedCode,
-      spec,
-      (nodeCode) =>
-        isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode),
-    );
+    const nodes = getGraphNodeNextIds(spec)
+      .map((nodeCode) => isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
+      .filter((n): n is Resolver => n !== null);
+    const compiledNode = new (Ctor as PlanConstructor)(normalizedCode, nodes, {});
 
     this.#nodesByCode[normalizedCode] = compiledNode;
 

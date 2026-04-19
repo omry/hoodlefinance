@@ -6,17 +6,24 @@ const test = require("node:test");
 const {
   DirectIdentifierResolver,
   EquityAttributeExtractResolver,
+  EquityAttributeResolutionPlan,
   FirstSuccessPlan,
   FirstSuccessReceiver,
   FxAttributeExtractResolver,
+  FxAttributeResolutionPlan,
   GoogleFxResolver,
   LocalFxResolver,
   LonIsinResolver,
+  NodeFactoryRegistry,
   PseEdgeResolver,
   PseFramesResolver,
   PseIsinMapResolver,
+  PseQuoteResolutionPlan,
   RequestClassifierResolver,
   RawRequestInput,
+  RoutingPlan,
+  StepPlan,
+  TickerQuoteResolutionPlan,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
   YahooFxResolver,
@@ -32,22 +39,28 @@ const {
 } = require("./resolver-service-fixtures.js");
 
 function createResolverRegistry() {
-  return {
-    EquityAttributeExtractResolver,
-    FirstSuccessReceiver,
-    FxAttributeExtractResolver,
-    GoogleFxResolver,
-    LocalFxResolver,
-    LonIsinResolver,
-    PSEEdgeResolver: PseEdgeResolver,
-    PSEFramesResolver: PseFramesResolver,
-    PseIsinMapResolver,
-    RequestClassifierResolver,
-    YahooIsinSearchResolver,
-    YahooEquityQuoteResolver,
-    YahooFxResolver,
-    TradingviewFundResolver,
-  };
+  return new NodeFactoryRegistry()
+    .registerLeaf("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
+    .registerLeaf("FirstSuccessReceiver", FirstSuccessReceiver)
+    .registerLeaf("FxAttributeExtractResolver", FxAttributeExtractResolver)
+    .registerLeaf("GoogleFxResolver", GoogleFxResolver)
+    .registerLeaf("LocalFxResolver", LocalFxResolver)
+    .registerLeaf("LonIsinResolver", LonIsinResolver)
+    .registerLeaf("PSEEdgeResolver", PseEdgeResolver)
+    .registerLeaf("PSEFramesResolver", PseFramesResolver)
+    .registerLeaf("PseIsinMapResolver", PseIsinMapResolver)
+    .registerLeaf("RequestClassifierResolver", RequestClassifierResolver)
+    .registerLeaf("YahooIsinSearchResolver", YahooIsinSearchResolver)
+    .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
+    .registerLeaf("YahooFxResolver", YahooFxResolver)
+    .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
+    .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
+    .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
+    .registerPlan("RoutingPlan", RoutingPlan)
+    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
@@ -79,7 +92,7 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
 
 test("getRoutingTableRows classifies example tickers correctly", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    resolverClassesByName: createResolverRegistry(),
+    registry: createResolverRegistry(),
     resolverEnv: createStaticResolverServices(),
   });
 
@@ -103,7 +116,7 @@ test("getRoutingTableRows classifies example tickers correctly", () => {
 
 test("integrated mode always follows the default PSE quote branch", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    resolverClassesByName: createResolverRegistry(),
+    registry: createResolverRegistry(),
     resolverEnv: createStaticResolverServices(),
   });
   const request = new RequestInput({
@@ -144,7 +157,7 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
   modifiedSpecs["ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
   const runtimeLookup = createRuntimePlanLookup(modifiedSpecs, {
-    resolverClassesByName: createResolverRegistry(),
+    registry: createResolverRegistry(),
     resolverEnv: createStaticResolverServices(),
   });
 

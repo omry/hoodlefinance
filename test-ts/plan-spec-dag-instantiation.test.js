@@ -4,17 +4,25 @@ const test = require("node:test");
 const {
   DagPlan,
   EquityAttributeExtractResolver,
+  EquityAttributeResolutionPlan,
   FirstSuccessReceiver,
+  FirstSuccessPlan,
   FxAttributeExtractResolver,
+  FxAttributeResolutionPlan,
   GoogleFxResolver,
   LocalFxResolver,
   LonIsinResolver,
+  NodeFactoryRegistry,
   PseEdgeResolver,
   PseFramesResolver,
   PseIsinMapResolver,
+  PseQuoteResolutionPlan,
   RequestClassifierResolver,
   ResolveFlow,
   BaseHFResolver,
+  RoutingPlan,
+  StepPlan,
+  TickerQuoteResolutionPlan,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
@@ -31,23 +39,29 @@ class LeafResolver extends BaseHFResolver {
 }
 
 function createResolverRegistry() {
-  return {
-    EquityAttributeExtractResolver,
-    FirstSuccessReceiver,
-    FxAttributeExtractResolver,
-    GoogleFxResolver,
-    LeafResolver,
-    LocalFxResolver,
-    LonIsinResolver,
-    PSEEdgeResolver: PseEdgeResolver,
-    PSEFramesResolver: PseFramesResolver,
-    PseIsinMapResolver,
-    RequestClassifierResolver,
-    TradingviewFundResolver,
-    YahooIsinSearchResolver,
-    YahooEquityQuoteResolver,
-    YahooFxResolver,
-  };
+  return new NodeFactoryRegistry()
+    .registerLeaf("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
+    .registerLeaf("FirstSuccessReceiver", FirstSuccessReceiver)
+    .registerLeaf("FxAttributeExtractResolver", FxAttributeExtractResolver)
+    .registerLeaf("GoogleFxResolver", GoogleFxResolver)
+    .registerLeaf("LeafResolver", LeafResolver)
+    .registerLeaf("LocalFxResolver", LocalFxResolver)
+    .registerLeaf("LonIsinResolver", LonIsinResolver)
+    .registerLeaf("PSEEdgeResolver", PseEdgeResolver)
+    .registerLeaf("PSEFramesResolver", PseFramesResolver)
+    .registerLeaf("PseIsinMapResolver", PseIsinMapResolver)
+    .registerLeaf("RequestClassifierResolver", RequestClassifierResolver)
+    .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
+    .registerLeaf("YahooIsinSearchResolver", YahooIsinSearchResolver)
+    .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
+    .registerLeaf("YahooFxResolver", YahooFxResolver)
+    .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
+    .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
+    .registerPlan("RoutingPlan", RoutingPlan)
+    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
 function createValidDagSpecs() {

@@ -7,7 +7,15 @@ import {
   RequestInput,
   type ResolvedRequest,
 } from "./request";
-import type { ResolverRegistry } from "./flow/resolve-flow";
+import { NodeFactoryRegistry } from "./flow/node-factory-registry";
+import {
+  EquityAttributeResolutionPlan,
+  FxAttributeResolutionPlan,
+  PseQuoteResolutionPlan,
+  RoutingPlan,
+  TickerQuoteResolutionPlan,
+} from "./resolver-classes";
+import { FirstSuccessPlan, StepPlan } from "./flow/core-resolvers";
 // TODO: merge resolver-classes.ts into this file
 import {
   IdentifierResolver,
@@ -1303,21 +1311,27 @@ export class FxAttributeExtractResolver extends Resolver {
 
 }
 
-export function createConcreteResolverRegistry(): ResolverRegistry {
-  return {
-    EquityAttributeExtractResolver,
-    FirstSuccessReceiver,
-    FxAttributeExtractResolver,
-    LocalFxResolver,
-    LonIsinResolver,
-    GoogleFxResolver,
-    PSEFramesResolver: PseFramesResolver,
-    PSEEdgeResolver: PseEdgeResolver,
-    PseIsinMapResolver,
-    RequestClassifierResolver,
-    YahooIsinSearchResolver,
-    YahooEquityQuoteResolver,
-    YahooFxResolver,
-    TradingviewFundResolver,
-  } as const;
+export function createConcreteResolverRegistry(): NodeFactoryRegistry {
+  return new NodeFactoryRegistry()
+    .registerLeaf("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
+    .registerLeaf("FirstSuccessReceiver", FirstSuccessReceiver)
+    .registerLeaf("FxAttributeExtractResolver", FxAttributeExtractResolver)
+    .registerLeaf("LocalFxResolver", LocalFxResolver)
+    .registerLeaf("LonIsinResolver", LonIsinResolver)
+    .registerLeaf("GoogleFxResolver", GoogleFxResolver)
+    .registerLeaf("PSEFramesResolver", PseFramesResolver)
+    .registerLeaf("PSEEdgeResolver", PseEdgeResolver)
+    .registerLeaf("PseIsinMapResolver", PseIsinMapResolver)
+    .registerLeaf("RequestClassifierResolver", RequestClassifierResolver)
+    .registerLeaf("YahooIsinSearchResolver", YahooIsinSearchResolver)
+    .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
+    .registerLeaf("YahooFxResolver", YahooFxResolver)
+    .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
+    .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
+    .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
+    .registerPlan("RoutingPlan", RoutingPlan)
+    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }

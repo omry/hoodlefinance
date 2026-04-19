@@ -11,7 +11,7 @@ const { createTestEnv } = require("./resolver-service-fixtures.js");
 
 test("compiled DagPlan classifies representative examples correctly", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    resolverClassesByName: createConcreteResolverRegistry(),
+    registry: createConcreteResolverRegistry(),
     resolverEnv: createTestEnv(),
   });
   const rootNode = runtimeLookup.getNode("ROOT");
