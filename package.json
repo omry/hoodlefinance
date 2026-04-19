@@ -89,6 +89,9 @@
       "test-ts/**/*.js"
     ],
     "ignoreIssues": {
+      "src/core/graph-mermaid.ts": [
+        "files"
+      ],
       "src/runtime/StandAloneResolverServices.ts": [
         "files"
       ],

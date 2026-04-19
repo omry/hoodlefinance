@@ -93,18 +93,6 @@ function buildPseHttpErrorMessage(statusCode: unknown): string {
   return `PSE upstream returned HTTP ${statusCode}.`;
 }
 
-export function isPseListingNotFoundError(error: unknown): boolean {
-  return /No PSE listing was found for "/i.test(
-    String((error as Error)?.message || error || ""),
-  );
-}
-
-export function isPseUnavailableError(error: unknown): boolean {
-  return /The PSE data source is currently unavailable/i.test(
-    String((error as Error)?.message || error || ""),
-  );
-}
-
 function extractPseListings(html: string): PseListing[] {
   const text = String(html || "");
   const pattern =
