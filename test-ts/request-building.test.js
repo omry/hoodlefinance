@@ -88,33 +88,26 @@ function createDeps() {
 }
 
 test("createRequestInput parses request state without classifying it", () => {
-  const deps = createDeps();
+  const equity = createRequestInput("GOOG", "price");
+  const fx = createRequestInput("EURUSD", "price");
+  const isin = createRequestInput("US02079K1079", "price");
 
-  const equity = createRequestInput("GOOG", "price", deps);
-  const fx = createRequestInput("EURUSD", "price", deps);
-  const isin = createRequestInput("US02079K1079", "price", deps);
-
-  assert.equal(equity.classification, undefined);
   assert.equal(equity.fxPair, null);
-  assert.equal(fx.classification, undefined);
   assert.equal(fx.fxPair.baseCanonicalCode, "EUR");
-  assert.equal(isin.classification, undefined);
   assert.equal(isin.fxPair, null);
 });
 
 test("createRequestInput strips unsupported source suffixes", () => {
-  const deps = createDeps();
-  const input = createRequestInput("GOOG@YAHOO", "price", deps);
+  const input = createRequestInput("GOOG@YAHOO", "price");
 
   assert.equal(input.attribute, "price");
   assert.equal(input.infoMode, "source-override");
   assert.equal(input.ticker, "GOOG");
-  assert.equal(input.classification, undefined);
 });
 
 test("isin extraction stays simple and explicit", () => {
   const deps = createDeps();
-  const isinInput = createRequestInput("ISIN:US02079K1079", "price", deps);
+  const isinInput = createRequestInput("ISIN:US02079K1079", "price");
 
   assert.equal(
     extractIsinFromRequestInput(isinInput, deps.looksLikeIsin),
@@ -124,11 +117,10 @@ test("isin extraction stays simple and explicit", () => {
 
 test("buildTypedRequestFromParsedInput returns the expected typed request variants", () => {
   const deps = createDeps();
-  const originalInput = createRequestInput("PSE:BDO", "price", deps);
 
   const pseRequest = buildTypedRequestFromParsedInput(
-    originalInput,
-    createRequestInput("PSE:BDO", "price", deps),
+    createRequestInput("PSE:BDO", "price"),
+    createRequestInput("PSE:BDO", "price"),
     12,
     deps,
   );
@@ -137,8 +129,8 @@ test("buildTypedRequestFromParsedInput returns the expected typed request varian
   assert.equal(pseRequest.symbol, "BDO");
 
   const fxRequest = buildTypedRequestFromParsedInput(
-    createRequestInput("EURUSD", "price", deps),
-    createRequestInput("EURUSD", "price", deps),
+    createRequestInput("EURUSD", "price"),
+    createRequestInput("EURUSD", "price"),
     3,
     deps,
   );
@@ -147,8 +139,8 @@ test("buildTypedRequestFromParsedInput returns the expected typed request varian
   assert.equal(fxRequest.quoteCurrency, "USD");
 
   const equityRequest = buildTypedRequestFromParsedInput(
-    createRequestInput("TLV:KSMF59", "price", deps),
-    createRequestInput("KSM.F59.TA", "price", deps),
+    createRequestInput("TLV:KSMF59", "price"),
+    createRequestInput("KSM.F59.TA", "price"),
     7,
     deps,
   );
@@ -159,7 +151,7 @@ test("buildTypedRequestFromParsedInput returns the expected typed request varian
 
 test("buildTypedRequestFromResolvedTicker reuses RequestInput creation", () => {
   const deps = createDeps();
-  const originalInput = createRequestInput("US02079K1079", "price", deps);
+  const originalInput = createRequestInput("US02079K1079", "price");
   const resolved = buildTypedRequestFromResolvedTicker(
     originalInput,
     "GOOG",
@@ -175,7 +167,6 @@ test("buildTypedRequestFromResolvedTicker reuses RequestInput creation", () => {
 test("default FX parsing does not classify arbitrary 6-8 letter identifiers as FX", () => {
   const input = createRequestInput("ABCDEFGH", "price");
 
-  assert.equal(input.classification, undefined);
   assert.equal(input.fxPair, null);
 });
 

@@ -79,7 +79,7 @@ export class EquityAttributeResolutionPlan extends SwitchPlan {
   canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
-      (request as RequestInput).classification === "equity" &&
+      (request as { classification?: string }).classification === "equity" &&
       super.canHandle(request)
     );
   }
@@ -97,7 +97,7 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
   canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
-      (request as RequestInput).classification === "fx" &&
+      (request as { classification?: string }).classification === "fx" &&
       super.canHandle(request)
     );
   }

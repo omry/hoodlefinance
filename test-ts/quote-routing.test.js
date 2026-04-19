@@ -22,13 +22,15 @@ const {
   YahooFxResolver,
   TradingviewFundResolver,
   DagPlan,
-  createRequestInput,
+  RequestInput,
   buildQuoteRoutePlanForResolvedRequest,
   getRoutingTableRows,
   ResolveFlow,
 } = require("../dist/ts/core/index.js");
 const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
-const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
+const {
+  createStaticResolverServices,
+} = require("./resolver-service-fixtures.js");
 
 function createResolverRegistry() {
   return {
@@ -65,9 +67,13 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
   assert.equal(outcome.status, "success");
 
   return {
-    attributePlan: buildQuoteRoutePlanForResolvedRequest(requestInput, outcome.value, {
-      getPlanNodeByCode: runtimeLookup.getPlanNode,
-    }),
+    attributePlan: buildQuoteRoutePlanForResolvedRequest(
+      requestInput,
+      outcome.value,
+      {
+        getPlanNodeByCode: runtimeLookup.getPlanNode,
+      },
+    ),
     resolvedRequest: outcome.value,
   };
 }
@@ -88,7 +94,7 @@ test("getRoutingTableRows classifies example tickers correctly", () => {
   };
 
   const rows = getRoutingTableRows(deps);
-  const findRow = (example) => rows.find(r => r.example === example);
+  const findRow = (example) => rows.find((r) => r.example === example);
 
   assert.equal(findRow("GOOG").classification, "equity");
   assert.equal(findRow("EURUSD").classification, "fx");
@@ -101,14 +107,19 @@ test("integrated mode always follows the default PSE quote branch", () => {
     resolverClassesByName: createResolverRegistry(),
     resolverEnv: createStaticResolverServices(),
   });
-  const request = createRequestInput("PSE:BDO@PSE-FRAMES", "price", {
-    normalizeAttribute: (a) => a,
-    parseAttributeRequest: (a) => ({}),
-    parseFxTicker: () => null,
-    parseTickerRequest: () => ({
-      ticker: "PSE:BDO",
-      infoMode: "source-list",
-    }),
+  const request = new RequestInput({
+    attribute: "price",
+    attributeRequest: {
+      baseAttribute: "price",
+      outputCode: "",
+      rawAttribute: "price",
+      wantsOutputCurrency: false,
+    },
+    attributeType: "quote",
+    fxPair: null,
+    identifier: "PSE:BDO@PSE-FRAMES",
+    infoMode: "source-list",
+    ticker: "PSE:BDO",
   });
   const plan = buildTypedAttributePlan(runtimeLookup, request);
 
@@ -142,16 +153,21 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
     () =>
       buildTypedAttributePlan(
         runtimeLookup,
-        createRequestInput("GOOG", "price", {
-          normalizeAttribute: (a) => a,
-          parseAttributeRequest: (a) => ({}),
-          parseFxTicker: () => null,
-          parseTickerRequest: (t) => ({
-            ticker: t,
-            infoMode: "",
-          }),
+        new RequestInput({
+          attribute: "price",
+          attributeRequest: {
+            baseAttribute: "price",
+            outputCode: "",
+            rawAttribute: "price",
+            wantsOutputCurrency: false,
+          },
+          attributeType: "quote",
+          fxPair: null,
+          identifier: "GOOG",
+          infoMode: "",
+          ticker: "GOOG",
         }),
       ),
-    /Ambiguous default attribute route for classification "equity": ATTRIBUTE:EQUITY, AMBIGUOUS-EXTRA\./
+    /Ambiguous default attribute route for classification "equity": ATTRIBUTE:EQUITY, AMBIGUOUS-EXTRA\./,
   );
 });

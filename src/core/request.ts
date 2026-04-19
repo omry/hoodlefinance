@@ -34,7 +34,6 @@ export interface RequestInputInit {
   attribute: string;
   attributeRequest: AttributeRequest;
   attributeType: AttributeType;
-  classification?: RequestClassification;
   fxPair: FxPair | null;
   identifier: string;
   infoMode: ParsedTickerRequest["infoMode"];
@@ -63,7 +62,6 @@ export class RequestInput {
   readonly attribute: string;
   readonly attributeRequest: AttributeRequest;
   readonly attributeType: AttributeType;
-  readonly classification: RequestClassification | undefined;
   readonly fxPair: FxPair | null;
   readonly identifier: string;
   readonly infoMode: ParsedTickerRequest["infoMode"];
@@ -73,12 +71,15 @@ export class RequestInput {
     this.attribute = init.attribute;
     this.attributeRequest = init.attributeRequest;
     this.attributeType = init.attributeType;
-    this.classification = init.classification;
     this.fxPair = init.fxPair;
     this.identifier = init.identifier;
     this.infoMode = init.infoMode;
     this.ticker = init.ticker;
   }
+}
+
+export class IsinRequest extends RequestInput {
+  readonly classification = "isin" as const;
 }
 
 interface BaseRequestInputSnapshot {

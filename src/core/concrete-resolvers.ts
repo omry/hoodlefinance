@@ -1,12 +1,14 @@
 import {
   EquityRequest,
   FxRequest,
+  IsinRequest,
   looksLikeIsin,
   RawRequestInput,
   RequestInput,
   type ResolvedRequest,
 } from "./request";
 import type { ResolverRegistry } from "./flow/resolve-flow";
+// TODO: merge resolver-classes.ts into this file
 import { IdentifierResolver, Resolver, BaseHFResolver } from "./resolver-classes";
 import {
   createRequestInput,
@@ -314,23 +316,24 @@ export class RequestClassifierResolver extends IdentifierResolver {
       }
 
       const rawInput = input as RawRequestInput;
-      const requestInput = this.fxTickerParser
-        ? createRequestInput(rawInput.identifier, rawInput.attribute, {
-            parseFxTicker: this.fxTickerParser,
-          })
-        : createRequestInput(rawInput.identifier, rawInput.attribute);
+      const requestInput = createRequestInput(
+        rawInput.identifier,
+        rawInput.attribute,
+      );
 
-      // Absorb DirectIdentifierResolver: for non-ISIN inputs resolve inline.
       if (extractIsinFromRequestInput(requestInput)) {
         return createResolutionSuccess(
-          new RequestInput({ ...requestInput, classification: "isin" }),
+          new IsinRequest(requestInput),
           Date.now() - startedAtMs,
         );
       }
 
+      const parsedInput = this.fxTickerParser
+        ? { ...requestInput, fxPair: this.fxTickerParser(requestInput.ticker) ?? requestInput.fxPair }
+        : requestInput;
       const resolvedRequest = buildTypedRequestFromParsedInput(
         requestInput,
-        requestInput,
+        parsedInput,
         Math.max(0, Date.now() - startedAtMs),
       );
 

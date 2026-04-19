@@ -19,7 +19,6 @@ function createRequestInput(overrides = {}) {
       wantsOutputCurrency: false,
     },
     attributeType: overrides.attributeType || "quote",
-    classification: overrides.classification || "equity",
     fxPair: null,
     identifier: overrides.identifier || "GOOG",
     infoMode: "",

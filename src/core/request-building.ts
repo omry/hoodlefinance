@@ -2,10 +2,7 @@ import {
   EquityRequest,
   FxRequest,
   RequestInput,
-  type AttributeRequest,
   type FxPair,
-  type ParsedTickerRequest,
-  type RequestInputInit,
   type ResolvedRequest,
   looksLikeIsin,
 } from "./request";
@@ -21,9 +18,7 @@ import {
   parseExchangePrefixedSymbol,
   parseYahooSuffixedSymbol,
 } from "./exchange-symbols";
-import {
-  parseFxTicker,
-} from "./fx-normalization";
+import { parseFxTicker } from "./fx-normalization";
 import { normalizeTickerWithoutIsin } from "./ticker-normalization";
 
 interface RequestBuildingDependencies {
@@ -31,11 +26,8 @@ interface RequestBuildingDependencies {
   extractYahooExchangeFromSymbol(symbol: string): string;
   looksLikeIsraeliFundYahooSymbol(symbol: string): boolean;
   looksLikeIsin(value: string): boolean;
-  normalizeAttribute(attribute: unknown): string;
   normalizeTickerWithoutIsin(ticker: string): string;
-  parseAttributeRequest(attribute: string): AttributeRequest;
   parseFxTicker(ticker: string): FxPair | null;
-  parseTickerRequest(ticker: string): ParsedTickerRequest;
 }
 
 const DEFAULT_REQUEST_BUILDING_DEPENDENCIES: RequestBuildingDependencies = {
@@ -43,11 +35,8 @@ const DEFAULT_REQUEST_BUILDING_DEPENDENCIES: RequestBuildingDependencies = {
   extractYahooExchangeFromSymbol,
   looksLikeIsraeliFundYahooSymbol,
   looksLikeIsin,
-  normalizeAttribute,
   normalizeTickerWithoutIsin,
-  parseAttributeRequest,
   parseFxTicker,
-  parseTickerRequest,
 };
 
 export function extractIsinFromRequestInput(
@@ -78,31 +67,22 @@ export function extractIsinCountryCode(
 export function createRequestInput(
   identifier: unknown,
   attribute: unknown,
-  deps?: Partial<RequestBuildingDependencies>,
 ): RequestInput {
-  const resolvedDeps = {
-    ...DEFAULT_REQUEST_BUILDING_DEPENDENCIES,
-    ...(deps || {}),
-  };
-
   const rawIdentifier = String(identifier == null ? "" : identifier).trim();
-  const normalizedAttribute = resolvedDeps.normalizeAttribute(attribute);
-  const attributeRequest = resolvedDeps.parseAttributeRequest(normalizedAttribute);
-  const parsedIdentifier = resolvedDeps.parseTickerRequest(rawIdentifier);
+  const normalizedAttribute = normalizeAttribute(attribute);
+  const attributeRequest = parseAttributeRequest(normalizedAttribute);
+  const parsedIdentifier = parseTickerRequest(rawIdentifier);
   const requestTicker = parsedIdentifier.ticker;
-  const fxPair = resolvedDeps.parseFxTicker(requestTicker);
 
-  const init: RequestInputInit = {
+  return new RequestInput({
     attribute: normalizedAttribute,
     attributeRequest,
     attributeType: attributeRequest.baseAttribute === "isin" ? "isin" : "quote",
-    fxPair,
+    fxPair: parseFxTicker(requestTicker),
     identifier: rawIdentifier,
     infoMode: parsedIdentifier.infoMode,
     ticker: requestTicker,
-  };
-
-  return new RequestInput(init);
+  });
 }
 
 export function buildTypedRequestFromParsedInput(
@@ -194,7 +174,6 @@ export function buildTypedRequestFromResolvedTicker(
   const parsedResolvedInput = createRequestInput(
     resolvedTicker,
     originalInput.attribute,
-    resolvedDeps,
   );
 
   return buildTypedRequestFromParsedInput(
