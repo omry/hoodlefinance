@@ -6,6 +6,7 @@ import {
   RequestInput,
   type ResolvedRequest,
 } from "./request";
+import type { ResolverRegistry } from "./flow/resolve-flow";
 import { IdentifierResolver, Resolver, BaseHFResolver } from "./resolver-classes";
 import {
   createRequestInput,
@@ -1343,21 +1344,21 @@ export class FxAttributeExtractResolver extends Resolver {
   }
 }
 
-// TODO: replace with self-registration pattern so new resolvers don't require
-// editing this map. See "Resolver self-registration" in graph-driven-execution.md.
-export const CONCRETE_RESOLVER_CLASSES_BY_NAME = {
-  EquityAttributeExtractResolver,
-  FirstSuccessReceiver,
-  FxAttributeExtractResolver,
-  LocalFxResolver,
-  LonIsinResolver,
-  GoogleFxResolver,
-  PSEFramesResolver: PseFramesResolver,
-  PSEEdgeResolver: PseEdgeResolver,
-  PseIsinMapResolver,
-  RequestClassifierResolver,
-  YahooIsinSearchResolver,
-  YahooEquityQuoteResolver,
-  YahooFxResolver,
-  TradingviewFundResolver,
-} as const;
+export function createConcreteResolverRegistry(): ResolverRegistry {
+  return {
+    EquityAttributeExtractResolver,
+    FirstSuccessReceiver,
+    FxAttributeExtractResolver,
+    LocalFxResolver,
+    LonIsinResolver,
+    GoogleFxResolver,
+    PSEFramesResolver: PseFramesResolver,
+    PSEEdgeResolver: PseEdgeResolver,
+    PseIsinMapResolver,
+    RequestClassifierResolver,
+    YahooIsinSearchResolver,
+    YahooEquityQuoteResolver,
+    YahooFxResolver,
+    TradingviewFundResolver,
+  } as const;
+}

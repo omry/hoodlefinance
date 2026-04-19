@@ -2,49 +2,13 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  createConcreteResolverRegistry,
   DagPlan,
-  EquityAttributeExtractResolver,
-  FirstSuccessReceiver,
-  FxAttributeExtractResolver,
-  GoogleFxResolver,
-  LocalFxResolver,
-  LonIsinResolver,
-  PseEdgeResolver,
-  PseFramesResolver,
-  PseIsinMapResolver,
   RawRequestInput,
-  RequestClassifierResolver,
   RequestInput,
-  TradingviewFundResolver,
-  YahooIsinSearchResolver,
-  YahooEquityQuoteResolver,
-  YahooFxResolver,
-  ResolveFlow,
 } = require("../dist/ts/core/index.js");
 const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
-const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
-
-function createResolverMaterializationDependencies() {
-  return {
-    resolverClassesByName: {
-      EquityAttributeExtractResolver,
-      FirstSuccessReceiver,
-      FxAttributeExtractResolver,
-      GoogleFxResolver,
-      LocalFxResolver,
-      LonIsinResolver,
-      PSEEdgeResolver: PseEdgeResolver,
-      PSEFramesResolver: PseFramesResolver,
-      PseIsinMapResolver,
-      RequestClassifierResolver,
-      TradingviewFundResolver,
-      YahooIsinSearchResolver,
-      YahooEquityQuoteResolver,
-      YahooFxResolver,
-    },
-    resolverEnv: createStaticResolverServices(),
-  };
-}
+const { createTestEnv } = require("./resolver-service-fixtures.js");
 
 function createRequestInput(identifier, attribute = "price") {
   return new RequestInput(identifier, attribute, {
@@ -86,10 +50,9 @@ function createRequestInput(identifier, attribute = "price") {
 }
 
 test("compiled DagPlan classifies representative examples correctly", () => {
-  const looksLikeIsin = (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value));
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    ...createResolverMaterializationDependencies(),
-    looksLikeIsin,
+    resolverClassesByName: createConcreteResolverRegistry(),
+    resolverEnv: createTestEnv(),
   });
   const rootNode = runtimeLookup.getNode("ROOT");
   const cases = [

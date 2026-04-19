@@ -18,7 +18,12 @@ function createStaticResolverServices(overrides = {}) {
   });
 }
 
+function createTestEnv(overrides = {}) {
+  return createStaticResolverServices(overrides);
+}
+
 module.exports = {
+  createTestEnv,
   createStaticResolverServices,
   createTestResolverServices,
 };

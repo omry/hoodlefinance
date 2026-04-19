@@ -28,27 +28,23 @@ class LeafResolver extends BaseHFResolver {
   }
 }
 
-function createResolverMaterializationDependencies() {
+function createResolverRegistry() {
   return {
-    looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
-    resolverClassesByName: {
-      EquityAttributeExtractResolver,
-      FirstSuccessReceiver,
-      FxAttributeExtractResolver,
-      GoogleFxResolver,
-      LeafResolver,
-      LocalFxResolver,
-      LonIsinResolver,
-      PSEEdgeResolver: PseEdgeResolver,
-      PSEFramesResolver: PseFramesResolver,
-      PseIsinMapResolver,
-      RequestClassifierResolver,
-      TradingviewFundResolver,
-      YahooIsinSearchResolver,
-      YahooEquityQuoteResolver,
-      YahooFxResolver,
-    },
-    resolverEnv: createStaticResolverServices(),
+    EquityAttributeExtractResolver,
+    FirstSuccessReceiver,
+    FxAttributeExtractResolver,
+    GoogleFxResolver,
+    LeafResolver,
+    LocalFxResolver,
+    LonIsinResolver,
+    PSEEdgeResolver: PseEdgeResolver,
+    PSEFramesResolver: PseFramesResolver,
+    PseIsinMapResolver,
+    RequestClassifierResolver,
+    TradingviewFundResolver,
+    YahooIsinSearchResolver,
+    YahooEquityQuoteResolver,
+    YahooFxResolver,
   };
 }
 
@@ -114,7 +110,11 @@ function createValidSubgraphDagSpecs() {
 }
 
 function instantiateResolveFlow(definition) {
-  return new ResolveFlow(definition, createResolverMaterializationDependencies());
+  return new ResolveFlow(
+    definition,
+    createResolverRegistry(),
+    createStaticResolverServices(),
+  );
 }
 
 test("ResolveFlow graph view normalizes and validates DAG structure", async (t) => {

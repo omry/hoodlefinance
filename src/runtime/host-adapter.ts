@@ -1,4 +1,4 @@
-import { CONCRETE_RESOLVER_CLASSES_BY_NAME } from "../core/concrete-resolvers";
+import { createConcreteResolverRegistry } from "../core/concrete-resolvers";
 import {
   ResolveFlow,
   resolveAttribute,
@@ -10,10 +10,8 @@ import { ResolverServices } from "./ResolverServices";
 function createResolveFlow(
   resolverServices: ResolverServices,
 ): ResolveFlow {
-  return new ResolveFlow(DagPlan, {
-    resolverClassesByName: CONCRETE_RESOLVER_CLASSES_BY_NAME,
-    resolverEnv: resolverServices,
-  });
+  const resolverRegistry = createConcreteResolverRegistry();
+  return new ResolveFlow(DagPlan, resolverRegistry, resolverServices);
 }
 
 export function createHoodlefinanceRuntime(

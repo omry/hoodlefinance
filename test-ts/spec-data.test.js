@@ -2,47 +2,11 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  createConcreteResolverRegistry,
   DagPlan,
-  EquityAttributeExtractResolver,
-  FirstSuccessReceiver,
-  FxAttributeExtractResolver,
-  GoogleFxResolver,
-  LocalFxResolver,
-  LonIsinResolver,
-  PseEdgeResolver,
-  PseFramesResolver,
-  PseIsinMapResolver,
-  RequestClassifierResolver,
   ResolveFlow,
-  TradingviewFundResolver,
-  YahooIsinSearchResolver,
-  YahooEquityQuoteResolver,
-  YahooFxResolver,
 } = require("../dist/ts/core/index.js");
-const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
-
-function createResolverMaterializationDependencies() {
-  return {
-    looksLikeIsin: (value) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(String(value)),
-    resolverClassesByName: {
-      EquityAttributeExtractResolver,
-      FirstSuccessReceiver,
-      FxAttributeExtractResolver,
-      GoogleFxResolver,
-      LocalFxResolver,
-      LonIsinResolver,
-      PSEEdgeResolver: PseEdgeResolver,
-      PSEFramesResolver: PseFramesResolver,
-      PseIsinMapResolver,
-      RequestClassifierResolver,
-      TradingviewFundResolver,
-      YahooIsinSearchResolver,
-      YahooEquityQuoteResolver,
-      YahooFxResolver,
-    },
-    resolverEnv: createStaticResolverServices(),
-  };
-}
+const { createTestEnv } = require("./resolver-service-fixtures.js");
 
 test("DagPlan uses the final graph node shape", () => {
   assert.equal(DagPlan.ROOT.id, "ROOT");
@@ -66,7 +30,8 @@ test("DagPlan uses the final graph node shape", () => {
 test("ResolveFlow builds and validates DagPlan directly from the authored graph", () => {
   const resolveFlow = new ResolveFlow(
     DagPlan,
-    createResolverMaterializationDependencies(),
+    createConcreteResolverRegistry(),
+    createTestEnv(),
   );
 
   assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
@@ -88,7 +53,8 @@ test("ResolveFlow validates DAG structure during construction", () => {
           type: "TerminalCollectorPlan",
         },
       },
-      createResolverMaterializationDependencies(),
+      createConcreteResolverRegistry(),
+      createTestEnv(),
     );
   }, /missing child "MISSING"/i);
 });

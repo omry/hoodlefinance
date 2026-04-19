@@ -11,12 +11,6 @@ import {
   PLAN_RESOLVER_CLASSES_BY_NAME,
 } from "../resolver-classes";
 import {
-  registerResolver,
-  type MaterializedResolverRegistry,
-  type ResolverRegistryByCode,
-  type ResolverRegistryByName,
-} from "../resolver-registry";
-import {
   FlowEngine,
   EnvelopeStatus,
   type ExecutionTrace,
@@ -552,42 +546,13 @@ function formatSubgraphTraceBoundary(subgraphId: string): string {
   return `SUBGRAPH:${normalizeCode(subgraphId)}`;
 }
 
-interface ResolveFlowDependencies {
-  registryByCode?: ResolverRegistryByCode;
-  registryByName?: ResolverRegistryByName;
-  resolverClassesByName: Record<string, { fromSpec(code: string): Resolver } | undefined>;
-  resolverEnv?: unknown;
-}
+export type ResolverRegistry = Record<
+  string,
+  ResolverClass | undefined
+>;
 
-function materializeResolversByCode(
-  resolverSpecs: Record<string, string>,
-  deps: ResolveFlowDependencies,
-): MaterializedResolverRegistry {
-  const byCode = deps.registryByCode || {};
-  const byName = deps.registryByName || {};
-
-  Object.keys(resolverSpecs || {}).forEach((code) => {
-    const normalizedCode = normalizeCode(code);
-    const resolverClass = resolverSpecs[code] as string;
-    const ResolverClass = deps.resolverClassesByName[resolverClass] || null;
-
-    if (!ResolverClass) {
-      throw new Error(
-        `Unknown resolver class "${String(resolverClass || "")}" for "${normalizedCode}".`,
-      );
-    }
-
-    const resolver = ResolverClass.fromSpec(normalizedCode);
-
-    if ("resolverEnv" in deps && typeof resolver.initEnv === "function") {
-      resolver.initEnv(deps.resolverEnv);
-    }
-
-    registerResolver(byName, resolver);
-    byCode[normalizedCode] = resolver;
-  });
-
-  return { byCode, byName };
+export interface ResolverClass {
+  fromSpec(code: string): Resolver;
 }
 
 export class ResolveFlow {
@@ -595,7 +560,11 @@ export class ResolveFlow {
   #subgraphsById: Graph.SubgraphRegistry;
   #nodesByCode: Record<string, Resolver>;
 
-  constructor(definition: Graph.Definition, deps: ResolveFlowDependencies) {
+  constructor(
+    definition: Graph.Definition,
+    resolverClassesByName: ResolverRegistry,
+    resolverEnv?: unknown,
+  ) {
     this.graph = buildGraphView(definition);
     this.#subgraphsById = Object.create(null);
     for (const subgraphId of this.graph.getSubgraphIds()) {
@@ -604,8 +573,6 @@ export class ResolveFlow {
         this.#subgraphsById[subgraphId] = subgraph;
       }
     }
-    this.#nodesByCode = Object.create(null);
-
     const resolverSpecsByCode: Record<string, string> = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
       if (isPlanResolverClass(node.type) || isTerminalNodeId(node.id)) {
@@ -615,11 +582,26 @@ export class ResolveFlow {
       resolverSpecsByCode[node.id] = node.type;
     }
 
-    const resolverRegistry = materializeResolversByCode(
-      resolverSpecsByCode,
-      deps,
-    );
-    Object.assign(this.#nodesByCode, resolverRegistry.byCode);
+    this.#nodesByCode = Object.create(null);
+    Object.keys(resolverSpecsByCode).forEach((code) => {
+      const normalizedCode = normalizeCode(code);
+      const resolverClass = resolverSpecsByCode[code] as string;
+      const ResolverClass = resolverClassesByName[resolverClass] || null;
+
+      if (!ResolverClass) {
+        throw new Error(
+          `Unknown resolver class "${String(resolverClass || "")}" for "${normalizedCode}".`,
+        );
+      }
+
+      const resolver = ResolverClass.fromSpec(normalizedCode);
+
+      if (resolverEnv !== undefined && typeof resolver.initEnv === "function") {
+        resolver.initEnv(resolverEnv);
+      }
+
+      this.#nodesByCode[normalizedCode] = resolver;
+    });
 
     for (const node of this.graph.getTopologicalOrder()) {
       if (isPlanResolverClass(node.type)) {

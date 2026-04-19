@@ -30,33 +30,31 @@ const {
 const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
 const { createStaticResolverServices } = require("./resolver-service-fixtures.js");
 
-function createResolverMaterializationDependencies() {
+function createResolverRegistry() {
   return {
-    resolverClassesByName: {
-      EquityAttributeExtractResolver,
-      FirstSuccessReceiver,
-      FxAttributeExtractResolver,
-      GoogleFxResolver,
-      LocalFxResolver,
-      LonIsinResolver,
-      PSEEdgeResolver: PseEdgeResolver,
-      PSEFramesResolver: PseFramesResolver,
-      PseIsinMapResolver,
-      RequestClassifierResolver,
-      YahooIsinSearchResolver,
-      YahooEquityQuoteResolver,
-      YahooFxResolver,
-      TradingviewFundResolver,
-    },
-    resolverEnv: createStaticResolverServices(),
+    EquityAttributeExtractResolver,
+    FirstSuccessReceiver,
+    FxAttributeExtractResolver,
+    GoogleFxResolver,
+    LocalFxResolver,
+    LonIsinResolver,
+    PSEEdgeResolver: PseEdgeResolver,
+    PSEFramesResolver: PseFramesResolver,
+    PseIsinMapResolver,
+    RequestClassifierResolver,
+    YahooIsinSearchResolver,
+    YahooEquityQuoteResolver,
+    YahooFxResolver,
+    TradingviewFundResolver,
   };
 }
 
 function createIntegratedCompiledDag(planSpecsByCode = DagPlan) {
-  return new ResolveFlow(planSpecsByCode, {
-    ...createResolverMaterializationDependencies(),
-    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
-  });
+  return new ResolveFlow(
+    planSpecsByCode,
+    createResolverRegistry(),
+    createStaticResolverServices(),
+  );
 }
 
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
@@ -76,8 +74,8 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
 
 test("getRoutingTableRows classifies example tickers correctly", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    ...createResolverMaterializationDependencies(),
-    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
+    resolverClassesByName: createResolverRegistry(),
+    resolverEnv: createStaticResolverServices(),
   });
 
   const rootNode = runtimeLookup.getNode("ROOT");
@@ -100,8 +98,8 @@ test("getRoutingTableRows classifies example tickers correctly", () => {
 
 test("integrated mode always follows the default PSE quote branch", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    ...createResolverMaterializationDependencies(),
-    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
+    resolverClassesByName: createResolverRegistry(),
+    resolverEnv: createStaticResolverServices(),
   });
   const request = new RequestInput("PSE:BDO@PSE-FRAMES", "price", {
     looksLikeIsin: () => false,
@@ -137,8 +135,8 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
   modifiedSpecs["ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
   const runtimeLookup = createRuntimePlanLookup(modifiedSpecs, {
-    ...createResolverMaterializationDependencies(),
-    looksLikeIsin: (v) => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/i.test(v),
+    resolverClassesByName: createResolverRegistry(),
+    resolverEnv: createStaticResolverServices(),
   });
 
   assert.throws(
