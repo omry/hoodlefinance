@@ -4,8 +4,8 @@ import {
   getGraphNodeSubgraphCallIds,
   normalizeGraphNodeId,
 } from "./graph";
-import type { Resolver } from "../resolver-classes";
 import { type LookupResult } from "./resolver";
+import type { Resolver } from "./core-resolvers";
 import {
   buildPlanNodeFromSpec,
   PLAN_RESOLVER_CLASSES_BY_NAME,
