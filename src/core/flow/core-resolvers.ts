@@ -1,0 +1,379 @@
+import { normalizeGraphNodeId } from "./graph";
+import {
+  createResolutionFailure,
+  createResolutionSuccess,
+  describePlanSource,
+  type ExecutionContext,
+  type ResolutionResult,
+  type ResolverPlanOptions,
+  RoutingNodeKind,
+  type SelectNextContext,
+} from "./resolver";
+
+type SelectedNodes = Resolver[];
+
+function formatRoutingPlanTreeLabel(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeNodeCode(nodeCode: string): string {
+  return normalizeGraphNodeId(nodeCode);
+}
+
+function formatResolverError(error: unknown): string {
+  return String(error instanceof Error ? error.message : (error ?? ""));
+}
+
+export class Resolver {
+  readonly code: string;
+  readonly name: string;
+  readonly traceLabel?: string;
+
+  constructor(code = "") {
+    this.code = code || "";
+    this.name = this.code;
+  }
+
+  getExampleInput(): string | null {
+    return null;
+  }
+
+  getRoutingDescription(): string | null {
+    return null;
+  }
+
+  canHandle(_request: unknown): boolean {
+    return true;
+  }
+
+  getResolverClass(): string {
+    return this.name;
+  }
+
+  getResolverPath(): string {
+    return String(this.traceLabel || this.name || "").trim();
+  }
+
+  describe(request: unknown): string {
+    return describePlanSource({
+      routeClass: this.getResolverClass(),
+      routePath: this.getResolverPath(),
+    });
+  }
+
+  getRoutingNodeKind(): RoutingNodeKind {
+    return RoutingNodeKind.Leaf;
+  }
+
+  // Called by the engine on routing nodes to determine which child(ren) to
+  // execute next. Returns all children for StepPlan, 0-or-1 for Switch/
+  // FirstSuccess. context.selectedNodeCodes tracks already-dispatched children
+  // across repeated calls within the same traversal. Throws on leaf resolvers —
+  // the engine checks getRoutingNodeKind() first so this is never reached.
+  selectNext(
+    _request: unknown,
+    _context: SelectNextContext = {},
+  ): SelectedNodes {
+    throw new Error(
+      `Resolver "${this.name}" does not support selectNext(); only routing nodes with explicit selection semantics may select next children.`,
+    );
+  }
+
+  describeRoutingNode(): string {
+    const name = formatRoutingPlanTreeLabel(this.name);
+    const description = String(this.getRoutingDescription() || "").trim();
+    return description ? `${name} - ${description}` : name;
+  }
+
+  getGroupedSourceNames(_request: unknown): string[] {
+    return [];
+  }
+
+  matchesSourceName(source: string): boolean {
+    return (
+      String(this.name || "")
+        .trim()
+        .toUpperCase() ===
+      String(source || "")
+        .trim()
+        .toUpperCase()
+    );
+  }
+
+  getGroupedSourceNamesForDisplay(source: string, request: unknown): string[] {
+    return this.matchesSourceName(source)
+      ? this.getGroupedSourceNames(request)
+      : [];
+  }
+
+  resolve(
+    request: unknown,
+    context?: ExecutionContext,
+  ): ResolutionResult<unknown> {
+    const startedAtMs = Date.now();
+
+    try {
+      const rawValue = this.execute(request, context);
+      const value = this.resolveTransformValue(rawValue, request);
+      return createResolutionSuccess(value, Date.now() - startedAtMs);
+    } catch (error) {
+      return createResolutionFailure(
+        error,
+        Date.now() - startedAtMs,
+        formatResolverError,
+      );
+    }
+  }
+
+  execute(_request: unknown, _context?: ExecutionContext): unknown {
+    throw new Error(`Resolver "${this.name}" must implement execute().`);
+  }
+
+  protected resolveTransformValue(value: unknown, _request: unknown): unknown {
+    return value;
+  }
+
+  // Optional one-time resolver initialization hook. `_env` is an opaque object
+  // that can carry runtime capabilities, callbacks, or other host-provided
+  // data. The flow layer does not interpret its shape.
+  initEnv(_env: unknown): void {}
+}
+
+export abstract class ResolverPlan extends Resolver {
+  readonly nodes: Resolver[];
+  readonly routeClass: string;
+  readonly routePath: string;
+
+  constructor(
+    name: string,
+    nodes: Resolver[],
+    options: ResolverPlanOptions = {},
+  ) {
+    super(name);
+    this.nodes = nodes || [];
+    this.routeClass = options.routeClass || name;
+    this.routePath = options.routePath || "";
+  }
+
+  getNodesForRequest(request: unknown): Resolver[] {
+    const nodes = (this.nodes || []).slice();
+
+    if (!nodes.length) {
+      return nodes;
+    }
+
+    const firstMatchingIndex = nodes.findIndex(
+      (node) => !node.canHandle || node.canHandle(request),
+    );
+
+    if (firstMatchingIndex < 0) {
+      return nodes;
+    }
+
+    return nodes.slice(firstMatchingIndex);
+  }
+
+  getHandleableNodesForRequest(request: unknown): Resolver[] {
+    return (this.nodes || []).filter(
+      (node) => !node.canHandle || node.canHandle(request),
+    );
+  }
+
+  getRoutingNodes(): Resolver[] {
+    return (this.nodes || []).slice();
+  }
+
+  canHandle(request: unknown): boolean {
+    return this.getHandleableNodesForRequest(request).length > 0;
+  }
+
+  protected getSelectedNodeCodes(
+    context: SelectNextContext | null | undefined,
+  ): Set<string> {
+    if (!context) {
+      return new Set<string>();
+    }
+
+    if (!(context.selectedNodeCodes instanceof Set)) {
+      context.selectedNodeCodes = new Set<string>();
+    }
+
+    return context.selectedNodeCodes;
+  }
+
+  protected getNodeSelectionCode(
+    node: Pick<Resolver, "code" | "name"> | null | undefined,
+  ): string {
+    return String((node && (node.code || node.name)) || "")
+      .trim()
+      .toUpperCase();
+  }
+
+  protected hasSelectedNode(
+    node: Resolver | null | undefined,
+    context: SelectNextContext | null | undefined,
+  ): boolean {
+    const selectionCode = this.getNodeSelectionCode(node);
+    return (
+      !!selectionCode && this.getSelectedNodeCodes(context).has(selectionCode)
+    );
+  }
+
+  protected markSelectedNode(
+    node: Resolver | null | undefined,
+    context: SelectNextContext | null | undefined,
+  ): Resolver | null {
+    if (!node || !context) {
+      return node || null;
+    }
+
+    const selectionCode = this.getNodeSelectionCode(node);
+    if (!selectionCode) {
+      return node;
+    }
+
+    const selectedNodeCodes = this.getSelectedNodeCodes(context);
+    selectedNodeCodes.add(selectionCode);
+
+    return node;
+  }
+
+  protected getUnselectedNodes(
+    nodes: Array<Resolver | null | undefined>,
+    context: SelectNextContext | null | undefined,
+  ): Resolver[] {
+    return nodes.filter(
+      (node): node is Resolver =>
+        !!node && !this.hasSelectedNode(node, context),
+    );
+  }
+
+  abstract getRoutingNodeKind(): RoutingNodeKind;
+
+  buildRoutePath(request: unknown): string {
+    if (this.routePath) {
+      return this.routePath;
+    }
+
+    return this.getNodesForRequest(request)
+      .map((node) => node.name)
+      .join(" -> ");
+  }
+
+  getGroupedSourceNames(_request: unknown): string[] {
+    const groupedNames: string[] = [];
+
+    this.nodes.forEach((node) => {
+      const groupedName = String(
+        (node && ("traceLabel" in node ? node.traceLabel : node.name)) || "",
+      )
+        .trim()
+        .toUpperCase();
+
+      if (
+        groupedName &&
+        groupedName !==
+          String(this.name || "")
+            .trim()
+            .toUpperCase() &&
+        !groupedNames.includes(groupedName)
+      ) {
+        groupedNames.push(groupedName);
+      }
+    });
+
+    return groupedNames;
+  }
+
+  override describe(request: unknown): string {
+    return describePlanSource({
+      routeClass: this.routeClass,
+      routePath: this.buildRoutePath(request),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Plan kind base classes — driver dispatch table uses these to determine how
+// each graph node is traversed: switch selects one child explicitly via
+// selectNext(), step returns all children in one selection, try-each selects
+// one child per call in order with fallback.
+// ---------------------------------------------------------------------------
+
+export class SwitchPlan extends ResolverPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return RoutingNodeKind.Switch;
+  }
+
+  selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
+    if (this.getSelectedNodeCodes(context).size > 0) {
+      return [];
+    }
+
+    const matchingNodes = this.getHandleableNodesForRequest(request);
+
+    if (!matchingNodes.length) {
+      return [];
+    }
+
+    if (matchingNodes.length > 1) {
+      throw new Error(
+        `Resolver plan "${this.name}" matched multiple nodes: ${matchingNodes
+          .map((node) => node.name)
+          .join(", ")}.`,
+      );
+    }
+
+    const selectedNode = this.markSelectedNode(
+      matchingNodes[0] ?? null,
+      context,
+    );
+    return selectedNode ? [selectedNode] : [];
+  }
+}
+
+export class StepPlan extends ResolverPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return RoutingNodeKind.Step;
+  }
+
+  getNodesForRequest(_request: unknown): Resolver[] {
+    return (this.nodes || []).slice();
+  }
+
+  selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
+    const routingNodes = this.getRoutingNodes();
+    const blockingNode = routingNodes.find(
+      (node) => node?.canHandle && !node.canHandle(request),
+    );
+
+    if (blockingNode) {
+      throw new Error(
+        `Resolver plan "${this.name}" has child "${blockingNode.name}" that cannot handle the current output.`,
+      );
+    }
+
+    return this.getUnselectedNodes(routingNodes, context);
+  }
+}
+
+export class FirstSuccessPlan extends ResolverPlan {
+  getRoutingNodeKind(): RoutingNodeKind {
+    return RoutingNodeKind.TryEach;
+  }
+
+  selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
+    const remainingNodes = this.getUnselectedNodes(
+      this.getHandleableNodesForRequest(request),
+      context,
+    );
+
+    const selectedNode = this.markSelectedNode(
+      remainingNodes[0] ?? null,
+      context,
+    );
+    return selectedNode ? [selectedNode] : [];
+  }
+}
