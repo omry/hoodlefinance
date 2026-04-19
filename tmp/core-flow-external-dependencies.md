@@ -26,31 +26,19 @@ Implemented solution:
 - `ResolverServices` remains in `src/core/`.
 - HoodleFinance code passes `ResolverServices` through the generic env slot.
 
-### 1. `src/core/resolver-registry.ts`
+### Completed / outdated checklist item: `src/core/resolver-registry.ts`
 
-- Used by:
-  - `src/core/flow/resolve-flow.ts`
-- Current usage:
-  - `registerResolver`
-  - `MaterializedResolverRegistry`
-  - `ResolverRegistryByCode`
-  - `ResolverRegistryByName`
-- Why it breaks isolation:
-  - `ResolveFlow` depends on registry helpers defined outside the flow package,
-    even though the logic is generic.
+- Current checked status:
+  - `src/core/flow/resolve-flow.ts` no longer imports
+    `src/core/resolver-registry.ts`
+  - no imports from `src/core/flow/*` to `../resolver-registry` remain
+- Impact on `src/core/flow` isolation:
+  - no longer a flow-layer external dependency
+- Followup note:
+  - `src/core/resolver-registry.ts` now appears to be orphaned or dead code,
+    but that is a separate cleanup question from `core.flow` isolation
 
-Recommended solution:
-
-- Move the generic registry helpers and types into `src/core/flow`.
-- Preferred shape:
-  - create `src/core/flow/registry.ts`
-  - move `registerResolver`, `ResolverRegistryByCode`,
-    `ResolverRegistryByName`, and `MaterializedResolverRegistry` there
-- Update both `flow/resolve-flow.ts` and any remaining generic callers to
-  import from `./registry`.
-- Leave no registry imports from `../resolver-registry` inside `src/core/flow`.
-
-### 2. `src/core/resolver-classes.ts`
+### 1. `src/core/resolver-classes.ts`
 
 - Used by:
   - `src/core/flow/resolve-flow.ts`
@@ -83,9 +71,11 @@ Recommended solution:
 1. `resolver-services`
    completed
 2. `resolver-registry`
-   generic helper move, low semantic risk
+   completed as a `core.flow` isolation item; check separately whether the file
+   is now dead
 3. `resolver-classes`
-   largest coupling point, requires moving plan-compilation ownership
+   still open; largest remaining coupling point and requires moving
+   plan-compilation ownership
 
 ## Key Constraint
 
