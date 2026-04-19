@@ -48,12 +48,6 @@ export interface ExecutionContext {
   callSubgraph(subgraphId: string, input: object): LookupResult;
 }
 
-// TODO: rename routeClass/routePath to drop legacy "route" terminology once spec format is updated
-export interface ResolverPlanOptions {
-  routeClass?: string;
-  routePath?: string;
-}
-
 export interface SelectNextContext {
   // Tracks child nodes already returned during the current routing-node traversal.
   selectedNodeCodes?: Set<string>;

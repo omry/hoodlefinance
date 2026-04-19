@@ -1,11 +1,7 @@
 const { ResolveFlow } = require("../dist/ts/core/index.js");
 
-function createRuntimePlanLookup(definition, deps) {
-  const flow = new ResolveFlow(
-    definition,
-    deps.registry,
-    deps.resolverEnv,
-  );
+function createRuntimePlanLookup(definition, registry, resolverEnv) {
+  const flow = new ResolveFlow(definition, registry, resolverEnv);
 
   return {
     getNode: (code) => flow.getResolver(code),

@@ -91,10 +91,7 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
 }
 
 test("getRoutingTableRows classifies example tickers correctly", () => {
-  const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    registry: createResolverRegistry(),
-    resolverEnv: createStaticResolverServices(),
-  });
+  const runtimeLookup = createRuntimePlanLookup(DagPlan, createResolverRegistry(), createStaticResolverServices());
 
   const rootNode = runtimeLookup.getNode("ROOT");
   const deps = {
@@ -115,10 +112,7 @@ test("getRoutingTableRows classifies example tickers correctly", () => {
 });
 
 test("integrated mode always follows the default PSE quote branch", () => {
-  const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    registry: createResolverRegistry(),
-    resolverEnv: createStaticResolverServices(),
-  });
+  const runtimeLookup = createRuntimePlanLookup(DagPlan, createResolverRegistry(), createStaticResolverServices());
   const request = new RequestInput({
     attribute: "price",
     attributeRequest: {
@@ -156,10 +150,7 @@ test("integrated routing errors on ambiguous default attribute plans", () => {
   const modifiedSpecs = JSON.parse(JSON.stringify(DagPlan));
   modifiedSpecs["ATTRIBUTE"].next.push("AMBIGUOUS-EXTRA");
   modifiedSpecs["AMBIGUOUS-EXTRA"] = ambiguousSpec["AMBIGUOUS-EXTRA"];
-  const runtimeLookup = createRuntimePlanLookup(modifiedSpecs, {
-    registry: createResolverRegistry(),
-    resolverEnv: createStaticResolverServices(),
-  });
+  const runtimeLookup = createRuntimePlanLookup(modifiedSpecs, createResolverRegistry(), createStaticResolverServices());
 
   assert.throws(
     () =>

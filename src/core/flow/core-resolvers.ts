@@ -5,7 +5,6 @@ import {
   describePlanSource,
   type ExecutionContext,
   type ResolutionResult,
-  type ResolverPlanOptions,
   RoutingNodeKind,
   type SelectNextContext,
 } from "./resolver";
@@ -143,18 +142,10 @@ export class Resolver {
 
 export abstract class ResolverPlan extends Resolver {
   readonly nodes: Resolver[];
-  readonly routeClass: string;
-  readonly routePath: string;
 
-  constructor(
-    name: string,
-    nodes: Resolver[],
-    options: ResolverPlanOptions = {},
-  ) {
+  constructor(name: string, nodes: Resolver[]) {
     super(name);
     this.nodes = nodes || [];
-    this.routeClass = options.routeClass || name;
-    this.routePath = options.routePath || "";
   }
 
   getNodesForRequest(request: unknown): Resolver[] {
@@ -253,10 +244,6 @@ export abstract class ResolverPlan extends Resolver {
   abstract getRoutingNodeKind(): RoutingNodeKind;
 
   buildRoutePath(request: unknown): string {
-    if (this.routePath) {
-      return this.routePath;
-    }
-
     return this.getNodesForRequest(request)
       .map((node) => node.name)
       .join(" -> ");
@@ -289,7 +276,7 @@ export abstract class ResolverPlan extends Resolver {
 
   override describe(request: unknown): string {
     return describePlanSource({
-      routeClass: this.routeClass,
+      routeClass: this.name,
       routePath: this.buildRoutePath(request),
     });
   }

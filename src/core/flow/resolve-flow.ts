@@ -698,7 +698,7 @@ export class ResolveFlow {
     const nodes = getGraphNodeNextIds(spec)
       .map((nodeCode) => isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
       .filter((n): n is Resolver => n !== null);
-    const compiledNode = new (Ctor as PlanConstructor)(normalizedCode, nodes, {});
+    const compiledNode = new (Ctor as PlanConstructor)(normalizedCode, nodes);
 
     this.#nodesByCode[normalizedCode] = compiledNode;
 

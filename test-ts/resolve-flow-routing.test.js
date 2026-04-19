@@ -10,10 +10,7 @@ const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
 const { createTestEnv } = require("./resolver-service-fixtures.js");
 
 test("compiled DagPlan classifies representative examples correctly", () => {
-  const runtimeLookup = createRuntimePlanLookup(DagPlan, {
-    registry: createConcreteResolverRegistry(),
-    resolverEnv: createTestEnv(),
-  });
+  const runtimeLookup = createRuntimePlanLookup(DagPlan, createConcreteResolverRegistry(), createTestEnv());
   const rootNode = runtimeLookup.getNode("ROOT");
   const cases = [
     { example: "GOOG", expectedClassification: "equity" },

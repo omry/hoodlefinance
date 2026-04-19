@@ -1,8 +1,7 @@
 import { Resolver, ResolverPlan } from "./core-resolvers";
-import type { ResolverPlanOptions } from "./resolver";
 
 export type LeafConstructor = new(code: string) => Resolver;
-export type PlanConstructor = new(code: string, nodes: Resolver[], options?: ResolverPlanOptions) => Resolver;
+export type PlanConstructor = new(code: string, nodes: Resolver[]) => Resolver;
 
 export class NodeFactoryRegistry {
   readonly #entries: Map<string, LeafConstructor | PlanConstructor> = new Map();

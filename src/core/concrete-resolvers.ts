@@ -16,7 +16,6 @@ import {
   TickerQuoteResolutionPlan,
 } from "./resolver-classes";
 import { FirstSuccessPlan, StepPlan } from "./flow/core-resolvers";
-// TODO: merge resolver-classes.ts into this file
 import {
   IdentifierResolver,
   Resolver,

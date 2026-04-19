@@ -2,7 +2,7 @@ import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 
 import { getGraphNodeNextIds, type Graph } from "./flow/graph";
-export type { ExecutionContext, ResolverPlanOptions, SelectNextContext } from "./flow/resolver";
+export type { ExecutionContext, SelectNextContext } from "./flow/resolver";
 export {
   FirstSuccessPlan,
   Resolver,
@@ -17,7 +17,7 @@ import {
   StepPlan,
   SwitchPlan,
 } from "./flow/core-resolvers";
-import type { ResolverPlanOptions, SelectNextContext } from "./flow/resolver";
+import type { SelectNextContext } from "./flow/resolver";
 
 export class IdentifierResolver extends Resolver {}
 
@@ -103,12 +103,8 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
     );
   }
 
-  constructor(
-    name: string,
-    nodes: Resolver[],
-    options: ResolverPlanOptions = {},
-  ) {
-    super(name, nodes, options);
+  constructor(name: string, nodes: Resolver[]) {
+    super(name, nodes);
     if (this.nodes.length < 2) {
       throw new Error(
         `FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`,
@@ -172,7 +168,6 @@ export function buildPlanNodeFromSpec(
   const Ctor = PlanClass as unknown as new (
     name: string,
     nodes: (Resolver | null)[],
-    options: ResolverPlanOptions,
   ) => ResolverPlan;
-  return new Ctor(code, getGraphNodeNextIds(spec).map(resolveNode), {});
+  return new Ctor(code, getGraphNodeNextIds(spec).map(resolveNode));
 }
