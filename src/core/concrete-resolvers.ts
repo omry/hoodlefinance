@@ -286,9 +286,6 @@ export class DirectIdentifierResolver extends IdentifierResolver {
     }
   }
 
-  static fromSpec(code: string): DirectIdentifierResolver {
-    return new this(code);
-  }
 }
 
 export class RequestClassifierResolver extends IdentifierResolver {
@@ -363,9 +360,6 @@ export class RequestClassifierResolver extends IdentifierResolver {
     }
   }
 
-  static fromSpec(code: string): RequestClassifierResolver {
-    return new this(code);
-  }
 }
 
 export class FirstSuccessReceiver extends IdentifierResolver {
@@ -380,9 +374,6 @@ export class FirstSuccessReceiver extends IdentifierResolver {
     return createResolutionSuccess(request as object, Date.now() - startedAtMs);
   }
 
-  static fromSpec(code: string): FirstSuccessReceiver {
-    return new this(code);
-  }
 }
 
 const PSE_ISIN_MAP_CACHE_KEY = "hoodlefinance:ts:pseIsinMap";
@@ -532,9 +523,6 @@ export class PseIsinMapResolver extends IdentifierResolver {
     );
   }
 
-  static fromSpec(code: string): PseIsinMapResolver {
-    return new this(code);
-  }
 }
 
 export class YahooIsinSearchResolver extends IdentifierResolver {
@@ -613,9 +601,6 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     );
   }
 
-  static fromSpec(code: string): YahooIsinSearchResolver {
-    return new this(code);
-  }
 }
 
 export class LocalFxResolver extends BaseHFResolver {
@@ -641,9 +626,6 @@ export class LocalFxResolver extends BaseHFResolver {
     return buildSameCurrencyQuote((request as FxRequest).fxPair);
   }
 
-  static fromSpec(code: string): LocalFxResolver {
-    return new this(code);
-  }
 }
 
 export class GoogleFxResolver extends BaseHFResolver {
@@ -705,9 +687,6 @@ export class GoogleFxResolver extends BaseHFResolver {
     return decorateFxQuote(quote, fxPair);
   }
 
-  static fromSpec(code: string): GoogleFxResolver {
-    return new this(code);
-  }
 }
 
 const PSE_QUOTE_CACHE_TTL_SECONDS = 300;
@@ -820,9 +799,6 @@ export class PseFramesResolver extends BaseHFResolver {
     return quote;
   }
 
-  static fromSpec(code: string): PseFramesResolver {
-    return new this(code);
-  }
 }
 
 export class PseEdgeResolver extends BaseHFResolver {
@@ -954,9 +930,6 @@ export class PseEdgeResolver extends BaseHFResolver {
     return quote;
   }
 
-  static fromSpec(code: string): PseEdgeResolver {
-    return new this(code);
-  }
 }
 
 abstract class BaseYahooQuoteResolver extends BaseHFResolver {
@@ -1104,9 +1077,6 @@ export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
     return "TICKER";
   }
 
-  static fromSpec(code: string): YahooEquityQuoteResolver {
-    return new this(code);
-  }
 }
 
 export class YahooFxResolver extends BaseYahooQuoteResolver {
@@ -1130,9 +1100,6 @@ export class YahooFxResolver extends BaseYahooQuoteResolver {
     return "FORCED:YAHOO";
   }
 
-  static fromSpec(code: string): YahooFxResolver {
-    return new this(code);
-  }
 }
 
 export class TradingviewFundResolver extends BaseHFResolver {
@@ -1211,9 +1178,6 @@ export class TradingviewFundResolver extends BaseHFResolver {
     return quote;
   }
 
-  static fromSpec(code: string): TradingviewFundResolver {
-    return new this(code);
-  }
 }
 
 export class EquityAttributeExtractResolver extends Resolver {
@@ -1258,9 +1222,6 @@ export class EquityAttributeExtractResolver extends Resolver {
     return createResolutionSuccess({ extractedValue: value }, 0);
   }
 
-  static fromSpec(code: string): EquityAttributeExtractResolver {
-    return new this(code);
-  }
 }
 
 function isLonIsinAttributeRequest(request: unknown): boolean {
@@ -1314,9 +1275,6 @@ export class LonIsinResolver extends Resolver {
     }
   }
 
-  static fromSpec(code: string): LonIsinResolver {
-    return new this(code);
-  }
 }
 
 export class FxAttributeExtractResolver extends Resolver {
@@ -1343,9 +1301,6 @@ export class FxAttributeExtractResolver extends Resolver {
     return createResolutionSuccess({ extractedValue: value }, 0);
   }
 
-  static fromSpec(code: string): FxAttributeExtractResolver {
-    return new this(code);
-  }
 }
 
 export function createConcreteResolverRegistry(): ResolverRegistry {

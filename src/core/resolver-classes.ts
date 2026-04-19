@@ -1,7 +1,7 @@
 import type { ResolvedRequest } from "./request";
 import { RawRequestInput, RequestInput } from "./request";
 
-import type { Graph } from "./flow/graph";
+import { getGraphNodeNextIds, type Graph } from "./flow/graph";
 export type { ExecutionContext, ResolverPlanOptions } from "./flow/resolver";
 export {
   FirstSuccessPlan,
@@ -14,6 +14,7 @@ export {
 import {
   FirstSuccessPlan,
   Resolver,
+  ResolverPlan,
   ResolverPlanOptions,
   type SelectNextContext,
   StepPlan,
@@ -158,7 +159,6 @@ export function buildPlanNodeFromSpec(
   code: string,
   spec: Graph.Node,
   resolveNode: (nodeCode: string) => Resolver | null,
-  overrides: Record<string, unknown> | null | undefined,
 ): Resolver {
   const PlanClass =
     PLAN_RESOLVER_CLASSES_BY_NAME[
@@ -171,5 +171,10 @@ export function buildPlanNodeFromSpec(
     );
   }
 
-  return PlanClass.fromSpec(code, spec, resolveNode, overrides);
+  const Ctor = PlanClass as unknown as new (
+    name: string,
+    nodes: (Resolver | null)[],
+    options: ResolverPlanOptions,
+  ) => ResolverPlan;
+  return new Ctor(code, getGraphNodeNextIds(spec).map(resolveNode), {});
 }

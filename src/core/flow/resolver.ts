@@ -213,10 +213,6 @@ export class Resolver {
   // that can carry runtime capabilities, callbacks, or other host-provided
   // data. The flow layer does not interpret its shape.
   initEnv(_env: unknown): void {}
-
-  static fromSpec(code: string, ..._args: unknown[]): Resolver {
-    return new this(code);
-  }
 }
 
 export abstract class ResolverPlan extends Resolver {
@@ -372,37 +368,6 @@ export abstract class ResolverPlan extends Resolver {
     });
   }
 
-  static getSpecNodeCodes(spec: Graph.Node): string[] {
-    return getGraphNodeNextIds(spec);
-  }
-
-  static fromSpec(
-    code: string,
-    spec: Graph.Node,
-    resolverMap:
-      | Record<string, Resolver>
-      | ((nodeCode: string) => Resolver | null),
-    overrides: Record<string, unknown> | null | undefined,
-  ): ResolverPlan {
-    const resolveNodeByCode =
-      typeof resolverMap === "function"
-        ? resolverMap
-        : (nodeCode: string) =>
-            resolverMap[normalizeNodeCode(nodeCode)] || null;
-
-    const Ctor = this as unknown as new (
-      name: string,
-      nodes: Resolver[],
-      options: ResolverPlanOptions,
-    ) => ResolverPlan;
-    return new Ctor(
-      code,
-      this.getSpecNodeCodes(spec).map((nodeCode: string) =>
-        resolveNodeByCode(nodeCode),
-      ) as Resolver[],
-      (overrides || {}) as ResolverPlanOptions,
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------

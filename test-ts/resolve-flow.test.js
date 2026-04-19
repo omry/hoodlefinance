@@ -82,9 +82,6 @@ class FakeResolver {
     };
   }
 
-  static fromSpec(code) {
-    return new this(code);
-  }
 }
 
 // Minimal two-node graph: ROOT(FakeResolver) -> TERMINAL

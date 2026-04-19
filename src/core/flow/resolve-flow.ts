@@ -546,10 +546,10 @@ function formatSubgraphTraceBoundary(subgraphId: string): string {
   return `SUBGRAPH:${normalizeCode(subgraphId)}`;
 }
 
-export type ResolverRegistry = Record<string, ResolverClass | undefined>;
+export type ResolverRegistry = Record<string, ResolverConstructor | undefined>;
 
-export interface ResolverClass {
-  fromSpec(code: string): Resolver;
+export interface ResolverConstructor {
+  new(code: string): Resolver;
 }
 
 export class ResolveFlow {
@@ -583,15 +583,15 @@ export class ResolveFlow {
     Object.keys(resolverSpecsByCode).forEach((code) => {
       const normalizedCode = normalizeCode(code);
       const resolverClass = resolverSpecsByCode[code] as string;
-      const ResolverClass = resolverClassesByName[resolverClass] || null;
+      const ResolverCtor = resolverClassesByName[resolverClass] || null;
 
-      if (!ResolverClass) {
+      if (!ResolverCtor) {
         throw new Error(
           `Unknown resolver class "${String(resolverClass || "")}" for "${normalizedCode}".`,
         );
       }
 
-      const resolver = ResolverClass.fromSpec(normalizedCode);
+      const resolver = new ResolverCtor(normalizedCode);
 
       if (resolverEnv !== undefined && typeof resolver.initEnv === "function") {
         resolver.initEnv(resolverEnv);
@@ -714,7 +714,6 @@ export class ResolveFlow {
       spec,
       (nodeCode) =>
         isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode),
-      null,
     );
 
     this.#nodesByCode[normalizedCode] = compiledNode;

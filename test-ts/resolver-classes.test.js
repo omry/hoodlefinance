@@ -70,8 +70,8 @@ test("ResolverPlan describe reports the route without building a runtime plan", 
   assert.equal(plan.describe(createRequestInput()), "QUOTE -> YAHOO -> IBKR");
 });
 
-test("Resolver.fromSpec uses the graph node id", () => {
-  const resolver = Resolver.fromSpec("ROOT");
+test("Resolver constructor uses the graph node id", () => {
+  const resolver = new Resolver("ROOT");
 
   assert.equal(resolver.name, "ROOT");
   assert.equal(resolver.code, "ROOT");
@@ -196,7 +196,6 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
         "TRADINGVIEW-FUND": tradingview,
         YAHOO: yahoo,
       })[nodeCode],
-    null,
   );
 
   assert.equal(plan instanceof TickerQuoteResolutionPlan, true);
@@ -226,7 +225,6 @@ test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime ma
       type: "RoutingPlan",
     },
     () => null,
-    null,
   );
 
   assert.equal(plan.nodes.length, 1);
@@ -249,7 +247,6 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
         ATTRIBUTE: defaultAttributeRoot,
         "IDENTIFIER-ROOT": identifierRoot,
       })[nodeCode],
-    null,
   );
 
   assert.equal(plan instanceof StepPlan, true);
@@ -279,7 +276,6 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
         "ISIN:PSE": pseMap,
         "ISIN:YAHOO": yahooIsin,
       })[nodeCode],
-    null,
   );
 
   assert.equal(plan instanceof FirstSuccessPlan, true);
@@ -316,7 +312,6 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
         "PSE-EDGE": pseEdge,
         "PSE-FRAMES": pseFrames,
       })[nodeCode],
-    null,
   );
 
   assert.equal(plan instanceof PseQuoteResolutionPlan, true);
