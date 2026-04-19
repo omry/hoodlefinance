@@ -15,6 +15,8 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
 
 - [ ] Evaluate the option of `symbol:ibkr`, which will resolve a stock to the IBKR symbol.
   - Source: `TODO.md`
+- [ ] Support direct FX normalization syntax like `=HOODLEFINANCE("EUR", "price@USD")` so mixed portfolios with cash balances and stocks can normalize into a single target currency.
+  - Motivation: useful for IBKR-style portfolios that mix currency positions and equities.
 - [ ] Evaluate whether `HOODLEFINANCE()` should support multi-attribute spill output so one formula can return a compact record such as price, currency, unit, source, and instrument type together.
   - Source: `TODO.md`
 - [ ] Evaluate whether this project should adopt a TypeScript-to-Apps-Script workflow for stronger typing in complex routing and request-shape code.

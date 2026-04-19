@@ -8,85 +8,6 @@ const {
   extractIsinFromRequestInput,
 } = require("../dist/ts/core/index.js");
 
-function createDeps() {
-  return {
-    extractTickerExchange(ticker) {
-      const parts = String(ticker).split(":");
-      return parts.length > 1 ? parts[0].trim().toUpperCase() : "";
-    },
-    extractYahooExchangeFromSymbol(symbol) {
-      return String(symbol).endsWith(".PS") ? "PSE" : "";
-    },
-    looksLikeIsraeliFundYahooSymbol(symbol) {
-      return String(symbol).startsWith("KSM.");
-    },
-    looksLikeIsin(value) {
-      return /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value));
-    },
-    normalizeAttribute(attribute) {
-      return String(attribute == null ? "price" : attribute).trim() || "price";
-    },
-    normalizeTickerWithoutIsin(ticker) {
-      return String(ticker).trim().toUpperCase();
-    },
-    parseAttributeRequest(attribute) {
-      return {
-        baseAttribute: String(attribute).split("@")[0].toLowerCase(),
-        outputCode: "",
-        rawAttribute: String(attribute),
-        wantsOutputCurrency: false,
-      };
-    },
-    parseFxTicker(ticker) {
-      const value = String(ticker).trim().toUpperCase();
-      if (value !== "EURUSD") {
-        return null;
-      }
-
-      return {
-        baseCanonicalCode: "EUR",
-        quoteCanonicalCode: "USD",
-        yahooChartSymbol: "EURUSD=X",
-      };
-    },
-    parseTickerRequest(ticker) {
-      const value = String(ticker).trim();
-      const atIndex = value.lastIndexOf("@");
-      const candidateTicker = atIndex > 0 ? value.slice(0, atIndex).trim() : "";
-      const candidateSource =
-        atIndex > 0
-          ? value
-              .slice(atIndex + 1)
-              .trim()
-              .toUpperCase()
-          : "";
-
-      if (candidateTicker && candidateSource === "?") {
-        return {
-          infoMode: "source-name",
-          ticker: candidateTicker,
-        };
-      }
-
-      if (candidateTicker && candidateSource) {
-        return {
-          infoMode: "source-override",
-          ticker: candidateTicker,
-        };
-      }
-
-      if (candidateTicker) {
-        return {
-          infoMode: "source-list",
-          ticker: candidateTicker,
-        };
-      }
-
-      return { infoMode: "", ticker: value };
-    },
-  };
-}
-
 test("createRequestInput parses request state without classifying it", () => {
   const equity = createRequestInput("GOOG", "price");
   const fx = createRequestInput("EURUSD", "price");
@@ -106,23 +27,21 @@ test("createRequestInput strips unsupported source suffixes", () => {
 });
 
 test("isin extraction stays simple and explicit", () => {
-  const deps = createDeps();
   const isinInput = createRequestInput("ISIN:US02079K1079", "price");
 
   assert.equal(
-    extractIsinFromRequestInput(isinInput, deps.looksLikeIsin),
+    extractIsinFromRequestInput(isinInput, (value) =>
+      /^[A-Z]{2}[A-Z0-9]{10}$/i.test(String(value)),
+    ),
     "US02079K1079",
   );
 });
 
 test("buildTypedRequestFromParsedInput returns the expected typed request variants", () => {
-  const deps = createDeps();
-
   const pseRequest = buildTypedRequestFromParsedInput(
     createRequestInput("PSE:BDO", "price"),
     createRequestInput("PSE:BDO", "price"),
     12,
-    deps,
   );
   assert.equal(pseRequest.requestType, "equity");
   assert.equal(pseRequest.exchange, "PSE");
@@ -132,7 +51,6 @@ test("buildTypedRequestFromParsedInput returns the expected typed request varian
     createRequestInput("EURUSD", "price"),
     createRequestInput("EURUSD", "price"),
     3,
-    deps,
   );
   assert.equal(fxRequest.requestType, "fx");
   assert.equal(fxRequest.baseCurrency, "EUR");
@@ -142,7 +60,6 @@ test("buildTypedRequestFromParsedInput returns the expected typed request varian
     createRequestInput("TLV:KSMF59", "price"),
     createRequestInput("KSM.F59.TA", "price"),
     7,
-    deps,
   );
   assert.equal(equityRequest.requestType, "equity");
   assert.equal(equityRequest.yahooSymbol, "KSM.F59.TA");
@@ -150,13 +67,11 @@ test("buildTypedRequestFromParsedInput returns the expected typed request varian
 });
 
 test("buildTypedRequestFromResolvedTicker reuses RequestInput creation", () => {
-  const deps = createDeps();
   const originalInput = createRequestInput("US02079K1079", "price");
   const resolved = buildTypedRequestFromResolvedTicker(
     originalInput,
     "GOOG",
     5,
-    deps,
   );
 
   assert.equal(resolved.requestType, "equity");

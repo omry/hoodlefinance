@@ -2,7 +2,6 @@ import {
   EquityRequest,
   FxRequest,
   RequestInput,
-  type FxPair,
   type ResolvedRequest,
   looksLikeIsin,
 } from "./request";
@@ -21,30 +20,11 @@ import {
 import { parseFxTicker } from "./fx-normalization";
 import { normalizeTickerWithoutIsin } from "./ticker-normalization";
 
-interface RequestBuildingDependencies {
-  extractTickerExchange(ticker: string): string;
-  extractYahooExchangeFromSymbol(symbol: string): string;
-  looksLikeIsraeliFundYahooSymbol(symbol: string): boolean;
-  looksLikeIsin(value: string): boolean;
-  normalizeTickerWithoutIsin(ticker: string): string;
-  parseFxTicker(ticker: string): FxPair | null;
-}
-
-const DEFAULT_REQUEST_BUILDING_DEPENDENCIES: RequestBuildingDependencies = {
-  extractTickerExchange,
-  extractYahooExchangeFromSymbol,
-  looksLikeIsraeliFundYahooSymbol,
-  looksLikeIsin,
-  normalizeTickerWithoutIsin,
-  parseFxTicker,
-};
-
 export function extractIsinFromRequestInput(
   input: Pick<RequestInput, "ticker">,
-  looksLikeIsin?: (value: string) => boolean,
+  isIsin?: (value: string) => boolean,
 ): string {
-  const resolvedLooksLikeIsin =
-    looksLikeIsin || DEFAULT_REQUEST_BUILDING_DEPENDENCIES.looksLikeIsin;
+  const resolvedLooksLikeIsin = isIsin || looksLikeIsin;
   const ticker = String(input.ticker || "").trim();
   const upperTicker = ticker.toUpperCase();
 
@@ -57,9 +37,9 @@ export function extractIsinFromRequestInput(
 
 export function extractIsinCountryCode(
   input: Pick<RequestInput, "ticker">,
-  looksLikeIsin?: (value: string) => boolean,
+  isIsin?: (value: string) => boolean,
 ): string {
-  const isin = extractIsinFromRequestInput(input, looksLikeIsin);
+  const isin = extractIsinFromRequestInput(input, isIsin);
 
   return isin ? isin.slice(0, 2).toUpperCase() : "";
 }
@@ -89,18 +69,12 @@ export function buildTypedRequestFromParsedInput(
   originalInput: Pick<RequestInput, "attribute" | "identifier">,
   parsedInput: Pick<RequestInput, "fxPair" | "ticker">,
   identifierResolutionMs: number,
-  deps?: Partial<RequestBuildingDependencies>,
 ): ResolvedRequest {
-  const resolvedDeps = {
-    ...DEFAULT_REQUEST_BUILDING_DEPENDENCIES,
-    ...(deps || {}),
-  };
   const resolvedTicker = String(parsedInput.ticker || "").trim();
-  const fxPair =
-    parsedInput.fxPair || resolvedDeps.parseFxTicker(resolvedTicker);
-  const explicitExchange = resolvedDeps.extractTickerExchange(resolvedTicker);
+  const fxPair = parsedInput.fxPair || parseFxTicker(resolvedTicker);
+  const explicitExchange = extractTickerExchange(resolvedTicker);
   const yahooExchangeFromResolvedTicker =
-    resolvedDeps.extractYahooExchangeFromSymbol(resolvedTicker);
+    extractYahooExchangeFromSymbol(resolvedTicker);
 
   if (explicitExchange === "PSE") {
     const symbol = parseExchangePrefixedSymbol(resolvedTicker, "PSE");
@@ -139,17 +113,14 @@ export function buildTypedRequestFromParsedInput(
     });
   }
 
-  const normalizedYahooTicker =
-    resolvedDeps.normalizeTickerWithoutIsin(resolvedTicker);
-  const yahooExchange = resolvedDeps.extractYahooExchangeFromSymbol(
-    normalizedYahooTicker,
-  );
+  const normalizedYahooTicker = normalizeTickerWithoutIsin(resolvedTicker);
+  const yahooExchange = extractYahooExchangeFromSymbol(normalizedYahooTicker);
   const symbol = explicitExchange
     ? String(resolvedTicker).split(":").slice(1).join(":").trim().toUpperCase()
     : normalizedYahooTicker;
 
   return new EquityRequest({
-    allowTradingviewFallback: resolvedDeps.looksLikeIsraeliFundYahooSymbol(
+    allowTradingviewFallback: looksLikeIsraeliFundYahooSymbol(
       normalizedYahooTicker,
     ),
     attribute: originalInput.attribute,
@@ -165,12 +136,7 @@ export function buildTypedRequestFromResolvedTicker(
   originalInput: Pick<RequestInput, "attribute" | "identifier">,
   resolvedTicker: string,
   identifierResolutionMs: number,
-  deps?: Partial<RequestBuildingDependencies>,
 ): ResolvedRequest {
-  const resolvedDeps = {
-    ...DEFAULT_REQUEST_BUILDING_DEPENDENCIES,
-    ...(deps || {}),
-  };
   const parsedResolvedInput = createRequestInput(
     resolvedTicker,
     originalInput.attribute,
@@ -180,6 +146,5 @@ export function buildTypedRequestFromResolvedTicker(
     originalInput,
     parsedResolvedInput,
     identifierResolutionMs,
-    resolvedDeps,
   );
 }
