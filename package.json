@@ -11,7 +11,7 @@
   },
   "packageManager": "npm@11.9.0",
   "scripts": {
-    "test": "npm run build:ts && node --test test/*.test.js test-ts/*.test.js test-ts/core-flow/*.test.js",
+    "test": "npm run build:ts && node tools/run-node-tests.js",
     "test:hoodlefinance": "node --test test/hoodlefinance.test.js",
     "test:release": "node --test test/release.test.js",
     "test:sync-demo-sheet": "node --test test/sync-demo-sheet.test.js",
