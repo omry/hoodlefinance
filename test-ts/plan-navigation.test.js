@@ -37,14 +37,13 @@ function createResolverNode(name, extra = {}) {
     buildRuntimePlan() {
       return { nodes: [], routeClass: "", routePath: "", routeState: {} };
     },
-    code: name,
+    id: name,
     describe() {
       return name;
     },
     getRoutingNodeKind() {
       return "leaf";
     },
-    name,
     routingDescription: "",
     routingLabel: name,
     sourceName: name,
@@ -62,7 +61,7 @@ test("selectSinglePlanNode handles single, missing, and ambiguous selections", (
         getNodesForRequest() {
           return [yahoo];
         },
-        name: "QUOTE",
+        id: "QUOTE",
       },
       request,
     ),
@@ -76,7 +75,7 @@ test("selectSinglePlanNode handles single, missing, and ambiguous selections", (
           getNodesForRequest() {
             return [];
           },
-          name: "QUOTE",
+          id: "QUOTE",
         },
         request,
       ),
@@ -90,7 +89,7 @@ test("selectSinglePlanNode handles single, missing, and ambiguous selections", (
           getNodesForRequest() {
             return [createResolverNode("YAHOO"), createResolverNode("IBKR")];
           },
-          name: "QUOTE",
+          id: "QUOTE",
         },
         request,
       ),
@@ -114,7 +113,7 @@ test("resolveRoutingNode unwraps routing plans until it reaches a concrete node"
         return "switch";
       },
       isRoutingNode: true,
-      name: "ROOT",
+      id: "ROOT",
       nodes: [yahoo],
     },
     request,
@@ -139,7 +138,7 @@ test("resolveRoutingNode also unwraps linear step plans", () => {
         return "step";
       },
       isRoutingNode: true,
-      name: "ROOT",
+      id: "ROOT",
       nodes: [classifier],
     },
     request,
@@ -161,7 +160,7 @@ test("resolver node name matching and lookup search by name", () => {
       return [yahoo, ibkr];
     },
     isRoutingNode: false,
-    name: "ROOT",
+    id: "ROOT",
     nodes: [yahoo, ibkr],
   };
 
@@ -185,7 +184,7 @@ test("findNamedResolver searches raw searchable children, not only selector-filt
       return [ibkr];
     },
     isRoutingNode: false,
-    name: "ROOT",
+    id: "ROOT",
     nodes: [yahoo, ibkr],
     routingDescription: "",
     routingLabel: "ROOT",

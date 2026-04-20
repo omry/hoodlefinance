@@ -86,13 +86,13 @@ class FakeResolver extends FlowNode {
   }
 
   describe() {
-    return this.name;
+    return this.id;
   }
 
   executeRouteRequest() {
     return {
       status: "success",
-      value: { code: this.code },
+      value: { code: this.id },
     };
   }
 
@@ -241,7 +241,7 @@ test("Flowinstantiates and registers resolvers by class name", () => {
 
   const resolver = flow.getResolver("ROOT");
   assert.ok(resolver instanceof FakeResolver);
-  assert.equal(resolver.name, "ROOT");
+  assert.equal(resolver.id, "ROOT");
 });
 
 test("Flowexposes declared subgraphs from explicit graph metadata", () => {

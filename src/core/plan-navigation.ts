@@ -2,7 +2,7 @@ import { type FlowNode, FlowJunction } from "./resolver-classes";
 import { RoutingNodeKind } from "./flow";
 
 function formatNodeName(node: FlowNode | null | undefined): string {
-  return String((node && node.name) || "").trim() || "<unknown>";
+  return String((node && node.id) || "").trim() || "<unknown>";
 }
 
 export function isResolverPlan(node: unknown): node is FlowJunction {
@@ -12,7 +12,7 @@ export function isResolverPlan(node: unknown): node is FlowJunction {
 }
 
 export function selectSinglePlanNode<TNode extends FlowNode>(
-  plan: Pick<FlowJunction, "getNodesForRequest" | "name"> | null | undefined,
+  plan: Pick<FlowJunction, "getNodesForRequest" | "id"> | null | undefined,
   request: unknown,
   options: {
     allowNone?: boolean;
@@ -32,7 +32,7 @@ export function selectSinglePlanNode<TNode extends FlowNode>(
     throw options.onNone
       ? options.onNone()
       : new Error(
-          `Resolver plan "${String((plan && plan.name) || "")}" matched no nodes.`,
+          `Resolver plan "${String((plan && plan.id) || "")}" matched no nodes.`,
         );
   }
 
@@ -40,7 +40,7 @@ export function selectSinglePlanNode<TNode extends FlowNode>(
     throw options.onMultiple
       ? options.onMultiple(selectedNodes)
       : new Error(
-          `Resolver plan "${String((plan && plan.name) || "")}" matched multiple nodes: ${selectedNodes
+          `Resolver plan "${String((plan && plan.id) || "")}" matched multiple nodes: ${selectedNodes
             .map(formatNodeName)
             .join(", ")}.`,
         );
@@ -74,13 +74,13 @@ export function resolveRoutingNode<TNode extends FlowNode>(
         options.onNone
           ? options.onNone(routingNode)
           : new Error(
-              `Resolver plan "${String((routingNode && routingNode.name) || "")}" matched no nodes.`,
+              `Resolver plan "${String((routingNode && routingNode.id) || "")}" matched no nodes.`,
             ),
       onMultiple: (selectedNodes) =>
         options.onMultiple
           ? options.onMultiple(routingNode, selectedNodes)
           : new Error(
-              `Resolver plan "${String((routingNode && routingNode.name) || "")}" matched multiple nodes.`,
+              `Resolver plan "${String((routingNode && routingNode.id) || "")}" matched multiple nodes.`,
             ),
     });
 
@@ -93,7 +93,7 @@ export function resolveRoutingNode<TNode extends FlowNode>(
 }
 
 export function matchesResolverName(
-  node: Pick<FlowNode, "name"> | null | undefined,
+  node: Pick<FlowNode, "id"> | null | undefined,
   name: string,
 ): boolean {
   const normalizedName = String(name || "")
@@ -103,7 +103,7 @@ export function matchesResolverName(
   return !!(
     normalizedName &&
     node &&
-    String(node.name || "")
+    String(node.id || "")
       .trim()
       .toUpperCase() === normalizedName
   );
@@ -118,7 +118,7 @@ function listSearchablePlanNodes(
   }
 
   return (node.nodes || []).filter((childNode: FlowNode) => {
-    if (!childNode?.canHandle || !request) {
+    if (!request) {
       return true;
     }
 
@@ -139,12 +139,7 @@ export function findNamedResolver(
     return null;
   }
 
-  if (
-    requireCanHandle &&
-    request &&
-    node.canHandle &&
-    !node.canHandle(request)
-  ) {
+  if (requireCanHandle && request && !node.canHandle(request)) {
     return null;
   }
 

@@ -176,9 +176,11 @@ Concrete changes resulting from this review, to be tracked for implementation:
 - ~~`ResolverPlan` → `FlowJunction`; `SwitchPlan` → `SwitchJunction`, `StepPlan` → `StepJunction`, `FirstSuccessPlan` → `FirstSuccessJunction` (or shorter functional names)~~
 - ~~`Resolver.resolve()` → `FlowNode.execute()`; `Resolver.execute()` → `FlowNode.run()`~~
 - ~~`RoutingNodeKind.TryEach` string value: `"try each"` → `"try_each"`~~
+- `RoutingNodeKind` → `NodeKind`; `getRoutingNodeKind()` → `getNodeKind()`
+- Audit all remaining `resolve`-prefixed filenames and identifiers in `src/core/flow/` (e.g. `resolve-flow.ts`); rename to `flow`-prefixed equivalents. (`resolve` is HoodleFinance vocabulary, not flow-lib vocabulary.)
 
 **Identifier cleanup**
-- Remove `code` and `name` from `FlowNode`; use `id` throughout
+- ~~Remove `code` and `name` from `FlowNode`; use `id` throughout~~
 
 **Dead code removal**
 - Delete `initEnv()` from `FlowNode`, the instantiation loop in `Flow`, and any concrete subclasses that override it
@@ -194,13 +196,14 @@ Concrete changes resulting from this review, to be tracked for implementation:
   plain null check followed by a `canHandle()` call~~
 - ~~`EnvelopeStatus.TerminalFailure`: remove from the public `Envelope` status union; encode
   TryEach exhaustion as an error string (`"exhausted all options in node X [Y1, Y2, Y3]"`)~~
-- ~~`Envelope.didReachStopNode`: make private / unexported~~ (renamed to `_didReachStopNode`; still exported on the interface)
+- `Envelope._didReachStopNode`: remove from the `Envelope` interface entirely; `Envelope` is user-facing so internal engine bookkeeping must not appear on it. Move the flag to a separate internal envelope type used only within the engine.
 
 **API surface**
 - `FlowJunction.getNodesForRequest` / `getHandleableNodesForRequest`: collapse to one method
 - `Flow` constructor: accept optional `{ entryNodeId, exitNodeId }` config (defaults to
   `ROOT` / `TERMINAL`)
 - Decide on Leaf → Step conversion (see Leaf / Junction section above); implement if agreed
+- Consider a multi-output switch: today `SwitchJunction` throws if `selectNext()` returns more than one child. A node-level flag (e.g. `fanOut: true`) could allow a switch to select multiple children and fan execution out to all of them. Worth evaluating once the Leaf → Step question is settled.
 
 **Graph types**
 - Separate `Graph.Definition` (raw input schema) from the normalized internal representation

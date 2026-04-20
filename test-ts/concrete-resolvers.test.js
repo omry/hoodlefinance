@@ -128,8 +128,8 @@ test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requ
   const resolver = new DirectIdentifierResolver("DIRECT-IDENTIFIER");
   const materializedResolver = new DirectIdentifierResolver("ROOT");
 
-  assert.equal(resolver.name, "DIRECT-IDENTIFIER");
-  assert.equal(materializedResolver.name, "ROOT");
+  assert.equal(resolver.id, "DIRECT-IDENTIFIER");
+  assert.equal(materializedResolver.id, "ROOT");
 
   const success = resolver.execute(createRequestInput({ ticker: "GOOG" }));
   assert.equal(success.status, "success");
@@ -207,47 +207,47 @@ test("Concrete resolvers keep direct default ids and honor spec ids when materia
   ];
 
   for (const [directResolver, materializedResolver, defaultName] of cases) {
-    assert.equal(directResolver.name, defaultName);
-    assert.notEqual(materializedResolver.name, defaultName);
+    assert.equal(directResolver.id, defaultName);
+    assert.notEqual(materializedResolver.id, defaultName);
   }
 
-  assert.equal(new LocalFxResolver("LOCAL-FX").name, "LOCAL-FX");
-  assert.equal(new GoogleFxResolver("FX:GOOGLE").name, "FX:GOOGLE");
+  assert.equal(new LocalFxResolver("LOCAL-FX").id, "LOCAL-FX");
+  assert.equal(new GoogleFxResolver("FX:GOOGLE").id, "FX:GOOGLE");
   assert.equal(
-    new PseFramesResolver("QUOTE:PSE-FRAMES").name,
+    new PseFramesResolver("QUOTE:PSE-FRAMES").id,
     "QUOTE:PSE-FRAMES",
   );
   assert.equal(
-    new PseEdgeResolver("QUOTE:PSE-EDGE").name,
+    new PseEdgeResolver("QUOTE:PSE-EDGE").id,
     "QUOTE:PSE-EDGE",
   );
   assert.equal(
-    new PseIsinMapResolver("ISIN:PSE-MAP").name,
+    new PseIsinMapResolver("ISIN:PSE-MAP").id,
     "ISIN:PSE-MAP",
   );
   assert.equal(
-    new YahooIsinSearchResolver("ISIN:SEARCH").name,
+    new YahooIsinSearchResolver("ISIN:SEARCH").id,
     "ISIN:SEARCH",
   );
   assert.equal(
-    new YahooEquityQuoteResolver("QUOTE:YAHOO").name,
+    new YahooEquityQuoteResolver("QUOTE:YAHOO").id,
     "QUOTE:YAHOO",
   );
-  assert.equal(new YahooFxResolver("FX:YAHOO").name, "FX:YAHOO");
+  assert.equal(new YahooFxResolver("FX:YAHOO").id, "FX:YAHOO");
   assert.equal(
-    new TradingviewFundResolver("FUND:TRADINGVIEW").name,
+    new TradingviewFundResolver("FUND:TRADINGVIEW").id,
     "FUND:TRADINGVIEW",
   );
   assert.equal(
-    new EquityAttributeExtractResolver("EXTRACT:QUOTE").name,
+    new EquityAttributeExtractResolver("EXTRACT:QUOTE").id,
     "EXTRACT:QUOTE",
   );
   assert.equal(
-    new LonIsinResolver("ATTRIBUTE:LON-ISIN").name,
+    new LonIsinResolver("ATTRIBUTE:LON-ISIN").id,
     "ATTRIBUTE:LON-ISIN",
   );
   assert.equal(
-    new FxAttributeExtractResolver("EXTRACT:QUOTE-FX").name,
+    new FxAttributeExtractResolver("EXTRACT:QUOTE-FX").id,
     "EXTRACT:QUOTE-FX",
   );
 });

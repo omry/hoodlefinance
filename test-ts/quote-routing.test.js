@@ -30,7 +30,6 @@ const {
   TradingviewFundResolver,
   DagPlan,
   RequestInput,
-  getRoutingTableRows,
   ResolveFlow,
 } = require("../dist/ts/core/index.js");
 const { createRuntimePlanLookup } = require("./runtime-plan-fixtures.js");
@@ -80,7 +79,7 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
 
   if (candidatePlans.length > 1) {
     throw new Error(
-      `Ambiguous default attribute route for classification "${String(outcome.value.classification || "").toLowerCase()}": ${candidatePlans.map((plan) => plan.name).join(", ")}.`,
+      `Ambiguous default attribute route for classification "${String(outcome.value.classification || "").toLowerCase()}": ${candidatePlans.map((plan) => plan.id).join(", ")}.`,
     );
   }
 
@@ -90,26 +89,6 @@ function buildTypedAttributePlan(runtimeLookup, requestInput) {
   };
 }
 
-test("getRoutingTableRows classifies example tickers correctly", () => {
-  const runtimeLookup = createRuntimePlanLookup(DagPlan, createResolverRegistry(), createStaticResolverServices());
-
-  const rootNode = runtimeLookup.getNode("ROOT");
-  const deps = {
-    classifyRequest(rawInput) {
-      const outcome = rootNode.execute(rawInput);
-      if (outcome.status !== "success") throw new Error(outcome.error);
-      return outcome.value;
-    },
-  };
-
-  const rows = getRoutingTableRows(deps);
-  const findRow = (example) => rows.find((r) => r.example === example);
-
-  assert.equal(findRow("GOOG").classification, "equity");
-  assert.equal(findRow("EURUSD").classification, "fx");
-  assert.equal(findRow("USDUSD").classification, "fx");
-  assert.equal(findRow("PSE:BDO").classification, "equity");
-});
 
 test("integrated mode always follows the default PSE quote branch", () => {
   const runtimeLookup = createRuntimePlanLookup(DagPlan, createResolverRegistry(), createStaticResolverServices());
@@ -129,7 +108,7 @@ test("integrated mode always follows the default PSE quote branch", () => {
   });
   const plan = buildTypedAttributePlan(runtimeLookup, request);
 
-  assert.equal(plan.attributePlan.name, "ATTRIBUTE:EQUITY");
+  assert.equal(plan.attributePlan.id, "ATTRIBUTE:EQUITY");
 });
 
 test("integrated routing errors on ambiguous default attribute plans", () => {

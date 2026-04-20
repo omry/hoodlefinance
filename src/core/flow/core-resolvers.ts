@@ -14,13 +14,11 @@ function formatResolverError(error: unknown): string {
 }
 
 export class FlowNode {
-  readonly code: string;
-  readonly name: string;
+  readonly id: string;
   readonly traceLabel?: string;
 
-  constructor(code = "") {
-    this.code = code || "";
-    this.name = this.code;
+  constructor(id = "") {
+    this.id = id || "";
   }
 
   canHandle(_request: unknown): boolean {
@@ -41,7 +39,7 @@ export class FlowNode {
     _context: SelectNextContext = {},
   ): SelectedNodes {
     throw new Error(
-      `FlowNode "${this.name}" does not support selectNext(); only routing nodes with explicit selection semantics may select next children.`,
+      `FlowNode "${this.id}" does not support selectNext(); only routing nodes with explicit selection semantics may select next children.`,
     );
   }
 
@@ -64,7 +62,7 @@ export class FlowNode {
   }
 
   run(_request: unknown, _context?: ExecutionContext): unknown {
-    throw new Error(`FlowNode "${this.name}" must implement run().`);
+    throw new Error(`FlowNode "${this.id}" must implement run().`);
   }
 
   // Optional one-time resolver initialization hook. `_env` is an opaque object
@@ -126,21 +124,11 @@ export abstract class FlowJunction extends FlowNode {
   }
 
   protected getNodeSelectionCode(
-    node: Pick<FlowNode, "code" | "name"> | null | undefined,
+    node: FlowNode | null | undefined,
   ): string {
-    return String((node && (node.code || node.name)) || "")
+    return String((node && node.id) || "")
       .trim()
       .toUpperCase();
-  }
-
-  protected hasSelectedNode(
-    node: FlowNode | null | undefined,
-    context: SelectNextContext | null | undefined,
-  ): boolean {
-    const selectionCode = this.getNodeSelectionCode(node);
-    return (
-      !!selectionCode && this.getSelectedNodeCodes(context).has(selectionCode)
-    );
   }
 
   protected markSelectedNode(
@@ -166,10 +154,12 @@ export abstract class FlowJunction extends FlowNode {
     nodes: Array<FlowNode | null | undefined>,
     context: SelectNextContext | null | undefined,
   ): FlowNode[] {
-    return nodes.filter(
-      (node): node is FlowNode =>
-        !!node && !this.hasSelectedNode(node, context),
-    );
+    const selected = this.getSelectedNodeCodes(context);
+    return nodes.filter((node): node is FlowNode => {
+      if (!node) return false;
+      const code = this.getNodeSelectionCode(node);
+      return !code || !selected.has(code);
+    });
   }
 
   abstract getRoutingNodeKind(): RoutingNodeKind;
@@ -200,8 +190,8 @@ export class SwitchJunction extends FlowJunction {
 
     if (matchingNodes.length > 1) {
       throw new Error(
-        `FlowJunction "${this.name}" matched multiple nodes: ${matchingNodes
-          .map((node) => node.name)
+        `FlowJunction "${this.id}" matched multiple nodes: ${matchingNodes
+          .map((node) => node.id)
           .join(", ")}.`,
       );
     }
@@ -231,7 +221,7 @@ export class StepJunction extends FlowJunction {
 
     if (blockingNode) {
       throw new Error(
-        `FlowJunction "${this.name}" has child "${blockingNode.name}" that cannot handle the current output.`,
+        `FlowJunction "${this.id}" has child "${blockingNode.id}" that cannot handle the current output.`,
       );
     }
 

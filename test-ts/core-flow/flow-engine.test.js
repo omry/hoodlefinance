@@ -28,7 +28,7 @@ function mockFlow(nodes) {
   function rememberSelected(context, code) {
     const selectedNodeCodes = getSelectedNodeCodes(context);
     selectedNodeCodes.add(code);
-    return { code };
+    return { id: code };
   }
 
   function defaultSelectNext(nodeId, entry, request, context = {}) {
@@ -588,7 +588,7 @@ test("switch node: engine routes only to the matching child", () => {
     getResolver: (id) => {
       if (id === "SWITCH") {
         return {
-          selectNext: () => [{ code: "BRANCH-B" }],
+          selectNext: () => [{ id: "BRANCH-B" }],
           getRoutingNodeKind: () => "switch",
         };
       }
@@ -767,7 +767,7 @@ test("try-each node: engine tries children in order and returns first success", 
             }
 
             context.selectedNodeCodes.add(nextCode);
-            return [{ code: nextCode }];
+            return [{ id: nextCode }];
           },
         };
       if (id === "PROVIDER-A")
@@ -846,7 +846,7 @@ test("try-each node: engine skips children that cannot handle the output", () =>
             }
 
             context.selectedNodeCodes.add(nextCode);
-            return [{ code: nextCode }];
+            return [{ id: nextCode }];
           },
         };
       if (id === "A")
@@ -942,7 +942,7 @@ test("try-each node: Failure from exhausted try-each propagates through ancestor
     getResolver: (id) => {
       if (id === "ROOT")
         return {
-          selectNext: () => [{ code: "TRY-EACH-A" }],
+          selectNext: () => [{ id: "TRY-EACH-A" }],
           getRoutingNodeKind: () => "switch",
         };
       if (id === "TRY-EACH-A")
@@ -958,7 +958,7 @@ test("try-each node: Failure from exhausted try-each propagates through ancestor
             }
 
             context.selectedNodeCodes.add("PROVIDER");
-            return [{ code: "PROVIDER" }];
+            return [{ id: "PROVIDER" }];
           },
         };
       if (id === "PROVIDER")
@@ -1137,7 +1137,7 @@ test("step node: throws when a child cannot handle the output", () => {
               );
             }
 
-            return [{ code: "STEP-A" }, { code: "STEP-B" }];
+            return [{ id: "STEP-A" }, { id: "STEP-B" }];
           },
         };
       }

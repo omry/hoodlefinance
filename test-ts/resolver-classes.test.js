@@ -64,8 +64,8 @@ function createLeafResolver(name, extra = {}) {
 test("FlowNode constructor uses the graph node id", () => {
   const resolver = new FlowNode("ROOT");
 
-  assert.equal(resolver.name, "ROOT");
-  assert.equal(resolver.code, "ROOT");
+  assert.equal(resolver.id, "ROOT");
+  assert.equal(resolver.id, "ROOT");
 });
 
 test("FlowJunction maintains standard fallback sequence and full routing-tree visibility", () => {
@@ -77,11 +77,11 @@ test("FlowJunction maintains standard fallback sequence and full routing-tree vi
   const request = createRequestInput();
 
   assert.deepEqual(
-    plan.getNodesForRequest(request).map((node) => node.name),
+    plan.getNodesForRequest(request).map((node) => node.id),
     ["YAHOO", "IBKR"],
   );
   assert.deepEqual(
-    plan.getRoutingNodes().map((node) => node.name),
+    plan.getRoutingNodes().map((node) => node.id),
     ["YAHOO", "IBKR"],
   );
 });
@@ -98,11 +98,11 @@ test("StepPlan forwards to all children without request-based selection", () => 
   assert.deepEqual(
     plan
       .getNodesForRequest(new RawRequestInput("GOOG", "price"))
-      .map((node) => node.name),
+      .map((node) => node.id),
     ["FIRST", "SECOND"],
   );
   assert.deepEqual(
-    plan.getNodesForRequest(createRequestInput()).map((node) => node.name),
+    plan.getNodesForRequest(createRequestInput()).map((node) => node.id),
     ["FIRST", "SECOND"],
   );
 });
@@ -262,19 +262,19 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
 
   assert.equal(plan instanceof FirstSuccessJunction, true);
   assert.deepEqual(
-    plan.nodes.map((node) => node && node.name),
+    plan.nodes.map((node) => node && node.id),
     ["ISIN:PSE", "ISIN:YAHOO"],
   );
   assert.deepEqual(
     plan
       .getNodesForRequest(createRequestInput({ ticker: "PHY077751022" }))
-      .map((node) => node.name),
+      .map((node) => node.id),
     ["ISIN:PSE", "ISIN:YAHOO"],
   );
   assert.deepEqual(
     plan
       .getNodesForRequest(createRequestInput({ ticker: "US02079K1079" }))
-      .map((node) => node.name),
+      .map((node) => node.id),
     ["ISIN:YAHOO"],
   );
 });
@@ -298,7 +298,7 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
 
   assert.equal(plan instanceof PseQuoteResolutionPlan, true);
   assert.deepEqual(
-    plan.nodes.map((node) => node && node.name),
+    plan.nodes.map((node) => node && node.id),
     ["PSE-FRAMES", "PSE-EDGE"],
   );
 });

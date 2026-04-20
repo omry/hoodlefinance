@@ -19,6 +19,5 @@ export * from "./request-building";
 export * from "./request-parsing";
 export * from "./hf-resolvers";
 export * from "./resolver-classes";
-export * from "./routing-introspection";
 export * from "./spec-data";
 export * from "./text-http-response";

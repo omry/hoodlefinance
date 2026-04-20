@@ -59,7 +59,7 @@ export class FlowEngine {
       selectNext(
         request: unknown,
         context?: SelectNextContext,
-      ): Array<{ code: string }>;
+      ): Array<{ id: string }>;
     },
     request: object,
     childNodes: Graph.Node[],
@@ -75,7 +75,7 @@ export class FlowEngine {
     }
 
     return selectedResolvers.map((selectedResolver) => {
-      const selectedCode = String(selectedResolver.code || "").trim();
+      const selectedCode = String(selectedResolver.id || "").trim();
       if (!selectedCode) {
         throw new Error(
           `Routing node "${node.id}" selected a child without a code.`,
@@ -147,7 +147,7 @@ export class FlowEngine {
       selectNext(
         request: unknown,
         context?: SelectNextContext,
-      ): Array<{ code: string }>;
+      ): Array<{ id: string }>;
     },
     envelope: Envelope,
     graph: Graph.View,
@@ -263,7 +263,7 @@ export class FlowEngine {
     // children in order (try each). Leaf nodes resolve values directly.
     let outEnvelope: Envelope;
     if (kind !== RoutingNodeKind.Leaf) {
-      if (!resolver.canHandle(envelope.value)) {
+      if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
         return { value: envelope.value, status: EnvelopeStatus.Failure };
       }
       outEnvelope = { value: envelope.value, status: EnvelopeStatus.Success };

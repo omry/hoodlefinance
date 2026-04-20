@@ -161,6 +161,7 @@ function buildTopologicalOrder(
 
 function requireSingleBoundaryNode(
   kind: "root" | "terminal",
+  requiredId: string,
   nodes: Graph.Node[],
 ): Graph.Node {
   if (nodes.length !== 1) {
@@ -174,7 +175,6 @@ function requireSingleBoundaryNode(
   }
 
   const firstNode = nodes[0] as Graph.Node;
-  const requiredId = kind === "root" ? "ROOT" : "TERMINAL";
 
   if (firstNode.id !== requiredId) {
     throw new Error(
@@ -382,6 +382,8 @@ function createGraphView(
   nodesById: Record<string, GraphTopologyNode>,
   topologicalOrder: Graph.Node[],
   subgraphsById: Graph.SubgraphRegistry,
+  entryNodeId: string,
+  exitNodeId: string,
 ): Graph.View {
   return {
     definition,
@@ -416,10 +418,12 @@ function createGraphView(
         : [];
     },
     getRoot(): Graph.Node | null {
-      return isGraphNodeEntry(definition.ROOT) ? definition.ROOT : null;
+      const node = definition[entryNodeId];
+      return isGraphNodeEntry(node) ? node : null;
     },
     getTerminal(): Graph.Node | null {
-      return isGraphNodeEntry(definition.TERMINAL) ? definition.TERMINAL : null;
+      const node = definition[exitNodeId];
+      return isGraphNodeEntry(node) ? node : null;
     },
     getTopologicalOrder(): Graph.Node[] {
       return topologicalOrder.slice();
@@ -435,7 +439,14 @@ function createGraphView(
   };
 }
 
-function buildGraphView(definition: Graph.Definition): Graph.View {
+export interface FlowConfig {
+  entryNodeId?: string;
+  exitNodeId?: string;
+}
+
+function buildGraphView(definition: Graph.Definition, config?: FlowConfig): { view: Graph.View; exitNodeId: string } {
+  const entryNodeId = normalizeGraphNodeId(config?.entryNodeId || "") || "ROOT";
+  const exitNodeId = normalizeGraphNodeId(config?.exitNodeId || "") || "TERMINAL";
   const normalizedEntries = normalizeDefinitionEntries(definition);
   const normalizedSubgraphs = normalizeSubgraphRegistry(definition);
   const normalizedDefinition: Graph.Definition = Object.create(null);
@@ -468,10 +479,12 @@ function buildGraphView(definition: Graph.Definition): Graph.View {
   const topologicalOrder = buildTopologicalOrder(nodes, nodesById);
   const root = requireSingleBoundaryNode(
     "root",
+    entryNodeId,
     nodes.filter((node) => (nodesById[node.id]?.parentIds.length || 0) === 0),
   );
   const terminal = requireSingleBoundaryNode(
     "terminal",
+    exitNodeId,
     nodes.filter((node) => (node.next || []).length === 0),
   );
 
@@ -506,12 +519,16 @@ function buildGraphView(definition: Graph.Definition): Graph.View {
     normalizedDefinition.__subgraphs__ = normalizedSubgraphs;
   }
 
-  return createGraphView(
+  const view = createGraphView(
     normalizedDefinition,
     nodesById,
     topologicalOrder,
     normalizedSubgraphs,
+    entryNodeId,
+    exitNodeId,
   );
+
+  return { view, exitNodeId };
 }
 
 function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
@@ -525,9 +542,6 @@ function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
   return graphNode;
 }
 
-function isTerminalNodeId(code: string): boolean {
-  return normalizeGraphNodeId(code) === "TERMINAL";
-}
 
 function formatSubgraphTraceBoundary(subgraphId: string): string {
   return `SUBGRAPH:${normalizeGraphNodeId(subgraphId)}`;
@@ -538,13 +552,17 @@ export class Flow {
   #registry: NodeFactoryRegistry;
   #subgraphsById: Graph.SubgraphRegistry;
   #nodesByCode: Record<string, FlowNode>;
+  #exitNodeId: string;
 
   constructor(
     definition: Graph.Definition,
     registry: NodeFactoryRegistry,
     resolverEnv?: unknown,
+    config?: FlowConfig,
   ) {
-    this.graph = buildGraphView(definition);
+    const { view, exitNodeId } = buildGraphView(definition, config);
+    this.graph = view;
+    this.#exitNodeId = exitNodeId;
     this.#registry = registry;
     this.#subgraphsById = Object.create(null);
     for (const subgraphId of this.graph.getSubgraphIds()) {
@@ -556,7 +574,7 @@ export class Flow {
 
     this.#nodesByCode = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
-      if (isTerminalNodeId(node.id)) {
+      if (this.#isTerminalNode(node.id)) {
         continue;
       }
 
@@ -588,13 +606,17 @@ export class Flow {
     }
   }
 
+  #isTerminalNode(id: string): boolean {
+    return normalizeGraphNodeId(id) === this.#exitNodeId;
+  }
+
   getGraph(): Graph.View {
     return this.graph;
   }
 
   getResolver(id: string): FlowNode | null {
     const normalizedId = normalizeGraphNodeId(id);
-    if (isTerminalNodeId(normalizedId)) {
+    if (this.#isTerminalNode(normalizedId)) {
       return null;
     }
     if (!this.graph.getNode(normalizedId)) {
@@ -634,7 +656,7 @@ export class Flow {
     );
     const path = executionTrace.visitedNodeIds
       .slice(segmentStartIndex)
-      .filter((visitedNodeId) => visitedNodeId !== "TERMINAL");
+      .filter((visitedNodeId) => visitedNodeId !== this.#exitNodeId);
     const route = path.join(" -> ");
     const status =
       engineResult.status === EnvelopeStatus.Success ? "success" : "failure";
@@ -678,7 +700,7 @@ export class Flow {
 
     const spec = requireGraphNodeSpec(this.graph, normalizedCode);
 
-    if (isTerminalNodeId(spec.id)) {
+    if (this.#isTerminalNode(spec.id)) {
       throw new Error(
         `Runtime graph terminal node "${normalizedCode}" is not executable.`,
       );
@@ -692,7 +714,7 @@ export class Flow {
     }
 
     const nodes = getGraphNodeNextIds(spec)
-      .map((nodeCode) => isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
+      .map((nodeCode) => this.#isTerminalNode(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
       .filter((n): n is FlowNode => n !== null);
     const compiledNode = new (Ctor as PlanConstructor)(normalizedCode, nodes);
 

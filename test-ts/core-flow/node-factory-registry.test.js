@@ -79,7 +79,7 @@ test("returned constructor can instantiate a leaf", () => {
   const Ctor = registry.get("leaf-a");
   const instance = new Ctor("my-code");
   assert.ok(instance instanceof FlowNode);
-  assert.equal(instance.code, "my-code");
+  assert.equal(instance.id, "my-code");
 });
 
 test("returned constructor can instantiate a plan", () => {
@@ -88,5 +88,5 @@ test("returned constructor can instantiate a plan", () => {
   const Ctor = registry.get("plan-a");
   const instance = new Ctor("plan-code", [], {});
   assert.ok(instance instanceof FlowJunction);
-  assert.equal(instance.code, "plan-code");
+  assert.equal(instance.id, "plan-code");
 });

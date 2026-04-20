@@ -25,9 +25,9 @@ export class IdentifierResolver extends FlowNode {}
 export class BaseHFResolver extends FlowNode {
   readonly traceLabel: string;
 
-  constructor(code: string, traceLabel?: string) {
-    super(code);
-    this.traceLabel = traceLabel || code;
+  constructor(id: string, traceLabel?: string) {
+    super(id);
+    this.traceLabel = traceLabel || id;
   }
 
   batchKey(_job: unknown, _attempt: unknown): string {
@@ -103,7 +103,7 @@ export class FxAttributeResolutionPlan extends SwitchJunction {
     super(name, nodes);
     if (this.nodes.length < 2) {
       throw new Error(
-        `FxAttributeResolutionPlan "${this.name}" expects at least 2 nodes (local and resolver).`,
+        `FxAttributeResolutionPlan "${this.id}" expects at least 2 nodes (local and resolver).`,
       );
     }
   }
@@ -114,7 +114,7 @@ export class FxAttributeResolutionPlan extends SwitchJunction {
     }
 
     const localNode = this.nodes[0];
-    if (localNode && (!localNode.canHandle || localNode.canHandle(request))) {
+    if (localNode && localNode.canHandle(request)) {
       const selectedNode = this.markSelectedNode(localNode, context);
       return selectedNode ? [selectedNode] : [];
     }
