@@ -17,6 +17,10 @@ For new design docs, start from [`./TEMPLATE.md`](./TEMPLATE.md).
 - Implemented market-specific behavior: [`markets/israeli-market-fund-support.md`](./markets/israeli-market-fund-support.md)
 - Cache usage matrix: [`performance/cache-matrix.md`](./performance/cache-matrix.md)
 
+## Reviews
+
+- `core/flow` library review: [`routing/core-flow-library-review.md`](./routing/core-flow-library-review.md)
+
 ## Draft Or Planned Design Work
 
 - Routing model draft: [`routing/hoodlefinance-routing-design.md`](./routing/hoodlefinance-routing-design.md)
