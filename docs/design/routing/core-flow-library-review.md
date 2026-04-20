@@ -183,7 +183,7 @@ Concrete changes resulting from this review, to be tracked for implementation:
 - ~~Remove `code` and `name` from `FlowNode`; use `id` throughout~~
 
 **Dead code removal**
-- Delete `initEnv()` from `FlowNode`, the instantiation loop in `Flow`, and any concrete subclasses that override it
+- ~~Delete `initEnv()` from `FlowNode`, the instantiation loop in `Flow`, and any concrete subclasses that override it~~
 - ~~Delete display/introspection methods from `FlowNode` and `FlowJunction`:
   `getExampleInput`, `getRoutingDescription`, `describeRoutingNode`, `getGroupedSourceNames`,
   `getGroupedSourceNamesForDisplay`, `describe`, `buildRoutePath`, `describePlanSource`~~

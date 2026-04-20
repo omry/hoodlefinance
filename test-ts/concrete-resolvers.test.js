@@ -52,9 +52,8 @@ function createRequestInput(overrides = {}) {
   });
 }
 
-function initResolver(resolver, services) {
-  resolver.initEnv(services);
-  return resolver;
+function initResolver(ResolverClass, services, ...args) {
+  return new ResolverClass(undefined, services);
 }
 
 function createPseFrameHtml() {
@@ -154,49 +153,49 @@ test("Concrete resolvers keep direct default ids and honor spec ids when materia
       "FX-IDENTITY",
     ],
     [
-      new GoogleFxResolver(),
-      new GoogleFxResolver("FX:GOOGLE"),
+      new GoogleFxResolver(undefined, createTestResolverServices()),
+      new GoogleFxResolver("FX:GOOGLE", createTestResolverServices()),
       "GOOGLE-FX",
     ],
     [
-      new PseFramesResolver(),
-      new PseFramesResolver("QUOTE:PSE-FRAMES"),
+      new PseFramesResolver(undefined, createTestResolverServices()),
+      new PseFramesResolver("QUOTE:PSE-FRAMES", createTestResolverServices()),
       "PSE-FRAMES",
     ],
     [
-      new PseEdgeResolver(),
-      new PseEdgeResolver("QUOTE:PSE-EDGE"),
+      new PseEdgeResolver(undefined, createTestResolverServices()),
+      new PseEdgeResolver("QUOTE:PSE-EDGE", createTestResolverServices()),
       "PSE-EDGE",
     ],
     [
-      new PseIsinMapResolver(),
-      new PseIsinMapResolver("ISIN:PSE-MAP"),
+      new PseIsinMapResolver(undefined, createTestResolverServices()),
+      new PseIsinMapResolver("ISIN:PSE-MAP", createTestResolverServices()),
       "ISIN:PSE",
     ],
     [
-      new YahooIsinSearchResolver(),
-      new YahooIsinSearchResolver("ISIN:SEARCH"),
+      new YahooIsinSearchResolver(undefined, createTestResolverServices()),
+      new YahooIsinSearchResolver("ISIN:SEARCH", createTestResolverServices()),
       "ISIN:YAHOO",
     ],
     [
-      new YahooEquityQuoteResolver(),
-      new YahooEquityQuoteResolver("QUOTE:YAHOO"),
+      new YahooEquityQuoteResolver(undefined, createTestResolverServices()),
+      new YahooEquityQuoteResolver("QUOTE:YAHOO", createTestResolverServices()),
       "YAHOO-QUOTE",
     ],
-    [new YahooFxResolver(), new YahooFxResolver("FX:YAHOO"), "YAHOO-FX"],
+    [new YahooFxResolver(undefined, createTestResolverServices()), new YahooFxResolver("FX:YAHOO", createTestResolverServices()), "YAHOO-FX"],
     [
-      new TradingviewFundResolver(),
-      new TradingviewFundResolver("FUND:TRADINGVIEW"),
+      new TradingviewFundResolver(undefined, createTestResolverServices()),
+      new TradingviewFundResolver("FUND:TRADINGVIEW", createTestResolverServices()),
       "TRADINGVIEW-FUND",
     ],
     [
-      new EquityAttributeExtractResolver(),
-      new EquityAttributeExtractResolver("EXTRACT:QUOTE"),
+      new EquityAttributeExtractResolver(undefined, createTestResolverServices()),
+      new EquityAttributeExtractResolver("EXTRACT:QUOTE", createTestResolverServices()),
       "EXTRACT:EQUITY",
     ],
     [
-      new LonIsinResolver(),
-      new LonIsinResolver("ATTRIBUTE:LON-ISIN"),
+      new LonIsinResolver(undefined, createTestResolverServices()),
+      new LonIsinResolver("ATTRIBUTE:LON-ISIN", createTestResolverServices()),
       "LON-ISIN",
     ],
     [
@@ -212,38 +211,38 @@ test("Concrete resolvers keep direct default ids and honor spec ids when materia
   }
 
   assert.equal(new LocalFxResolver("LOCAL-FX").id, "LOCAL-FX");
-  assert.equal(new GoogleFxResolver("FX:GOOGLE").id, "FX:GOOGLE");
+  assert.equal(new GoogleFxResolver("FX:GOOGLE", createTestResolverServices()).id, "FX:GOOGLE");
   assert.equal(
-    new PseFramesResolver("QUOTE:PSE-FRAMES").id,
+    new PseFramesResolver("QUOTE:PSE-FRAMES", createTestResolverServices()).id,
     "QUOTE:PSE-FRAMES",
   );
   assert.equal(
-    new PseEdgeResolver("QUOTE:PSE-EDGE").id,
+    new PseEdgeResolver("QUOTE:PSE-EDGE", createTestResolverServices()).id,
     "QUOTE:PSE-EDGE",
   );
   assert.equal(
-    new PseIsinMapResolver("ISIN:PSE-MAP").id,
+    new PseIsinMapResolver("ISIN:PSE-MAP", createTestResolverServices()).id,
     "ISIN:PSE-MAP",
   );
   assert.equal(
-    new YahooIsinSearchResolver("ISIN:SEARCH").id,
+    new YahooIsinSearchResolver("ISIN:SEARCH", createTestResolverServices()).id,
     "ISIN:SEARCH",
   );
   assert.equal(
-    new YahooEquityQuoteResolver("QUOTE:YAHOO").id,
+    new YahooEquityQuoteResolver("QUOTE:YAHOO", createTestResolverServices()).id,
     "QUOTE:YAHOO",
   );
-  assert.equal(new YahooFxResolver("FX:YAHOO").id, "FX:YAHOO");
+  assert.equal(new YahooFxResolver("FX:YAHOO", createTestResolverServices()).id, "FX:YAHOO");
   assert.equal(
-    new TradingviewFundResolver("FUND:TRADINGVIEW").id,
+    new TradingviewFundResolver("FUND:TRADINGVIEW", createTestResolverServices()).id,
     "FUND:TRADINGVIEW",
   );
   assert.equal(
-    new EquityAttributeExtractResolver("EXTRACT:QUOTE").id,
+    new EquityAttributeExtractResolver("EXTRACT:QUOTE", createTestResolverServices()).id,
     "EXTRACT:QUOTE",
   );
   assert.equal(
-    new LonIsinResolver("ATTRIBUTE:LON-ISIN").id,
+    new LonIsinResolver("ATTRIBUTE:LON-ISIN", createTestResolverServices()).id,
     "ATTRIBUTE:LON-ISIN",
   );
   assert.equal(
@@ -281,7 +280,7 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
 });
 
 test("EquityAttributeExtractResolver normalizes stock unit money attributes through the FX path", () => {
-  const resolver = new EquityAttributeExtractResolver();
+  const resolver = new EquityAttributeExtractResolver(undefined, createTestResolverServices());
   const context = {
     callSubgraph(subgraphId, request) {
       assert.equal(subgraphId, "FX_CONVERSION");
@@ -316,7 +315,7 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
 });
 
 test("EquityAttributeExtractResolver converts stock unit prices directly to the requested output currency", () => {
-  const resolver = new EquityAttributeExtractResolver();
+  const resolver = new EquityAttributeExtractResolver(undefined, createTestResolverServices());
   const context = {
     callSubgraph(subgraphId, request) {
       assert.equal(subgraphId, "FX_CONVERSION");
@@ -402,7 +401,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   ])},sideChannel:{}});</script>`;
   let cachedWrite = null;
   const resolver = initResolver(
-    new GoogleFxResolver(),
+    GoogleFxResolver,
     createTestResolverServices({
       httpFetch(url) {
         assert.equal(url, "https://www.google.com/finance/quote/EUR-USD");
@@ -448,7 +447,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
   });
 
   const cachedResolver = initResolver(
-    new GoogleFxResolver(),
+    GoogleFxResolver,
     createTestResolverServices({
       httpFetch() {
         throw new Error("cache hit should not fetch Google Finance");
@@ -473,7 +472,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   const frameHtml = createPseFrameHtml();
   let cachedWrite = null;
   const resolver = initResolver(
-    new PseFramesResolver(),
+    PseFramesResolver,
     createTestResolverServices({
       httpFetch() {
         return textResponse(frameHtml);
@@ -527,7 +526,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   });
 
   const cachedResolver = initResolver(
-    new PseFramesResolver(),
+    PseFramesResolver,
     createTestResolverServices({
       httpFetch() {
         throw new Error("cache hit should not fetch PSE frames");
@@ -552,7 +551,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   let listingCacheWrite = null;
   let quoteCacheWrite = null;
   const resolver = initResolver(
-    new PseEdgeResolver(),
+    PseEdgeResolver,
     createTestResolverServices({
       httpFetch(url) {
         if (String(url).indexOf("companyDirectory/search.ax") >= 0) {
@@ -627,7 +626,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
 
 test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups", () => {
   const cachedResolver = initResolver(
-    new YahooEquityQuoteResolver(),
+    YahooEquityQuoteResolver,
     createTestResolverServices({
       httpFetch() {
         throw new Error("cache hit should not fetch Yahoo quote");
@@ -659,7 +658,7 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
 
   let cachedWrite = null;
   const fetchedResolver = initResolver(
-    new YahooEquityQuoteResolver(),
+    YahooEquityQuoteResolver,
     createTestResolverServices({
       httpFetch() {
         return textResponse(
@@ -703,8 +702,8 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
 test("YahooEquityQuoteResolver owns preferred equity fallback symbols without affecting FX route state", () => {
   let lastFetchedUrl = null;
   let cachedWrite = null;
-  const resolver = new YahooEquityQuoteResolver();
-  resolver.initEnv(
+  const resolver = new YahooEquityQuoteResolver(
+    undefined,
     createTestResolverServices({
       httpFetch(url) {
         lastFetchedUrl = url;
@@ -778,8 +777,8 @@ test("YahooEquityQuoteResolver owns preferred equity fallback symbols without af
 test("YahooEquityQuoteResolver falls back to stored preferred whitelist data when refresh fails", () => {
   let cachedWhitelistWrite = null;
   let storedWhitelistWrite = null;
-  const resolver = new YahooEquityQuoteResolver();
-  resolver.initEnv(
+  const resolver = new YahooEquityQuoteResolver(
+    undefined,
     createTestResolverServices({
       httpFetch(url) {
         if (
@@ -870,7 +869,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   const cachedWrites = [];
   const cachedResolver = initResolver(
-    new TradingviewFundResolver(),
+    TradingviewFundResolver,
     createTestResolverServices({
       httpFetch() {
         throw new Error("cache hit should not fetch TradingView");
@@ -928,7 +927,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   const fetchedWrites = [];
   const fetchedResolver = initResolver(
-    new TradingviewFundResolver(),
+    TradingviewFundResolver,
     createTestResolverServices({
       httpFetch() {
         return textResponse(html);
@@ -983,8 +982,8 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
   let fetchCount = 0;
   let cachedWrite = null;
   let storedWrite = null;
-  const resolver = new PseIsinMapResolver();
-  resolver.initEnv(
+  const resolver = new PseIsinMapResolver(
+    undefined,
     createTestResolverServices({
       httpFetch(url) {
         fetchCount += 1;
@@ -1047,8 +1046,8 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
 test("PseIsinMapResolver falls back to stored map data when refresh fails", () => {
   let cachedWrite = null;
   let storedWrite = null;
-  const resolver = new PseIsinMapResolver();
-  resolver.initEnv(
+  const resolver = new PseIsinMapResolver(
+    undefined,
     createTestResolverServices({
       httpFetch(url) {
         assert.equal(
@@ -1102,7 +1101,7 @@ test("PseIsinMapResolver falls back to stored map data when refresh fails", () =
 
 test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", () => {
   const cachedResolver = initResolver(
-    new YahooIsinSearchResolver(),
+    YahooIsinSearchResolver,
     createTestResolverServices({
       httpFetch() {
         throw new Error("cache hit should not fetch Yahoo ISIN search");
@@ -1131,7 +1130,7 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
 
   let cachedWrite = null;
   const fetchedResolver = initResolver(
-    new YahooIsinSearchResolver(),
+    YahooIsinSearchResolver,
     createTestResolverServices({
       httpFetch() {
         return textResponse(

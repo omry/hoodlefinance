@@ -232,7 +232,7 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
   );
 
   assert.equal(plan instanceof StepJunction, true);
-  assert.equal(plan.getRoutingNodeKind(), "step");
+  assert.equal(plan.getNodeKind(), "step");
 });
 
 test("FirstSuccessPlan can express ISIN-country fallback through child canHandle ordering", () => {

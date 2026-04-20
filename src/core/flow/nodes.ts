@@ -64,11 +64,6 @@ export class FlowNode {
   run(_request: unknown, _context?: ExecutionContext): unknown {
     throw new Error(`FlowNode "${this.id}" must implement run().`);
   }
-
-  // Optional one-time resolver initialization hook. `_env` is an opaque object
-  // that can carry runtime capabilities, callbacks, or other host-provided
-  // data. The flow layer does not interpret its shape.
-  initEnv(_env: unknown): void {}
 }
 
 export abstract class FlowJunction extends FlowNode {
@@ -247,4 +242,3 @@ export class FirstSuccessJunction extends FlowJunction {
     return selectedNode ? [selectedNode] : [];
   }
 }
-

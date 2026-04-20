@@ -67,11 +67,6 @@ export class BaseHFResolver extends FlowNode {
       },
     };
   }
-
-  // Domain-specific resolver subclasses currently interpret the generic
-  // flow-layer environment object here.
-  // TODO: move env access into resolve context so resolvers do not retain it.
-  initEnv(_env: unknown): void {}
 }
 
 export class RoutingPlan extends SwitchJunction {}

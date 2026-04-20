@@ -106,7 +106,7 @@ function mockFlow(nodes) {
                     defaultSelectNext(id, entry, request, context),
             }
           : {}),
-        getRoutingNodeKind: () => entry.kind || "leaf",
+        getNodeKind: () => entry.kind || "leaf",
       };
     },
   };
@@ -132,7 +132,7 @@ test("execute() treats a node with null resolver as terminal, returns current en
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: { done: true } }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       return null; // LEAF has no resolver — acts as terminal
     },
@@ -170,13 +170,13 @@ test("execute() treats a node with null resolver as terminal even when it has si
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       if (id === "REAL") {
         realCalled = true;
         return {
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null; // NULL-RESOLVER
@@ -373,13 +373,13 @@ test("execute() does not try next edges when ROOT itself fails", () => {
       if (id === "ROOT")
         return {
           execute:() => ({ status: "failure", error: "root failed" }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       if (id === "A") {
         nextCalled = true;
         return {
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null;
@@ -424,7 +424,7 @@ test("execute() passes the resolver output value into the next node", () => {
             return { status: "success", value: { fromRoot: true } };
           },
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       if (id === "NEXT") {
@@ -434,7 +434,7 @@ test("execute() passes the resolver output value into the next node", () => {
             return { status: "success", value: { fromNext: true } };
           },
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null; // TERMINAL
@@ -494,7 +494,7 @@ test("execute() walks a three-level graph to TERMINAL", () => {
           return { status: "success", value: { step: id } };
         },
         canHandle: () => true,
-        getRoutingNodeKind: () => "leaf",
+        getNodeKind: () => "leaf",
       };
     },
   };
@@ -525,13 +525,13 @@ test("execute() skips missing next node and continues to next valid sibling", ()
         return {
           execute:() => ({ status: "success", value: {} }),
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       if (id === "REAL")
         return {
           execute:() => ({ status: "success", value: { real: true } }),
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       return null;
     },
@@ -589,7 +589,7 @@ test("switch node: engine routes only to the matching child", () => {
       if (id === "SWITCH") {
         return {
           selectNext: () => [{ id: "BRANCH-B" }],
-          getRoutingNodeKind: () => "switch",
+          getNodeKind: () => "switch",
         };
       }
       if (id === "BRANCH-A") {
@@ -598,7 +598,7 @@ test("switch node: engine routes only to the matching child", () => {
             visited.push("BRANCH-A");
             return { status: "success", value: input };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       if (id === "BRANCH-B") {
@@ -607,7 +607,7 @@ test("switch node: engine routes only to the matching child", () => {
             visited.push("BRANCH-B");
             return { status: "success", value: input };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null; // TERMINAL
@@ -668,13 +668,13 @@ test("switch node: engine propagates selection errors from selectNext()", () => 
           selectNext: () => {
             throw new Error("ambiguous selection");
           },
-          getRoutingNodeKind: () => "switch",
+          getNodeKind: () => "switch",
         };
       }
       if (id === "A" || id === "B") {
         return {
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null;
@@ -687,7 +687,7 @@ test("switch node: engine propagates selection errors from selectNext()", () => 
 
 test("routing node: engine throws when a non-leaf node inherits the base selectNext()", () => {
   const rootResolver = new FlowNode("ROOT");
-  rootResolver.getRoutingNodeKind = () => "switch";
+  rootResolver.getNodeKind = () => "switch";
 
   const flow = {
     getGraph: () => ({
@@ -706,7 +706,7 @@ test("routing node: engine throws when a non-leaf node inherits the base selectN
       if (id === "A") {
         return {
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
 
@@ -752,7 +752,7 @@ test("try-each node: engine tries children in order and returns first success", 
       if (id === "PARENT")
         return {
           execute:() => ({ status: "success", value: { ticker: "GOOG" } }),
-          getRoutingNodeKind: () => "try_each",
+          getNodeKind: () => "try_each",
           selectNext: (_request, context = {}) => {
             if (!(context.selectedNodeCodes instanceof Set)) {
               context.selectedNodeCodes = new Set();
@@ -777,7 +777,7 @@ test("try-each node: engine tries children in order and returns first success", 
             visited.push("PROVIDER-A");
             return { status: "failure", error: "unavailable" };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       if (id === "PROVIDER-B")
         return {
@@ -786,7 +786,7 @@ test("try-each node: engine tries children in order and returns first success", 
             visited.push("PROVIDER-B");
             return { status: "success", value: { price: 180 } };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       return null; // TERMINAL
     },
@@ -824,7 +824,7 @@ test("try-each node: engine skips children that cannot handle the output", () =>
       if (id === "PARENT")
         return {
           execute:() => ({ status: "success", value: { provider: "B" } }),
-          getRoutingNodeKind: () => "try_each",
+          getNodeKind: () => "try_each",
           selectNext: (request, context = {}) => {
             if (!(context.selectedNodeCodes instanceof Set)) {
               context.selectedNodeCodes = new Set();
@@ -856,7 +856,7 @@ test("try-each node: engine skips children that cannot handle the output", () =>
             visited.push("A");
             return { status: "success", value: { wrong: true } };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       if (id === "B")
         return {
@@ -865,7 +865,7 @@ test("try-each node: engine skips children that cannot handle the output", () =>
             visited.push("B");
             return { status: "success", value: { price: 180 } };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       return null;
     },
@@ -943,11 +943,11 @@ test("try-each node: Failure from exhausted try-each propagates through ancestor
       if (id === "ROOT")
         return {
           selectNext: () => [{ id: "TRY-EACH-A" }],
-          getRoutingNodeKind: () => "switch",
+          getNodeKind: () => "switch",
         };
       if (id === "TRY-EACH-A")
         return {
-          getRoutingNodeKind: () => "try_each",
+          getNodeKind: () => "try_each",
           selectNext: (_request, context = {}) => {
             if (!(context.selectedNodeCodes instanceof Set)) {
               context.selectedNodeCodes = new Set();
@@ -965,7 +965,7 @@ test("try-each node: Failure from exhausted try-each propagates through ancestor
         return {
           canHandle: () => true,
           execute:() => ({ status: "failure", error: "unavailable" }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       if (id === "FALLBACK")
         return {
@@ -974,7 +974,7 @@ test("try-each node: Failure from exhausted try-each propagates through ancestor
             fallbackCalled = true;
             return { status: "success", value: { fallback: true } };
           },
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       return null;
     },
@@ -1129,7 +1129,7 @@ test("step node: throws when a child cannot handle the output", () => {
     getResolver: (id) => {
       if (id === "ROOT") {
         return {
-          getRoutingNodeKind: () => "step",
+          getNodeKind: () => "step",
           selectNext: (request) => {
             if (!flow.getResolver("STEP-B").canHandle(request)) {
               throw new Error(
@@ -1145,14 +1145,14 @@ test("step node: throws when a child cannot handle the output", () => {
         return {
           canHandle: () => true,
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       if (id === "STEP-B") {
         return {
           canHandle: () => false,
           execute:() => ({ status: "success", value: {} }),
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null;
@@ -1241,7 +1241,7 @@ test("execute() passes resolver output to children without transforming its shap
         return {
           execute:() => ({ status: "success", value: rootOutput }),
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       if (id === "WRAPPER") {
@@ -1251,7 +1251,7 @@ test("execute() passes resolver output to children without transforming its shap
             return { status: "success", value: wrapperOutput };
           },
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       if (id === "LEAF") {
@@ -1261,7 +1261,7 @@ test("execute() passes resolver output to children without transforming its shap
             return { status: "success", value: input };
           },
           canHandle: () => true,
-          getRoutingNodeKind: () => "leaf",
+          getNodeKind: () => "leaf",
         };
       }
       return null;

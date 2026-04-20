@@ -301,16 +301,13 @@ export class RequestClassifierResolver extends IdentifierResolver {
     | null
     | undefined;
 
-  constructor(code = "ROOT") {
+  constructor(code = "ROOT", services: ResolverServices) {
     super(code);
+    this.fxTickerParser = createStoredFxTickerParser(services);
   }
 
   canHandle(input: RequestInput | RawRequestInput | ResolvedRequest): boolean {
     return input instanceof RawRequestInput;
-  }
-
-  initEnv(services: ResolverServices): void {
-    this.fxTickerParser = createStoredFxTickerParser(services);
   }
 
   execute(input: RequestInput | RawRequestInput | ResolvedRequest) {
@@ -454,29 +451,14 @@ function tryParsePropertiesMap(
 
 export class PseIsinMapResolver extends IdentifierResolver {
   readonly traceLabel: string;
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedString?: ResolverServices["getCachedString"];
-  getStoredTextResource?: ResolverServices["getStoredTextResource"];
-  putCachedString?: ResolverServices["putCachedString"];
-  putStoredTextResource?: ResolverServices["putStoredTextResource"];
+  private services: ResolverServices;
   pseIsinMapByIsin: Record<string, string> | null;
 
-  constructor(code = "ISIN:PSE") {
+  constructor(code = "ISIN:PSE", services: ResolverServices) {
     super(code);
     this.traceLabel = code;
     this.pseIsinMapByIsin = null;
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (typeof services.httpFetch !== "function") {
-      throw new Error("PseIsinMapResolver requires httpFetch.");
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedString = services.getCachedString;
-    this.getStoredTextResource = services.getStoredTextResource;
-    this.putCachedString = services.putCachedString;
-    this.putStoredTextResource = services.putStoredTextResource;
+    this.services = services;
   }
 
   ensurePseIsinMap(): Record<string, string> {
@@ -487,12 +469,12 @@ export class PseIsinMapResolver extends IdentifierResolver {
     this.pseIsinMapByIsin = loadStoredTextResource({
       cacheKey: PSE_ISIN_MAP_CACHE_KEY,
       cacheTtlSeconds: PSE_ISIN_MAP_CACHE_TTL_SECONDS,
-      fetchText: () => this.httpFetch(PSE_ISIN_MAP_URL).getContentText(),
-      getCachedString: this.getCachedString,
-      getStoredTextResource: this.getStoredTextResource,
+      fetchText: () => this.services.httpFetch(PSE_ISIN_MAP_URL).getContentText(),
+      getCachedString: this.services.getCachedString,
+      getStoredTextResource: this.services.getStoredTextResource,
       invalidPayloadMessage: "Invalid PSE ISIN map payload.",
-      putCachedString: this.putCachedString,
-      putStoredTextResource: this.putStoredTextResource,
+      putCachedString: this.services.putCachedString,
+      putStoredTextResource: this.services.putStoredTextResource,
       refreshIntervalMs: PSE_ISIN_MAP_REFRESH_INTERVAL_MS,
       storedResourceKey: PSE_ISIN_MAP_STORED_KEY,
       tryParse: tryParsePropertiesMap,
@@ -530,29 +512,12 @@ export class PseIsinMapResolver extends IdentifierResolver {
 
 export class YahooIsinSearchResolver extends IdentifierResolver {
   readonly traceLabel: string;
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedString!: NonNullable<ResolverServices["getCachedString"]>;
-  putCachedString!: NonNullable<ResolverServices["putCachedString"]>;
+  private services: ResolverServices;
 
-  constructor(code = "ISIN:YAHOO") {
+  constructor(code = "ISIN:YAHOO", services: ResolverServices) {
     super(code);
     this.traceLabel = code;
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (
-      typeof services.httpFetch !== "function" ||
-      typeof services.getCachedString !== "function" ||
-      typeof services.putCachedString !== "function"
-    ) {
-      throw new Error(
-        "YahooIsinSearchResolver requires httpFetch, getCachedString, and putCachedString.",
-      );
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedString = services.getCachedString;
-    this.putCachedString = services.putCachedString;
+    this.services = services;
   }
 
   canHandle(input: RequestInput | ResolvedRequest): boolean {
@@ -566,7 +531,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       extractIsinFromRequestInput(request as RequestInput) || "",
     ).trim();
     const cacheKey = `hoodlefinance:isin:${isin}`;
-    const cached = this.getCachedString(cacheKey);
+    const cached = this.services.getCachedString(cacheKey);
 
     if (cached) {
       return buildTypedRequestFromResolvedTicker(
@@ -576,7 +541,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       );
     }
 
-    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+    const responseItem = fetchRequestsSequentially(this.services.httpFetch, [
       {
         cacheKey,
         isin,
@@ -592,7 +557,7 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
       responseItem?.response as TextHttpResponse,
       isin,
     );
-    this.putCachedString(cacheKey, resolvedTicker, 21600);
+    this.services.putCachedString(cacheKey, resolvedTicker, 21600);
     return buildTypedRequestFromResolvedTicker(
       request as Pick<RequestInput, "attribute" | "identifier">,
       resolvedTicker,
@@ -624,28 +589,11 @@ export class LocalFxResolver extends BaseHFResolver {
 }
 
 export class GoogleFxResolver extends BaseHFResolver {
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
-  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
+  private services: ResolverServices;
 
-  constructor(code = "GOOGLE-FX") {
+  constructor(code = "GOOGLE-FX", services: ResolverServices) {
     super(code);
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (
-      typeof services.httpFetch !== "function" ||
-      typeof services.getCachedJson !== "function" ||
-      typeof services.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "GoogleFxResolver requires httpFetch, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedJson = services.getCachedJson;
-    this.putCachedJson = services.putCachedJson;
+    this.services = services;
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -660,17 +608,17 @@ export class GoogleFxResolver extends BaseHFResolver {
     const fxPair = (request as FxRequest).fxPair;
     const pairSlug = String(fxPair.googlePairSlug || "").trim();
     const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
-    const cached = this.getCachedJson(cacheKey);
+    const cached = this.services.getCachedJson(cacheKey);
 
     if (cached) {
       return decorateFxQuote(new StockQuote(cached as never), fxPair);
     }
 
     const quote = extractGoogleFinanceFxPairQuote(
-      this.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
+      this.services.httpFetch(buildGoogleFinanceQuoteUrl(pairSlug)),
       fxPair,
     );
-    this.putCachedJson(cacheKey, quote.toJSON(), 60);
+    this.services.putCachedJson(cacheKey, quote.toJSON(), 60);
     return decorateFxQuote(quote, fxPair);
   }
 
@@ -711,28 +659,11 @@ function buildPseQuoteCacheKey(symbol: string): string {
 }
 
 export class PseFramesResolver extends BaseHFResolver {
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
-  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
+  private services: ResolverServices;
 
-  constructor(code = "PSE-FRAMES") {
+  constructor(code = "PSE-FRAMES", services: ResolverServices) {
     super(code);
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (
-      typeof services.httpFetch !== "function" ||
-      typeof services.getCachedJson !== "function" ||
-      typeof services.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "PseFramesResolver requires httpFetch, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedJson = services.getCachedJson;
-    this.putCachedJson = services.putCachedJson;
+    this.services = services;
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -744,13 +675,13 @@ export class PseFramesResolver extends BaseHFResolver {
       .trim()
       .toUpperCase();
     const cacheKey = buildPseQuoteCacheKey(symbol);
-    const cached = this.getCachedJson(cacheKey);
+    const cached = this.services.getCachedJson(cacheKey);
 
     if (cached) {
       return cached;
     }
 
-    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+    const responseItem = fetchRequestsSequentially(this.services.httpFetch, [
       {
         cacheKey,
         symbol,
@@ -770,35 +701,18 @@ export class PseFramesResolver extends BaseHFResolver {
       responseItem?.response as TextHttpResponse,
       symbol,
     );
-    this.putCachedJson(cacheKey, quote.toJSON(), PSE_QUOTE_CACHE_TTL_SECONDS);
+    this.services.putCachedJson(cacheKey, quote.toJSON(), PSE_QUOTE_CACHE_TTL_SECONDS);
     return quote;
   }
 
 }
 
 export class PseEdgeResolver extends BaseHFResolver {
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
-  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
+  private services: ResolverServices;
 
-  constructor(code = "PSE-EDGE") {
+  constructor(code = "PSE-EDGE", services: ResolverServices) {
     super(code);
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (
-      typeof services.httpFetch !== "function" ||
-      typeof services.getCachedJson !== "function" ||
-      typeof services.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "PseEdgeResolver requires httpFetch, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedJson = services.getCachedJson;
-    this.putCachedJson = services.putCachedJson;
+    this.services = services;
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -810,7 +724,7 @@ export class PseEdgeResolver extends BaseHFResolver {
       .trim()
       .toUpperCase();
     const quoteCacheKey = buildPseQuoteCacheKey(symbol);
-    const cachedQuote = this.getCachedJson(quoteCacheKey);
+    const cachedQuote = this.services.getCachedJson(quoteCacheKey);
 
     if (cachedQuote) {
       return cachedQuote;
@@ -819,10 +733,10 @@ export class PseEdgeResolver extends BaseHFResolver {
     let listing: PseListing | null = null;
     if (!listing) {
       const listingCacheKey = buildPseListingCacheKey(symbol);
-      listing = normalizePseListing(this.getCachedJson(listingCacheKey));
+      listing = normalizePseListing(this.services.getCachedJson(listingCacheKey));
 
       if (!listing) {
-        const searchResponse = fetchRequestsSequentially(this.httpFetch, [
+        const searchResponse = fetchRequestsSequentially(this.services.httpFetch, [
           {
             cacheKey: listingCacheKey,
             symbol,
@@ -850,7 +764,7 @@ export class PseEdgeResolver extends BaseHFResolver {
           throw new Error(`No PSE listing was found for "${symbol}".`);
         }
 
-        this.putCachedJson(
+        this.services.putCachedJson(
           listingCacheKey,
           listing,
           PSE_LISTING_CACHE_TTL_SECONDS,
@@ -858,7 +772,7 @@ export class PseEdgeResolver extends BaseHFResolver {
       }
     }
 
-    const stockResponse = fetchRequestsSequentially(this.httpFetch, [
+    const stockResponse = fetchRequestsSequentially(this.services.httpFetch, [
       {
         cacheKey: quoteCacheKey,
         listing,
@@ -885,7 +799,7 @@ export class PseEdgeResolver extends BaseHFResolver {
       throw new Error(`No PSE quote data was found for ${symbol}.`);
     }
 
-    this.putCachedJson(
+    this.services.putCachedJson(
       quoteCacheKey,
       quote.toJSON(),
       PSE_QUOTE_CACHE_TTL_SECONDS,
@@ -896,38 +810,17 @@ export class PseEdgeResolver extends BaseHFResolver {
 }
 
 abstract class BaseYahooQuoteResolver extends BaseHFResolver {
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedString?: ResolverServices["getCachedString"];
-  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
-  getStoredTextResource?: ResolverServices["getStoredTextResource"];
-  putCachedString?: ResolverServices["putCachedString"];
-  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
-  putStoredTextResource?: ResolverServices["putStoredTextResource"];
+  protected services: ResolverServices;
   preferredReitTickerSet: ReadonlySet<string> | null;
 
-  constructor(code: string, traceLabel?: string) {
+  constructor(
+    code: string,
+    traceLabel: string | undefined,
+    services: ResolverServices,
+  ) {
     super(code, traceLabel);
     this.preferredReitTickerSet = null;
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (
-      typeof services.httpFetch !== "function" ||
-      typeof services.getCachedJson !== "function" ||
-      typeof services.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "YahooQuoteResolver requires httpFetch, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedString = services.getCachedString;
-    this.getCachedJson = services.getCachedJson;
-    this.getStoredTextResource = services.getStoredTextResource;
-    this.putCachedString = services.putCachedString;
-    this.putCachedJson = services.putCachedJson;
-    this.putStoredTextResource = services.putStoredTextResource;
+    this.services = services;
   }
 
   ensurePreferredReitTickerSet(): ReadonlySet<string> {
@@ -939,12 +832,12 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
       cacheKey: PREFERRED_REIT_WHITELIST_CACHE_KEY,
       cacheTtlSeconds: PREFERRED_REIT_WHITELIST_CACHE_TTL_SECONDS,
       fetchText: () =>
-        this.httpFetch(PREFERRED_REIT_WHITELIST_URL).getContentText(),
-      getCachedString: this.getCachedString,
-      getStoredTextResource: this.getStoredTextResource,
+        this.services.httpFetch(PREFERRED_REIT_WHITELIST_URL).getContentText(),
+      getCachedString: this.services.getCachedString,
+      getStoredTextResource: this.services.getStoredTextResource,
       invalidPayloadMessage: "Invalid preferred REIT whitelist payload.",
-      putCachedString: this.putCachedString,
-      putStoredTextResource: this.putStoredTextResource,
+      putCachedString: this.services.putCachedString,
+      putStoredTextResource: this.services.putStoredTextResource,
       refreshIntervalMs: PREFERRED_REIT_WHITELIST_REFRESH_INTERVAL_MS,
       storedResourceKey: PREFERRED_REIT_WHITELIST_STORED_KEY,
       tryParse: tryParsePreferredReitTickerSet,
@@ -981,7 +874,7 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
 
     const lookupYahooSymbol = preferredYahooSymbol || yahooSymbol;
     const cacheKey = `hoodlefinance:${lookupYahooSymbol}`;
-    const cached = this.getCachedJson(cacheKey);
+    const cached = this.services.getCachedJson(cacheKey);
     const cachedQuote = cached ? new StockQuote(cached as never) : null;
 
     if (cached) {
@@ -990,7 +883,7 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
         : cachedQuote;
     }
 
-    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+    const responseItem = fetchRequestsSequentially(this.services.httpFetch, [
       {
         cacheKey,
         url: buildYahooChartUrl(lookupYahooSymbol),
@@ -1009,14 +902,14 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
         : request.input.identifier) || lookupYahooSymbol,
     );
     const quote = fxPair ? decorateFxQuote(stockQuote, fxPair) : stockQuote;
-    this.putCachedJson(cacheKey, quote.toJSON(), 60);
+    this.services.putCachedJson(cacheKey, quote.toJSON(), 60);
     return quote;
   }
 }
 
 export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
-  constructor(code = "YAHOO-QUOTE") {
-    super(code, "YAHOO");
+  constructor(code = "YAHOO-QUOTE", services: ResolverServices) {
+    super(code, "YAHOO", services);
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1031,8 +924,8 @@ export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
 }
 
 export class YahooFxResolver extends BaseYahooQuoteResolver {
-  constructor(code = "YAHOO-FX") {
-    super(code, "YAHOO");
+  constructor(code = "YAHOO-FX", services: ResolverServices) {
+    super(code, "YAHOO", services);
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1046,28 +939,11 @@ export class YahooFxResolver extends BaseYahooQuoteResolver {
 }
 
 export class TradingviewFundResolver extends BaseHFResolver {
-  httpFetch!: NonNullable<ResolverServices["httpFetch"]>;
-  getCachedJson!: NonNullable<ResolverServices["getCachedJson"]>;
-  putCachedJson!: NonNullable<ResolverServices["putCachedJson"]>;
+  private services: ResolverServices;
 
-  constructor(code = "TRADINGVIEW-FUND") {
+  constructor(code = "TRADINGVIEW-FUND", services: ResolverServices) {
     super(code, "TRADINGVIEW");
-  }
-
-  initEnv(services: ResolverServices): void {
-    if (
-      typeof services.httpFetch !== "function" ||
-      typeof services.getCachedJson !== "function" ||
-      typeof services.putCachedJson !== "function"
-    ) {
-      throw new Error(
-        "TradingviewFundResolver requires httpFetch, getCachedJson, and putCachedJson.",
-      );
-    }
-
-    this.httpFetch = services.httpFetch;
-    this.getCachedJson = services.getCachedJson;
-    this.putCachedJson = services.putCachedJson;
+    this.services = services;
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1084,14 +960,14 @@ export class TradingviewFundResolver extends BaseHFResolver {
     );
     const cacheKey = `hoodlefinance:tradingview:quote:${fallbackInfo.yahooSymbol}`;
     const primaryCacheKey = `hoodlefinance:${fallbackInfo.yahooSymbol}`;
-    const cached = this.getCachedJson(cacheKey);
+    const cached = this.services.getCachedJson(cacheKey);
 
     if (cached) {
-      this.putCachedJson(primaryCacheKey, cached, 60);
+      this.services.putCachedJson(primaryCacheKey, cached, 60);
       return cached;
     }
 
-    const responseItem = fetchRequestsSequentially(this.httpFetch, [
+    const responseItem = fetchRequestsSequentially(this.services.httpFetch, [
       {
         expectedSymbol: fallbackInfo.expectedSymbol,
         url: fallbackInfo.url,
@@ -1108,21 +984,18 @@ export class TradingviewFundResolver extends BaseHFResolver {
       fallbackInfo.yahooSymbol,
       fallbackInfo.expectedSymbol,
     );
-    this.putCachedJson(cacheKey, quote.toJSON(), 60);
-    this.putCachedJson(primaryCacheKey, quote.toJSON(), 60);
+    this.services.putCachedJson(cacheKey, quote.toJSON(), 60);
+    this.services.putCachedJson(primaryCacheKey, quote.toJSON(), 60);
     return quote;
   }
 
 }
 
 export class EquityAttributeExtractResolver extends FlowNode {
-  private resolverServices!: ResolverServices;
+  private resolverServices: ResolverServices;
 
-  constructor(code = "EXTRACT:EQUITY") {
+  constructor(code = "EXTRACT:EQUITY", services: ResolverServices) {
     super(code);
-  }
-
-  initEnv(services: ResolverServices): void {
     this.resolverServices = services;
   }
 
@@ -1172,13 +1045,10 @@ function isLonIsinAttributeRequest(request: unknown): boolean {
 }
 
 export class LonIsinResolver extends FlowNode {
-  private resolverServices!: ResolverServices;
+  private resolverServices: ResolverServices;
 
-  constructor(code = "LON-ISIN") {
+  constructor(code = "LON-ISIN", services: ResolverServices) {
     super(code);
-  }
-
-  initEnv(services: ResolverServices): void {
     this.resolverServices = services;
   }
 

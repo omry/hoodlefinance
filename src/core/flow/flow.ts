@@ -6,7 +6,11 @@ import {
 } from "./graph";
 import { type LookupResult } from "./types";
 import { type FlowNode, FlowJunction } from "./nodes";
-import { NodeFactoryRegistry, type PlanConstructor, type LeafConstructor } from "./node-factory-registry";
+import {
+  NodeFactoryRegistry,
+  type PlanConstructor,
+  type LeafConstructor,
+} from "./node-factory-registry";
 import { FlowEngine, EnvelopeStatus, type ExecutionTrace } from "./engine";
 
 function formatCodeList(codes: string[]): string {
@@ -553,6 +557,7 @@ export class Flow {
   #subgraphsById: Graph.SubgraphRegistry;
   #nodesByCode: Record<string, FlowNode>;
   #exitNodeId: string;
+  envObject?: unknown;
 
   constructor(
     definition: Graph.Definition,
@@ -564,6 +569,7 @@ export class Flow {
     this.graph = view;
     this.#exitNodeId = exitNodeId;
     this.#registry = registry;
+    this.envObject = resolverEnv;
     this.#subgraphsById = Object.create(null);
     for (const subgraphId of this.graph.getSubgraphIds()) {
       const subgraph = this.graph.getSubgraph(subgraphId);
@@ -590,11 +596,7 @@ export class Flow {
       }
 
       const normalizedCode = normalizeGraphNodeId(node.id);
-      const resolver = new (Ctor as LeafConstructor)(normalizedCode);
-
-      if (resolverEnv !== undefined && typeof resolver.initEnv === "function") {
-        resolver.initEnv(resolverEnv);
-      }
+      const resolver = new (Ctor as LeafConstructor)(normalizedCode, resolverEnv);
 
       this.#nodesByCode[normalizedCode] = resolver;
     }
@@ -716,7 +718,11 @@ export class Flow {
     const nodes = getGraphNodeNextIds(spec)
       .map((nodeCode) => this.#isTerminalNode(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
       .filter((n): n is FlowNode => n !== null);
-    const compiledNode = new (Ctor as PlanConstructor)(normalizedCode, nodes);
+    const compiledNode = new (Ctor as PlanConstructor)(
+      normalizedCode,
+      nodes,
+      this.envObject,
+    );
 
     this.#nodesByCode[normalizedCode] = compiledNode;
 

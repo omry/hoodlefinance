@@ -1,7 +1,11 @@
 import { FlowNode, FlowJunction } from "./nodes";
 
-export type LeafConstructor = new(code: string) => FlowNode;
-export type PlanConstructor = new(code: string, nodes: FlowNode[]) => FlowNode;
+export type LeafConstructor = new(code: string, env?: any) => FlowNode;
+export type PlanConstructor = new(
+  code: string,
+  nodes: FlowNode[],
+  env?: any,
+) => FlowNode;
 
 export class NodeFactoryRegistry {
   readonly #entries: Map<string, LeafConstructor | PlanConstructor> = new Map();

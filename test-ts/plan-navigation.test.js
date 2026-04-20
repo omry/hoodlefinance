@@ -41,7 +41,7 @@ function createResolverNode(name, extra = {}) {
     describe() {
       return name;
     },
-    getRoutingNodeKind() {
+    getNodeKind() {
       return "leaf";
     },
     routingDescription: "",
@@ -109,7 +109,7 @@ test("resolveRoutingNode unwraps routing plans until it reaches a concrete node"
       getNodesForRequest() {
         return [yahoo];
       },
-      getRoutingNodeKind() {
+      getNodeKind() {
         return "switch";
       },
       isRoutingNode: true,
@@ -134,7 +134,7 @@ test("resolveRoutingNode also unwraps linear step plans", () => {
       getNodesForRequest() {
         return [classifier];
       },
-      getRoutingNodeKind() {
+      getNodeKind() {
         return "step";
       },
       isRoutingNode: true,
