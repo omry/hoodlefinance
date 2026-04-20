@@ -1,7 +1,7 @@
 import type { Flow } from "./flow";
 import type { Graph } from "./graph";
-import type { ExecutionContext, SelectNextContext } from "./resolver";
-import { NodeKind } from "./resolver";
+import type { ExecutionContext, SelectNextContext } from "./types";
+import { NodeKind } from "./types";
 import { getGraphNodeNextIds } from "./graph";
 
 export enum EnvelopeStatus {

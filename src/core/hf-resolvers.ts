@@ -15,7 +15,7 @@ import {
   RoutingPlan,
   TickerQuoteResolutionPlan,
 } from "./resolver-classes";
-import { FirstSuccessJunction, StepJunction } from "./flow/core-resolvers";
+import { FirstSuccessJunction, StepJunction } from "./flow/nodes";
 import {
   IdentifierResolver,
   FlowNode,
@@ -82,7 +82,7 @@ import {
   type ExecutionContext,
   type LookupResult,
   type ResolutionResult,
-} from "./flow/resolver";
+} from "./flow/types";
 import {
   loadStoredTextResource,
   type ResolverServices,

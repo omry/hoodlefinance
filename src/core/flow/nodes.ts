@@ -5,7 +5,7 @@ import {
   type ResolutionResult,
   NodeKind,
   type SelectNextContext,
-} from "./resolver";
+} from "./types";
 
 type SelectedNodes = FlowNode[];
 

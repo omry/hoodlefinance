@@ -4,8 +4,8 @@ import {
   getGraphNodeSubgraphCallIds,
   normalizeGraphNodeId,
 } from "./graph";
-import { type LookupResult } from "./resolver";
-import { type FlowNode, FlowJunction } from "./core-resolvers";
+import { type LookupResult } from "./types";
+import { type FlowNode, FlowJunction } from "./nodes";
 import { NodeFactoryRegistry, type PlanConstructor, type LeafConstructor } from "./node-factory-registry";
 import { FlowEngine, EnvelopeStatus, type ExecutionTrace } from "./engine";
 

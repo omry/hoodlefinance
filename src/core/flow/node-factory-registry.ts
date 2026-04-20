@@ -1,4 +1,4 @@
-import { FlowNode, FlowJunction } from "./core-resolvers";
+import { FlowNode, FlowJunction } from "./nodes";
 
 export type LeafConstructor = new(code: string) => FlowNode;
 export type PlanConstructor = new(code: string, nodes: FlowNode[]) => FlowNode;

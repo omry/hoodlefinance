@@ -207,6 +207,10 @@ Concrete changes resulting from this review, to be tracked for implementation:
 
 **Graph types**
 - Separate `Graph.Definition` (raw input schema) from the normalized internal representation
+- Evaluate nested graphs as a first-class alternative to the current subgraph mechanism: if
+  a `FlowNode` could hold a child `Flow` and the engine descended into it transparently, the
+  explicit `__subgraphs__` registry, `callSubgraph`, and bounded-execution bookkeeping could
+  be replaced by ordinary graph composition.
 
 **Tracing**
 - When the main `ExecutionTrace` is fully implemented, unify the trace shape: extract a `CallTrace`
