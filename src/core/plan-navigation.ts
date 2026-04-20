@@ -1,18 +1,18 @@
-import { type Resolver, ResolverPlan } from "./resolver-classes";
+import { type FlowNode, FlowJunction } from "./resolver-classes";
 import { RoutingNodeKind } from "./flow";
 
-function formatNodeName(node: Resolver | null | undefined): string {
+function formatNodeName(node: FlowNode | null | undefined): string {
   return String((node && node.name) || "").trim() || "<unknown>";
 }
 
-export function isResolverPlan(node: unknown): node is ResolverPlan {
+export function isResolverPlan(node: unknown): node is FlowJunction {
   return (
-    !!node && typeof (node as ResolverPlan).getNodesForRequest === "function"
+    !!node && typeof (node as FlowJunction).getNodesForRequest === "function"
   );
 }
 
-export function selectSinglePlanNode<TNode extends Resolver>(
-  plan: Pick<ResolverPlan, "getNodesForRequest" | "name"> | null | undefined,
+export function selectSinglePlanNode<TNode extends FlowNode>(
+  plan: Pick<FlowJunction, "getNodesForRequest" | "name"> | null | undefined,
   request: unknown,
   options: {
     allowNone?: boolean;
@@ -49,15 +49,15 @@ export function selectSinglePlanNode<TNode extends Resolver>(
   return selectedNodes[0] ?? null;
 }
 
-export function resolveRoutingNode<TNode extends Resolver>(
-  node: Resolver | null | undefined,
+export function resolveRoutingNode<TNode extends FlowNode>(
+  node: FlowNode | null | undefined,
   request: unknown,
   options: {
     allowNone?: boolean;
-    onMultiple?: (routingNode: ResolverPlan, selectedNodes: TNode[]) => Error;
-    onNone?: (routingNode: ResolverPlan) => Error;
+    onMultiple?: (routingNode: FlowJunction, selectedNodes: TNode[]) => Error;
+    onNone?: (routingNode: FlowJunction) => Error;
   } = {},
-): TNode | Resolver | null {
+): TNode | FlowNode | null {
   let currentNode = node;
 
   while (
@@ -93,7 +93,7 @@ export function resolveRoutingNode<TNode extends Resolver>(
 }
 
 export function matchesResolverName(
-  node: Pick<Resolver, "name"> | null | undefined,
+  node: Pick<FlowNode, "name"> | null | undefined,
   name: string,
 ): boolean {
   const normalizedName = String(name || "")
@@ -110,14 +110,14 @@ export function matchesResolverName(
 }
 
 function listSearchablePlanNodes(
-  node: ResolverPlan | null | undefined,
+  node: FlowJunction | null | undefined,
   request: unknown | null,
-): Resolver[] {
+): FlowNode[] {
   if (!node) {
     return [];
   }
 
-  return (node.nodes || []).filter((childNode) => {
+  return (node.nodes || []).filter((childNode: FlowNode) => {
     if (!childNode?.canHandle || !request) {
       return true;
     }
@@ -127,13 +127,13 @@ function listSearchablePlanNodes(
 }
 
 export function findNamedResolver(
-  node: Resolver | null | undefined,
+  node: FlowNode | null | undefined,
   name: string,
   request: unknown | null,
   options: { requireCanHandle?: boolean } = {},
-): Resolver | null {
+): FlowNode | null {
   const requireCanHandle = options.requireCanHandle !== false;
-  let nodes: Resolver[];
+  let nodes: FlowNode[];
 
   if (!node || !name) {
     return null;
@@ -159,7 +159,7 @@ export function findNamedResolver(
   nodes =
     requireCanHandle && request
       ? listSearchablePlanNodes(node, request)
-      : ((node.nodes || []) as Resolver[]);
+      : ((node.nodes || []) as FlowNode[]);
 
   for (const childNode of nodes) {
     const found = findNamedResolver(childNode, name, request, options);

@@ -1,7 +1,7 @@
 import { RawRequestInput } from "./request";
 import { EnvelopeStatus, FlowEngine, type ExecutionTrace } from "./flow/engine";
-export { ResolveFlow } from "./flow/resolve-flow";
-import { ResolveFlow } from "./flow/resolve-flow";
+export { Flow } from "./flow/resolve-flow";
+import { Flow } from "./flow/resolve-flow";
 
 function createRawRequestInput(
   identifier: string,
@@ -13,7 +13,7 @@ function createRawRequestInput(
   );
 }
 
-export class HoodleFinanceFlow extends ResolveFlow {
+export class HoodleFinanceFlow extends Flow {
   resolveAttribute(identifier: string, attribute = "price"): unknown {
     const rawInput = createRawRequestInput(identifier, attribute);
     const engine = new FlowEngine(this);
@@ -61,7 +61,7 @@ export class HoodleFinanceFlow extends ResolveFlow {
 }
 
 export function resolveAttribute(
-  flow: ResolveFlow,
+  flow: Flow,
   identifier: string,
   attribute = "price",
 ): unknown {
@@ -79,7 +79,7 @@ export function resolveAttribute(
 }
 
 export function resolveAttributeWithTrace(
-  flow: ResolveFlow,
+  flow: Flow,
   identifier: string,
   attribute = "price",
 ): {

@@ -4,7 +4,7 @@ const test = require("node:test");
 const {
   createConcreteResolverRegistry,
   DagPlan,
-  ResolveFlow,
+  Flow,
 } = require("../dist/ts/core/index.js");
 const { createTestEnv } = require("./resolver-service-fixtures.js");
 
@@ -24,24 +24,24 @@ test("DagPlan uses the final graph node shape", () => {
   });
 });
 
-test("ResolveFlow builds and validates DagPlan directly from the authored graph", () => {
-  const resolveFlow = new ResolveFlow(
+test("Flow builds and validates DagPlan directly from the authored graph", () => {
+  const flow = new Flow(
     DagPlan,
     createConcreteResolverRegistry(),
     createTestEnv(),
   );
 
-  assert.equal(resolveFlow.getGraph().getRoot().id, "ROOT");
-  assert.equal(resolveFlow.getGraph().getTerminal().id, "TERMINAL");
+  assert.equal(flow.getGraph().getRoot().id, "ROOT");
+  assert.equal(flow.getGraph().getTerminal().id, "TERMINAL");
   assert.equal(
-    resolveFlow.getGraph().getNode("QUOTE:PSE").type,
+    flow.getGraph().getNode("QUOTE:PSE").type,
     "PseQuoteResolutionPlan",
   );
 });
 
-test("ResolveFlow validates DAG structure during construction", () => {
+test("Flow validates DAG structure during construction", () => {
   assert.throws(() => {
-    new ResolveFlow(
+    new Flow(
       {
         ROOT: {
           id: "ROOT",

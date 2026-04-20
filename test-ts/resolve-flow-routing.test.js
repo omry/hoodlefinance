@@ -22,7 +22,7 @@ test("compiled DagPlan classifies representative examples correctly", () => {
   ];
 
   for (const { example, expectedClassification } of cases) {
-    const outcome = rootNode.resolve(new RawRequestInput(example, "price"));
+    const outcome = rootNode.execute(new RawRequestInput(example, "price"));
     assert.equal(
       outcome.status,
       "success",

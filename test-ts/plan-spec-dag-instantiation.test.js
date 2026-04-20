@@ -6,7 +6,7 @@ const {
   EquityAttributeExtractResolver,
   EquityAttributeResolutionPlan,
   FirstSuccessReceiver,
-  FirstSuccessPlan,
+  FirstSuccessJunction,
   FxAttributeExtractResolver,
   FxAttributeResolutionPlan,
   GoogleFxResolver,
@@ -18,10 +18,10 @@ const {
   PseIsinMapResolver,
   PseQuoteResolutionPlan,
   RequestClassifierResolver,
-  ResolveFlow,
+  Flow,
   BaseHFResolver,
   RoutingPlan,
-  StepPlan,
+  StepJunction,
   TickerQuoteResolutionPlan,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
@@ -56,11 +56,11 @@ function createResolverRegistry() {
     .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
     .registerLeaf("YahooFxResolver", YahooFxResolver)
     .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
-    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessJunction)
     .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .registerPlan("RoutingPlan", RoutingPlan)
-    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("StepPlan", StepJunction)
     .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
@@ -125,17 +125,17 @@ function createValidSubgraphDagSpecs() {
   return definition;
 }
 
-function instantiateResolveFlow(definition) {
-  return new ResolveFlow(
+function instantiateFlow(definition) {
+  return new Flow(
     definition,
     createResolverRegistry(),
     createStaticResolverServices(),
   );
 }
 
-test("ResolveFlow graph view normalizes and validates DAG structure", async (t) => {
+test("Flow graph view normalizes and validates DAG structure", async (t) => {
   await t.test("builds a graph view from normalized ordered child ids", () => {
-    const graph = instantiateResolveFlow(createValidDagSpecs()).getGraph();
+    const graph = instantiateFlow(createValidDagSpecs()).getGraph();
 
     assert.equal(graph.getRoot().id, "ROOT");
     assert.equal(graph.getTerminal().id, "TERMINAL");
@@ -165,7 +165,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   });
 
   await t.test("instantiates DagPlan as a valid HOODLEFINANCE graph", () => {
-    const graph = instantiateResolveFlow(DagPlan).getGraph();
+    const graph = instantiateFlow(DagPlan).getGraph();
 
     assert.equal(graph.getRoot().id, "ROOT");
     assert.equal(graph.getTerminal().id, "TERMINAL");
@@ -187,7 +187,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test(
     "builds declared subgraphs and node-level subgraph call metadata",
     () => {
-      const graph = instantiateResolveFlow(
+      const graph = instantiateFlow(
         createValidSubgraphDagSpecs(),
       ).getGraph();
 
@@ -203,7 +203,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects duplicate normalized codes", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["TERMINAL"],
@@ -226,7 +226,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects mismatched keys and node ids", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "NOT-ROOT",
             next: ["TERMINAL"],
@@ -244,7 +244,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects missing referenced child nodes", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["MISSING"],
@@ -262,7 +262,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects cycles", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["A"],
@@ -285,7 +285,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects multiple roots", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["TERMINAL"],
@@ -308,7 +308,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects multiple terminals", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["LEFT", "RIGHT"],
@@ -344,7 +344,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
       definition.QUOTE.subgraphCalls = ["FX"];
 
       assert.throws(
-        () => instantiateResolveFlow(definition),
+        () => instantiateFlow(definition),
         /Graph node "QUOTE" references undeclared subgraph "FX"\./,
       );
     },
@@ -363,7 +363,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
       ];
 
       assert.throws(
-        () => instantiateResolveFlow(definition),
+        () => instantiateFlow(definition),
         /Subgraph "FX" terminal node "FX:END" is unreachable from root "FX:START"\./,
       );
     },
@@ -376,7 +376,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
       definition["FX:END"].group = "OTHER";
 
       assert.throws(
-        () => instantiateResolveFlow(definition),
+        () => instantiateFlow(definition),
         /Subgraph "FX" terminal node "FX:END" must belong to group "FX"\./,
       );
     },
@@ -400,7 +400,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
       ];
 
       assert.throws(
-        () => instantiateResolveFlow(definition),
+        () => instantiateFlow(definition),
         /Subgraph "FX" may execute nodes outside group "FX": FX:MID\./,
       );
     },
@@ -409,7 +409,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects nodes unreachable from the root", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["TERMINAL"],
@@ -437,7 +437,7 @@ test("ResolveFlow graph view normalizes and validates DAG structure", async (t) 
   await t.test("rejects nodes that cannot reach the terminal", () => {
     assert.throws(
       () =>
-        instantiateResolveFlow({
+        instantiateFlow({
           ROOT: {
             id: "ROOT",
             next: ["A"],

@@ -2,20 +2,19 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
-  FirstSuccessPlan,
+  FirstSuccessJunction,
   RawRequestInput,
   RequestInput,
   PseQuoteResolutionPlan,
-  Resolver,
-  ResolverPlan,
+  FlowNode,
+  FlowJunction,
   BaseHFResolver,
-  StepPlan,
-  SwitchPlan,
+  StepJunction,
+  SwitchJunction,
   TickerQuoteResolutionPlan,
   buildPlanNodeFromSpec,
   createResolutionFailure,
   createResolutionSuccess,
-  describePlanSource,
 } = require("../dist/ts/core/index.js");
 
 function createRequestInput(overrides = {}) {
@@ -61,30 +60,19 @@ function createLeafResolver(name, extra = {}) {
   return new LeafResolver();
 }
 
-test("ResolverPlan describe reports the route without building a runtime plan", () => {
-  const plan = new FirstSuccessPlan("QUOTE", [
-    createLeafResolver("YAHOO"),
-    createLeafResolver("IBKR"),
-  ]);
 
-  assert.equal(plan.describe(createRequestInput()), "QUOTE -> YAHOO -> IBKR");
-});
-
-test("Resolver constructor uses the graph node id", () => {
-  const resolver = new Resolver("ROOT");
+test("FlowNode constructor uses the graph node id", () => {
+  const resolver = new FlowNode("ROOT");
 
   assert.equal(resolver.name, "ROOT");
   assert.equal(resolver.code, "ROOT");
 });
 
-test("ResolverPlan maintains standard fallback sequence and full routing-tree visibility", () => {
+test("FlowJunction maintains standard fallback sequence and full routing-tree visibility", () => {
   const yahoo = createLeafResolver("YAHOO");
   const ibkr = createLeafResolver("IBKR");
 
-  const plan = new ResolverPlan("QUOTE", [yahoo, ibkr], {
-    isRoutingNode: false,
-    routePath: "",
-  });
+  const plan = new FlowJunction("QUOTE", [yahoo, ibkr]);
 
   const request = createRequestInput();
 
@@ -96,7 +84,6 @@ test("ResolverPlan maintains standard fallback sequence and full routing-tree vi
     plan.getRoutingNodes().map((node) => node.name),
     ["YAHOO", "IBKR"],
   );
-  assert.equal(plan.buildRoutePath(request), "YAHOO -> IBKR");
 });
 
 test("StepPlan forwards to all children without request-based selection", () => {
@@ -106,7 +93,7 @@ test("StepPlan forwards to all children without request-based selection", () => 
     },
   });
   const second = createLeafResolver("SECOND");
-  const plan = new StepPlan("ROOT", [first, second]);
+  const plan = new StepJunction("ROOT", [first, second]);
 
   assert.deepEqual(
     plan
@@ -127,7 +114,7 @@ test("SwitchPlan selectNext returns the selected child only once per context", (
       return false;
     },
   });
-  const plan = new SwitchPlan("QUOTE", [ibkr, yahoo]);
+  const plan = new SwitchJunction("QUOTE", [ibkr, yahoo]);
   const context = {};
 
   assert.deepEqual(plan.selectNext(createRequestInput(), context), [yahoo]);
@@ -142,7 +129,7 @@ test("FirstSuccessPlan selectNext advances across handleable children", () => {
   });
   const yahoo = createLeafResolver("YAHOO");
   const ibkr = createLeafResolver("IBKR");
-  const plan = new FirstSuccessPlan("QUOTE", [skipped, yahoo, ibkr]);
+  const plan = new FirstSuccessJunction("QUOTE", [skipped, yahoo, ibkr]);
   const context = {};
   const request = createRequestInput();
 
@@ -154,12 +141,12 @@ test("FirstSuccessPlan selectNext advances across handleable children", () => {
 test("StepPlan selectNext returns all children and rejects unhandleable output", () => {
   const first = createLeafResolver("FIRST");
   const second = createLeafResolver("SECOND");
-  const plan = new StepPlan("ROOT", [first, second]);
+  const plan = new StepJunction("ROOT", [first, second]);
   const request = createRequestInput();
 
   assert.deepEqual(plan.selectNext(request, {}), [first, second]);
 
-  const failingPlan = new StepPlan("ROOT", [
+  const failingPlan = new StepJunction("ROOT", [
     createLeafResolver("FIRST"),
     createLeafResolver("SECOND", {
       canHandle() {
@@ -209,11 +196,6 @@ test("buildPlanNodeFromSpec builds a TickerQuoteResolutionPlan without plan-owne
     yahooSymbol: "GOOG",
   };
 
-  assert.equal(
-    plan.describe(request),
-    "QUOTE:TICKER -> YAHOO -> TRADINGVIEW-FUND",
-  );
-  assert.equal(plan.buildRoutePath(request), "YAHOO -> TRADINGVIEW-FUND");
 });
 
 test("buildPlanNodeFromSpec preserves unresolved child slots like the runtime materializer", () => {
@@ -249,7 +231,7 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
       })[nodeCode],
   );
 
-  assert.equal(plan instanceof StepPlan, true);
+  assert.equal(plan instanceof StepJunction, true);
   assert.equal(plan.getRoutingNodeKind(), "step");
 });
 
@@ -278,7 +260,7 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
       })[nodeCode],
   );
 
-  assert.equal(plan instanceof FirstSuccessPlan, true);
+  assert.equal(plan instanceof FirstSuccessJunction, true);
   assert.deepEqual(
     plan.nodes.map((node) => node && node.name),
     ["ISIN:PSE", "ISIN:YAHOO"],
@@ -321,17 +303,6 @@ test("PseQuoteResolutionPlan materializes as the dedicated PSE quote plan", () =
   );
 });
 
-test("describePlanSource handles normal and forced route labels", () => {
-  assert.equal(
-    describePlanSource({ routeClass: "EQUITY -> TICKER", routePath: "YAHOO" }),
-    "EQUITY -> TICKER -> YAHOO",
-  );
-  assert.equal(
-    describePlanSource({ routeClass: "FORCED:YAHOO", routePath: "YAHOO" }),
-    "YAHOO",
-  );
-  assert.equal(describePlanSource({ routeClass: "", routePath: "PSE" }), "PSE");
-});
 
 test("resolution result helpers normalize elapsed time and error formatting", () => {
   assert.deepEqual(createResolutionSuccess("ok", -2), {

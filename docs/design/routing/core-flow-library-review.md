@@ -171,28 +171,30 @@ rest.
 Concrete changes resulting from this review, to be tracked for implementation:
 
 **Renames**
-- `ResolveFlow` → `Flow`
-- `Resolver` → `FlowNode`
-- `ResolverPlan` → `FlowJunction`; `SwitchPlan` → `SwitchJunction`, `StepPlan` → `StepJunction`, `FirstSuccessPlan` → `FirstSuccessJunction` (or shorter functional names)
-- `Resolver.resolve()` → `FlowNode.execute()`; `Resolver.execute()` → `FlowNode.run()`
-- `RoutingNodeKind.TryEach` string value: `"try each"` → `"try_each"`
+- ~~`ResolveFlow` → `Flow`~~
+- ~~`Resolver` → `FlowNode`~~
+- ~~`ResolverPlan` → `FlowJunction`; `SwitchPlan` → `SwitchJunction`, `StepPlan` → `StepJunction`, `FirstSuccessPlan` → `FirstSuccessJunction` (or shorter functional names)~~
+- ~~`Resolver.resolve()` → `FlowNode.execute()`; `Resolver.execute()` → `FlowNode.run()`~~
+- ~~`RoutingNodeKind.TryEach` string value: `"try each"` → `"try_each"`~~
 
 **Identifier cleanup**
 - Remove `code` and `name` from `FlowNode`; use `id` throughout
 
 **Dead code removal**
 - Delete `initEnv()` from `FlowNode`, the instantiation loop in `Flow`, and any concrete subclasses that override it
-- Delete display/introspection methods from `FlowNode` and `FlowJunction`:
+- ~~Delete display/introspection methods from `FlowNode` and `FlowJunction`:
   `getExampleInput`, `getRoutingDescription`, `describeRoutingNode`, `getGroupedSourceNames`,
-  `getGroupedSourceNamesForDisplay`, `describe`, `buildRoutePath`, `describePlanSource`
-- Delete `normalizeCode` in `resolve-flow.ts` and `normalizeNodeCode` in `core-resolvers.ts`
+  `getGroupedSourceNamesForDisplay`, `describe`, `buildRoutePath`, `describePlanSource`~~
+- ~~Delete `normalizeCode` in `resolve-flow.ts` and `normalizeNodeCode` in `core-resolvers.ts`~~
+- Delete `src/core/routing-introspection.ts`: dead code in the TS layer — the legacy JS runtime
+  has its own parallel implementation; no production TS consumer exists
 
 **Engine fixes**
-- `FlowEngine.#childCanHandle()`: replace the compound optional-chain expression with a
-  plain null check followed by a `canHandle()` call
-- `EnvelopeStatus.TerminalFailure`: remove from the public `Envelope` status union; encode
-  TryEach exhaustion as an error string (`"exhausted all options in node X [Y1, Y2, Y3]"`)
-- `Envelope.didReachStopNode`: make private / unexported
+- ~~`FlowEngine.#childCanHandle()`: replace the compound optional-chain expression with a
+  plain null check followed by a `canHandle()` call~~
+- ~~`EnvelopeStatus.TerminalFailure`: remove from the public `Envelope` status union; encode
+  TryEach exhaustion as an error string (`"exhausted all options in node X [Y1, Y2, Y3]"`)~~
+- ~~`Envelope.didReachStopNode`: make private / unexported~~ (renamed to `_didReachStopNode`; still exported on the interface)
 
 **API surface**
 - `FlowJunction.getNodesForRequest` / `getHandleableNodesForRequest`: collapse to one method
@@ -202,6 +204,11 @@ Concrete changes resulting from this review, to be tracked for implementation:
 
 **Graph types**
 - Separate `Graph.Definition` (raw input schema) from the normalized internal representation
+
+**Tracing**
+- When the main `ExecutionTrace` is fully implemented, unify the trace shape: extract a `CallTrace`
+  base type (`path`, `route`, `status`, `error?`) and extend it with `subgraphId` for
+  `SubgraphCallTrace`, so both the top-level and subgraph traces share the same structure
 
 **Remaining Work**
 

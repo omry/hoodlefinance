@@ -131,12 +131,12 @@ test("DirectIdentifierResolver resolves direct non-ISIN requests into typed requ
   assert.equal(resolver.name, "DIRECT-IDENTIFIER");
   assert.equal(materializedResolver.name, "ROOT");
 
-  const success = resolver.resolve(createRequestInput({ ticker: "GOOG" }));
+  const success = resolver.execute(createRequestInput({ ticker: "GOOG" }));
   assert.equal(success.status, "success");
   assert.equal(success.value.yahooSymbol, "GOOG");
   assert.ok(success.value.identifierResolutionMs >= 0);
 
-  const failure = resolver.resolve(
+  const failure = resolver.execute(
     createRequestInput({
       identifier: "US02079K1079",
       ticker: "US02079K1079",
@@ -252,20 +252,6 @@ test("Concrete resolvers keep direct default ids and honor spec ids when materia
   );
 });
 
-test("LonIsinResolver keeps the explicit LSE route label", () => {
-  const resolver = new LonIsinResolver();
-  const request = new EquityRequest({
-    allowTradingviewFallback: false,
-    attribute: "isin",
-    exchange: "LON",
-    identifier: "LON:VOD",
-    identifierResolutionMs: 0,
-    symbol: "VOD",
-    yahooSymbol: "VOD.L",
-  });
-
-  assert.equal(resolver.describe(request), "LON-ISIN -> LSE");
-});
 
 test("LocalFxResolver returns a same-currency synthetic quote", () => {
   const resolver = new LocalFxResolver();
@@ -288,7 +274,7 @@ test("LocalFxResolver returns a same-currency synthetic quote", () => {
 
   assert.equal(resolver.canHandle(request), true);
 
-  const outcome = resolver.resolve(request);
+  const outcome = resolver.execute(request);
   assert.equal(outcome.status, "success");
   assert.equal(outcome.value.quote.regularMarketPrice, 1);
   assert.equal(outcome.value.quote.symbol, "USDUSD");
@@ -310,7 +296,7 @@ test("EquityAttributeExtractResolver normalizes stock unit money attributes thro
     },
   };
 
-  const result = resolver.resolve(
+  const result = resolver.execute(
     {
       attribute: "close",
       quote: new StockQuote({
@@ -345,7 +331,7 @@ test("EquityAttributeExtractResolver converts stock unit prices directly to the 
     },
   };
 
-  const result = resolver.resolve(
+  const result = resolver.execute(
     {
       attribute: "price@USD",
       quote: new StockQuote({
@@ -365,7 +351,7 @@ test("EquityAttributeExtractResolver converts stock unit prices directly to the 
 
 test("FxAttributeExtractResolver keeps explicit FX scaling in extraction", () => {
   const resolver = new FxAttributeExtractResolver();
-  const result = resolver.resolve({
+  const result = resolver.execute({
     attribute: "price",
     quote: {
       currency: "USD",
@@ -440,7 +426,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
 
   assert.equal(resolver.canHandle(request), true);
 
-  const fetchedOutcome = resolver.resolve(request);
+  const fetchedOutcome = resolver.execute(request);
   assert.equal(fetchedOutcome.status, "success");
   assert.equal(fetchedOutcome.value.quote.regularMarketPrice, 1.25);
   assert.equal(fetchedOutcome.value.quote.symbol, "EURUSD");
@@ -476,7 +462,7 @@ test("GoogleFxResolver resolves cached and fetched Google Finance FX quotes", ()
     }),
   );
 
-  const cachedOutcome = cachedResolver.resolve(request);
+  const cachedOutcome = cachedResolver.execute(request);
   assert.equal(cachedOutcome.status, "success");
   assert.equal(cachedOutcome.value.quote.regularMarketPrice, 1.25);
   assert.equal(cachedOutcome.value.quote.shortName, "EURUSD");
@@ -512,9 +498,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
   });
 
   assert.equal(resolver.canHandle(request), true);
-  assert.equal(resolver.describe(request), "EQUITY -> PSE -> PSE-FRAMES");
-
-  const fetchedResult = resolver.resolve(request);
+  const fetchedResult = resolver.execute(request);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.quote.regularMarketPrice, 9.87);
   assert.equal(fetchedResult.value.quote.symbol, "BDO.PS");
@@ -557,7 +541,7 @@ test("PseFramesResolver resolves cached and fetched PSE frame quotes", () => {
     }),
   );
 
-  const cachedResult = cachedResolver.resolve(request);
+  const cachedResult = cachedResolver.execute(request);
   assert.equal(cachedResult.status, "success");
   assert.equal(cachedResult.value.quote.symbol, "BDO.PS");
   assert.equal(cachedResult.value.quote.regularMarketPrice, 9.87);
@@ -602,9 +586,7 @@ test("PseEdgeResolver resolves cached and fetched PSE edge quotes", () => {
   });
 
   assert.equal(resolver.canHandle(request), true);
-  assert.equal(resolver.describe(request), "EQUITY -> PSE -> PSE-EDGE");
-
-  const fetchedResult = resolver.resolve(request);
+  const fetchedResult = resolver.execute(request);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.quote.regularMarketPrice, 9.87);
   assert.equal(fetchedResult.value.quote.symbol, "BDO.PS");
@@ -671,7 +653,7 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
 
-  const cachedResult = cachedResolver.resolve(cachedRequest);
+  const cachedResult = cachedResolver.execute(cachedRequest);
   assert.equal(cachedResult.status, "success");
   assert.equal(cachedResult.value.quote.regularMarketPrice, 123.45);
 
@@ -705,7 +687,7 @@ test("YahooEquityQuoteResolver resolves cached and fetched Yahoo quote lookups",
     }),
   );
 
-  const fetchedResult = fetchedResolver.resolve(cachedRequest);
+  const fetchedResult = fetchedResolver.execute(cachedRequest);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.quote.regularMarketPrice, 99.5);
   assert.deepEqual(cachedWrite, {
@@ -777,7 +759,7 @@ test("YahooEquityQuoteResolver owns preferred equity fallback symbols without af
     identifier: "EURUSD",
   });
 
-  const result = resolver.resolve(equityRequest);
+  const result = resolver.execute(equityRequest);
   assert.equal(result.status, "success");
   assert.equal(
     lastFetchedUrl,
@@ -852,7 +834,7 @@ test("YahooEquityQuoteResolver falls back to stored preferred whitelist data whe
     }),
   );
 
-  resolver.resolve(
+  resolver.execute(
     new EquityRequest({
       attribute: "price",
       identifier: "NLY-I",
@@ -924,7 +906,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
 
-  const cachedResult = cachedResolver.resolve(cachedRequest);
+  const cachedResult = cachedResolver.execute(cachedRequest);
   assert.equal(cachedResult.status, "success");
   assert.equal(cachedResult.value.quote.regularMarketPrice, 17.25);
   assert.equal(cachedResult.value.quote.symbol, "KSMF59.TA");
@@ -961,7 +943,7 @@ test("TradingviewFundResolver resolves cached and fetched TradingView fund quote
     }),
   );
 
-  const fetchedResult = fetchedResolver.resolve(cachedRequest);
+  const fetchedResult = fetchedResolver.execute(cachedRequest);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.quote.regularMarketPrice, 17.25);
   assert.equal(fetchedResult.value.quote.longName, "KSM KSMF59");
@@ -1035,7 +1017,7 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
 
   assert.equal(resolver.canHandle(requestInput), true);
 
-  const success = resolver.resolve(requestInput);
+  const success = resolver.execute(requestInput);
   assert.equal(success.status, "success");
   assert.equal(success.value.exchange, "PSE");
   assert.equal(success.value.symbol, "BDO");
@@ -1049,7 +1031,7 @@ test("PseIsinMapResolver resolves Philippine ISIN inputs through the map lookup"
   assert.equal(storedWrite?.text, "PHY077751022=PSE:BDO\n");
   assert.equal(typeof storedWrite?.fetchedAtMs, "number");
 
-  const failure = resolver.resolve(
+  const failure = resolver.execute(
     createRequestInput({
       attribute: "price",
       attributeType: "quote",
@@ -1097,7 +1079,7 @@ test("PseIsinMapResolver falls back to stored map data when refresh fails", () =
     }),
   );
 
-  const result = resolver.resolve(
+  const result = resolver.execute(
     createRequestInput({
       attribute: "price",
       attributeType: "quote",
@@ -1143,7 +1125,7 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
 
   assert.equal(cachedResolver.canHandle(cachedRequest), true);
 
-  const cachedResult = cachedResolver.resolve(cachedRequest);
+  const cachedResult = cachedResolver.execute(cachedRequest);
   assert.equal(cachedResult.status, "success");
   assert.equal(cachedResult.value.yahooSymbol, "GOOG");
 
@@ -1175,7 +1157,7 @@ test("YahooIsinSearchResolver resolves cached and fetched Yahoo ISIN lookups", (
     }),
   );
 
-  const fetchedResult = fetchedResolver.resolve(cachedRequest);
+  const fetchedResult = fetchedResolver.execute(cachedRequest);
   assert.equal(fetchedResult.status, "success");
   assert.equal(fetchedResult.value.yahooSymbol, "IBM");
   assert.deepEqual(cachedWrite, {

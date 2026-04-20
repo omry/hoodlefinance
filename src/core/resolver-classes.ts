@@ -3,27 +3,26 @@ import { RawRequestInput, RequestInput } from "./request";
 
 import { getGraphNodeNextIds, type Graph } from "./flow/graph";
 export type { ExecutionContext, SelectNextContext } from "./flow/resolver";
+import type { ExecutionContext, ResolutionResult } from "./flow/resolver";
 export {
-  FirstSuccessPlan,
-  Resolver,
-  ResolverPlan,
-  StepPlan,
-  SwitchPlan,
+  FirstSuccessJunction,
+  FlowNode,
+  FlowJunction,
+  StepJunction,
+  SwitchJunction,
 } from "./flow/core-resolvers";
 import {
-  FirstSuccessPlan,
-  Resolver,
-  ResolverPlan,
-  StepPlan,
-  SwitchPlan,
+  FirstSuccessJunction,
+  FlowNode,
+  FlowJunction,
+  StepJunction,
+  SwitchJunction,
 } from "./flow/core-resolvers";
 import type { SelectNextContext } from "./flow/resolver";
 
-export class IdentifierResolver extends Resolver {}
+export class IdentifierResolver extends FlowNode {}
 
-class AttributeResolver extends Resolver {}
-
-export class BaseHFResolver extends AttributeResolver {
+export class BaseHFResolver extends FlowNode {
   readonly traceLabel: string;
 
   constructor(code: string, traceLabel?: string) {
@@ -35,19 +34,15 @@ export class BaseHFResolver extends AttributeResolver {
     return "";
   }
 
-  getResolverClass(): string {
-    return this.name;
-  }
-
-  getResolverPath(): string {
-    return this.traceLabel;
-  }
-
-  protected override resolveTransformValue(
-    value: unknown,
+  override execute(
     request: unknown,
-  ): unknown {
-    if (value == null) return value;
+    context?: ExecutionContext,
+  ): ResolutionResult<unknown> {
+    const result = super.execute(request, context);
+    if (result.status !== "success" || result.value == null) {
+      return result;
+    }
+
     let attribute: string;
     let identifier: string;
     if (request instanceof RawRequestInput || request instanceof RequestInput) {
@@ -60,11 +55,16 @@ export class BaseHFResolver extends AttributeResolver {
       attribute = String(req.input?.attribute || "price");
       identifier = String(req.input?.identifier || "");
     }
+
     return {
-      quote: value,
-      attribute,
-      tickerInput: identifier,
-      input: request as ResolvedRequest,
+      status: "success",
+      elapsedMs: result.elapsedMs,
+      value: {
+        quote: result.value,
+        attribute,
+        tickerInput: identifier,
+        input: request as ResolvedRequest,
+      },
     };
   }
 
@@ -74,9 +74,9 @@ export class BaseHFResolver extends AttributeResolver {
   initEnv(_env: unknown): void {}
 }
 
-export class RoutingPlan extends SwitchPlan {}
+export class RoutingPlan extends SwitchJunction {}
 
-export class EquityAttributeResolutionPlan extends SwitchPlan {
+export class EquityAttributeResolutionPlan extends SwitchJunction {
   canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
@@ -86,15 +86,11 @@ export class EquityAttributeResolutionPlan extends SwitchPlan {
   }
 }
 
-export class PseQuoteResolutionPlan extends FirstSuccessPlan {
-  getExampleInput(): string | null {
-    return "PSE:BDO";
-  }
-}
+export class PseQuoteResolutionPlan extends FirstSuccessJunction {}
 
-export class TickerQuoteResolutionPlan extends FirstSuccessPlan {}
+export class TickerQuoteResolutionPlan extends FirstSuccessJunction {}
 
-export class FxAttributeResolutionPlan extends SwitchPlan {
+export class FxAttributeResolutionPlan extends SwitchJunction {
   canHandle(request: unknown): boolean {
     return (
       !(request instanceof RawRequestInput) &&
@@ -103,7 +99,7 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
     );
   }
 
-  constructor(name: string, nodes: Resolver[]) {
+  constructor(name: string, nodes: FlowNode[]) {
     super(name, nodes);
     if (this.nodes.length < 2) {
       throw new Error(
@@ -112,7 +108,7 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
     }
   }
 
-  selectNext(request: unknown, context: SelectNextContext = {}): Resolver[] {
+  selectNext(request: unknown, context: SelectNextContext = {}): FlowNode[] {
     if (this.getSelectedNodeCodes(context).size > 0) {
       return [];
     }
@@ -131,7 +127,7 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
     return selectedNode ? [selectedNode] : [];
   }
 
-  getRoutingNodes(): Resolver[] {
+  getRoutingNodes(): FlowNode[] {
     const routingNodes = [];
     if (this.nodes[0]) routingNodes.push(this.nodes[0]);
     if (this.nodes[1]) routingNodes.push(this.nodes[1]);
@@ -141,19 +137,19 @@ export class FxAttributeResolutionPlan extends SwitchPlan {
 
 export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   EquityAttributeResolutionPlan,
-  FirstSuccessPlan,
+  FirstSuccessPlan: FirstSuccessJunction,
   FxAttributeResolutionPlan,
   PseQuoteResolutionPlan,
   RoutingPlan,
-  StepPlan,
+  StepPlan: StepJunction,
   TickerQuoteResolutionPlan,
 } as const;
 
 export function buildPlanNodeFromSpec(
   code: string,
   spec: Graph.Node,
-  resolveNode: (nodeCode: string) => Resolver | null,
-): Resolver {
+  resolveNode: (nodeCode: string) => FlowNode | null,
+): FlowNode {
   const PlanClass =
     PLAN_RESOLVER_CLASSES_BY_NAME[
       spec.type as keyof typeof PLAN_RESOLVER_CLASSES_BY_NAME
@@ -167,7 +163,7 @@ export function buildPlanNodeFromSpec(
 
   const Ctor = PlanClass as unknown as new (
     name: string,
-    nodes: (Resolver | null)[],
-  ) => ResolverPlan;
+    nodes: (FlowNode | null)[],
+  ) => FlowJunction;
   return new Ctor(code, getGraphNodeNextIds(spec).map(resolveNode));
 }

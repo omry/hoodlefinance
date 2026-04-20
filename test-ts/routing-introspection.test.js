@@ -47,9 +47,6 @@ test("routing table helpers preserve the example-driven introspection shape", ()
 
 test("routing tree helpers format labels and recurse plan children", () => {
   const yahooNode = {
-    describeRoutingNode() {
-      return "YAHOO - Yahoo quote lookup";
-    },
     getRoutingNodeKind() {
       return "leaf";
     },
@@ -63,7 +60,6 @@ test("routing tree helpers format labels and recurse plan children", () => {
       return "switch";
     },
     name: "ROOT",
-    routingLabel: "root",
   };
 
   assert.equal(
@@ -75,7 +71,7 @@ test("routing tree helpers format labels and recurse plan children", () => {
       {
         children: [],
         kind: "leaf",
-        label: "YAHOO - Yahoo quote lookup",
+        label: "YAHOO",
       },
     ],
     kind: "switch",

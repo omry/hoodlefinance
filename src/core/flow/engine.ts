@@ -1,4 +1,4 @@
-import type { ResolveFlow } from "./resolve-flow";
+import type { Flow } from "./resolve-flow";
 import type { Graph } from "./graph";
 import type { ExecutionContext, SelectNextContext } from "./resolver";
 import { RoutingNodeKind } from "./resolver";
@@ -7,7 +7,6 @@ import { getGraphNodeNextIds } from "./graph";
 export enum EnvelopeStatus {
   Success = "success",
   Failure = "failure",
-  TerminalFailure = "terminal_failure",
 }
 
 export interface Envelope {
@@ -17,7 +16,7 @@ export interface Envelope {
   status?: EnvelopeStatus;
   // Internal bounded-execution marker so callers can stop at a declared node
   // without continuing through sibling branches.
-  didReachStopNode?: boolean;
+  _didReachStopNode?: boolean;
 }
 
 export interface SubgraphCallTrace {
@@ -34,9 +33,9 @@ export interface ExecutionTrace {
 }
 
 export class FlowEngine {
-  readonly #flow: ResolveFlow;
+  readonly #flow: Flow;
 
-  constructor(flow: ResolveFlow) {
+  constructor(flow: Flow) {
     this.#flow = flow;
   }
 
@@ -48,7 +47,10 @@ export class FlowEngine {
 
   #childCanHandle(childNode: Graph.Node, value: object): boolean {
     const childResolver = this.#flow.getResolver(childNode.id);
-    return !childResolver?.canHandle || childResolver.canHandle(value);
+    if (!childResolver) {
+      return true;
+    }
+    return childResolver.canHandle(value);
   }
 
   #getSelectedChild(
@@ -186,7 +188,7 @@ export class FlowEngine {
             stopNodeId,
           );
 
-          if (childResult.didReachStopNode) {
+          if (childResult._didReachStopNode) {
             return childResult;
           }
 
@@ -213,10 +215,6 @@ export class FlowEngine {
         return childResult;
       }
 
-      if (childResult.status === EnvelopeStatus.TerminalFailure) {
-        return childResult;
-      }
-
       if (childResult.status !== EnvelopeStatus.Failure) {
         return childResult;
       }
@@ -226,14 +224,15 @@ export class FlowEngine {
       }
     }
 
-    const exhaustedStatus =
-      kind === RoutingNodeKind.TryEach
-        ? EnvelopeStatus.TerminalFailure
-        : EnvelopeStatus.Failure;
+    const error =
+      lastFailureError ||
+      (kind === RoutingNodeKind.TryEach
+        ? `exhausted all options in node ${node.id} [${childNodes.map((n) => n.id).join(", ")}]`
+        : "");
     return {
       value: envelope.value,
-      ...(lastFailureError ? { error: lastFailureError } : {}),
-      status: exhaustedStatus,
+      ...(error ? { error } : {}),
+      status: EnvelopeStatus.Failure,
     };
   }
 
@@ -264,7 +263,7 @@ export class FlowEngine {
     // children in order (try each). Leaf nodes resolve values directly.
     let outEnvelope: Envelope;
     if (kind !== RoutingNodeKind.Leaf) {
-      if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
+      if (!resolver.canHandle(envelope.value)) {
         return { value: envelope.value, status: EnvelopeStatus.Failure };
       }
       outEnvelope = { value: envelope.value, status: EnvelopeStatus.Success };
@@ -272,7 +271,7 @@ export class FlowEngine {
       const executionContext: ExecutionContext = {
         callSubgraph: (id, input) => this.#flow.callSubgraph(id, input),
       };
-      const result = resolver.resolve(envelope.value, executionContext);
+      const result = resolver.execute(envelope.value, executionContext);
       if (result.status === "success") {
         outEnvelope = {
           value:
@@ -296,7 +295,7 @@ export class FlowEngine {
     if (node.id === stopNodeId) {
       return {
         ...outEnvelope,
-        didReachStopNode: true,
+        _didReachStopNode: true,
       };
     }
 
@@ -329,7 +328,7 @@ export class FlowEngine {
         stopNodeId,
       );
 
-      if (childResult.didReachStopNode) {
+      if (childResult._didReachStopNode) {
         return childResult;
       }
 

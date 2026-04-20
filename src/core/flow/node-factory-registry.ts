@@ -1,14 +1,14 @@
-import { Resolver, ResolverPlan } from "./core-resolvers";
+import { FlowNode, FlowJunction } from "./core-resolvers";
 
-export type LeafConstructor = new(code: string) => Resolver;
-export type PlanConstructor = new(code: string, nodes: Resolver[]) => Resolver;
+export type LeafConstructor = new(code: string) => FlowNode;
+export type PlanConstructor = new(code: string, nodes: FlowNode[]) => FlowNode;
 
 export class NodeFactoryRegistry {
   readonly #entries: Map<string, LeafConstructor | PlanConstructor> = new Map();
 
   register(name: string, ctor: new(...args: any[]) => unknown): this {
-    if (!(ctor.prototype instanceof Resolver)) {
-      throw new Error(`"${name}" must extend Resolver.`);
+    if (!(ctor.prototype instanceof FlowNode)) {
+      throw new Error(`"${name}" must extend FlowNode.`);
     }
     this.#entries.set(name, ctor as LeafConstructor | PlanConstructor);
     return this;
@@ -19,8 +19,8 @@ export class NodeFactoryRegistry {
   }
 
   registerPlan(name: string, ctor: PlanConstructor): this {
-    if (!(ctor.prototype instanceof ResolverPlan)) {
-      throw new Error(`"${name}" must extend ResolverPlan.`);
+    if (!(ctor.prototype instanceof FlowJunction)) {
+      throw new Error(`"${name}" must extend FlowJunction.`);
     }
     return this.register(name, ctor);
   }

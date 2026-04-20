@@ -33,7 +33,7 @@ export function createResolutionFailure(
 export enum RoutingNodeKind {
   Leaf = "leaf",
   Switch = "switch",
-  TryEach = "try each",
+  TryEach = "try_each",
   Step = "step",
 }
 
@@ -51,32 +51,4 @@ export interface ExecutionContext {
 export interface SelectNextContext {
   // Tracks child nodes already returned during the current routing-node traversal.
   selectedNodeCodes?: Set<string>;
-}
-
-export function describePlanSource(
-  plan:
-    | {
-        routeClass?: unknown;
-        routePath?: unknown;
-      }
-    | null
-    | undefined,
-): string {
-  if (!plan) {
-    return "";
-  }
-
-  const routeClass =
-    plan.routeClass != null ? String(plan.routeClass).trim() : "";
-  const routePath = plan.routePath != null ? String(plan.routePath).trim() : "";
-
-  if (!routeClass) {
-    return routePath;
-  }
-
-  if (!routePath || routeClass.startsWith("FORCED:")) {
-    return routePath || routeClass;
-  }
-
-  return `${routeClass} -> ${routePath}`;
 }

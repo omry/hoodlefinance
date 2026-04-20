@@ -3,18 +3,18 @@ const test = require("node:test");
 
 const {
   NodeFactoryRegistry,
-  Resolver,
-  ResolverPlan,
+  FlowNode,
+  FlowJunction,
 } = require("../../dist/ts/core/index.js");
 
 // ---------------------------------------------------------------------------
 // Minimal test fixtures
 // ---------------------------------------------------------------------------
 
-class LeafA extends Resolver {}
-class LeafB extends Resolver {}
+class LeafA extends FlowNode {}
+class LeafB extends FlowNode {}
 
-class PlanA extends ResolverPlan {
+class PlanA extends FlowJunction {
   constructor(code, nodes, options) {
     super(code, nodes, options);
   }
@@ -26,17 +26,17 @@ class NotAResolver {}
 // Tests
 // ---------------------------------------------------------------------------
 
-test("register accepts a Resolver subclass", () => {
+test("register accepts a FlowNode subclass", () => {
   const registry = new NodeFactoryRegistry();
   registry.register("leaf-a", LeafA);
   assert.equal(registry.get("leaf-a"), LeafA);
 });
 
-test("register rejects a class not extending Resolver", () => {
+test("register rejects a class not extending FlowNode", () => {
   const registry = new NodeFactoryRegistry();
   assert.throws(
     () => registry.register("bad", NotAResolver),
-    /must extend Resolver/,
+    /must extend FlowNode/,
   );
 });
 
@@ -51,17 +51,17 @@ test("registerLeaf stores the constructor", () => {
   assert.equal(registry.get("leaf-b"), LeafB);
 });
 
-test("registerPlan accepts a ResolverPlan subclass", () => {
+test("registerPlan accepts a FlowJunction subclass", () => {
   const registry = new NodeFactoryRegistry();
   registry.registerPlan("plan-a", PlanA);
   assert.equal(registry.get("plan-a"), PlanA);
 });
 
-test("registerPlan rejects a plain Resolver subclass", () => {
+test("registerPlan rejects a plain FlowNode subclass", () => {
   const registry = new NodeFactoryRegistry();
   assert.throws(
     () => registry.registerPlan("leaf-a", LeafA),
-    /must extend ResolverPlan/,
+    /must extend FlowJunction/,
   );
 });
 
@@ -78,7 +78,7 @@ test("returned constructor can instantiate a leaf", () => {
   registry.registerLeaf("leaf-a", LeafA);
   const Ctor = registry.get("leaf-a");
   const instance = new Ctor("my-code");
-  assert.ok(instance instanceof Resolver);
+  assert.ok(instance instanceof FlowNode);
   assert.equal(instance.code, "my-code");
 });
 
@@ -87,6 +87,6 @@ test("returned constructor can instantiate a plan", () => {
   registry.registerPlan("plan-a", PlanA);
   const Ctor = registry.get("plan-a");
   const instance = new Ctor("plan-code", [], {});
-  assert.ok(instance instanceof ResolverPlan);
+  assert.ok(instance instanceof FlowJunction);
   assert.equal(instance.code, "plan-code");
 });

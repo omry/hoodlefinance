@@ -5,13 +5,9 @@ import {
   normalizeGraphNodeId,
 } from "./graph";
 import { type LookupResult } from "./resolver";
-import { type Resolver, ResolverPlan } from "./core-resolvers";
+import { type FlowNode, FlowJunction } from "./core-resolvers";
 import { NodeFactoryRegistry, type PlanConstructor, type LeafConstructor } from "./node-factory-registry";
 import { FlowEngine, EnvelopeStatus, type ExecutionTrace } from "./engine";
-
-function normalizeCode(code: string): string {
-  return normalizeGraphNodeId(code);
-}
 
 function formatCodeList(codes: string[]): string {
   return codes.join(", ");
@@ -48,7 +44,7 @@ function normalizeDefinitionEntries(
       );
     }
 
-    const normalizedKey = normalizeCode(key);
+    const normalizedKey = normalizeGraphNodeId(key);
 
     if (!normalizedKey) {
       throw new Error(
@@ -63,7 +59,7 @@ function normalizeDefinitionEntries(
       );
     }
 
-    const normalizedId = normalizeCode(rawNode?.id || "");
+    const normalizedId = normalizeGraphNodeId(rawNode?.id || "");
     if (!normalizedId) {
       throw new Error(
         `Graph definition node "${normalizedKey}" must declare a non-empty id.`,
@@ -270,19 +266,19 @@ function normalizeSubgraphRegistry(
   }
 
   for (const [rawId, rawSubgraph] of Object.entries(rawRegistry)) {
-    const normalizedId = normalizeCode(rawId);
+    const normalizedId = normalizeGraphNodeId(rawId);
     if (!normalizedId) {
       throw new Error("Graph definition contains an empty subgraph id.");
     }
 
-    const rootNodeId = normalizeCode(rawSubgraph?.rootNodeId || "");
+    const rootNodeId = normalizeGraphNodeId(rawSubgraph?.rootNodeId || "");
     if (!rootNodeId) {
       throw new Error(
         `Subgraph "${normalizedId}" must declare a non-empty rootNodeId.`,
       );
     }
 
-    const terminalNodeId = normalizeCode(rawSubgraph?.terminalNodeId || "");
+    const terminalNodeId = normalizeGraphNodeId(rawSubgraph?.terminalNodeId || "");
     if (!terminalNodeId) {
       throw new Error(
         `Subgraph "${normalizedId}" must declare a non-empty terminalNodeId.`,
@@ -320,13 +316,13 @@ function validateSubgraphRegistry(
       );
     }
 
-    if (normalizeCode(rootNode.group || "") !== subgraphId) {
+    if (normalizeGraphNodeId(rootNode.group || "") !== subgraphId) {
       throw new Error(
         `Subgraph "${subgraphId}" root node "${rootNode.id}" must belong to group "${subgraphId}".`,
       );
     }
 
-    if (normalizeCode(terminalNode.group || "") !== subgraphId) {
+    if (normalizeGraphNodeId(terminalNode.group || "") !== subgraphId) {
       throw new Error(
         `Subgraph "${subgraphId}" terminal node "${terminalNode.id}" must belong to group "${subgraphId}".`,
       );
@@ -352,7 +348,7 @@ function validateSubgraphRegistry(
       (nodeId) => {
         const node = nodesById[nodeId]?.node || null;
 
-        return normalizeCode(node?.group || "") !== subgraphId;
+        return normalizeGraphNodeId(node?.group || "") !== subgraphId;
       },
     );
 
@@ -400,13 +396,13 @@ function createGraphView(
         .filter((childNode): childNode is Graph.Node => !!childNode);
     },
     getNode(id: string): Graph.Node | null {
-      const normalizedId = normalizeCode(id);
+      const normalizedId = normalizeGraphNodeId(id);
       const node = definition[normalizedId];
 
       return isGraphNodeEntry(node) ? node : null;
     },
     getParents(id: string): Graph.Node[] {
-      const normalizedId = normalizeCode(id);
+      const normalizedId = normalizeGraphNodeId(id);
       const entry = nodesById[normalizedId];
 
       return entry
@@ -429,7 +425,7 @@ function createGraphView(
       return topologicalOrder.slice();
     },
     getSubgraph(id: string): Graph.Subgraph | null {
-      const normalizedId = normalizeCode(id);
+      const normalizedId = normalizeGraphNodeId(id);
 
       return subgraphsById[normalizedId] || null;
     },
@@ -519,7 +515,7 @@ function buildGraphView(definition: Graph.Definition): Graph.View {
 }
 
 function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
-  const normalizedCode = normalizeCode(code);
+  const normalizedCode = normalizeGraphNodeId(code);
   const graphNode = graph.getNode(normalizedCode);
 
   if (!graphNode) {
@@ -530,18 +526,18 @@ function requireGraphNodeSpec(graph: Graph.View, code: string): Graph.Node {
 }
 
 function isTerminalNodeId(code: string): boolean {
-  return normalizeCode(code) === "TERMINAL";
+  return normalizeGraphNodeId(code) === "TERMINAL";
 }
 
 function formatSubgraphTraceBoundary(subgraphId: string): string {
-  return `SUBGRAPH:${normalizeCode(subgraphId)}`;
+  return `SUBGRAPH:${normalizeGraphNodeId(subgraphId)}`;
 }
 
-export class ResolveFlow {
+export class Flow {
   readonly graph: Graph.View;
   #registry: NodeFactoryRegistry;
   #subgraphsById: Graph.SubgraphRegistry;
-  #nodesByCode: Record<string, Resolver>;
+  #nodesByCode: Record<string, FlowNode>;
 
   constructor(
     definition: Graph.Definition,
@@ -571,11 +567,11 @@ export class ResolveFlow {
         );
       }
 
-      if (Ctor.prototype instanceof ResolverPlan) {
+      if (Ctor.prototype instanceof FlowJunction) {
         continue;
       }
 
-      const normalizedCode = normalizeCode(node.id);
+      const normalizedCode = normalizeGraphNodeId(node.id);
       const resolver = new (Ctor as LeafConstructor)(normalizedCode);
 
       if (resolverEnv !== undefined && typeof resolver.initEnv === "function") {
@@ -586,7 +582,7 @@ export class ResolveFlow {
     }
 
     for (const node of this.graph.getTopologicalOrder()) {
-      if (node.type && registry.get(node.type)?.prototype instanceof ResolverPlan) {
+      if (node.type && registry.get(node.type)?.prototype instanceof FlowJunction) {
         this.#getRuntimeNode(node.id);
       }
     }
@@ -596,8 +592,8 @@ export class ResolveFlow {
     return this.graph;
   }
 
-  getResolver(id: string): Resolver | null {
-    const normalizedId = normalizeCode(id);
+  getResolver(id: string): FlowNode | null {
+    const normalizedId = normalizeGraphNodeId(id);
     if (isTerminalNodeId(normalizedId)) {
       return null;
     }
@@ -612,7 +608,7 @@ export class ResolveFlow {
     inputValue: unknown,
     trace?: ExecutionTrace,
   ): LookupResult {
-    const normalizedSubgraphId = normalizeCode(subgraphId);
+    const normalizedSubgraphId = normalizeGraphNodeId(subgraphId);
     const subgraph = this.#subgraphsById[normalizedSubgraphId];
     const executionTrace = trace || {
       visitedNodeIds: [],
@@ -672,8 +668,8 @@ export class ResolveFlow {
     };
   }
 
-  #getRuntimeNode(code: string): Resolver {
-    const normalizedCode = normalizeCode(code);
+  #getRuntimeNode(code: string): FlowNode {
+    const normalizedCode = normalizeGraphNodeId(code);
     const existingNode = this.#nodesByCode[normalizedCode];
 
     if (existingNode) {
@@ -689,15 +685,15 @@ export class ResolveFlow {
     }
 
     const Ctor = this.#registry.get(spec.type);
-    if (!Ctor || !(Ctor.prototype instanceof ResolverPlan)) {
+    if (!Ctor || !(Ctor.prototype instanceof FlowJunction)) {
       throw new Error(
-        `Resolver node "${normalizedCode}" was not materialized during graph compilation.`,
+        `FlowNode "${normalizedCode}" was not materialized during graph compilation.`,
       );
     }
 
     const nodes = getGraphNodeNextIds(spec)
       .map((nodeCode) => isTerminalNodeId(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
-      .filter((n): n is Resolver => n !== null);
+      .filter((n): n is FlowNode => n !== null);
     const compiledNode = new (Ctor as PlanConstructor)(normalizedCode, nodes);
 
     this.#nodesByCode[normalizedCode] = compiledNode;

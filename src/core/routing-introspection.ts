@@ -1,5 +1,5 @@
 import { RoutingNodeKind } from "./flow";
-import type { Resolver } from "./resolver-classes";
+import type { FlowNode } from "./resolver-classes";
 import { RawRequestInput, type RequestClassification } from "./request";
 
 interface RoutingTableExample {
@@ -34,7 +34,7 @@ interface RoutingIntrospectionDependencies {
 }
 
 interface RoutingPlanNodeLike {
-  getRoutingNodes(): Resolver[];
+  getRoutingNodes(): FlowNode[];
   getRoutingNodeKind(): RoutingNodeKind;
   name: string;
 }
@@ -86,7 +86,7 @@ export function buildRoutingTableGrid(
 }
 
 export function buildRoutingPlanTreeNode(
-  node: Resolver | RoutingPlanNodeLike | null,
+  node: FlowNode | RoutingPlanNodeLike | null,
 ): RoutingPlanTreeNode {
   if (!node) {
     return {
@@ -107,8 +107,6 @@ export function buildRoutingPlanTreeNode(
     kind: node.getRoutingNodeKind
       ? node.getRoutingNodeKind()
       : RoutingNodeKind.Leaf,
-    label: isPlanNode
-      ? formatRoutingPlanTreeLabel(node.name || "")
-      : String(node.describeRoutingNode()),
+    label: formatRoutingPlanTreeLabel(node.name || ""),
   };
 }

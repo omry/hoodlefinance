@@ -1,27 +1,27 @@
 import { createConcreteResolverRegistry } from "../core/hf-resolvers";
 import {
-  ResolveFlow,
+  Flow,
   resolveAttribute,
   resolveAttributeWithTrace,
 } from "../core/resolve-flow";
 import { DagPlan } from "../core/spec-data";
 import { ResolverServices } from "./ResolverServices";
 
-function createResolveFlow(resolverServices: ResolverServices): ResolveFlow {
+function createFlow(resolverServices: ResolverServices): Flow {
   const resolverRegistry = createConcreteResolverRegistry();
-  return new ResolveFlow(DagPlan, resolverRegistry, resolverServices);
+  return new Flow(DagPlan, resolverRegistry, resolverServices);
 }
 
 export function createHoodlefinanceRuntime(
   resolverServices: ResolverServices,
-): Pick<ResolveFlow, "callSubgraph" | "getGraph"> & {
+): Pick<Flow, "callSubgraph" | "getGraph"> & {
   resolveAttribute(identifier: string, attribute?: string): unknown;
   resolveAttributeWithTrace(
     identifier: string,
     attribute?: string,
   ): ReturnType<typeof resolveAttributeWithTrace>;
 } {
-  const resolveFlow = createResolveFlow(resolverServices);
+  const resolveFlow = createFlow(resolverServices);
 
   return {
     callSubgraph: resolveFlow.callSubgraph.bind(resolveFlow),

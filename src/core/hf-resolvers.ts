@@ -15,10 +15,10 @@ import {
   RoutingPlan,
   TickerQuoteResolutionPlan,
 } from "./resolver-classes";
-import { FirstSuccessPlan, StepPlan } from "./flow/core-resolvers";
+import { FirstSuccessJunction, StepJunction } from "./flow/core-resolvers";
 import {
   IdentifierResolver,
-  Resolver,
+  FlowNode,
   BaseHFResolver,
 } from "./resolver-classes";
 import {
@@ -251,7 +251,7 @@ export class DirectIdentifierResolver extends IdentifierResolver {
     return input instanceof RequestInput && !extractIsinFromRequestInput(input);
   }
 
-  resolve(input: RequestInput | ResolvedRequest) {
+  execute(input: RequestInput | ResolvedRequest) {
     const startedAtMs = Date.now();
 
     try {
@@ -313,7 +313,7 @@ export class RequestClassifierResolver extends IdentifierResolver {
     this.fxTickerParser = createStoredFxTickerParser(services);
   }
 
-  resolve(input: RequestInput | RawRequestInput | ResolvedRequest) {
+  execute(input: RequestInput | RawRequestInput | ResolvedRequest) {
     const startedAtMs = Date.now();
 
     try {
@@ -376,7 +376,7 @@ export class FirstSuccessReceiver extends IdentifierResolver {
 
   // Pass-through: ISIN-RECEIVER is a convergence node. After an ISIN lookup
   // produces a ResolvedRequest, it forwards it unchanged to the ATTRIBUTE branch.
-  override resolve(request: unknown): ResolutionResult<unknown> {
+  override execute(request: unknown): ResolutionResult<unknown> {
     const startedAtMs = Date.now();
     return createResolutionSuccess(request as object, Date.now() - startedAtMs);
   }
@@ -501,10 +501,6 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return this.pseIsinMapByIsin;
   }
 
-  getRoutingDescription(): string | null {
-    return "PSE ISIN map lookup";
-  }
-
   canHandle(input: RequestInput | ResolvedRequest): boolean {
     const isin = extractIsinFromRequestInput(
       input as Pick<RequestInput, "ticker">,
@@ -513,7 +509,7 @@ export class PseIsinMapResolver extends IdentifierResolver {
     return input instanceof RequestInput && isin.startsWith("PH");
   }
 
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     const isin = String(
       extractIsinFromRequestInput(request as RequestInput) || "",
     ).trim();
@@ -559,17 +555,13 @@ export class YahooIsinSearchResolver extends IdentifierResolver {
     this.putCachedString = services.putCachedString;
   }
 
-  getRoutingDescription(): string | null {
-    return "Yahoo search by ISIN";
-  }
-
   canHandle(input: RequestInput | ResolvedRequest): boolean {
     return (
       input instanceof RequestInput && !!extractIsinFromRequestInput(input)
     );
   }
 
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     const isin = String(
       extractIsinFromRequestInput(request as RequestInput) || "",
     ).trim();
@@ -615,10 +607,6 @@ export class LocalFxResolver extends BaseHFResolver {
     super(code);
   }
 
-  getRoutingDescription(): string | null {
-    return "Same-currency FX identity rate";
-  }
-
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return (
       !!request &&
@@ -629,7 +617,7 @@ export class LocalFxResolver extends BaseHFResolver {
     );
   }
 
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     return buildSameCurrencyQuote((request as FxRequest).fxPair);
   }
 
@@ -660,14 +648,6 @@ export class GoogleFxResolver extends BaseHFResolver {
     this.putCachedJson = services.putCachedJson;
   }
 
-  getExampleInput(): string | null {
-    return "EURUSD";
-  }
-
-  getRoutingDescription(): string | null {
-    return "Google Finance FX quote lookup";
-  }
-
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return (
       request instanceof FxRequest &&
@@ -676,7 +656,7 @@ export class GoogleFxResolver extends BaseHFResolver {
     );
   }
 
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     const fxPair = (request as FxRequest).fxPair;
     const pairSlug = String(fxPair.googlePairSlug || "").trim();
     const cacheKey = `hoodlefinance:google-finance:${pairSlug}`;
@@ -755,23 +735,11 @@ export class PseFramesResolver extends BaseHFResolver {
     this.putCachedJson = services.putCachedJson;
   }
 
-  getExampleInput(): string | null {
-    return "PSE:BDO";
-  }
-
-  getRoutingDescription(): string | null {
-    return "PSE frames quote lookup";
-  }
-
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return request instanceof EquityRequest && request.exchange === "PSE";
   }
 
-  getResolverClass(): string {
-    return "EQUITY -> PSE";
-  }
-
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     const symbol = String((request as EquityRequest).symbol || "")
       .trim()
       .toUpperCase();
@@ -833,23 +801,11 @@ export class PseEdgeResolver extends BaseHFResolver {
     this.putCachedJson = services.putCachedJson;
   }
 
-  getExampleInput(): string | null {
-    return "PSE:BDO";
-  }
-
-  getRoutingDescription(): string | null {
-    return "PSE edge quote lookup";
-  }
-
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return request instanceof EquityRequest && request.exchange === "PSE";
   }
 
-  getResolverClass(): string {
-    return "EQUITY -> PSE";
-  }
-
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     const symbol = String((request as EquityRequest).symbol || "")
       .trim()
       .toUpperCase();
@@ -1007,7 +963,7 @@ abstract class BaseYahooQuoteResolver extends BaseHFResolver {
     }
   }
 
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     let yahooSymbol: string;
     let preferredYahooSymbol: string;
     let fxPair: FxRequest["fxPair"] | null;
@@ -1063,14 +1019,6 @@ export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
     super(code, "YAHOO");
   }
 
-  getExampleInput(): string | null {
-    return "GOOG";
-  }
-
-  getRoutingDescription(): string | null {
-    return "Yahoo equity quote lookup";
-  }
-
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return (
       request instanceof EquityRequest &&
@@ -1080,19 +1028,11 @@ export class YahooEquityQuoteResolver extends BaseYahooQuoteResolver {
     );
   }
 
-  getResolverClass(): string {
-    return "TICKER";
-  }
-
 }
 
 export class YahooFxResolver extends BaseYahooQuoteResolver {
   constructor(code = "YAHOO-FX") {
     super(code, "YAHOO");
-  }
-
-  getRoutingDescription(): string | null {
-    return "Yahoo FX quote lookup";
   }
 
   canHandle(request: RequestInput | ResolvedRequest): boolean {
@@ -1101,10 +1041,6 @@ export class YahooFxResolver extends BaseYahooQuoteResolver {
       !!request.fxPair &&
       !!request.fxPair.yahooChartSymbol
     );
-  }
-
-  getResolverClass(): string {
-    return "FORCED:YAHOO";
   }
 
 }
@@ -1134,14 +1070,6 @@ export class TradingviewFundResolver extends BaseHFResolver {
     this.putCachedJson = services.putCachedJson;
   }
 
-  getExampleInput(): string | null {
-    return "TLV:KSMF59";
-  }
-
-  getRoutingDescription(): string | null {
-    return "TradingView fund quote lookup";
-  }
-
   canHandle(request: RequestInput | ResolvedRequest): boolean {
     return (
       request instanceof EquityRequest &&
@@ -1150,7 +1078,7 @@ export class TradingviewFundResolver extends BaseHFResolver {
     );
   }
 
-  override execute(request: RequestInput | ResolvedRequest): unknown {
+  override run(request: RequestInput | ResolvedRequest): unknown {
     const fallbackInfo = buildIsraeliFundTradingviewFallbackInfo(
       String((request as EquityRequest).yahooSymbol || ""),
     );
@@ -1187,7 +1115,7 @@ export class TradingviewFundResolver extends BaseHFResolver {
 
 }
 
-export class EquityAttributeExtractResolver extends Resolver {
+export class EquityAttributeExtractResolver extends FlowNode {
   private resolverServices!: ResolverServices;
 
   constructor(code = "EXTRACT:EQUITY") {
@@ -1198,7 +1126,7 @@ export class EquityAttributeExtractResolver extends Resolver {
     this.resolverServices = services;
   }
 
-  resolve(
+  execute(
     input: unknown,
     context?: ExecutionContext,
   ): ResolutionResult<unknown> {
@@ -1243,7 +1171,7 @@ function isLonIsinAttributeRequest(request: unknown): boolean {
   return String(request.input.attribute || "").toLowerCase() === "isin";
 }
 
-export class LonIsinResolver extends Resolver {
+export class LonIsinResolver extends FlowNode {
   private resolverServices!: ResolverServices;
 
   constructor(code = "LON-ISIN") {
@@ -1258,11 +1186,7 @@ export class LonIsinResolver extends Resolver {
     return isLonIsinAttributeRequest(input);
   }
 
-  getResolverPath(): string {
-    return "LSE";
-  }
-
-  resolve(input: unknown): ResolutionResult<unknown> {
+  execute(input: unknown): ResolutionResult<unknown> {
     const req = input as Record<string, unknown>;
     const inputObj = req.input as Record<string, unknown> | null | undefined;
     const tickerInput = String(inputObj?.identifier || req.ticker || "");
@@ -1284,12 +1208,12 @@ export class LonIsinResolver extends Resolver {
 
 }
 
-export class FxAttributeExtractResolver extends Resolver {
+export class FxAttributeExtractResolver extends FlowNode {
   constructor(code = "EXTRACT:FX") {
     super(code);
   }
 
-  resolve(
+  execute(
     input: unknown,
     context?: ExecutionContext,
   ): ResolutionResult<unknown> {
@@ -1327,10 +1251,10 @@ export function createConcreteResolverRegistry(): NodeFactoryRegistry {
     .registerLeaf("YahooFxResolver", YahooFxResolver)
     .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
     .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
-    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessJunction)
     .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .registerPlan("RoutingPlan", RoutingPlan)
-    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("StepPlan", StepJunction)
     .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }

@@ -7,7 +7,7 @@ const {
   EquityAttributeExtractResolver,
   EquityAttributeResolutionPlan,
   FirstSuccessReceiver,
-  FirstSuccessPlan,
+  FirstSuccessJunction,
   FxAttributeExtractResolver,
   FxAttributeResolutionPlan,
   GoogleFxResolver,
@@ -19,11 +19,11 @@ const {
   PseIsinMapResolver,
   PseQuoteResolutionPlan,
   RequestClassifierResolver,
-  Resolver,
-  ResolveFlow,
+  FlowNode,
+  Flow,
   resolveAttribute,
   RoutingPlan,
-  StepPlan,
+  StepJunction,
   TickerQuoteResolutionPlan,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
@@ -59,15 +59,15 @@ function createResolverRegistry() {
     .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
     .registerLeaf("YahooFxResolver", YahooFxResolver)
     .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
-    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessJunction)
     .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .registerPlan("RoutingPlan", RoutingPlan)
-    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("StepPlan", StepJunction)
     .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
-class FakeResolver extends Resolver {
+class FakeResolver extends FlowNode {
   constructor(code) {
     super(code);
   }
@@ -157,8 +157,8 @@ function createFxIdentityRequest() {
 // Smoke tests
 // ---------------------------------------------------------------------------
 
-test("ResolveFlow builds executable nodes directly from DagPlan", () => {
-  const resolveFlow = new ResolveFlow(
+test("Flowbuilds executable nodes directly from DagPlan", () => {
+  const resolveFlow = new Flow(
     DagPlan,
     createResolverRegistry(),
     createStaticResolverServices(),
@@ -173,7 +173,7 @@ test("ResolveFlow builds executable nodes directly from DagPlan", () => {
   assert.equal(resolveAttribute(resolveFlow, "USDUSD", "price"), 1);
 });
 
-test("ResolveFlow routes price@CCY conversion through the production FX subgraph", () => {
+test("Flowroutes price@CCY conversion through the production FX subgraph", () => {
   const services = createStaticResolverServices({
     httpFetch(url) {
       if (
@@ -227,7 +227,7 @@ test("ResolveFlow routes price@CCY conversion through the production FX subgraph
     },
   });
 
-  const resolveFlow = new ResolveFlow(
+  const resolveFlow = new Flow(
     DagPlan,
     createConcreteResolverRegistry(),
     services,
@@ -236,16 +236,16 @@ test("ResolveFlow routes price@CCY conversion through the production FX subgraph
   assert.equal(resolveAttribute(resolveFlow, "TSCO.L", "price@USD"), 3.125);
 });
 
-test("ResolveFlow instantiates and registers resolvers by class name", () => {
-  const flow = new ResolveFlow(FAKE_GRAPH, new NodeFactoryRegistry().registerLeaf("FakeResolver", FakeResolver));
+test("Flowinstantiates and registers resolvers by class name", () => {
+  const flow = new Flow(FAKE_GRAPH, new NodeFactoryRegistry().registerLeaf("FakeResolver", FakeResolver));
 
   const resolver = flow.getResolver("ROOT");
   assert.ok(resolver instanceof FakeResolver);
   assert.equal(resolver.name, "ROOT");
 });
 
-test("ResolveFlow exposes declared subgraphs from explicit graph metadata", () => {
-  const flow = new ResolveFlow(
+test("Flowexposes declared subgraphs from explicit graph metadata", () => {
+  const flow = new Flow(
     createDagPlanWithFxSubgraph(),
     createResolverRegistry(),
     createStaticResolverServices(),
@@ -258,8 +258,8 @@ test("ResolveFlow exposes declared subgraphs from explicit graph metadata", () =
   });
 });
 
-test("ResolveFlow.callSubgraph executes a declared subgraph with a bounded trace", () => {
-  const flow = new ResolveFlow(
+test("Flow.callSubgraph executes a declared subgraph with a bounded trace", () => {
+  const flow = new Flow(
     createDagPlanWithFxSubgraph(),
     createResolverRegistry(),
     createStaticResolverServices(),
@@ -290,8 +290,8 @@ test("ResolveFlow.callSubgraph executes a declared subgraph with a bounded trace
   ]);
 });
 
-test("ResolveFlow.callSubgraph stores isolated call traces on a shared execution trace", () => {
-  const flow = new ResolveFlow(
+test("Flow.callSubgraph stores isolated call traces on a shared execution trace", () => {
+  const flow = new Flow(
     createDagPlanWithFxSubgraph(),
     createResolverRegistry(),
     createStaticResolverServices(),
@@ -325,8 +325,8 @@ test("ResolveFlow.callSubgraph stores isolated call traces on a shared execution
   ]);
 });
 
-test("ResolveFlow.callSubgraph rejects unknown subgraph ids", () => {
-  const flow = new ResolveFlow(
+test("Flow.callSubgraph rejects unknown subgraph ids", () => {
+  const flow = new Flow(
     createDagPlanWithFxSubgraph(),
     createResolverRegistry(),
     createStaticResolverServices(),
@@ -338,8 +338,8 @@ test("ResolveFlow.callSubgraph rejects unknown subgraph ids", () => {
   );
 });
 
-test("ResolveFlow callSubgraph routes through the FX subgraph correctly", () => {
-  const flow = new ResolveFlow(
+test("FlowcallSubgraph routes through the FX subgraph correctly", () => {
+  const flow = new Flow(
     DagPlan,
     createResolverRegistry(),
     createStaticResolverServices(),
@@ -355,10 +355,10 @@ test("ResolveFlow callSubgraph routes through the FX subgraph correctly", () => 
   );
 });
 
-test("ResolveFlow rejects unknown class names", () => {
+test("Flowrejects unknown class names", () => {
   assert.throws(
     () =>
-      new ResolveFlow(
+      new Flow(
         {
           ROOT: { id: "ROOT", type: "MissingResolver", next: ["TERMINAL"] },
           TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
@@ -369,7 +369,7 @@ test("ResolveFlow rejects unknown class names", () => {
   );
 });
 
-test("ResolveFlow can instantiate concrete resolvers with class-specific dependencies", () => {
+test("Flowcan instantiate concrete resolvers with class-specific dependencies", () => {
   const staticFetch = createStaticResourceHttpFetch();
   const services = createStaticResolverServices({
     httpFetch(url) {
@@ -490,7 +490,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
     },
   });
 
-  const flow = new ResolveFlow(
+  const flow = new Flow(
     DagPlan,
     createConcreteResolverRegistry(),
     services,
@@ -511,7 +511,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.ok(flow.getResolver("ISIN:PSE") instanceof PseIsinMapResolver);
   assert.ok(flow.getResolver("ISIN:YAHOO") instanceof YahooIsinSearchResolver);
 
-  const pseFramesResolved = flow.getResolver("PSE-FRAMES").resolve(
+  const pseFramesResolved = flow.getResolver("PSE-FRAMES").execute(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: false,
@@ -525,7 +525,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.equal(pseFramesResolved.status, "success");
   assert.equal(pseFramesResolved.value.quote.symbol, "BDO.PS");
 
-  const pseEdgeResolved = flow.getResolver("PSE-EDGE").resolve(
+  const pseEdgeResolved = flow.getResolver("PSE-EDGE").execute(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: false,
@@ -539,7 +539,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.equal(pseEdgeResolved.status, "success");
   assert.equal(pseEdgeResolved.value.quote.symbol, "BDO.PS");
 
-  const pseResolved = flow.getResolver("ISIN:PSE").resolve(
+  const pseResolved = flow.getResolver("ISIN:PSE").execute(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -561,7 +561,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.equal(pseResolved.status, "success");
   assert.equal(pseResolved.value.exchange, "PSE");
 
-  const yahooResolved = flow.getResolver("ISIN:YAHOO").resolve(
+  const yahooResolved = flow.getResolver("ISIN:YAHOO").execute(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -582,7 +582,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.equal(yahooResolved.status, "success");
   assert.equal(yahooResolved.value.yahooSymbol, "IBM");
 
-  const googleResolved = flow.getResolver("GOOGLE-FX").resolve(
+  const googleResolved = flow.getResolver("GOOGLE-FX").execute(
     new FxRequest({
       attribute: "price",
       fxPair: {
@@ -607,7 +607,7 @@ test("ResolveFlow can instantiate concrete resolvers with class-specific depende
   assert.equal(googleResolved.value.quote.regularMarketPrice, 1.25);
   assert.equal(googleResolved.value.quote.googleSymbol, "CURRENCY:EURUSD");
 
-  const tradingviewResolved = flow.getResolver("TRADINGVIEW-FUND").resolve(
+  const tradingviewResolved = flow.getResolver("TRADINGVIEW-FUND").execute(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: true,

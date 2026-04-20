@@ -7,7 +7,7 @@ const {
   DirectIdentifierResolver,
   EquityAttributeExtractResolver,
   EquityAttributeResolutionPlan,
-  FirstSuccessPlan,
+  FirstSuccessJunction,
   FirstSuccessReceiver,
   FxAttributeExtractResolver,
   FxAttributeResolutionPlan,
@@ -22,7 +22,7 @@ const {
   RequestClassifierResolver,
   RawRequestInput,
   RoutingPlan,
-  StepPlan,
+  StepJunction,
   TickerQuoteResolutionPlan,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
@@ -55,16 +55,16 @@ function createResolverRegistry() {
     .registerLeaf("YahooFxResolver", YahooFxResolver)
     .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
     .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
-    .registerPlan("FirstSuccessPlan", FirstSuccessPlan)
+    .registerPlan("FirstSuccessPlan", FirstSuccessJunction)
     .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .registerPlan("RoutingPlan", RoutingPlan)
-    .registerPlan("StepPlan", StepPlan)
+    .registerPlan("StepPlan", StepJunction)
     .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
 function buildTypedAttributePlan(runtimeLookup, requestInput) {
-  const outcome = new DirectIdentifierResolver("DIRECT-IDENTIFIER").resolve(
+  const outcome = new DirectIdentifierResolver("DIRECT-IDENTIFIER").execute(
     requestInput,
   );
 
@@ -96,7 +96,7 @@ test("getRoutingTableRows classifies example tickers correctly", () => {
   const rootNode = runtimeLookup.getNode("ROOT");
   const deps = {
     classifyRequest(rawInput) {
-      const outcome = rootNode.resolve(rawInput);
+      const outcome = rootNode.execute(rawInput);
       if (outcome.status !== "success") throw new Error(outcome.error);
       return outcome.value;
     },
@@ -130,10 +130,6 @@ test("integrated mode always follows the default PSE quote branch", () => {
   const plan = buildTypedAttributePlan(runtimeLookup, request);
 
   assert.equal(plan.attributePlan.name, "ATTRIBUTE:EQUITY");
-  assert.equal(
-    plan.attributePlan.describe(plan.resolvedRequest),
-    "ATTRIBUTE:EQUITY -> QUOTE:PSE -> QUOTE:TICKER",
-  );
 });
 
 test("integrated routing errors on ambiguous default attribute plans", () => {

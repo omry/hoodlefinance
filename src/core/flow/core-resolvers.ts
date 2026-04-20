@@ -1,31 +1,19 @@
-import { normalizeGraphNodeId } from "./graph";
 import {
   createResolutionFailure,
   createResolutionSuccess,
-  describePlanSource,
   type ExecutionContext,
   type ResolutionResult,
   RoutingNodeKind,
   type SelectNextContext,
 } from "./resolver";
 
-type SelectedNodes = Resolver[];
-
-function formatRoutingPlanTreeLabel(value: unknown): string {
-  return String(value || "")
-    .trim()
-    .toUpperCase();
-}
-
-function normalizeNodeCode(nodeCode: string): string {
-  return normalizeGraphNodeId(nodeCode);
-}
+type SelectedNodes = FlowNode[];
 
 function formatResolverError(error: unknown): string {
   return String(error instanceof Error ? error.message : (error ?? ""));
 }
 
-export class Resolver {
+export class FlowNode {
   readonly code: string;
   readonly name: string;
   readonly traceLabel?: string;
@@ -35,31 +23,8 @@ export class Resolver {
     this.name = this.code;
   }
 
-  getExampleInput(): string | null {
-    return null;
-  }
-
-  getRoutingDescription(): string | null {
-    return null;
-  }
-
   canHandle(_request: unknown): boolean {
     return true;
-  }
-
-  getResolverClass(): string {
-    return this.name;
-  }
-
-  getResolverPath(): string {
-    return String(this.traceLabel || this.name || "").trim();
-  }
-
-  describe(request: unknown): string {
-    return describePlanSource({
-      routeClass: this.getResolverClass(),
-      routePath: this.getResolverPath(),
-    });
   }
 
   getRoutingNodeKind(): RoutingNodeKind {
@@ -67,55 +32,27 @@ export class Resolver {
   }
 
   // Called by the engine on routing nodes to determine which child(ren) to
-  // execute next. Returns all children for StepPlan, 0-or-1 for Switch/
+  // execute next. Returns all children for StepJunction, 0-or-1 for Switch/
   // FirstSuccess. context.selectedNodeCodes tracks already-dispatched children
-  // across repeated calls within the same traversal. Throws on leaf resolvers —
+  // across repeated calls within the same traversal. Throws on leaf nodes —
   // the engine checks getRoutingNodeKind() first so this is never reached.
   selectNext(
     _request: unknown,
     _context: SelectNextContext = {},
   ): SelectedNodes {
     throw new Error(
-      `Resolver "${this.name}" does not support selectNext(); only routing nodes with explicit selection semantics may select next children.`,
+      `FlowNode "${this.name}" does not support selectNext(); only routing nodes with explicit selection semantics may select next children.`,
     );
   }
 
-  describeRoutingNode(): string {
-    const name = formatRoutingPlanTreeLabel(this.name);
-    const description = String(this.getRoutingDescription() || "").trim();
-    return description ? `${name} - ${description}` : name;
-  }
-
-  getGroupedSourceNames(_request: unknown): string[] {
-    return [];
-  }
-
-  matchesSourceName(source: string): boolean {
-    return (
-      String(this.name || "")
-        .trim()
-        .toUpperCase() ===
-      String(source || "")
-        .trim()
-        .toUpperCase()
-    );
-  }
-
-  getGroupedSourceNamesForDisplay(source: string, request: unknown): string[] {
-    return this.matchesSourceName(source)
-      ? this.getGroupedSourceNames(request)
-      : [];
-  }
-
-  resolve(
+  execute(
     request: unknown,
     context?: ExecutionContext,
   ): ResolutionResult<unknown> {
     const startedAtMs = Date.now();
 
     try {
-      const rawValue = this.execute(request, context);
-      const value = this.resolveTransformValue(rawValue, request);
+      const value = this.run(request, context);
       return createResolutionSuccess(value, Date.now() - startedAtMs);
     } catch (error) {
       return createResolutionFailure(
@@ -126,12 +63,8 @@ export class Resolver {
     }
   }
 
-  execute(_request: unknown, _context?: ExecutionContext): unknown {
-    throw new Error(`Resolver "${this.name}" must implement execute().`);
-  }
-
-  protected resolveTransformValue(value: unknown, _request: unknown): unknown {
-    return value;
+  run(_request: unknown, _context?: ExecutionContext): unknown {
+    throw new Error(`FlowNode "${this.name}" must implement run().`);
   }
 
   // Optional one-time resolver initialization hook. `_env` is an opaque object
@@ -140,15 +73,15 @@ export class Resolver {
   initEnv(_env: unknown): void {}
 }
 
-export abstract class ResolverPlan extends Resolver {
-  readonly nodes: Resolver[];
+export abstract class FlowJunction extends FlowNode {
+  readonly nodes: FlowNode[];
 
-  constructor(name: string, nodes: Resolver[]) {
+  constructor(name: string, nodes: FlowNode[]) {
     super(name);
     this.nodes = nodes || [];
   }
 
-  getNodesForRequest(request: unknown): Resolver[] {
+  getNodesForRequest(request: unknown): FlowNode[] {
     const nodes = (this.nodes || []).slice();
 
     if (!nodes.length) {
@@ -156,7 +89,7 @@ export abstract class ResolverPlan extends Resolver {
     }
 
     const firstMatchingIndex = nodes.findIndex(
-      (node) => !node.canHandle || node.canHandle(request),
+      (node) => node.canHandle(request),
     );
 
     if (firstMatchingIndex < 0) {
@@ -166,13 +99,11 @@ export abstract class ResolverPlan extends Resolver {
     return nodes.slice(firstMatchingIndex);
   }
 
-  getHandleableNodesForRequest(request: unknown): Resolver[] {
-    return (this.nodes || []).filter(
-      (node) => !node.canHandle || node.canHandle(request),
-    );
+  getHandleableNodesForRequest(request: unknown): FlowNode[] {
+    return (this.nodes || []).filter((node) => node.canHandle(request));
   }
 
-  getRoutingNodes(): Resolver[] {
+  getRoutingNodes(): FlowNode[] {
     return (this.nodes || []).slice();
   }
 
@@ -195,7 +126,7 @@ export abstract class ResolverPlan extends Resolver {
   }
 
   protected getNodeSelectionCode(
-    node: Pick<Resolver, "code" | "name"> | null | undefined,
+    node: Pick<FlowNode, "code" | "name"> | null | undefined,
   ): string {
     return String((node && (node.code || node.name)) || "")
       .trim()
@@ -203,7 +134,7 @@ export abstract class ResolverPlan extends Resolver {
   }
 
   protected hasSelectedNode(
-    node: Resolver | null | undefined,
+    node: FlowNode | null | undefined,
     context: SelectNextContext | null | undefined,
   ): boolean {
     const selectionCode = this.getNodeSelectionCode(node);
@@ -213,9 +144,9 @@ export abstract class ResolverPlan extends Resolver {
   }
 
   protected markSelectedNode(
-    node: Resolver | null | undefined,
+    node: FlowNode | null | undefined,
     context: SelectNextContext | null | undefined,
-  ): Resolver | null {
+  ): FlowNode | null {
     if (!node || !context) {
       return node || null;
     }
@@ -232,64 +163,26 @@ export abstract class ResolverPlan extends Resolver {
   }
 
   protected getUnselectedNodes(
-    nodes: Array<Resolver | null | undefined>,
+    nodes: Array<FlowNode | null | undefined>,
     context: SelectNextContext | null | undefined,
-  ): Resolver[] {
+  ): FlowNode[] {
     return nodes.filter(
-      (node): node is Resolver =>
+      (node): node is FlowNode =>
         !!node && !this.hasSelectedNode(node, context),
     );
   }
 
   abstract getRoutingNodeKind(): RoutingNodeKind;
-
-  buildRoutePath(request: unknown): string {
-    return this.getNodesForRequest(request)
-      .map((node) => node.name)
-      .join(" -> ");
-  }
-
-  getGroupedSourceNames(_request: unknown): string[] {
-    const groupedNames: string[] = [];
-
-    this.nodes.forEach((node) => {
-      const groupedName = String(
-        (node && ("traceLabel" in node ? node.traceLabel : node.name)) || "",
-      )
-        .trim()
-        .toUpperCase();
-
-      if (
-        groupedName &&
-        groupedName !==
-          String(this.name || "")
-            .trim()
-            .toUpperCase() &&
-        !groupedNames.includes(groupedName)
-      ) {
-        groupedNames.push(groupedName);
-      }
-    });
-
-    return groupedNames;
-  }
-
-  override describe(request: unknown): string {
-    return describePlanSource({
-      routeClass: this.name,
-      routePath: this.buildRoutePath(request),
-    });
-  }
 }
 
 // ---------------------------------------------------------------------------
-// Plan kind base classes — driver dispatch table uses these to determine how
-// each graph node is traversed: switch selects one child explicitly via
+// Junction kind base classes — driver dispatch table uses these to determine
+// how each graph node is traversed: switch selects one child explicitly via
 // selectNext(), step returns all children in one selection, try-each selects
 // one child per call in order with fallback.
 // ---------------------------------------------------------------------------
 
-export class SwitchPlan extends ResolverPlan {
+export class SwitchJunction extends FlowJunction {
   getRoutingNodeKind(): RoutingNodeKind {
     return RoutingNodeKind.Switch;
   }
@@ -307,7 +200,7 @@ export class SwitchPlan extends ResolverPlan {
 
     if (matchingNodes.length > 1) {
       throw new Error(
-        `Resolver plan "${this.name}" matched multiple nodes: ${matchingNodes
+        `FlowJunction "${this.name}" matched multiple nodes: ${matchingNodes
           .map((node) => node.name)
           .join(", ")}.`,
       );
@@ -321,12 +214,12 @@ export class SwitchPlan extends ResolverPlan {
   }
 }
 
-export class StepPlan extends ResolverPlan {
+export class StepJunction extends FlowJunction {
   getRoutingNodeKind(): RoutingNodeKind {
     return RoutingNodeKind.Step;
   }
 
-  getNodesForRequest(_request: unknown): Resolver[] {
+  getNodesForRequest(_request: unknown): FlowNode[] {
     return (this.nodes || []).slice();
   }
 
@@ -338,7 +231,7 @@ export class StepPlan extends ResolverPlan {
 
     if (blockingNode) {
       throw new Error(
-        `Resolver plan "${this.name}" has child "${blockingNode.name}" that cannot handle the current output.`,
+        `FlowJunction "${this.name}" has child "${blockingNode.name}" that cannot handle the current output.`,
       );
     }
 
@@ -346,7 +239,7 @@ export class StepPlan extends ResolverPlan {
   }
 }
 
-export class FirstSuccessPlan extends ResolverPlan {
+export class FirstSuccessJunction extends FlowJunction {
   getRoutingNodeKind(): RoutingNodeKind {
     return RoutingNodeKind.TryEach;
   }
@@ -364,3 +257,4 @@ export class FirstSuccessPlan extends ResolverPlan {
     return selectedNode ? [selectedNode] : [];
   }
 }
+
