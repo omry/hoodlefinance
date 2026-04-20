@@ -1,5 +1,5 @@
 import { type FlowNode, FlowJunction } from "./resolver-classes";
-import { RoutingNodeKind } from "./flow";
+import { NodeKind } from "./flow";
 
 function formatNodeName(node: FlowNode | null | undefined): string {
   return String((node && node.id) || "").trim() || "<unknown>";
@@ -62,8 +62,8 @@ export function resolveRoutingNode<TNode extends FlowNode>(
 
   while (
     isResolverPlan(currentNode) &&
-    [RoutingNodeKind.Step, RoutingNodeKind.Switch].includes(
-      currentNode.getRoutingNodeKind(),
+    [NodeKind.Step, NodeKind.Switch].includes(
+      currentNode.getNodeKind(),
     )
   ) {
     const routingNode = currentNode;

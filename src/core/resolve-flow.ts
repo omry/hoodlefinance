@@ -1,7 +1,7 @@
 import { RawRequestInput } from "./request";
 import { EnvelopeStatus, FlowEngine, type ExecutionTrace } from "./flow/engine";
-export { Flow } from "./flow/resolve-flow";
-import { Flow } from "./flow/resolve-flow";
+export { Flow } from "./flow/flow";
+import { Flow } from "./flow/flow";
 
 function createRawRequestInput(
   identifier: string,

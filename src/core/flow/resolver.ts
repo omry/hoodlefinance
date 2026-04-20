@@ -30,7 +30,7 @@ export function createResolutionFailure(
   }) as ResolutionResult<never>;
 }
 
-export enum RoutingNodeKind {
+export enum NodeKind {
   Leaf = "leaf",
   Switch = "switch",
   TryEach = "try_each",

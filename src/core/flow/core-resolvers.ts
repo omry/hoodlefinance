@@ -3,7 +3,7 @@ import {
   createResolutionSuccess,
   type ExecutionContext,
   type ResolutionResult,
-  RoutingNodeKind,
+  NodeKind,
   type SelectNextContext,
 } from "./resolver";
 
@@ -25,15 +25,15 @@ export class FlowNode {
     return true;
   }
 
-  getRoutingNodeKind(): RoutingNodeKind {
-    return RoutingNodeKind.Leaf;
+  getNodeKind(): NodeKind {
+    return NodeKind.Leaf;
   }
 
   // Called by the engine on routing nodes to determine which child(ren) to
   // execute next. Returns all children for StepJunction, 0-or-1 for Switch/
   // FirstSuccess. context.selectedNodeCodes tracks already-dispatched children
   // across repeated calls within the same traversal. Throws on leaf nodes —
-  // the engine checks getRoutingNodeKind() first so this is never reached.
+  // the engine checks getNodeKind() first so this is never reached.
   selectNext(
     _request: unknown,
     _context: SelectNextContext = {},
@@ -162,7 +162,7 @@ export abstract class FlowJunction extends FlowNode {
     });
   }
 
-  abstract getRoutingNodeKind(): RoutingNodeKind;
+  abstract getNodeKind(): NodeKind;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,8 +173,8 @@ export abstract class FlowJunction extends FlowNode {
 // ---------------------------------------------------------------------------
 
 export class SwitchJunction extends FlowJunction {
-  getRoutingNodeKind(): RoutingNodeKind {
-    return RoutingNodeKind.Switch;
+  getNodeKind(): NodeKind {
+    return NodeKind.Switch;
   }
 
   selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
@@ -205,8 +205,8 @@ export class SwitchJunction extends FlowJunction {
 }
 
 export class StepJunction extends FlowJunction {
-  getRoutingNodeKind(): RoutingNodeKind {
-    return RoutingNodeKind.Step;
+  getNodeKind(): NodeKind {
+    return NodeKind.Step;
   }
 
   getNodesForRequest(_request: unknown): FlowNode[] {
@@ -230,8 +230,8 @@ export class StepJunction extends FlowJunction {
 }
 
 export class FirstSuccessJunction extends FlowJunction {
-  getRoutingNodeKind(): RoutingNodeKind {
-    return RoutingNodeKind.TryEach;
+  getNodeKind(): NodeKind {
+    return NodeKind.TryEach;
   }
 
   selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {

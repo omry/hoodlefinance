@@ -1,7 +1,7 @@
-import type { Flow } from "./resolve-flow";
+import type { Flow } from "./flow";
 import type { Graph } from "./graph";
 import type { ExecutionContext, SelectNextContext } from "./resolver";
-import { RoutingNodeKind } from "./resolver";
+import { NodeKind } from "./resolver";
 import { getGraphNodeNextIds } from "./graph";
 
 export enum EnvelopeStatus {
@@ -14,8 +14,11 @@ export interface Envelope {
   error?: string;
   // status is absent on input; the driver always sets it on output.
   status?: EnvelopeStatus;
-  // Internal bounded-execution marker so callers can stop at a declared node
-  // without continuing through sibling branches.
+}
+
+// Not exported — used only within FlowEngine to propagate bounded-execution
+// stop signals between private methods without leaking them to callers.
+interface InternalEnvelope extends Envelope {
   _didReachStopNode?: boolean;
 }
 
@@ -143,7 +146,7 @@ export class FlowEngine {
   #executeRoutingNode(
     node: Graph.Node,
     resolver: {
-      getRoutingNodeKind(): RoutingNodeKind;
+      getNodeKind(): NodeKind;
       selectNext(
         request: unknown,
         context?: SelectNextContext,
@@ -153,8 +156,8 @@ export class FlowEngine {
     graph: Graph.View,
     trace?: ExecutionTrace,
     stopNodeId?: string,
-  ): Envelope {
-    const kind = resolver.getRoutingNodeKind();
+  ): InternalEnvelope {
+    const kind = resolver.getNodeKind();
     const childNodes = this.#getChildNodes(node, graph);
     const selectionContext: SelectNextContext = {};
     let lastFailureError = "";
@@ -172,13 +175,13 @@ export class FlowEngine {
         break;
       }
 
-      if (kind !== RoutingNodeKind.Step && selectedChildren.length > 1) {
+      if (kind !== NodeKind.Step && selectedChildren.length > 1) {
         throw new Error(
           `Routing node "${node.id}" selected ${selectedChildren.length} children; expected at most 1.`,
         );
       }
 
-      if (kind === RoutingNodeKind.Step) {
+      if (kind === NodeKind.Step) {
         for (const selectedChild of selectedChildren) {
           const childResult = this.#executeNode(
             selectedChild,
@@ -211,7 +214,7 @@ export class FlowEngine {
         stopNodeId,
       );
 
-      if (kind === RoutingNodeKind.Switch) {
+      if (kind === NodeKind.Switch) {
         return childResult;
       }
 
@@ -226,7 +229,7 @@ export class FlowEngine {
 
     const error =
       lastFailureError ||
-      (kind === RoutingNodeKind.TryEach
+      (kind === NodeKind.TryEach
         ? `exhausted all options in node ${node.id} [${childNodes.map((n) => n.id).join(", ")}]`
         : "");
     return {
@@ -242,7 +245,7 @@ export class FlowEngine {
     graph: Graph.View,
     trace?: ExecutionTrace,
     stopNodeId?: string,
-  ): Envelope {
+  ): InternalEnvelope {
     const resolver = this.#flow.getResolver(node.id);
     if (!resolver) {
       if (trace) {
@@ -256,13 +259,13 @@ export class FlowEngine {
       trace.visitedNodeIds.push(node.id);
     }
 
-    const kind = resolver.getRoutingNodeKind();
+    const kind = resolver.getNodeKind();
 
     // Non-leaf routing nodes do not perform leaf resolution here. They either
     // select a next child (switch), fan out to all children (step), or try
     // children in order (try each). Leaf nodes resolve values directly.
     let outEnvelope: Envelope;
-    if (kind !== RoutingNodeKind.Leaf) {
+    if (kind !== NodeKind.Leaf) {
       if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
         return { value: envelope.value, status: EnvelopeStatus.Failure };
       }
@@ -299,7 +302,7 @@ export class FlowEngine {
       };
     }
 
-    if (kind !== RoutingNodeKind.Leaf) {
+    if (kind !== NodeKind.Leaf) {
       return this.#executeRoutingNode(
         node,
         resolver,
