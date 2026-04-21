@@ -44,27 +44,30 @@ const {
 
 function createResolverRegistry() {
   return new NodeFactoryRegistry()
-    .registerLeaf("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
-    .registerLeaf("FirstSuccessReceiver", FirstSuccessReceiver)
-    .registerLeaf("FxAttributeExtractResolver", FxAttributeExtractResolver)
-    .registerLeaf("GoogleFxResolver", GoogleFxResolver)
-    .registerLeaf("LocalFxResolver", LocalFxResolver)
-    .registerLeaf("LonIsinResolver", LonIsinResolver)
-    .registerLeaf("PSEEdgeResolver", PseEdgeResolver)
-    .registerLeaf("PSEFramesResolver", PseFramesResolver)
-    .registerLeaf("PseIsinMapResolver", PseIsinMapResolver)
-    .registerLeaf("RequestClassifierResolver", RequestClassifierResolver)
-    .registerLeaf("TradingviewFundResolver", TradingviewFundResolver)
-    .registerLeaf("YahooIsinSearchResolver", YahooIsinSearchResolver)
-    .registerLeaf("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
-    .registerLeaf("YahooFxResolver", YahooFxResolver)
-    .registerPlan("EquityAttributeResolutionPlan", EquityAttributeResolutionPlan)
-    .registerPlan("FirstSuccessPlan", FirstSuccessJunction)
-    .registerPlan("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
-    .registerPlan("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
-    .registerPlan("RoutingPlan", RoutingPlan)
-    .registerPlan("StepPlan", StepJunction)
-    .registerPlan("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
+    .register("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
+    .register("FirstSuccessReceiver", FirstSuccessReceiver)
+    .register("FxAttributeExtractResolver", FxAttributeExtractResolver)
+    .register("GoogleFxResolver", GoogleFxResolver)
+    .register("LocalFxResolver", LocalFxResolver)
+    .register("LonIsinResolver", LonIsinResolver)
+    .register("PSEEdgeResolver", PseEdgeResolver)
+    .register("PSEFramesResolver", PseFramesResolver)
+    .register("PseIsinMapResolver", PseIsinMapResolver)
+    .register("RequestClassifierResolver", RequestClassifierResolver)
+    .register("TradingviewFundResolver", TradingviewFundResolver)
+    .register("YahooIsinSearchResolver", YahooIsinSearchResolver)
+    .register("YahooEquityQuoteResolver", YahooEquityQuoteResolver)
+    .register("YahooFxResolver", YahooFxResolver)
+    .register(
+      "EquityAttributeResolutionPlan",
+      EquityAttributeResolutionPlan,
+    )
+    .register("FirstSuccessPlan", FirstSuccessJunction)
+    .register("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
+    .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
+    .register("RoutingPlan", RoutingPlan)
+    .register("StepPlan", StepJunction)
+    .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
 class FakeResolver extends FlowNode {
@@ -237,7 +240,7 @@ test("Flowroutes price@CCY conversion through the production FX subgraph", () =>
 });
 
 test("Flow instantiates and registers nodes by class name", () => {
-  const flow = new Flow(FAKE_GRAPH, new NodeFactoryRegistry().registerLeaf("FakeResolver", FakeResolver));
+  const flow = new Flow(FAKE_GRAPH, new NodeFactoryRegistry().register("FakeResolver", FakeResolver));
 
   const flowNode = flow.getNode("ROOT");
   assert.ok(flowNode instanceof FakeResolver);

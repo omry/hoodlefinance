@@ -8,7 +8,7 @@ import { type LookupResult } from "./types";
 import { type FlowNode, FlowJunction } from "./nodes";
 import {
   NodeFactoryRegistry,
-  type PlanConstructor,
+  type JunctionConstructor,
   type LeafConstructor,
 } from "./node-factory-registry";
 import { FlowEngine, EnvelopeStatus, type ExecutionTrace } from "./engine";
@@ -718,7 +718,7 @@ export class Flow {
     const nodes = getGraphNodeNextIds(spec)
       .map((nodeCode) => this.#isTerminalNode(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
       .filter((n): n is FlowNode => n !== null);
-    const compiledNode = new (Ctor as PlanConstructor)(
+    const compiledNode = new (Ctor as JunctionConstructor)(
       normalizedCode,
       nodes,
       this.envObject,

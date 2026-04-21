@@ -14,7 +14,7 @@ const {
 class LeafA extends FlowNode {}
 class LeafB extends FlowNode {}
 
-class PlanA extends FlowJunction {
+class JunctionA extends FlowJunction {
   constructor(code, nodes, options) {
     super(code, nodes, options);
   }
@@ -45,24 +45,16 @@ test("get returns undefined for unknown name", () => {
   assert.equal(registry.get("unknown"), undefined);
 });
 
-test("registerLeaf stores the constructor", () => {
+test("register stores a leaf constructor", () => {
   const registry = new NodeFactoryRegistry();
-  registry.registerLeaf("leaf-b", LeafB);
+  registry.register("leaf-b", LeafB);
   assert.equal(registry.get("leaf-b"), LeafB);
 });
 
-test("registerPlan accepts a FlowJunction subclass", () => {
+test("register accepts a FlowJunction subclass", () => {
   const registry = new NodeFactoryRegistry();
-  registry.registerPlan("plan-a", PlanA);
-  assert.equal(registry.get("plan-a"), PlanA);
-});
-
-test("registerPlan rejects a plain FlowNode subclass", () => {
-  const registry = new NodeFactoryRegistry();
-  assert.throws(
-    () => registry.registerPlan("leaf-a", LeafA),
-    /must extend FlowJunction/,
-  );
+  registry.register("junction-a", JunctionA);
+  assert.equal(registry.get("junction-a"), JunctionA);
 });
 
 test("register is chainable", () => {
@@ -75,18 +67,18 @@ test("register is chainable", () => {
 
 test("returned constructor can instantiate a leaf", () => {
   const registry = new NodeFactoryRegistry();
-  registry.registerLeaf("leaf-a", LeafA);
+  registry.register("leaf-a", LeafA);
   const Ctor = registry.get("leaf-a");
   const instance = new Ctor("my-code");
   assert.ok(instance instanceof FlowNode);
   assert.equal(instance.id, "my-code");
 });
 
-test("returned constructor can instantiate a plan", () => {
+test("returned constructor can instantiate a junction", () => {
   const registry = new NodeFactoryRegistry();
-  registry.registerPlan("plan-a", PlanA);
-  const Ctor = registry.get("plan-a");
-  const instance = new Ctor("plan-code", [], {});
+  registry.register("junction-a", JunctionA);
+  const Ctor = registry.get("junction-a");
+  const instance = new Ctor("junction-code", [], {});
   assert.ok(instance instanceof FlowJunction);
-  assert.equal(instance.id, "plan-code");
+  assert.equal(instance.id, "junction-code");
 });
