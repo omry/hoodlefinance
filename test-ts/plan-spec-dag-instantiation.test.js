@@ -20,8 +20,10 @@ const {
   RequestClassifierResolver,
   Flow,
   BaseHFResolver,
+  FlowNode,
   RoutingPlan,
-  StepJunction,
+  FanOutJunction,
+  StepForwardNode,
   TickerQuoteResolutionPlan,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
@@ -38,6 +40,18 @@ class LeafResolver extends BaseHFResolver {
   }
 }
 
+class PureLeafNode extends FlowNode {
+  run() {
+    return {};
+  }
+}
+
+class ForwardNode extends StepForwardNode {
+  run() {
+    return {};
+  }
+}
+
 function createResolverRegistry() {
   return new NodeFactoryRegistry()
     .register("EquityAttributeExtractResolver", EquityAttributeExtractResolver)
@@ -47,9 +61,11 @@ function createResolverRegistry() {
     .register("LeafResolver", LeafResolver)
     .register("LocalFxResolver", LocalFxResolver)
     .register("LonIsinResolver", LonIsinResolver)
+    .register("ForwardNode", ForwardNode)
     .register("PSEEdgeResolver", PseEdgeResolver)
     .register("PSEFramesResolver", PseFramesResolver)
     .register("PseIsinMapResolver", PseIsinMapResolver)
+    .register("PureLeafNode", PureLeafNode)
     .register("RequestClassifierResolver", RequestClassifierResolver)
     .register("TradingviewFundResolver", TradingviewFundResolver)
     .register("YahooIsinSearchResolver", YahooIsinSearchResolver)
@@ -63,7 +79,7 @@ function createResolverRegistry() {
     .register("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
-    .register("StepPlan", StepJunction)
+    .register("StepPlan", FanOutJunction)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
@@ -185,6 +201,89 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
     assert.deepEqual(graph.getNode("EXTRACT:EQUITY").subgraphCalls, [
       "FX_CONVERSION",
     ]);
+  });
+
+  await t.test("accepts step-forward nodes with exactly one child", () => {
+    const graph = instantiateFlow({
+      ROOT: {
+        id: "ROOT",
+        next: ["FORWARD"],
+        type: "RoutingPlan",
+      },
+      FORWARD: {
+        id: "FORWARD",
+        next: ["TERMINAL"],
+        type: "ForwardNode",
+      },
+      TERMINAL: {
+        id: "TERMINAL",
+        type: "TerminalCollectorPlan",
+      },
+    }).getGraph();
+
+    assert.equal(graph.getNode("FORWARD").type, "ForwardNode");
+    assert.deepEqual(
+      graph.getChildren("FORWARD").map((node) => node.id),
+      ["TERMINAL"],
+    );
+  });
+
+  await t.test("rejects step-forward nodes with multiple children", () => {
+    assert.throws(
+      () =>
+        instantiateFlow({
+          ROOT: {
+            id: "ROOT",
+            next: ["FORWARD"],
+            type: "RoutingPlan",
+          },
+          FORWARD: {
+            id: "FORWARD",
+            next: ["LEFT", "RIGHT"],
+            type: "ForwardNode",
+          },
+          LEFT: {
+            id: "LEFT",
+            next: ["TERMINAL"],
+            type: "LeafResolver",
+          },
+          RIGHT: {
+            id: "RIGHT",
+            next: ["TERMINAL"],
+            type: "LeafResolver",
+          },
+          TERMINAL: {
+            id: "TERMINAL",
+            type: "TerminalCollectorPlan",
+          },
+        }),
+      /StepForward node "FORWARD" must declare exactly one child\./,
+    );
+  });
+
+  await t.test("keeps supporting leaf nodes with fallback children", () => {
+    const graph = instantiateFlow({
+      ROOT: {
+        id: "ROOT",
+        next: ["LEAF"],
+        type: "RoutingPlan",
+      },
+      LEAF: {
+        id: "LEAF",
+        next: ["TERMINAL"],
+        type: "PureLeafNode",
+      },
+      TERMINAL: {
+        id: "TERMINAL",
+        type: "TerminalCollectorPlan",
+      },
+    }).getGraph();
+
+    assert.equal(graph.getNode("LEAF").type, "PureLeafNode");
+    assert.deepEqual(
+      graph.getChildren("LEAF").map((node) => node.id),
+      ["TERMINAL"],
+    );
   });
 
   await t.test(

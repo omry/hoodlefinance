@@ -4,7 +4,7 @@ import {
   getGraphNodeSubgraphCallIds,
   normalizeGraphNodeId,
 } from "./graph";
-import { type LookupResult } from "./types";
+import { type LookupResult, NodeKind } from "./types";
 import { type FlowNode, FlowJunction } from "./nodes";
 import {
   NodeFactoryRegistry,
@@ -606,6 +606,8 @@ export class Flow {
         this.#getRuntimeNode(node.id);
       }
     }
+
+    this.#validateRuntimeTopology();
   }
 
   #isTerminalNode(id: string): boolean {
@@ -614,6 +616,24 @@ export class Flow {
 
   getGraph(): Graph.View {
     return this.graph;
+  }
+
+  #validateRuntimeTopology(): void {
+    for (const graphNode of this.graph.getTopologicalOrder()) {
+      if (this.#isTerminalNode(graphNode.id)) {
+        continue;
+      }
+
+      const runtimeNode = this.#getRuntimeNode(graphNode.id);
+      const nextCount = getGraphNodeNextIds(graphNode).length;
+      const kind = runtimeNode.getNodeKind();
+
+      if (kind === NodeKind.StepForward && nextCount !== 1) {
+        throw new Error(
+          `StepForward node "${graphNode.id}" must declare exactly one child.`,
+        );
+      }
+    }
   }
 
   getNode(id: string): FlowNode | null {

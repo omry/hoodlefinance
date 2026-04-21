@@ -5,24 +5,26 @@ import { getGraphNodeNextIds, type Graph } from "./flow/graph";
 export type { ExecutionContext, SelectNextContext } from "./flow/types";
 import type { ExecutionContext, ResolutionResult } from "./flow/types";
 export {
+  FanOutJunction,
   FirstSuccessJunction,
   FlowNode,
   FlowJunction,
-  StepJunction,
+  StepForwardNode,
   SwitchJunction,
 } from "./flow/nodes";
 import {
+  FanOutJunction,
   FirstSuccessJunction,
   FlowNode,
   FlowJunction,
-  StepJunction,
+  StepForwardNode,
   SwitchJunction,
 } from "./flow/nodes";
 import type { SelectNextContext } from "./flow/types";
 
 export class IdentifierResolver extends FlowNode {}
 
-export class BaseHFResolver extends FlowNode {
+export class BaseHFResolver extends StepForwardNode {
   readonly traceLabel: string;
 
   constructor(id: string, traceLabel?: string) {
@@ -138,7 +140,7 @@ export const PLAN_RESOLVER_CLASSES_BY_NAME = {
   FxAttributeResolutionPlan,
   PseQuoteResolutionPlan,
   RoutingPlan,
-  StepPlan: StepJunction,
+  StepPlan: FanOutJunction,
   TickerQuoteResolutionPlan,
 } as const;
 
