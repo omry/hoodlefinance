@@ -49,16 +49,16 @@ export class FlowEngine {
   }
 
   #childCanHandle(childNode: Graph.Node, value: object): boolean {
-    const childResolver = this.#flow.getResolver(childNode.id);
-    if (!childResolver) {
+    const childFlowNode = this.#flow.getNode(childNode.id);
+    if (!childFlowNode) {
       return true;
     }
-    return childResolver.canHandle(value);
+    return childFlowNode.canHandle(value);
   }
 
   #getSelectedChild(
     node: Graph.Node,
-    resolver: {
+    flowNode: {
       selectNext(
         request: unknown,
         context?: SelectNextContext,
@@ -68,17 +68,17 @@ export class FlowEngine {
     childNodes: Graph.Node[],
     context: SelectNextContext,
   ): Graph.Node[] {
-    if (typeof resolver.selectNext !== "function") {
+    if (typeof flowNode.selectNext !== "function") {
       throw new Error(`Routing node "${node.id}" must implement selectNext().`);
     }
 
-    const selectedResolvers = resolver.selectNext(request, context);
-    if (!selectedResolvers.length) {
+    const selectedNodes = flowNode.selectNext(request, context);
+    if (!selectedNodes.length) {
       return [];
     }
 
-    return selectedResolvers.map((selectedResolver) => {
-      const selectedCode = String(selectedResolver.id || "").trim();
+    return selectedNodes.map((selectedNode) => {
+      const selectedCode = String(selectedNode.id || "").trim();
       if (!selectedCode) {
         throw new Error(
           `Routing node "${node.id}" selected a child without a code.`,
@@ -145,7 +145,7 @@ export class FlowEngine {
 
   #executeRoutingNode(
     node: Graph.Node,
-    resolver: {
+    flowNode: {
       getNodeKind(): NodeKind;
       selectNext(
         request: unknown,
@@ -157,7 +157,7 @@ export class FlowEngine {
     trace?: ExecutionTrace,
     stopNodeId?: string,
   ): InternalEnvelope {
-    const kind = resolver.getNodeKind();
+    const kind = flowNode.getNodeKind();
     const childNodes = this.#getChildNodes(node, graph);
     const selectionContext: SelectNextContext = {};
     let lastFailureError = "";
@@ -165,7 +165,7 @@ export class FlowEngine {
     while (true) {
       const selectedChildren = this.#getSelectedChild(
         node,
-        resolver,
+        flowNode,
         envelope.value,
         childNodes,
         selectionContext,
@@ -246,12 +246,12 @@ export class FlowEngine {
     trace?: ExecutionTrace,
     stopNodeId?: string,
   ): InternalEnvelope {
-    const resolver = this.#flow.getResolver(node.id);
-    if (!resolver) {
+    const flowNode = this.#flow.getNode(node.id);
+    if (!flowNode) {
       if (trace) {
         trace.visitedNodeIds.push(node.id);
       }
-      // TERMINAL or unresolvable node — return current envelope as final result.
+      // TERMINAL or non-executable node — return current envelope as final result.
       return envelope;
     }
 
@@ -259,14 +259,14 @@ export class FlowEngine {
       trace.visitedNodeIds.push(node.id);
     }
 
-    const kind = resolver.getNodeKind();
+    const kind = flowNode.getNodeKind();
 
     // Non-leaf routing nodes do not perform leaf resolution here. They either
     // select a next child (switch), fan out to all children (step), or try
-    // children in order (try each). Leaf nodes resolve values directly.
+    // children in order (try each). Leaf nodes compute values directly.
     let outEnvelope: Envelope;
     if (kind !== NodeKind.Leaf) {
-      if (resolver.canHandle && !resolver.canHandle(envelope.value)) {
+      if (flowNode.canHandle && !flowNode.canHandle(envelope.value)) {
         return { value: envelope.value, status: EnvelopeStatus.Failure };
       }
       outEnvelope = { value: envelope.value, status: EnvelopeStatus.Success };
@@ -274,7 +274,7 @@ export class FlowEngine {
       const executionContext: ExecutionContext = {
         callSubgraph: (id, input) => this.#flow.callSubgraph(id, input),
       };
-      const result = resolver.execute(envelope.value, executionContext);
+      const result = flowNode.execute(envelope.value, executionContext);
       if (result.status === "success") {
         outEnvelope = {
           value:
@@ -305,7 +305,7 @@ export class FlowEngine {
     if (kind !== NodeKind.Leaf) {
       return this.#executeRoutingNode(
         node,
-        resolver,
+        flowNode,
         outEnvelope,
         graph,
         trace,

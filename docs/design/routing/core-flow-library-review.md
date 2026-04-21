@@ -96,8 +96,8 @@ engine can type-narrow rather than runtime-check.
 
 ### `canHandle()` dual null-check
 
-`FlowEngine.#childCanHandle()` does `!childResolver?.canHandle || childResolver.canHandle(value)`.
-Since `canHandle` is always on `Resolver`, the `?.` guard is only reached when the resolver
+`FlowEngine.#childCanHandle()` used to do `!childNode?.canHandle || childNode.canHandle(value)`.
+Since `canHandle` is always on `FlowNode`, the `?.` guard is only reached when the node
 is null — the expression checks two unrelated things. Simplify to a null check followed by a
 plain `canHandle()` call.
 
@@ -177,7 +177,7 @@ Concrete changes resulting from this review, to be tracked for implementation:
 - ~~`Resolver.resolve()` → `FlowNode.execute()`; `Resolver.execute()` → `FlowNode.run()`~~
 - ~~`RoutingNodeKind.TryEach` string value: `"try each"` → `"try_each"`~~
 - ~~`RoutingNodeKind` → `NodeKind`; `getRoutingNodeKind()` → `getNodeKind()`~~
-- ~~`resolve-flow.ts` → `flow.ts`~~ (partial); remaining: `resolver.ts`, `core-resolvers.ts` filenames; `getResolver()` method on `Flow`; `resolverEnv` parameter (goes away with `initEnv` removal)
+- ~~`resolve-flow.ts` → `flow.ts`~~ (partial); remaining: `resolver.ts`, `core-resolvers.ts` filenames outside `src/core/flow`
 
 **Identifier cleanup**
 - ~~Remove `code` and `name` from `FlowNode`; use `id` throughout~~

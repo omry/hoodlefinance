@@ -562,14 +562,14 @@ export class Flow {
   constructor(
     definition: Graph.Definition,
     registry: NodeFactoryRegistry,
-    resolverEnv?: unknown,
+    nodeEnv?: unknown,
     config?: FlowConfig,
   ) {
     const { view, exitNodeId } = buildGraphView(definition, config);
     this.graph = view;
     this.#exitNodeId = exitNodeId;
     this.#registry = registry;
-    this.envObject = resolverEnv;
+    this.envObject = nodeEnv;
     this.#subgraphsById = Object.create(null);
     for (const subgraphId of this.graph.getSubgraphIds()) {
       const subgraph = this.graph.getSubgraph(subgraphId);
@@ -587,7 +587,7 @@ export class Flow {
       const Ctor = registry.get(node.type);
       if (!Ctor) {
         throw new Error(
-          `Unknown resolver class "${String(node.type || "")}" for "${node.id}".`,
+          `Unknown node class "${String(node.type || "")}" for "${node.id}".`,
         );
       }
 
@@ -596,9 +596,9 @@ export class Flow {
       }
 
       const normalizedCode = normalizeGraphNodeId(node.id);
-      const resolver = new (Ctor as LeafConstructor)(normalizedCode, resolverEnv);
+      const flowNode = new (Ctor as LeafConstructor)(normalizedCode, nodeEnv);
 
-      this.#nodesByCode[normalizedCode] = resolver;
+      this.#nodesByCode[normalizedCode] = flowNode;
     }
 
     for (const node of this.graph.getTopologicalOrder()) {
@@ -616,7 +616,7 @@ export class Flow {
     return this.graph;
   }
 
-  getResolver(id: string): FlowNode | null {
+  getNode(id: string): FlowNode | null {
     const normalizedId = normalizeGraphNodeId(id);
     if (this.#isTerminalNode(normalizedId)) {
       return null;

@@ -12,7 +12,7 @@ const {
 // ---------------------------------------------------------------------------
 
 /**
- * Build a minimal mock ResolveFlow for FlowEngine unit tests.
+ * Build a minimal mock Flow for FlowEngine unit tests.
  * `nodes` is a map of id → { nextIds, resolveResult, kind?, canHandle?, selectNext? }
  * resolveResult: { status: "success"|"failure", value? }
  * kind: RoutingNodeKind — "leaf" (default), "switch", "try_each", "step"
@@ -46,7 +46,7 @@ function mockFlow(nodes) {
 
       if (blockingChildId) {
         throw new Error(
-          `Resolver plan "${nodeId}" has child "${blockingChildId}" that cannot handle the current output.`,
+          `Flow junction "${nodeId}" has child "${blockingChildId}" that cannot handle the current output.`,
         );
       }
 
@@ -89,7 +89,7 @@ function mockFlow(nodes) {
 
   return {
     getGraph: () => graph,
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "TERMINAL" || !nodes[id]) return null;
       const entry = nodes[id];
       return {
@@ -113,11 +113,11 @@ function mockFlow(nodes) {
 }
 
 // ---------------------------------------------------------------------------
-// Engine behaviour when flow returns null resolver (terminal node)
+// Engine behaviour when flow returns null node implementation (terminal node)
 // ---------------------------------------------------------------------------
 
-test("execute() treats a node with null resolver as terminal, returns current envelope", () => {
-  // ROOT has a next edge to a node whose resolver is null — engine should stop
+test("execute() treats a node with null node implementation as terminal, returns current envelope", () => {
+  // ROOT has a next edge to a node whose implementation is null — engine should stop
   // and return the envelope produced by ROOT.
   const flow = {
     getGraph: () => ({
@@ -128,13 +128,13 @@ test("execute() treats a node with null resolver as terminal, returns current en
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: { done: true } }),
           getNodeKind: () => "leaf",
         };
-      return null; // LEAF has no resolver — acts as terminal
+      return null; // LEAF has no runtime node — acts as terminal
     },
   };
 
@@ -145,8 +145,8 @@ test("execute() treats a node with null resolver as terminal, returns current en
   assert.deepEqual(result.value, { done: true });
 });
 
-test("execute() treats a node with null resolver as terminal even when it has siblings", () => {
-  // ROOT → [NULL-RESOLVER, REAL]. NULL-RESOLVER returns null from getResolver,
+test("execute() treats a node with null node implementation as terminal even when it has siblings", () => {
+  // ROOT → [NULL-RESOLVER, REAL]. NULL-RESOLVER returns null from getNode,
   // so engine sees it as terminal and returns success without trying REAL.
   let realCalled = false;
 
@@ -166,7 +166,7 @@ test("execute() treats a node with null resolver as terminal even when it has si
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: {} }),
@@ -190,14 +190,14 @@ test("execute() treats a node with null resolver as terminal even when it has si
   assert.equal(
     realCalled,
     false,
-    "sibling after null-resolver node should not be reached",
+    "sibling after null-node path should not be reached",
   );
 });
 
 test("execute() throws when graph has no ROOT node", () => {
   const flow = {
     getGraph: () => ({ getRoot: () => null, getNode: () => null }),
-    getResolver: () => null,
+    getNode: () => null,
   };
 
   const engine = new FlowEngine(flow);
@@ -369,7 +369,7 @@ test("execute() does not try next edges when ROOT itself fails", () => {
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT")
         return {
           execute:() => ({ status: "failure", error: "root failed" }),
@@ -401,7 +401,7 @@ test("execute() does not try next edges when ROOT itself fails", () => {
 // Value threading
 // ---------------------------------------------------------------------------
 
-test("execute() passes the resolver output value into the next node", () => {
+test("execute() passes the node output value into the next node", () => {
   const receivedValues = [];
 
   const flow = {
@@ -416,7 +416,7 @@ test("execute() passes the resolver output value into the next node", () => {
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT") {
         return {
           execute:(input) => {
@@ -451,7 +451,7 @@ test("execute() passes the resolver output value into the next node", () => {
   assert.deepEqual(receivedValues[1].input, { fromRoot: true });
 });
 
-test("execute() retains the previous value when resolver returns null value", () => {
+test("execute() retains the previous value when a node returns null value", () => {
   const flow = mockFlow({
     ROOT: {
       nextIds: ["TERMINAL"],
@@ -486,7 +486,7 @@ test("execute() walks a three-level graph to TERMINAL", () => {
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "TERMINAL") return null;
       return {
         execute: () => {
@@ -520,7 +520,7 @@ test("execute() skips missing next node and continues to next valid sibling", ()
         return null; // GHOST missing
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: {} }),
@@ -546,7 +546,7 @@ test("execute() skips missing next node and continues to next valid sibling", ()
 // ---------------------------------------------------------------------------
 // Node kinds
 //
-// The engine asks each resolved node for its RoutingNodeKind and dispatches
+// The engine asks each runtime node for its RoutingNodeKind and dispatches
 // child traversal accordingly:
 //
 //   "switch"   — select exactly one child via selectNext() and route only to
@@ -585,7 +585,7 @@ test("switch node: engine routes only to the matching child", () => {
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "SWITCH") {
         return {
           selectNext: () => [{ id: "BRANCH-B" }],
@@ -662,7 +662,7 @@ test("switch node: engine propagates selection errors from selectNext()", () => 
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "SWITCH") {
         return {
           selectNext: () => {
@@ -686,8 +686,8 @@ test("switch node: engine propagates selection errors from selectNext()", () => 
 });
 
 test("routing node: engine throws when a non-leaf node inherits the base selectNext()", () => {
-  const rootResolver = new FlowNode("ROOT");
-  rootResolver.getNodeKind = () => "switch";
+  const rootFlowNode = new FlowNode("ROOT");
+  rootFlowNode.getNodeKind = () => "switch";
 
   const flow = {
     getGraph: () => ({
@@ -698,9 +698,9 @@ test("routing node: engine throws when a non-leaf node inherits the base selectN
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT") {
-        return rootResolver;
+        return rootFlowNode;
       }
 
       if (id === "A") {
@@ -748,7 +748,7 @@ test("try-each node: engine tries children in order and returns first success", 
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "PARENT")
         return {
           execute:() => ({ status: "success", value: { ticker: "GOOG" } }),
@@ -820,7 +820,7 @@ test("try-each node: engine skips children that cannot handle the output", () =>
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "PARENT")
         return {
           execute:() => ({ status: "success", value: { provider: "B" } }),
@@ -835,9 +835,9 @@ test("try-each node: engine skips children that cannot handle the output", () =>
                 return false;
               }
 
-              const childResolver = flow.getResolver(code);
+              const childFlowNode = flow.getNode(code);
               return (
-                !childResolver?.canHandle || childResolver.canHandle(request)
+                !childFlowNode?.canHandle || childFlowNode.canHandle(request)
               );
             });
 
@@ -939,7 +939,7 @@ test("try-each node: Failure from exhausted try-each propagates through ancestor
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT")
         return {
           selectNext: () => [{ id: "TRY-EACH-A" }],
@@ -1052,9 +1052,9 @@ test("step node: engine fans out the same output to all children", () => {
     },
   });
 
-  // Patch resolvers to record visits
-  const base = flow.getResolver.bind(flow);
-  flow.getResolver = (id) => {
+  // Patch runtime nodes to record visits
+  const base = flow.getNode.bind(flow);
+  flow.getNode = (id) => {
     const r = base(id);
     if (r) {
       const orig = r.execute.bind(r);
@@ -1126,14 +1126,14 @@ test("step node: throws when a child cannot handle the output", () => {
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT") {
         return {
           getNodeKind: () => "step",
           selectNext: (request) => {
-            if (!flow.getResolver("STEP-B").canHandle(request)) {
+            if (!flow.getNode("STEP-B").canHandle(request)) {
               throw new Error(
-                'Resolver plan "ROOT" has child "STEP-B" that cannot handle the current output.',
+                'Flow junction "ROOT" has child "STEP-B" that cannot handle the current output.',
               );
             }
 
@@ -1208,7 +1208,7 @@ test("step node: Failure from an exhausted try-each child stops execution immedi
   );
 });
 
-test("execute() passes resolver output to children without transforming its shape", () => {
+test("execute() passes node output to children without transforming its shape", () => {
   let wrapperInput = null;
   let leafInput = null;
 
@@ -1236,7 +1236,7 @@ test("execute() passes resolver output to children without transforming its shap
         return null;
       },
     }),
-    getResolver: (id) => {
+    getNode: (id) => {
       if (id === "ROOT") {
         return {
           execute:() => ({ status: "success", value: rootOutput }),

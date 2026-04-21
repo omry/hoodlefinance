@@ -9,7 +9,7 @@ import {
 
 type SelectedNodes = FlowNode[];
 
-function formatResolverError(error: unknown): string {
+function formatExecutionError(error: unknown): string {
   return String(error instanceof Error ? error.message : (error ?? ""));
 }
 
@@ -56,7 +56,7 @@ export class FlowNode {
       return createResolutionFailure(
         error,
         Date.now() - startedAtMs,
-        formatResolverError,
+        formatExecutionError,
       );
     }
   }

@@ -236,12 +236,12 @@ test("Flowroutes price@CCY conversion through the production FX subgraph", () =>
   assert.equal(resolveAttribute(resolveFlow, "TSCO.L", "price@USD"), 3.125);
 });
 
-test("Flowinstantiates and registers resolvers by class name", () => {
+test("Flow instantiates and registers nodes by class name", () => {
   const flow = new Flow(FAKE_GRAPH, new NodeFactoryRegistry().registerLeaf("FakeResolver", FakeResolver));
 
-  const resolver = flow.getResolver("ROOT");
-  assert.ok(resolver instanceof FakeResolver);
-  assert.equal(resolver.id, "ROOT");
+  const flowNode = flow.getNode("ROOT");
+  assert.ok(flowNode instanceof FakeResolver);
+  assert.equal(flowNode.id, "ROOT");
 });
 
 test("Flowexposes declared subgraphs from explicit graph metadata", () => {
@@ -365,11 +365,11 @@ test("Flowrejects unknown class names", () => {
         },
         new NodeFactoryRegistry(),
       ),
-    /Unknown resolver class "MissingResolver" for "ROOT"\./,
+    /Unknown node class "MissingResolver" for "ROOT"\./,
   );
 });
 
-test("Flowcan instantiate concrete resolvers with class-specific dependencies", () => {
+test("Flow can instantiate concrete nodes with class-specific dependencies", () => {
   const staticFetch = createStaticResourceHttpFetch();
   const services = createStaticResolverServices({
     httpFetch(url) {
@@ -496,22 +496,22 @@ test("Flowcan instantiate concrete resolvers with class-specific dependencies", 
     services,
   );
 
-  assert.ok(flow.getResolver("ISIN-RECEIVER") instanceof FirstSuccessReceiver);
-  assert.ok(flow.getResolver("FX-IDENTITY") instanceof LocalFxResolver);
-  assert.ok(flow.getResolver("GOOGLE-FX") instanceof GoogleFxResolver);
-  assert.ok(flow.getResolver("PSE-FRAMES") instanceof PseFramesResolver);
-  assert.ok(flow.getResolver("PSE-EDGE") instanceof PseEdgeResolver);
+  assert.ok(flow.getNode("ISIN-RECEIVER") instanceof FirstSuccessReceiver);
+  assert.ok(flow.getNode("FX-IDENTITY") instanceof LocalFxResolver);
+  assert.ok(flow.getNode("GOOGLE-FX") instanceof GoogleFxResolver);
+  assert.ok(flow.getNode("PSE-FRAMES") instanceof PseFramesResolver);
+  assert.ok(flow.getNode("PSE-EDGE") instanceof PseEdgeResolver);
   assert.ok(
-    flow.getResolver("YAHOO-QUOTE") instanceof YahooEquityQuoteResolver,
+    flow.getNode("YAHOO-QUOTE") instanceof YahooEquityQuoteResolver,
   );
-  assert.ok(flow.getResolver("YAHOO-FX") instanceof YahooFxResolver);
+  assert.ok(flow.getNode("YAHOO-FX") instanceof YahooFxResolver);
   assert.ok(
-    flow.getResolver("TRADINGVIEW-FUND") instanceof TradingviewFundResolver,
+    flow.getNode("TRADINGVIEW-FUND") instanceof TradingviewFundResolver,
   );
-  assert.ok(flow.getResolver("ISIN:PSE") instanceof PseIsinMapResolver);
-  assert.ok(flow.getResolver("ISIN:YAHOO") instanceof YahooIsinSearchResolver);
+  assert.ok(flow.getNode("ISIN:PSE") instanceof PseIsinMapResolver);
+  assert.ok(flow.getNode("ISIN:YAHOO") instanceof YahooIsinSearchResolver);
 
-  const pseFramesResolved = flow.getResolver("PSE-FRAMES").execute(
+  const pseFramesResolved = flow.getNode("PSE-FRAMES").execute(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: false,
@@ -525,7 +525,7 @@ test("Flowcan instantiate concrete resolvers with class-specific dependencies", 
   assert.equal(pseFramesResolved.status, "success");
   assert.equal(pseFramesResolved.value.quote.symbol, "BDO.PS");
 
-  const pseEdgeResolved = flow.getResolver("PSE-EDGE").execute(
+  const pseEdgeResolved = flow.getNode("PSE-EDGE").execute(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: false,
@@ -539,7 +539,7 @@ test("Flowcan instantiate concrete resolvers with class-specific dependencies", 
   assert.equal(pseEdgeResolved.status, "success");
   assert.equal(pseEdgeResolved.value.quote.symbol, "BDO.PS");
 
-  const pseResolved = flow.getResolver("ISIN:PSE").execute(
+  const pseResolved = flow.getNode("ISIN:PSE").execute(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -561,7 +561,7 @@ test("Flowcan instantiate concrete resolvers with class-specific dependencies", 
   assert.equal(pseResolved.status, "success");
   assert.equal(pseResolved.value.exchange, "PSE");
 
-  const yahooResolved = flow.getResolver("ISIN:YAHOO").execute(
+  const yahooResolved = flow.getNode("ISIN:YAHOO").execute(
     new RequestInput({
       attribute: "price",
       attributeRequest: {
@@ -582,7 +582,7 @@ test("Flowcan instantiate concrete resolvers with class-specific dependencies", 
   assert.equal(yahooResolved.status, "success");
   assert.equal(yahooResolved.value.yahooSymbol, "IBM");
 
-  const googleResolved = flow.getResolver("GOOGLE-FX").execute(
+  const googleResolved = flow.getNode("GOOGLE-FX").execute(
     new FxRequest({
       attribute: "price",
       fxPair: {
@@ -607,7 +607,7 @@ test("Flowcan instantiate concrete resolvers with class-specific dependencies", 
   assert.equal(googleResolved.value.quote.regularMarketPrice, 1.25);
   assert.equal(googleResolved.value.quote.googleSymbol, "CURRENCY:EURUSD");
 
-  const tradingviewResolved = flow.getResolver("TRADINGVIEW-FUND").execute(
+  const tradingviewResolved = flow.getNode("TRADINGVIEW-FUND").execute(
     new EquityRequest({
       attribute: "price",
       allowTradingviewFallback: true,
