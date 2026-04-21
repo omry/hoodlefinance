@@ -15,7 +15,7 @@ const {
  * Build a minimal mock Flow for FlowEngine unit tests.
  * `nodes` is a map of id → { nextIds, resolveResult, kind?, canHandle?, selectNext? }
  * resolveResult: { status: "success"|"failure", value? }
- * kind: RoutingNodeKind — "leaf" (default), "switch", "try_each", "step"
+ * kind: RoutingNodeKind — "step_forward" (default), "leaf", "switch", "try_each", "step"
  */
 function mockFlow(nodes) {
   function getSelectedNodeCodes(context) {
@@ -106,7 +106,8 @@ function mockFlow(nodes) {
                     defaultSelectNext(id, entry, request, context),
             }
           : {}),
-        getNodeKind: () => entry.kind || "leaf",
+        getNodeKind: () =>
+          entry.kind || ((entry.nextIds || []).length > 0 ? "step_forward" : "leaf"),
       };
     },
   };
@@ -132,7 +133,7 @@ test("execute() treats a node with null node implementation as terminal, returns
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: { done: true } }),
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       return null; // LEAF has no runtime node — acts as terminal
     },
@@ -145,11 +146,7 @@ test("execute() treats a node with null node implementation as terminal, returns
   assert.deepEqual(result.value, { done: true });
 });
 
-test("execute() treats a node with null node implementation as terminal even when it has siblings", () => {
-  // ROOT → [NULL-RESOLVER, REAL]. NULL-RESOLVER returns null from getNode,
-  // so engine sees it as terminal and returns success without trying REAL.
-  let realCalled = false;
-
+test("execute() throws when a step-forward node declares multiple children", () => {
   const flow = {
     getGraph: () => ({
       getRoot: () => ({
@@ -170,27 +167,16 @@ test("execute() treats a node with null node implementation as terminal even whe
       if (id === "ROOT")
         return {
           execute:() => ({ status: "success", value: {} }),
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
-      if (id === "REAL") {
-        realCalled = true;
-        return {
-          execute:() => ({ status: "success", value: {} }),
-          getNodeKind: () => "leaf",
-        };
-      }
       return null; // NULL-RESOLVER
     },
   };
 
   const engine = new FlowEngine(flow);
-  const result = engine.execute({ value: {} });
-
-  assert.equal(result.status, EnvelopeStatus.Success);
-  assert.equal(
-    realCalled,
-    false,
-    "sibling after null-node path should not be reached",
+  assert.throws(
+    () => engine.execute({ value: {} }),
+    /StepForward node "ROOT" must declare exactly one child\./,
   );
 });
 
@@ -289,6 +275,7 @@ test("execute() returns success envelope when single node succeeds and reaches T
 test("execute() falls back to second next node when first fails", () => {
   const flow = mockFlow({
     ROOT: {
+      kind: "leaf",
       nextIds: ["A", "B"],
       resolveResult: { status: "success", value: {} },
     },
@@ -311,6 +298,7 @@ test("execute() falls back to second next node when first fails", () => {
 test("execute() returns failure when all next nodes fail", () => {
   const flow = mockFlow({
     ROOT: {
+      kind: "leaf",
       nextIds: ["A", "B"],
       resolveResult: { status: "success", value: {} },
     },
@@ -334,6 +322,7 @@ test("execute() returns failure when all next nodes fail", () => {
 test("execute() preserves the last user-facing leaf failure message", () => {
   const flow = mockFlow({
     ROOT: {
+      kind: "leaf",
       nextIds: ["A", "B"],
       resolveResult: { status: "success", value: {} },
     },
@@ -373,7 +362,7 @@ test("execute() does not try next edges when ROOT itself fails", () => {
       if (id === "ROOT")
         return {
           execute:() => ({ status: "failure", error: "root failed" }),
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       if (id === "A") {
         nextCalled = true;
@@ -424,7 +413,7 @@ test("execute() passes the node output value into the next node", () => {
             return { status: "success", value: { fromRoot: true } };
           },
           canHandle: () => true,
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       if (id === "NEXT") {
@@ -434,7 +423,7 @@ test("execute() passes the node output value into the next node", () => {
             return { status: "success", value: { fromNext: true } };
           },
           canHandle: () => true,
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       return null; // TERMINAL
@@ -494,7 +483,7 @@ test("execute() walks a three-level graph to TERMINAL", () => {
           return { status: "success", value: { step: id } };
         },
         canHandle: () => true,
-        getNodeKind: () => "leaf",
+        getNodeKind: () => "step_forward",
       };
     },
   };
@@ -506,18 +495,20 @@ test("execute() walks a three-level graph to TERMINAL", () => {
   assert.deepEqual(visited, ["A", "B", "C"]);
 });
 
-test("execute() skips missing next node and continues to next valid sibling", () => {
+test("execute() throws when a step-forward node has multiple next nodes", () => {
   const flow = {
     getGraph: () => ({
-      getRoot: () => ({ id: "ROOT", type: "mock", next: ["GHOST", "REAL"] }),
+      getRoot: () => ({ id: "ROOT", type: "mock", next: ["A", "B"] }),
       getNode: (id) => {
         if (id === "ROOT")
-          return { id: "ROOT", type: "mock", next: ["GHOST", "REAL"] };
-        if (id === "REAL")
-          return { id: "REAL", type: "mock", next: ["TERMINAL"] };
+          return { id: "ROOT", type: "mock", next: ["A", "B"] };
+        if (id === "A")
+          return { id: "A", type: "mock", next: ["TERMINAL"] };
+        if (id === "B")
+          return { id: "B", type: "mock", next: ["TERMINAL"] };
         if (id === "TERMINAL")
           return { id: "TERMINAL", type: "terminal", next: [] };
-        return null; // GHOST missing
+        return null;
       },
     }),
     getNode: (id) => {
@@ -525,22 +516,17 @@ test("execute() skips missing next node and continues to next valid sibling", ()
         return {
           execute:() => ({ status: "success", value: {} }),
           canHandle: () => true,
-          getNodeKind: () => "leaf",
-        };
-      if (id === "REAL")
-        return {
-          execute:() => ({ status: "success", value: { real: true } }),
-          canHandle: () => true,
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       return null;
     },
   };
 
   const engine = new FlowEngine(flow);
-  const result = engine.execute({ value: {} });
-
-  assert.equal(result.status, EnvelopeStatus.Success);
+  assert.throws(
+    () => engine.execute({ value: {} }),
+    /StepForward node "ROOT" must declare exactly one child\./,
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -598,7 +584,7 @@ test("switch node: engine routes only to the matching child", () => {
             visited.push("BRANCH-A");
             return { status: "success", value: input };
           },
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       if (id === "BRANCH-B") {
@@ -607,7 +593,7 @@ test("switch node: engine routes only to the matching child", () => {
             visited.push("BRANCH-B");
             return { status: "success", value: input };
           },
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       return null; // TERMINAL
@@ -786,7 +772,7 @@ test("try-each node: engine tries children in order and returns first success", 
             visited.push("PROVIDER-B");
             return { status: "success", value: { price: 180 } };
           },
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       return null; // TERMINAL
     },
@@ -865,7 +851,7 @@ test("try-each node: engine skips children that cannot handle the output", () =>
             visited.push("B");
             return { status: "success", value: { price: 180 } };
           },
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       return null;
     },
@@ -1001,12 +987,12 @@ test("try-each node: succeeding first provider short-circuits remaining siblings
       resolveResult: { status: "success", value: {} },
     },
     "PROVIDER-A": {
-      kind: "leaf",
+      kind: "step_forward",
       nextIds: ["TERMINAL"],
       resolveResult: { status: "success", value: { price: 10 } },
     },
     "PROVIDER-B": {
-      kind: "leaf",
+      kind: "step_forward",
       nextIds: ["TERMINAL"],
       get resolveResult() {
         bCalled = true;
@@ -1041,12 +1027,12 @@ test("step node: engine fans out the same output to all children", () => {
       resolveResult: { status: "success", value: {} },
     },
     "STEP-A": {
-      kind: "leaf",
+      kind: "step_forward",
       nextIds: ["TERMINAL"],
       resolveResult: { status: "success", value: { a: true } },
     },
     "STEP-B": {
-      kind: "leaf",
+      kind: "step_forward",
       nextIds: ["TERMINAL"],
       resolveResult: { status: "success", value: { b: true } },
     },
@@ -1241,7 +1227,7 @@ test("execute() passes node output to children without transforming its shape", 
         return {
           execute:() => ({ status: "success", value: rootOutput }),
           canHandle: () => true,
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       if (id === "WRAPPER") {
@@ -1251,7 +1237,7 @@ test("execute() passes node output to children without transforming its shape", 
             return { status: "success", value: wrapperOutput };
           },
           canHandle: () => true,
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       if (id === "LEAF") {
@@ -1261,7 +1247,7 @@ test("execute() passes node output to children without transforming its shape", 
             return { status: "success", value: input };
           },
           canHandle: () => true,
-          getNodeKind: () => "leaf",
+          getNodeKind: () => "step_forward",
         };
       }
       return null;

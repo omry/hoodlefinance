@@ -15,10 +15,11 @@ import {
   RoutingPlan,
   TickerQuoteResolutionPlan,
 } from "./resolver-classes";
-import { FirstSuccessJunction, StepJunction } from "./flow/nodes";
+import { FanOutJunction, FirstSuccessJunction } from "./flow/nodes";
 import {
   IdentifierResolver,
   FlowNode,
+  StepForwardNode,
   BaseHFResolver,
 } from "./resolver-classes";
 import {
@@ -991,7 +992,7 @@ export class TradingviewFundResolver extends BaseHFResolver {
 
 }
 
-export class EquityAttributeExtractResolver extends FlowNode {
+export class EquityAttributeExtractResolver extends StepForwardNode {
   private resolverServices: ResolverServices;
 
   constructor(code = "EXTRACT:EQUITY", services: ResolverServices) {
@@ -1044,7 +1045,7 @@ function isLonIsinAttributeRequest(request: unknown): boolean {
   return String(request.input.attribute || "").toLowerCase() === "isin";
 }
 
-export class LonIsinResolver extends FlowNode {
+export class LonIsinResolver extends StepForwardNode {
   private resolverServices: ResolverServices;
 
   constructor(code = "LON-ISIN", services: ResolverServices) {
@@ -1078,7 +1079,7 @@ export class LonIsinResolver extends FlowNode {
 
 }
 
-export class FxAttributeExtractResolver extends FlowNode {
+export class FxAttributeExtractResolver extends StepForwardNode {
   constructor(code = "EXTRACT:FX") {
     super(code);
   }
@@ -1128,6 +1129,6 @@ export function createConcreteResolverRegistry(): NodeFactoryRegistry {
     .register("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
-    .register("StepPlan", StepJunction)
+    .register("StepPlan", FanOutJunction)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }

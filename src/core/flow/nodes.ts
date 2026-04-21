@@ -137,11 +137,17 @@ export abstract class FlowJunction extends FlowNode {
   abstract getNodeKind(): NodeKind;
 }
 
+export class StepForwardNode extends FlowNode {
+  getNodeKind(): NodeKind {
+    return NodeKind.StepForward;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Junction kind base classes — driver dispatch table uses these to determine
 // how each graph node is traversed: switch selects one child explicitly via
-// selectNext(), step returns all children in one selection, try-each selects
-// one child per call in order with fallback.
+// selectNext(), fan-out returns all children in one selection, try-each
+// selects one child per call in order with fallback.
 // ---------------------------------------------------------------------------
 
 export class SwitchJunction extends FlowJunction {
@@ -176,7 +182,7 @@ export class SwitchJunction extends FlowJunction {
   }
 }
 
-export class StepJunction extends FlowJunction {
+export class FanOutJunction extends FlowJunction {
   getNodeKind(): NodeKind {
     return NodeKind.Step;
   }

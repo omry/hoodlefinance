@@ -30,8 +30,15 @@ export function createResolutionFailure(
   }) as ResolutionResult<never>;
 }
 
+// Flow node kinds:
+// - Leaf: execute work and terminate without selecting or traversing children.
+// - StepForward: execute work, then continue to exactly one child.
+// - Switch: select exactly one child for the current request.
+// - TryEach: try eligible children one at a time until one succeeds.
+// - Step: fan out to all children in one step.
 export enum NodeKind {
   Leaf = "leaf",
+  StepForward = "step_forward",
   Switch = "switch",
   TryEach = "try_each",
   Step = "step",

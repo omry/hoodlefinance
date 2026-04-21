@@ -56,6 +56,10 @@ export class FlowEngine {
     return childFlowNode.canHandle(value);
   }
 
+  #isRoutingKind(kind: NodeKind): boolean {
+    return [NodeKind.Switch, NodeKind.TryEach, NodeKind.Step].includes(kind);
+  }
+
   #getSelectedChild(
     node: Graph.Node,
     flowNode: {
@@ -261,11 +265,10 @@ export class FlowEngine {
 
     const kind = flowNode.getNodeKind();
 
-    // Non-leaf routing nodes do not perform leaf resolution here. They either
-    // select a next child (switch), fan out to all children (step), or try
-    // children in order (try each). Leaf nodes compute values directly.
+    // Routing nodes select children explicitly. Executable leaf/step-forward
+    // nodes compute values directly before any child traversal.
     let outEnvelope: Envelope;
-    if (kind !== NodeKind.Leaf) {
+    if (this.#isRoutingKind(kind)) {
       if (flowNode.canHandle && !flowNode.canHandle(envelope.value)) {
         return { value: envelope.value, status: EnvelopeStatus.Failure };
       }
@@ -302,7 +305,7 @@ export class FlowEngine {
       };
     }
 
-    if (kind !== NodeKind.Leaf) {
+    if (this.#isRoutingKind(kind)) {
       return this.#executeRoutingNode(
         node,
         flowNode,
@@ -314,11 +317,38 @@ export class FlowEngine {
     }
 
     const childNodes = this.#getChildNodes(node, graph);
+
+    if (kind === NodeKind.StepForward) {
+      if (childNodes.length !== 1) {
+        throw new Error(
+          `StepForward node "${node.id}" must declare exactly one child.`,
+        );
+      }
+
+      const nextChild = childNodes[0] as Graph.Node;
+      if (!this.#childCanHandle(nextChild, outEnvelope.value)) {
+        throw new Error(
+          `StepForward node "${node.id}" has child "${nextChild.id}" that cannot handle the current output.`,
+        );
+      }
+
+      return this.#executeNode(
+        nextChild,
+        outEnvelope,
+        graph,
+        trace,
+        stopNodeId,
+      );
+    }
+
+    if (kind !== NodeKind.Leaf) {
+      throw new Error(`Unsupported node kind "${String(kind)}" for "${node.id}".`);
+    }
+
     let lastFailureError = "";
 
-    // try each: try each handleable child in declaration order until one
-    // succeeds. Exhaustion is terminal. leaf nodes keep the same ordered
-    // fallback behavior, but exhaustion is a normal Failure.
+    // Leaf nodes keep the existing ordered-fallback behavior for now.
+
     for (const childNode of childNodes) {
       if (!this.#childCanHandle(childNode, outEnvelope.value)) {
         continue;

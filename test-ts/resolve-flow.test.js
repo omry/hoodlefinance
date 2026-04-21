@@ -20,10 +20,11 @@ const {
   PseQuoteResolutionPlan,
   RequestClassifierResolver,
   FlowNode,
+  StepForwardNode,
   Flow,
   resolveAttribute,
   RoutingPlan,
-  StepJunction,
+  FanOutJunction,
   TickerQuoteResolutionPlan,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
@@ -66,11 +67,11 @@ function createResolverRegistry() {
     .register("FxAttributeResolutionPlan", FxAttributeResolutionPlan)
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
-    .register("StepPlan", StepJunction)
+    .register("StepPlan", FanOutJunction)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
-class FakeResolver extends FlowNode {
+class FakeResolver extends StepForwardNode {
   constructor(code) {
     super(code);
   }

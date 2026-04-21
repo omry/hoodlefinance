@@ -9,7 +9,7 @@ const {
   FlowNode,
   FlowJunction,
   BaseHFResolver,
-  StepJunction,
+  FanOutJunction,
   SwitchJunction,
   TickerQuoteResolutionPlan,
   buildPlanNodeFromSpec,
@@ -82,14 +82,14 @@ test("FlowJunction maintains standard fallback sequence and full routing-tree vi
   );
 });
 
-test("StepPlan forwards to all children without request-based selection", () => {
+test("StepPlan fans out to all children without request-based selection", () => {
   const first = createLeafResolver("FIRST", {
     canHandle() {
       return false;
     },
   });
   const second = createLeafResolver("SECOND");
-  const plan = new StepJunction("ROOT", [first, second]);
+  const plan = new FanOutJunction("ROOT", [first, second]);
 
   assert.deepEqual(
     plan
@@ -137,12 +137,12 @@ test("FirstSuccessPlan selectNext advances across handleable children", () => {
 test("StepPlan selectNext returns all children and rejects unhandleable output", () => {
   const first = createLeafResolver("FIRST");
   const second = createLeafResolver("SECOND");
-  const plan = new StepJunction("ROOT", [first, second]);
+  const plan = new FanOutJunction("ROOT", [first, second]);
   const request = createRequestInput();
 
   assert.deepEqual(plan.selectNext(request, {}), [first, second]);
 
-  const failingPlan = new StepJunction("ROOT", [
+  const failingPlan = new FanOutJunction("ROOT", [
     createLeafResolver("FIRST"),
     createLeafResolver("SECOND", {
       canHandle() {
@@ -227,7 +227,7 @@ test("buildPlanNodeFromSpec builds a StepPlan for unconditional forwarding nodes
       })[nodeCode],
   );
 
-  assert.equal(plan instanceof StepJunction, true);
+  assert.equal(plan instanceof FanOutJunction, true);
   assert.equal(plan.getNodeKind(), "step");
 });
 

@@ -45,7 +45,7 @@ subclasses override `run()`. The current pair reads as synonyms.
 **`FlowJunction`** — a junction is a point where paths branch or merge, following the `FlowX`
 naming pattern.
 
-Concrete subclasses drop "Plan": `SwitchJunction`, `StepJunction`, `FirstSuccessJunction`
+Concrete subclasses drop "Plan": `SwitchJunction`, `FanOutJunction`, `FirstSuccessJunction`
 (or shorter: `SwitchNode`, `StepNode`, `FallbackNode`).
 
 ### Is the Leaf / Junction distinction necessary?
@@ -173,7 +173,7 @@ Concrete changes resulting from this review, to be tracked for implementation:
 **Renames**
 - ~~`ResolveFlow` → `Flow`~~
 - ~~`Resolver` → `FlowNode`~~
-- ~~`ResolverPlan` → `FlowJunction`; `SwitchPlan` → `SwitchJunction`, `StepPlan` → `StepJunction`, `FirstSuccessPlan` → `FirstSuccessJunction` (or shorter functional names)~~
+- ~~`ResolverPlan` → `FlowJunction`; `SwitchPlan` → `SwitchJunction`, `StepPlan` → `FanOutJunction`, `FirstSuccessPlan` → `FirstSuccessJunction` (or shorter functional names)~~
 - ~~`Resolver.resolve()` → `FlowNode.execute()`; `Resolver.execute()` → `FlowNode.run()`~~
 - ~~`RoutingNodeKind.TryEach` string value: `"try each"` → `"try_each"`~~
 - ~~`RoutingNodeKind` → `NodeKind`; `getRoutingNodeKind()` → `getNodeKind()`~~
