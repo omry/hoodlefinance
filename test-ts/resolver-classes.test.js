@@ -77,11 +77,7 @@ test("FlowJunction maintains standard fallback sequence and full routing-tree vi
   const request = createRequestInput();
 
   assert.deepEqual(
-    plan.getNodesForRequest(request).map((node) => node.id),
-    ["YAHOO", "IBKR"],
-  );
-  assert.deepEqual(
-    plan.getRoutingNodes().map((node) => node.id),
+    plan.getHandleableNodes(request).map((node) => node.id),
     ["YAHOO", "IBKR"],
   );
 });
@@ -97,12 +93,12 @@ test("StepPlan forwards to all children without request-based selection", () => 
 
   assert.deepEqual(
     plan
-      .getNodesForRequest(new RawRequestInput("GOOG", "price"))
+      .getHandleableNodes(new RawRequestInput("GOOG", "price"))
       .map((node) => node.id),
     ["FIRST", "SECOND"],
   );
   assert.deepEqual(
-    plan.getNodesForRequest(createRequestInput()).map((node) => node.id),
+    plan.getHandleableNodes(createRequestInput()).map((node) => node.id),
     ["FIRST", "SECOND"],
   );
 });
@@ -267,13 +263,13 @@ test("FirstSuccessPlan can express ISIN-country fallback through child canHandle
   );
   assert.deepEqual(
     plan
-      .getNodesForRequest(createRequestInput({ ticker: "PHY077751022" }))
+      .getHandleableNodes(createRequestInput({ ticker: "PHY077751022" }))
       .map((node) => node.id),
     ["ISIN:PSE", "ISIN:YAHOO"],
   );
   assert.deepEqual(
     plan
-      .getNodesForRequest(createRequestInput({ ticker: "US02079K1079" }))
+      .getHandleableNodes(createRequestInput({ ticker: "US02079K1079" }))
       .map((node) => node.id),
     ["ISIN:YAHOO"],
   );

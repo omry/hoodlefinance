@@ -29,11 +29,10 @@ export class FlowNode {
     return NodeKind.Leaf;
   }
 
-  // Called by the engine on routing nodes to determine which child(ren) to
-  // execute next. Returns all children for StepJunction, 0-or-1 for Switch/
-  // FirstSuccess. context.selectedNodeCodes tracks already-dispatched children
-  // across repeated calls within the same traversal. Throws on leaf nodes —
-  // the engine checks getNodeKind() first so this is never reached.
+  // Returns the child(ren) selected for the current request. Implementations
+  // may consult context.selectedNodeCodes to avoid re-selecting the same
+  // children across repeated calls within a single traversal. Throws on leaf
+  // nodes.
   selectNext(
     _request: unknown,
     _context: SelectNextContext = {},
@@ -74,34 +73,12 @@ export abstract class FlowJunction extends FlowNode {
     this.nodes = nodes || [];
   }
 
-  getNodesForRequest(request: unknown): FlowNode[] {
-    const nodes = (this.nodes || []).slice();
-
-    if (!nodes.length) {
-      return nodes;
-    }
-
-    const firstMatchingIndex = nodes.findIndex(
-      (node) => node.canHandle(request),
-    );
-
-    if (firstMatchingIndex < 0) {
-      return nodes;
-    }
-
-    return nodes.slice(firstMatchingIndex);
-  }
-
-  getHandleableNodesForRequest(request: unknown): FlowNode[] {
+  getHandleableNodes(request: unknown): FlowNode[] {
     return (this.nodes || []).filter((node) => node.canHandle(request));
   }
 
-  getRoutingNodes(): FlowNode[] {
-    return (this.nodes || []).slice();
-  }
-
   canHandle(request: unknown): boolean {
-    return this.getHandleableNodesForRequest(request).length > 0;
+    return this.getHandleableNodes(request).length > 0;
   }
 
   protected getSelectedNodeCodes(
@@ -177,7 +154,7 @@ export class SwitchJunction extends FlowJunction {
       return [];
     }
 
-    const matchingNodes = this.getHandleableNodesForRequest(request);
+    const matchingNodes = this.getHandleableNodes(request);
 
     if (!matchingNodes.length) {
       return [];
@@ -204,12 +181,12 @@ export class StepJunction extends FlowJunction {
     return NodeKind.Step;
   }
 
-  getNodesForRequest(_request: unknown): FlowNode[] {
+  getHandleableNodes(_request: unknown): FlowNode[] {
     return (this.nodes || []).slice();
   }
 
   selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
-    const routingNodes = this.getRoutingNodes();
+    const routingNodes = this.getHandleableNodes(request);
     const blockingNode = routingNodes.find(
       (node) => node?.canHandle && !node.canHandle(request),
     );
@@ -231,7 +208,7 @@ export class FirstSuccessJunction extends FlowJunction {
 
   selectNext(request: unknown, context: SelectNextContext = {}): SelectedNodes {
     const remainingNodes = this.getUnselectedNodes(
-      this.getHandleableNodesForRequest(request),
+      this.getHandleableNodes(request),
       context,
     );
 

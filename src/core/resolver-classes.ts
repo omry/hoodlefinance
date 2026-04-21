@@ -122,9 +122,11 @@ export class FxAttributeResolutionPlan extends SwitchJunction {
     return selectedNode ? [selectedNode] : [];
   }
 
-  getRoutingNodes(): FlowNode[] {
+  getHandleableNodes(request: unknown): FlowNode[] {
     const routingNodes = [];
-    if (this.nodes[0]) routingNodes.push(this.nodes[0]);
+    if (this.nodes[0] && this.nodes[0].canHandle(request)) {
+      routingNodes.push(this.nodes[0]);
+    }
     if (this.nodes[1]) routingNodes.push(this.nodes[1]);
     return routingNodes;
   }

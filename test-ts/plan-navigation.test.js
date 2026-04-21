@@ -57,8 +57,8 @@ test("selectSinglePlanNode handles single, missing, and ambiguous selections", (
 
   assert.equal(
     selectSinglePlanNode(
-      {
-        getNodesForRequest() {
+        {
+        getHandleableNodes() {
           return [yahoo];
         },
         id: "QUOTE",
@@ -72,7 +72,7 @@ test("selectSinglePlanNode handles single, missing, and ambiguous selections", (
     () =>
       selectSinglePlanNode(
         {
-          getNodesForRequest() {
+          getHandleableNodes() {
             return [];
           },
           id: "QUOTE",
@@ -86,7 +86,7 @@ test("selectSinglePlanNode handles single, missing, and ambiguous selections", (
     () =>
       selectSinglePlanNode(
         {
-          getNodesForRequest() {
+          getHandleableNodes() {
             return [createResolverNode("YAHOO"), createResolverNode("IBKR")];
           },
           id: "QUOTE",
@@ -106,7 +106,7 @@ test("resolveRoutingNode unwraps routing plans until it reaches a concrete node"
       canHandle() {
         return true;
       },
-      getNodesForRequest() {
+      getHandleableNodes() {
         return [yahoo];
       },
       getNodeKind() {
@@ -131,7 +131,7 @@ test("resolveRoutingNode also unwraps linear step plans", () => {
       canHandle() {
         return true;
       },
-      getNodesForRequest() {
+      getHandleableNodes() {
         return [classifier];
       },
       getNodeKind() {
@@ -156,7 +156,7 @@ test("resolver node name matching and lookup search by name", () => {
     canHandle() {
       return true;
     },
-    getNodesForRequest() {
+    getHandleableNodes() {
       return [yahoo, ibkr];
     },
     isRoutingNode: false,
@@ -180,7 +180,7 @@ test("findNamedResolver searches raw searchable children, not only selector-filt
     canHandle() {
       return true;
     },
-    getNodesForRequest() {
+    getHandleableNodes() {
       return [ibkr];
     },
     isRoutingNode: false,

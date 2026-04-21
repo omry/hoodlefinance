@@ -7,12 +7,12 @@ function formatNodeName(node: FlowNode | null | undefined): string {
 
 export function isResolverPlan(node: unknown): node is FlowJunction {
   return (
-    !!node && typeof (node as FlowJunction).getNodesForRequest === "function"
+    !!node && typeof (node as FlowJunction).getHandleableNodes === "function"
   );
 }
 
 export function selectSinglePlanNode<TNode extends FlowNode>(
-  plan: Pick<FlowJunction, "getNodesForRequest" | "id"> | null | undefined,
+  plan: Pick<FlowJunction, "getHandleableNodes" | "id"> | null | undefined,
   request: unknown,
   options: {
     allowNone?: boolean;
@@ -21,7 +21,7 @@ export function selectSinglePlanNode<TNode extends FlowNode>(
   } = {},
 ): TNode | null {
   const selectedNodes = plan
-    ? (plan.getNodesForRequest(request) as TNode[])
+    ? (plan.getHandleableNodes(request) as TNode[])
     : [];
 
   if (!selectedNodes.length) {
