@@ -143,6 +143,12 @@ export class StepForwardNode extends FlowNode {
   }
 }
 
+export class TerminalCollectorNode extends FlowNode {
+  override run(request: unknown): unknown {
+    return request;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Junction kind base classes — driver dispatch table uses these to determine
 // how each graph node is traversed: switch selects one child explicitly via

@@ -580,10 +580,6 @@ export class Flow {
 
     this.#nodesByCode = Object.create(null);
     for (const node of this.graph.getTopologicalOrder()) {
-      if (this.#isTerminalNode(node.id)) {
-        continue;
-      }
-
       const Ctor = registry.get(node.type);
       if (!Ctor) {
         throw new Error(
@@ -620,10 +616,6 @@ export class Flow {
 
   #validateRuntimeTopology(): void {
     for (const graphNode of this.graph.getTopologicalOrder()) {
-      if (this.#isTerminalNode(graphNode.id)) {
-        continue;
-      }
-
       const runtimeNode = this.#getRuntimeNode(graphNode.id);
       const nextCount = getGraphNodeNextIds(graphNode).length;
       const kind = runtimeNode.getNodeKind();
@@ -638,9 +630,6 @@ export class Flow {
 
   getNode(id: string): FlowNode | null {
     const normalizedId = normalizeGraphNodeId(id);
-    if (this.#isTerminalNode(normalizedId)) {
-      return null;
-    }
     if (!this.graph.getNode(normalizedId)) {
       return null;
     }
@@ -722,12 +711,6 @@ export class Flow {
 
     const spec = requireGraphNodeSpec(this.graph, normalizedCode);
 
-    if (this.#isTerminalNode(spec.id)) {
-      throw new Error(
-        `Runtime graph terminal node "${normalizedCode}" is not executable.`,
-      );
-    }
-
     const Ctor = this.#registry.get(spec.type);
     if (!Ctor || !(Ctor.prototype instanceof FlowJunction)) {
       throw new Error(
@@ -735,9 +718,9 @@ export class Flow {
       );
     }
 
-    const nodes = getGraphNodeNextIds(spec)
-      .map((nodeCode) => this.#isTerminalNode(nodeCode) ? null : this.#getRuntimeNode(nodeCode))
-      .filter((n): n is FlowNode => n !== null);
+    const nodes = getGraphNodeNextIds(spec).map((nodeCode) =>
+      this.#getRuntimeNode(nodeCode),
+    );
     const compiledNode = new (Ctor as JunctionConstructor)(
       normalizedCode,
       nodes,

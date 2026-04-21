@@ -348,6 +348,17 @@ export class FlowEngine {
     let lastFailureError = "";
 
     // Leaf nodes keep the existing ordered-fallback behavior for now.
+    if (childNodes.length === 0) {
+      const terminalNode = graph.getTerminal();
+      if (terminalNode && terminalNode.id === node.id) {
+        return outEnvelope;
+      }
+
+      return {
+        value: outEnvelope.value,
+        status: EnvelopeStatus.Failure,
+      };
+    }
 
     for (const childNode of childNodes) {
       if (!this.#childCanHandle(childNode, outEnvelope.value)) {

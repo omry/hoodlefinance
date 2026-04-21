@@ -82,7 +82,7 @@ function createFakeGraphEnv() {
     },
     TERMINAL: {
       id: "TERMINAL",
-      type: "TerminalCollectorPlan",
+      type: "TerminalCollectorNode",
     },
   };
   const order = ["ROOT", "QUOTE", "TERMINAL"].map((id) => definition[id]);
@@ -220,14 +220,14 @@ test("renderMermaidAsTextGraph renders a lightweight text projection", () => {
   const text = renderMermaidAsTextGraph(`flowchart TD
   N0["ROOT<br/>RoutingPlan"]
   N1["QUOTE<br/>YahooQuoteResolver"]
-  N2["TERMINAL<br/>TerminalCollectorPlan"]
+  N2["TERMINAL<br/>TerminalCollectorNode"]
   N0 --> N1
   N1 --> N2`);
 
   assert.match(text, /^flowchart TD/m);
   assert.match(text, /\nROOT\nRoutingPlan\n  -> QUOTE/);
   assert.match(text, /\nQUOTE\nYahooQuoteResolver\n  -> TERMINAL/);
-  assert.match(text, /\nTERMINAL\nTerminalCollectorPlan/);
+  assert.match(text, /\nTERMINAL\nTerminalCollectorNode/);
 });
 
 test("renderGraphTextWithEnvironment renders the Mermaid graph as lightweight text", () => {
@@ -235,7 +235,7 @@ test("renderGraphTextWithEnvironment renders the Mermaid graph as lightweight te
 
   assert.match(text, /^flowchart LR/m);
   assert.match(text, /\nROOT\nRoutingPlan\n  -> QUOTE/);
-  assert.match(text, /\nTERMINAL\nTerminalCollectorPlan/);
+  assert.match(text, /\nTERMINAL\nTerminalCollectorNode/);
 });
 
 test("renderGraphSvgWithEnvironment renders the Mermaid graph as SVG", async () => {

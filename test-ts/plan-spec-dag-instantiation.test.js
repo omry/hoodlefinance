@@ -24,6 +24,7 @@ const {
   RoutingPlan,
   FanOutJunction,
   StepForwardNode,
+  TerminalCollectorNode,
   TickerQuoteResolutionPlan,
   TradingviewFundResolver,
   YahooIsinSearchResolver,
@@ -80,6 +81,7 @@ function createResolverRegistry() {
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
     .register("StepPlan", FanOutJunction)
+    .register("TerminalCollectorNode", TerminalCollectorNode)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
@@ -112,7 +114,7 @@ function createValidDagSpecs() {
     },
     TERMINAL: {
       id: "TERMINAL",
-      type: "TerminalCollectorPlan",
+      type: "TerminalCollectorNode",
     },
   };
 }
@@ -217,7 +219,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
       },
       TERMINAL: {
         id: "TERMINAL",
-        type: "TerminalCollectorPlan",
+        type: "TerminalCollectorNode",
       },
     }).getGraph();
 
@@ -254,7 +256,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /StepForward node "FORWARD" must declare exactly one child\./,
@@ -275,7 +277,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
       },
       TERMINAL: {
         id: "TERMINAL",
-        type: "TerminalCollectorPlan",
+        type: "TerminalCollectorNode",
       },
     }).getGraph();
 
@@ -318,7 +320,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /duplicate normalized code "ROOT"/i,
@@ -336,7 +338,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /must match node\.id/i,
@@ -354,7 +356,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /references missing child "MISSING"/i,
@@ -377,7 +379,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /contains a cycle/i,
@@ -428,11 +430,11 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           "TERMINAL-A": {
             id: "TERMINAL-A",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
           "TERMINAL-B": {
             id: "TERMINAL-B",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /exactly one terminal; found 2/i,
@@ -529,7 +531,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /exactly one root; found 2/i,
@@ -556,7 +558,7 @@ test("Flow graph view normalizes and validates DAG structure", async (t) => {
           },
           TERMINAL: {
             id: "TERMINAL",
-            type: "TerminalCollectorPlan",
+            type: "TerminalCollectorNode",
           },
         }),
       /exactly one terminal; found 2/i,

@@ -56,7 +56,7 @@ test("renderGraphAsMermaidFlowchart renders ordered nodes and edges from Graph.V
       },
       TERMINAL: {
         id: "TERMINAL",
-        type: "TerminalCollectorPlan",
+        type: "TerminalCollectorNode",
       },
     },
     ["ROOT", "QUOTE", "TERMINAL"],
@@ -67,7 +67,7 @@ test("renderGraphAsMermaidFlowchart renders ordered nodes and edges from Graph.V
   assert.match(mermaid, /^flowchart TD/m);
   assert.match(mermaid, /N0\["ROOT<br\/>RoutingPlan"\]/);
   assert.match(mermaid, /N1\["QUOTE<br\/>YahooQuoteResolver"\]/);
-  assert.match(mermaid, /N2\["TERMINAL<br\/>TerminalCollectorPlan"\]/);
+  assert.match(mermaid, /N2\["TERMINAL<br\/>TerminalCollectorNode"\]/);
   assert.match(mermaid, /N0 --> N1/);
   assert.match(mermaid, /N1 --> N2/);
 });
@@ -100,7 +100,7 @@ test("renderGraphAsMermaidFlowchart renders subgraph boundaries and call edges d
       },
       TERMINAL: {
         id: "TERMINAL",
-        type: "TerminalCollectorPlan",
+        type: "TerminalCollectorNode",
       },
     },
     ["ROOT", "CALLER", "FX:START", "FX:END", "TERMINAL"],

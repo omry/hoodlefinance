@@ -11,6 +11,7 @@ export {
   FlowJunction,
   StepForwardNode,
   SwitchJunction,
+  TerminalCollectorNode,
 } from "./flow/nodes";
 import {
   FanOutJunction,
@@ -19,6 +20,7 @@ import {
   FlowJunction,
   StepForwardNode,
   SwitchJunction,
+  TerminalCollectorNode,
 } from "./flow/nodes";
 import type { SelectNextContext } from "./flow/types";
 

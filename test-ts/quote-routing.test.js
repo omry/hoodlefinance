@@ -23,6 +23,7 @@ const {
   RawRequestInput,
   RoutingPlan,
   FanOutJunction,
+  TerminalCollectorNode,
   TickerQuoteResolutionPlan,
   YahooIsinSearchResolver,
   YahooEquityQuoteResolver,
@@ -62,6 +63,7 @@ function createResolverRegistry() {
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
     .register("StepPlan", FanOutJunction)
+    .register("TerminalCollectorNode", TerminalCollectorNode)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 

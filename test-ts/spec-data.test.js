@@ -16,6 +16,7 @@ test("DagPlan uses the final graph node shape", () => {
   assert.deepEqual(DagPlan["QUOTE:PSE"].next, ["PSE-FRAMES", "PSE-EDGE"]);
   assert.deepEqual(DagPlan["EXTRACT:EQUITY"].subgraphCalls, ["FX_CONVERSION"]);
   assert.equal(DagPlan["EXTRACT:FX"].subgraphCalls, undefined);
+  assert.equal(DagPlan.TERMINAL.type, "TerminalCollectorNode");
   assert.deepEqual(DagPlan.__subgraphs__, {
     FX_CONVERSION: {
       rootNodeId: "ATTRIBUTE:FX",
@@ -37,6 +38,10 @@ test("Flow builds and validates DagPlan directly from the authored graph", () =>
     flow.getGraph().getNode("QUOTE:PSE").type,
     "PseQuoteResolutionPlan",
   );
+  assert.equal(
+    flow.getNode("TERMINAL")?.constructor.name,
+    "TerminalCollectorNode",
+  );
 });
 
 test("Flow validates DAG structure during construction", () => {
@@ -50,7 +55,7 @@ test("Flow validates DAG structure during construction", () => {
         },
         TERMINAL: {
           id: "TERMINAL",
-          type: "TerminalCollectorPlan",
+          type: "TerminalCollectorNode",
         },
       },
       createConcreteResolverRegistry(),

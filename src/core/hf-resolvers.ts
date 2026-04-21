@@ -21,6 +21,7 @@ import {
   FlowNode,
   StepForwardNode,
   BaseHFResolver,
+  TerminalCollectorNode,
 } from "./resolver-classes";
 import {
   createRequestInput,
@@ -1130,5 +1131,6 @@ export function createConcreteResolverRegistry(): NodeFactoryRegistry {
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
     .register("StepPlan", FanOutJunction)
+    .register("TerminalCollectorNode", TerminalCollectorNode)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }

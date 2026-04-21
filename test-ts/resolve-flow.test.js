@@ -21,6 +21,7 @@ const {
   RequestClassifierResolver,
   FlowNode,
   StepForwardNode,
+  TerminalCollectorNode,
   Flow,
   resolveAttribute,
   RoutingPlan,
@@ -68,6 +69,7 @@ function createResolverRegistry() {
     .register("PseQuoteResolutionPlan", PseQuoteResolutionPlan)
     .register("RoutingPlan", RoutingPlan)
     .register("StepPlan", FanOutJunction)
+    .register("TerminalCollectorNode", TerminalCollectorNode)
     .register("TickerQuoteResolutionPlan", TickerQuoteResolutionPlan);
 }
 
@@ -105,7 +107,7 @@ class FakeResolver extends StepForwardNode {
 // Minimal two-node graph: ROOT(FakeResolver) -> TERMINAL
 const FAKE_GRAPH = {
   ROOT: { id: "ROOT", type: "FakeResolver", next: ["TERMINAL"] },
-  TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
+  TERMINAL: { id: "TERMINAL", type: "TerminalCollectorNode" },
 };
 
 function createDagPlanWithFxSubgraph() {
@@ -241,7 +243,12 @@ test("Flowroutes price@CCY conversion through the production FX subgraph", () =>
 });
 
 test("Flow instantiates and registers nodes by class name", () => {
-  const flow = new Flow(FAKE_GRAPH, new NodeFactoryRegistry().register("FakeResolver", FakeResolver));
+  const flow = new Flow(
+    FAKE_GRAPH,
+    new NodeFactoryRegistry()
+      .register("FakeResolver", FakeResolver)
+      .register("TerminalCollectorNode", TerminalCollectorNode),
+  );
 
   const flowNode = flow.getNode("ROOT");
   assert.ok(flowNode instanceof FakeResolver);
@@ -365,7 +372,7 @@ test("Flowrejects unknown class names", () => {
       new Flow(
         {
           ROOT: { id: "ROOT", type: "MissingResolver", next: ["TERMINAL"] },
-          TERMINAL: { id: "TERMINAL", type: "TERMINAL" },
+          TERMINAL: { id: "TERMINAL", type: "TerminalCollectorNode" },
         },
         new NodeFactoryRegistry(),
       ),

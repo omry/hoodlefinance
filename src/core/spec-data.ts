@@ -128,7 +128,7 @@ export const DagPlan: Graph.Definition = {
   },
   TERMINAL: {
     id: "TERMINAL",
-    type: "TerminalCollectorPlan",
+    type: "TerminalCollectorNode",
   },
   __subgraphs__: {
     FX_CONVERSION: {

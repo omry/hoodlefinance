@@ -146,6 +146,32 @@ test("execute() treats a node with null node implementation as terminal, returns
   assert.deepEqual(result.value, { done: true });
 });
 
+test("execute() returns failure when a non-terminal leaf succeeds with no children", () => {
+  const flow = {
+    getGraph: () => ({
+      getRoot: () => ({ id: "ROOT", type: "mock", next: [] }),
+      getTerminal: () => ({ id: "TERMINAL", type: "terminal", next: [] }),
+      getNode: (id) => (id === "ROOT" ? { id: "ROOT", type: "mock", next: [] } : null),
+    }),
+    getNode: (id) => {
+      if (id !== "ROOT") {
+        return null;
+      }
+
+      return {
+        execute: () => ({ status: "success", value: { done: true } }),
+        getNodeKind: () => "leaf",
+      };
+    },
+  };
+
+  const engine = new FlowEngine(flow);
+  const result = engine.execute({ value: {} });
+
+  assert.equal(result.status, EnvelopeStatus.Failure);
+  assert.deepEqual(result.value, { done: true });
+});
+
 test("execute() throws when a step-forward node declares multiple children", () => {
   const flow = {
     getGraph: () => ({
