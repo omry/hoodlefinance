@@ -46,6 +46,11 @@ Open work imported from [`TODO.md`](./TODO.md) and inline repo TODOs.
   - Focus next tests on unhappy paths, branch-heavy routing decisions, and source-specific fallback behavior.
   - Source: `npm run check:ts:coverage`
 
+## Bug fixes and reliability
+
+- [ ] Port the Google Finance FX fallback fix from `hoodlefinance.js` to the TypeScript source. Three changes needed: (1) `GoogleFxResolver.executeBatch` should return `lookup_failure` instead of `terminal_error` so the router falls back to the next node; (2) `hf_buildFxQuoteRouteState_` should include `yahooSymbol` from `fxPair.yahooChartSymbol`; (3) the `QUOTE:FX` plan should select both GOOGLE-FX and YAHOO-FX nodes (already wired in `spec-data.ts` as `FirstSuccessPlan`, but the old JS node selector filtered to GOOGLE only).
+  - Context: Google Finance intermittently serves a `finance/beta` page with no embedded rate data, causing all FX lookups to fail until the TS fix is deployed.
+
 ## Codebase cleanup
 
 - [ ] Make another cleanup pass and ensure there is no logic about the specifics of plans outside of the plan definition and resolvers logic, for example `HOODLEFINANCE_PLAN_ROUTE_PATH_BY_REF_`.

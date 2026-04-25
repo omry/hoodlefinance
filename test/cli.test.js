@@ -31,7 +31,7 @@ test("routing table rows cover the current quote classifications", function () {
         example: "TLV:KSMF59",
         route: "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
       },
-      { classification: "fx", example: "EURUSD", route: "FX -> GOOGLE" },
+      { classification: "fx", example: "EURUSD", route: "FX -> GOOGLE -> YAHOO" },
       {
         classification: "fx",
         example: "USDUSD",
@@ -123,6 +123,10 @@ test("routing plan tree renders the current plan hierarchy", function () {
                     label: "GOOGLE - Google Finance FX quote lookup",
                     children: [],
                   },
+                  {
+                    label: "YAHOO - Yahoo quote lookup",
+                    children: [],
+                  },
                 ],
               },
             ],
@@ -193,9 +197,9 @@ test("routing plan tree formatter emits a tree-style plan rendering", function (
     /^│   │   │   ├── PSE-FRAMES - PSE frames quote lookup$/m,
   );
   assert.match(output, /^├── IDENTIFIER$/m);
-  assert.doesNotMatch(
+  assert.match(
     output,
-    /^│       └── FX[\s\S]*YAHOO - Yahoo quote lookup/m,
+    /^│       └── FX[\s\S]*GOOGLE - Google Finance FX quote lookup[\s\S]*YAHOO - Yahoo quote lookup/m,
   );
   assert.doesNotMatch(output, /@YAHOO|@GOOGLE|@PSE/);
 });

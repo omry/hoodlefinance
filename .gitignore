@@ -25,3 +25,6 @@ mempalace.yaml
 
 # forge
 .mcp.json
+
+# large live-fetch fixtures (not committed)
+test/fixtures/

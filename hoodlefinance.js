@@ -2919,7 +2919,11 @@ function hf_buildPseQuoteRouteState_(request) {
 }
 
 function hf_buildFxQuoteRouteState_(request) {
-  return { fxPair: request.fxPair };
+  const fxPair = request.fxPair;
+  return {
+    fxPair: fxPair,
+    yahooSymbol: fxPair ? fxPair.yahooChartSymbol : null,
+  };
 }
 
 function hf_buildEquityYahooQuoteRouteState_(equityRequest) {
@@ -3831,7 +3835,7 @@ class GoogleFxResolver extends AttemptResolver {
           }),
         );
       } catch (error) {
-        results.push(hf_createRouteResult_("terminal_error", { error: error }));
+        results.push(hf_createRouteResult_("lookup_failure", { error: error }));
       }
     }
 
@@ -3855,6 +3859,7 @@ class YahooQuoteResolver extends AttemptResolver {
         !!request.yahooSymbol) ||
       (request instanceof FxRequest &&
         request.fxPair &&
+        !request.fxPair.isSameCurrency &&
         !!request.fxPair.yahooChartSymbol)
     );
   }
@@ -4897,7 +4902,6 @@ const HOODLEFINANCE_PLAN_SPECS_BY_CODE_ = {
       nodeSelectorRef: "DEFAULT_FX_QUOTE",
       routingLabel: "FX",
       routeClass: "FX",
-      routePath: "GOOGLE",
       routeStateBuilderRef: "FX_QUOTE",
     },
   },
@@ -5025,13 +5029,7 @@ const HOODLEFINANCE_PLAN_ROUTE_PATH_BY_REF_ = {
 
 const HOODLEFINANCE_PLAN_NODE_SELECTOR_BY_REF_ = {
   DEFAULT_FX_QUOTE: function (nodes) {
-    return nodes.filter(function (node) {
-      return (
-        String((node && node.name) || "")
-          .trim()
-          .toUpperCase() === "GOOGLE"
-      );
-    });
+    return nodes.slice();
   },
 };
 

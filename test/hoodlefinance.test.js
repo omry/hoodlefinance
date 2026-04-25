@@ -1999,8 +1999,8 @@ test("source introspection suffixes return the planned route or the supported so
   primeCurrencyCodeData(ctx);
   primePseIsinMapData(ctx);
 
-  assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "FX -> GOOGLE");
-  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE");
+  assert.equal(ctx.HOODLEFINANCE("BTCUSD@?"), "FX -> GOOGLE -> YAHOO");
+  assert.equal(ctx.HOODLEFINANCE("EURUSD@?"), "FX -> GOOGLE -> YAHOO");
   assert.equal(
     ctx.HOODLEFINANCE("PSE:AAA@?"),
     "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE",
@@ -2039,7 +2039,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
       ["classification", "example", "planned route"],
       ["equity", "GOOG", "EQUITY -> TICKER -> YAHOO"],
       ["equity", "TLV:KSMF59", "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW"],
-      ["fx", "EURUSD", "FX -> GOOGLE"],
+      ["fx", "EURUSD", "FX -> GOOGLE -> YAHOO"],
       ["fx", "USDUSD", "FX -> LOCAL"],
       ["equity", "PSE:BDO", "EQUITY -> PSE -> PSE-FRAMES -> PSE-EDGE"],
       ["isin", "US02079K1079", "IDENTIFIER:ISIN -> YAHOO-ISIN"],
@@ -2050,7 +2050,7 @@ test("HOODLEFINANCE_ROUTES returns the routing table or a specific planned route
     ctx.HOODLEFINANCE_ROUTES("TLV:KSMF59"),
     "EQUITY -> TICKER -> YAHOO -> TRADINGVIEW",
   );
-  assert.equal(ctx.HOODLEFINANCE_ROUTES("EURUSD"), "FX -> GOOGLE");
+  assert.equal(ctx.HOODLEFINANCE_ROUTES("EURUSD"), "FX -> GOOGLE -> YAHOO");
   assert.equal(
     JSON.stringify(ctx.HOODLEFINANCE_ROUTES("")),
     JSON.stringify(ctx.HOODLEFINANCE_ROUTES()),
