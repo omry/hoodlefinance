@@ -1,5 +1,11 @@
 # Release Notes
 
+## v1.0.1 - 2026-04-25
+
+### Fixed
+
+- Fixed FX rate lookups failing when Google Finance serves a page with no rate data by falling back to Yahoo Finance.
+
 ## v1.0.0 - 2026-04-02
 
 ### Fixed
