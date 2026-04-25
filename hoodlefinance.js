@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 
-const HOODLEFINANCE_VERSION_ = "1.0.0";
+const HOODLEFINANCE_VERSION_ = "1.0.1";
 
 const HOODLEFINANCE_SUPPORTED_ATTRIBUTES_ = {
   exchange: function (quote, context) {
