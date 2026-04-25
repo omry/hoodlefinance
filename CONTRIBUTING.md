@@ -339,16 +339,19 @@ The demo-sync job keeps those secret values out of the checked-out workspace and
 
 Maintainer release checklist:
 
-1. Review pending fragments under [`changes.d/`](./changes.d/) and make sure each user-visible change is covered once, with end-user wording.
-2. Optional: run `npm run release:check-fragments`.
-3. Optional: run any extra smoke checks beyond the built-in `prepare` verification gate.
-4. Run the `Release Prepare` workflow for `x.y.z`, or make sure the git worktree is clean and run `npm run release:prepare -- x.y.z`.
-5. Inspect the meaningful generated release artifacts:
-   [version.properties](./version.properties),
-   [`docs/release-notes/vX.Y.Z.md`](./docs/release-notes/),
-   and [`docs/release-notes/RELEASE_NOTES.md`](./docs/release-notes/RELEASE_NOTES.md).
-6. Merge the release PR, or if you used the local fallback, commit the reviewed release changes, for example `git commit -m "Release v0.9.0"`.
-7. Confirm that `Release Publish` ran for the merged release PR and completed both jobs:
+1. Optional: run any extra smoke checks beyond the built-in `prepare` verification gate.
+2. Run the `Release Prepare` workflow for `x.y.z`:
+   ```sh
+   gh workflow run release-prepare.yml -f version=x.y.z
+   ```
+3. Review and merge the release PR.
+4. Refresh the production clasp tokens and sync them to GitHub Secrets before the publish job runs
+   (must be logged in with the production Google account):
+   ```sh
+   npm run clasp:user:login -- --demo-production
+   npm run clasp:user:login -- --addon-production
+   ```
+5. Confirm that `Release Publish` ran for the merged release PR and completed both jobs:
    the publish job and the demo-sync job.
 
 If the change affects exchange coverage or source support, regenerate [`website/docs/support-matrix.md`](./website/docs/support-matrix.md) with `npm run support-matrix -- --update-page`.
