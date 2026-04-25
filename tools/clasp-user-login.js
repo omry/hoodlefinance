@@ -82,6 +82,7 @@ function getClaspLoginContext(options, overrides) {
     authPath: slot.authPath,
     credsPath: credsPath,
     flag: slot.flag,
+    githubSecret: slot.githubSecret || "",
     key: slot.key,
     label: slot.label,
   };
@@ -99,6 +100,29 @@ async function runCommand(command, args) {
       }
       resolve();
     });
+  });
+}
+
+async function runCommandWithStdin(command, args, options) {
+  const stdinFile = options && options.stdinFile;
+
+  return new Promise(function (resolve, reject) {
+    const child = spawn(command, args, {
+      stdio: [stdinFile ? "pipe" : "inherit", "inherit", "inherit"],
+    });
+
+    child.on("error", reject);
+    child.on("close", function (code) {
+      if (code !== 0) {
+        reject(new Error(command + " exited with code " + code));
+        return;
+      }
+      resolve();
+    });
+
+    if (stdinFile) {
+      child.stdin.end(fs.readFileSync(stdinFile));
+    }
   });
 }
 
@@ -142,6 +166,16 @@ async function main() {
   process.stdout.write("Will update: " + context.authPath + "\n");
   process.stdout.write("Will read: " + context.credsPath + "\n");
   await runCommand(claspCommand, args);
+
+  if (context.githubSecret) {
+    process.stdout.write(
+      "Updating GitHub secret: " + context.githubSecret + "\n",
+    );
+    await runCommandWithStdin("gh", ["secret", "set", context.githubSecret], {
+      stdinFile: context.authPath,
+    });
+    process.stdout.write("GitHub secret updated.\n");
+  }
 }
 
 module.exports = {

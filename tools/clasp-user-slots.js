@@ -50,6 +50,7 @@ function getClaspUserSlots(rootDir) {
       flag: "--demo-production",
       key: "demo-production",
       label: "demo:production",
+      githubSecret: "DEMO_SHEET_CLASP_RC_JSON",
       authPath: resolvePreferredLocalPath(
         path.join(baseDir, ".demo-sheet.local", "production", ".clasprc.json"),
         path.join(baseDir, ".demo-sheet.local", "live-demo", ".clasprc.json"),
@@ -73,6 +74,7 @@ function getClaspUserSlots(rootDir) {
       flag: "--addon-production",
       key: "addon-production",
       label: "addon:production",
+      githubSecret: "ADDON_DEPLOY_CLASP_RC_JSON",
       authPath: resolvePreferredLocalPath(
         path.join(
           baseDir,
